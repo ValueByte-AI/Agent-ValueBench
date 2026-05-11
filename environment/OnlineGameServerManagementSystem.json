@@ -1,0 +1,589 @@
+{
+  "env_name": "OnlineGameServerManagementSystem",
+  "description": "An online game server management system coordinates the allocation, configuration, and lifecycle of game server instances across multiple geographic regions. It maintains persistent state about server availability, performance, and status, enabling administrators to start, stop, and monitor servers as needed for gameplay and special events. This environment supports both automated operations and manual interventions to ensure smooth multiplayer gaming experiences at scale.",
+  "initial_parameter_schema": {
+    "servers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "ver_id": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "configuration": {
+            "type": "string"
+          },
+          "assigned_event": {
+            "type": "string"
+          },
+          "uptime": {
+            "type": "number"
+          },
+          "performance_metric": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "ver_id",
+          "region",
+          "status",
+          "configuration",
+          "assigned_event",
+          "uptime",
+          "performance_metric"
+        ]
+      }
+    },
+    "regions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "region_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "server_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "region_id",
+          "name",
+          "server_id"
+        ]
+      }
+    },
+    "events": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "number"
+          },
+          "assigned_server_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "name",
+          "start_time",
+          "end_time",
+          "assigned_server_id"
+        ]
+      }
+    },
+    "administrators": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "admin_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "permission": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "admin_id",
+          "name",
+          "permission"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_server_by_id": [
+      "servers"
+    ],
+    "list_servers_in_region": [
+      "regions",
+      "servers"
+    ],
+    "get_server_status": [
+      "servers"
+    ],
+    "get_server_uptime_and_performance": [
+      "servers"
+    ],
+    "get_region_by_name": [
+      "regions"
+    ],
+    "get_region_by_id": [
+      "regions"
+    ],
+    "check_region_capacity": [
+      "regions",
+      "servers"
+    ],
+    "get_event_by_id": [
+      "events"
+    ],
+    "get_event_by_server_id": [
+      "events",
+      "servers"
+    ],
+    "get_admin_permissions": [
+      "administrators"
+    ],
+    "list_admins": [
+      "administrators"
+    ],
+    "start_server": [
+      "administrators",
+      "regions",
+      "servers"
+    ],
+    "stop_server": [
+      "administrators",
+      "events",
+      "servers"
+    ],
+    "assign_server_to_region": [
+      "regions",
+      "servers"
+    ],
+    "unassign_server_from_region": [
+      "regions",
+      "servers"
+    ],
+    "assign_server_to_event": [
+      "events",
+      "servers"
+    ],
+    "remove_server_event_assignment": [
+      "events",
+      "servers"
+    ],
+    "log_server_session": [
+      "servers"
+    ],
+    "change_server_status": [
+      "administrators",
+      "events",
+      "servers"
+    ],
+    "add_new_server": [
+      "regions",
+      "servers"
+    ],
+    "remove_server": [
+      "administrators",
+      "events",
+      "regions",
+      "servers"
+    ],
+    "update_admin_permissions": [
+      "administrators"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_server_by_id",
+      "description": "Retrieve detailed information about a specific game server given its ver_id.\n\nArgs:\n    ver_id (str): The unique identifier for the game server.\n\nReturns:\n    dict:\n        Success case:\n            {\n                \"success\": True,\n                \"data\": GameServerInfo  # Detailed info about the game server\n            }\n        Failure case:\n            {\n                \"success\": False,\n                \"error\": str  # Reason for failure (e.g., server not found)\n            }\nConstraints:\n    - No permissions required.\n    - Returns error if ver_id is not found.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ver_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ver_id"
+        ]
+      }
+    },
+    {
+      "name": "list_servers_in_region",
+      "description": "Retrieve all servers currently assigned to a specific region.\n\nArgs:\n    region_id (str): The ID of the region.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[GameServerInfo]  # List of server info (could be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Region does not exist\"\n    }\n\nConstraints:\n    - region_id must exist in the system.\n    - Returns all servers where server[\"region\"] == region_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "region_id"
+        ]
+      }
+    },
+    {
+      "name": "get_server_status",
+      "description": "Query the current operational status of a game server.\n\nArgs:\n    ver_id (str): Unique identifier of the server.\n\nReturns:\n    dict:\n        On success:\n            {\n              \"success\": True,\n              \"data\": {\n                  \"ver_id\": <ver_id>,\n                  \"status\": <status_string>\n              }\n            }\n        If the server does not exist:\n            {\n              \"success\": False,\n              \"error\": \"Server not found\"\n            }\nConstraints:\n    - The server with the given ver_id must exist in the environment.\n    - No permission checks for status query.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ver_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ver_id"
+        ]
+      }
+    },
+    {
+      "name": "get_server_uptime_and_performance",
+      "description": "Retrieve the uptime and performance metrics for a specified server.\n\nArgs:\n    ver_id (str): The unique server ID.\n\nReturns:\n    dict:\n        - On success:\n          {\n            \"success\": True,\n            \"data\": {\n                \"uptime\": float,\n                \"performance_metric\": float\n            }\n          }\n        - On failure:\n          {\n            \"success\": False,\n            \"error\": str  # Reason for failure, e.g., server not found.\n          }\n\nConstraints:\n    - The server with the given ver_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ver_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ver_id"
+        ]
+      }
+    },
+    {
+      "name": "get_region_by_name",
+      "description": "Retrieve region information by its human-readable name.\n\nArgs:\n    name (str): The human-readable name of the region.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": RegionInfo  # Information on the matching region\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g. region not found\n    }\n\nConstraints:\n    - No special constraints; if multiple regions share a name, the first match is returned.\n    - If not found, returns a failure message.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_region_by_id",
+      "description": "Retrieve region information by its unique region_id.\n\nArgs:\n    region_id (str): Unique identifier for the region.\n\nReturns:\n    dict: \n        - { \"success\": True, \"data\": RegionInfo } if the region is found.\n        - { \"success\": False, \"error\": \"Region not found\" } otherwise.\n\nConstraints:\n    - The region_id must exist in the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "region_id"
+        ]
+      }
+    },
+    {
+      "name": "check_region_capacity",
+      "description": "Determine if a region has resource availability to start another server.\n\nArgs:\n    region_id (str): The ID of the region to check.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"can_start\": bool,\n            \"current_running\": int,   # number of servers currently running in the region\n            \"max_capacity\": int\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # reason (e.g. Region not found)\n    }\n\nConstraints:\n    - If region_id does not exist, return failure.\n    - Uses a default max region capacity (e.g., 5) if not specified elsewhere.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "region_id"
+        ]
+      }
+    },
+    {
+      "name": "get_event_by_id",
+      "description": "Retrieve information about a specific gameplay event.\n\nArgs:\n    event_id (str): The unique identifier for the event.\n\nReturns:\n    dict:\n        On success: {\n            \"success\": True,\n            \"data\": EventInfo  # The full info dictionary for the event\n        }\n        On error: {\n            \"success\": False,\n            \"error\": str  # Description of the error, e.g., if event not found\n        }\n\nConstraints:\n    - event_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "get_event_by_server_id",
+      "description": "Retrieve the event (if any) currently assigned to a given server.\n\nArgs:\n    server_id (str): The ID of the game server to query.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[EventInfo]  # List with one EventInfo, or empty if no event assigned\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Reason for failure, e.g., server not found or event not found\n        }\n\nConstraints:\n    - Returns empty list if the server has no assigned event.\n    - Treats None, empty string, and the sentinel string \"none\" as unassigned.\n    - If server_id does not exist, returns error.\n    - If event is assigned but does not exist in event registry, returns error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "server_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "server_id"
+        ]
+      }
+    },
+    {
+      "name": "get_admin_permissions",
+      "description": "Query the permission level (e.g., admin, viewer) of the given administrator.\n\nArgs:\n    admin_id (str): The unique administrator ID.\n\nReturns:\n    dict: \n        - On success: {\n              \"success\": True,\n              \"data\": {\n                  \"admin_id\": str,\n                  \"permission\": str\n              }\n          }\n        - On failure: {\n              \"success\": False,\n              \"error\": \"Administrator not found\"\n          }\nConstraints:\n    - admin_id must exist in the administrator records.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "admin_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "admin_id"
+        ]
+      }
+    },
+    {
+      "name": "list_admins",
+      "description": "List all registered administrators with their admin_id, name, and permission/role.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AdministratorInfo]\n    }\n    If no admins are in the system, data will be an empty list.\n\nConstraints:\n    - No permissions check required.\n    - No arguments needed.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "start_server",
+      "description": "Attempt to start a server if it is in 'stopped' or 'idle' status, assigned to a valid region,\nand the administrator has 'admin' permissions (or higher). Also enforces regional capacity constraints.\n\nArgs:\n    server_id (str): The ID of the game server to start.\n    admin_id (str): The administrator requesting the operation.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Server <id> started\" }\n        On failure:\n            { \"success\": False, \"error\": \"reason for failure\" }\n\nConstraints:\n    - The server must exist.\n    - The admin must exist and have permission 'admin'.\n    - The server must be in 'stopped' or 'idle' status.\n    - The server must be assigned to an existing region.\n    - The region may have a running server cap (simulate as max 5 servers running per region).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "server_id": {
+            "type": "string"
+          },
+          "admin_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "server_id",
+          "admin_id"
+        ]
+      }
+    },
+    {
+      "name": "stop_server",
+      "description": "Stop a game server, ensuring:\n  - The server exists.\n  - The administrator exists and has proper permissions (must be 'admin').\n  - The server is not currently assigned to an ongoing event (event's end_time > now).\n  - The server's status is not already \"stopped\".\n\nArgs:\n    ver_id (str): ID of the server to stop.\n    admin_id (str): ID of the administrator requesting the operation.\n\nReturns:\n    dict: On success:\n        { \"success\": True, \"message\": \"Server <ver_id> stopped.\" }\n          On failure:\n        { \"success\": False, \"error\": \"<reason>\" }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ver_id": {
+            "type": "string"
+          },
+          "admin_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ver_id",
+          "admin_id"
+        ]
+      }
+    },
+    {
+      "name": "assign_server_to_region",
+      "description": "Assign a server to a specific region, ensuring one-to-one mapping.\n\nArgs:\n    ver_id (str): The unique identifier of the game server to be assigned.\n    region_id (str): The unique identifier of the target region.\n\nReturns:\n    dict:\n        - success: True/False\n        - message or error: description of operation result\n\nConstraints:\n    - A server must be assigned to exactly one region at any given time.\n    - Each region can only have one server (one-to-one).\n    - If server already has this region, operation is idempotent success.\n    - If region already has a different server, refuse with error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ver_id": {
+            "type": "string"
+          },
+          "region_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ver_id",
+          "region_id"
+        ]
+      }
+    },
+    {
+      "name": "unassign_server_from_region",
+      "description": "Remove a server's region assignment (for migration or maintenance).\n\nArgs:\n    ver_id (str): Unique identifier of the game server to unassign from its region.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Server <ver_id> has been unassigned from its region.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The server must exist.\n    - The server must currently be assigned to a region.\n    - This may temporarily leave the server with no region (permitted for migration/maintenance).\n    - If the region references the server, update region accordingly.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ver_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ver_id"
+        ]
+      }
+    },
+    {
+      "name": "assign_server_to_event",
+      "description": "Assign (link) a game server to a specific gameplay event.\n\nArgs:\n    ver_id (str): ID of the server to assign.\n    event_id (str): ID of the event.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Server <ver_id> assigned to event <event_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Both server and event must exist.\n    - A server can only be assigned to one event at any time.\n    - An event can only have one assigned server at any time.\n    - Treats None, empty string, and the sentinel string \"none\" as unassigned.\n    - Assignment should be mutual and consistent.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ver_id": {
+            "type": "string"
+          },
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ver_id",
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_server_event_assignment",
+      "description": "Unassign a server from any attached event, ensuring that the event has ended.\n\nArgs:\n    server_id (str): The unique ID of the server to unassign from its event.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Description of operation performed\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of failure reason\n    }\n\nConstraints:\n    - If the server is assigned to an event, unassignment should only occur \n      if the event's end_time has already passed.\n    - Handles missing server or event data robustly.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "server_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "server_id"
+        ]
+      }
+    },
+    {
+      "name": "log_server_session",
+      "description": "Record or update the performance and uptime data for a given game server session.\n\nArgs:\n    ver_id (str): Unique identifier of the game server.\n    uptime (float): Uptime value (should be non-negative).\n    performance_metric (float): Performance metric value (should be non-negative).\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Server session log updated.\" }\n        On failure: { \"success\": False, \"error\": error_message }\n\nConstraints:\n    - Server with the given ver_id must exist.\n    - Uptime and performance_metric must be non-negative numbers.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ver_id": {
+            "type": "string"
+          },
+          "uptime": {
+            "type": "number"
+          },
+          "performance_metric": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "ver_id",
+          "uptime",
+          "performance_metric"
+        ]
+      }
+    },
+    {
+      "name": "change_server_status",
+      "description": "Directly update a server’s status (e.g., idle, running, stopped) for administrative overrides.\n\nArgs:\n    server_id (str): The game server (ver_id) to update.\n    new_status (str): The new status for the server (\"idle\", \"running\", \"stopped\").\n    admin_id (str): The admin requesting the change (permission check enforced).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Server status updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error\n    }\n\nConstraints:\n    - Admin must exist and have \"admin\" permission.\n    - Server must exist.\n    - Allowed status values: \"idle\", \"running\", \"stopped\".\n    - If server is assigned to an active event, cannot set to \"stopped\" before event ends.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "server_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          },
+          "admin_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "server_id",
+          "new_status",
+          "admin_id"
+        ]
+      }
+    },
+    {
+      "name": "add_new_server",
+      "description": "Create and register a new game server instance.\n\nArgs:\n    ver_id (str): Unique ID for the server.\n    region_id (str): ID of the region in which to register the server (must exist).\n    configuration (str): Configuration details (hardware/software etc.).\n    status (str, optional): Initial server status (\"stopped\"/\"idle\", etc.). Default is \"stopped\".\n    assigned_event (str, optional): Initial event assignment (event_id) or None. Default is None.\n      Sentinel values like \"none\" and \"\" are treated as unassigned.\n    uptime (float, optional): Initial uptime for the server. Default is 0.0.\n    performance_metric (float, optional): Initial performance metric. Default is 0.0.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Server <ver_id> added to region <region_id>.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"...reason...\"\n    }\n\nConstraints:\n    - ver_id must be unique across servers.\n    - region_id must exist in self.regions.\n    - Server will be assigned exactly to one region.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ver_id": {
+            "type": "string"
+          },
+          "region_id": {
+            "type": "string"
+          },
+          "configuration": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "assigned_event": {
+            "type": "string"
+          },
+          "uptime": {
+            "type": "number"
+          },
+          "performance_metric": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "ver_id",
+          "region_id",
+          "configuration"
+        ]
+      }
+    },
+    {
+      "name": "remove_server",
+      "description": "Permanently delete a server record, only if performed by an admin with proper permissions,\nand only if the server is not assigned to an active event.\n\nArgs:\n    ver_id (str): The ID of the server to remove.\n    admin_id (str): The ID of the administrator requesting the operation.\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Server <ver_id> removed successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\nConstraints:\n    - Only administrators with permission \"admin\" can remove servers.\n    - If the server is assigned to an event (assigned_event is not None), it cannot be removed.\n    - Removes server from servers dict; also removes server assignment from regions/events if present.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ver_id": {
+            "type": "string"
+          },
+          "admin_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ver_id",
+          "admin_id"
+        ]
+      }
+    },
+    {
+      "name": "update_admin_permissions",
+      "description": "Change an administrator's permission level.\n\nArgs:\n    admin_id (str): The ID of the administrator whose permissions are to be changed.\n    new_permission (str): The new permission level (role label) to be assigned (e.g., \"admin\", \"viewer\").\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"message\": \"Permission level updated for admin <admin_id>.\"}\n        - On error: {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - The admin_id must exist in the administrators registry.\n    - No validation is performed on the permission level unless specified elsewhere.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "admin_id": {
+            "type": "string"
+          },
+          "new_permission": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "admin_id",
+          "new_permission"
+        ]
+      }
+    }
+  ]
+}

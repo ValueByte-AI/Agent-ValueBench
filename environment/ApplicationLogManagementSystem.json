@@ -1,0 +1,253 @@
+{
+  "env_name": "ApplicationLogManagementSystem",
+  "description": "An application log management system maintains a persistent collection of log entries, each typically identified by a unique ID and containing data such as timestamps, event types, and descriptions. It supports operations for searching, updating, and verifying individual log records, allowing users to track and modify event histories. Such systems are commonly used in application development, IT operations, and auditing to ensure data integrity and facilitate troubleshooting.",
+  "initial_parameter_schema": {
+    "log_entries": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "log_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "event_description": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "updated_by": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "log_id",
+          "timestamp",
+          "event_type",
+          "event_description",
+          "updated_at",
+          "updated_by"
+        ]
+      }
+    },
+    "update_history": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "log_id": {
+              "type": "string"
+            },
+            "previous_timestamp": {
+              "type": "string"
+            },
+            "previous_event_type": {
+              "type": "string"
+            },
+            "previous_event_description": {
+              "type": "string"
+            },
+            "updated_at": {
+              "type": "string"
+            },
+            "updated_by": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "log_id",
+            "previous_timestamp",
+            "previous_event_type",
+            "previous_event_description",
+            "updated_at",
+            "updated_by"
+          ]
+        }
+      }
+    },
+    "is_user_authorized": {
+      "type": "string"
+    }
+  },
+  "tool_state_dependencies": {
+    "get_log_entry_by_id": [
+      "log_entries"
+    ],
+    "list_log_entries": [
+      "log_entries"
+    ],
+    "get_update_history": [
+      "log_entries",
+      "update_history"
+    ],
+    "is_user_authorized": [],
+    "confirm_log_update": [
+      "log_entries"
+    ],
+    "update_log_entry": [
+      "is_user_authorized",
+      "log_entries",
+      "update_history"
+    ],
+    "record_update_history": [
+      "log_entries",
+      "update_history"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_log_entry_by_id",
+      "description": "Retrieve the full log entry information for a given log_id.\n\nArgs:\n    log_id (str): Unique identifier of the log entry.\n\nReturns:\n    dict: \n      If found:\n          {\n            \"success\": True,\n            \"data\": LogEntryInfo\n          }\n      If not found:\n          {\n            \"success\": False,\n            \"error\": \"Log entry does not exist\"\n          }\n\nConstraints:\n    - log_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "log_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "log_id"
+        ]
+      }
+    },
+    {
+      "name": "list_log_entries",
+      "description": "Retrieve a list of all log entries, optionally filtered by event_type and/or timestamp range.\n\nArgs:\n    event_type (str, optional): Filter results to only those with this event_type.\n    start_timestamp (str, optional): Include only entries with timestamp >= this value.\n    end_timestamp (str, optional): Include only entries with timestamp <= this value.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[LogEntryInfo]  # All matching log entries\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of input or filtering error\n    }\n\nConstraints:\n    - Does not require user authorization.\n    - Does not mutate state.\n    - If start_timestamp/end_timestamp are specified, must be valid and comparable to entry timestamps.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_type": {
+            "type": "string"
+          },
+          "start_timestamp": {
+            "type": "string"
+          },
+          "end_timestamp": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "get_update_history",
+      "description": "Retrieve the audit trail (update history) for a given log entry by log_id.\n\nArgs:\n    log_id (str): The unique identifier for the log entry.\n\nReturns:\n    dict:\n        - If log entry does not exist:\n            { \"success\": False, \"error\": \"Log entry not found\" }\n        - If log entry exists:\n            { \"success\": True, \"data\": List[UpdateHistoryInfo] }\n            (data may be empty if no history exists)\n\nConstraints:\n    - The log_id must correspond to an existing log entry.\n    - No permission required for query.\n    - If update history does not exist, return empty list in \"data\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "log_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "log_id"
+        ]
+      }
+    },
+    {
+      "name": "is_user_authorized",
+      "description": "Verify whether a given user is authorized to update log entries.\n\nArgs:\n    username (str): The username or user ID to check.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"authorized\": bool  # True if the user is authorized, else False\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message for missing input\n    }\n\nConstraints:\n    - If the username is not provided, returns an error.\n    - Uses self.authorized_users if defined; else, no users are authorized by default.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "confirm_log_update",
+      "description": "Confirm whether the update to a specific log entry was successful and reflect the latest state.\n\nArgs:\n    log_id (str): The unique identifier for the log entry.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": LogEntryInfo  # The latest info/state for the given log_id\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description if log_id is not found\n    }\n\nConstraints:\n    - log_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "log_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "log_id"
+        ]
+      }
+    },
+    {
+      "name": "update_log_entry",
+      "description": "Update fields (timestamp, event_type, event_description) for a specified log entry,\nrecord the prior state for audit history, and enforce user authorization.\n\nArgs:\n    log_id (str): ID of the log entry to update.\n    updated_by (str): Username of updater (must be authorized).\n    updated_at (str): Timestamp for when the update occurred.\n    timestamp (str, optional): New value for 'timestamp' field.\n    event_type (str, optional): New value for 'event_type'.\n    event_description (str, optional): New value for 'event_description'.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Log entry updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Only authorized users can update.\n    - log_id must exist.\n    - Must record update history (with old values) for audit.\n    - If an identical prior-state history snapshot was just manually recorded for the same log_id / updated_at / updated_by, the tool will not append a duplicate automatic history row.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "log_id": {
+            "type": "string"
+          },
+          "updated_by": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "event_description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "log_id",
+          "updated_by",
+          "updated_at"
+        ]
+      }
+    },
+    {
+      "name": "record_update_history",
+      "description": "Manually add an entry to the log's update history for auditing/rollback scenarios.\n\nArgs:\n    log_id (str): The ID of the log entry to which this history relates.\n    previous_timestamp (str): The timestamp value before update.\n    previous_event_type (str): The event type value before update.\n    previous_event_description (str): The event description before update.\n    updated_at (str): When this update record is added.\n    updated_by (str): Who performed/triggers the update (username or system).\n\nReturns:\n    dict\n        On success: { \"success\": True, \"message\": \"Update history recorded for log <log_id>\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - log_id must exist in self.log_entries (cannot audit non-existent log).\n    - This operation only appends to the update history.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "log_id": {
+            "type": "string"
+          },
+          "previous_timestamp": {
+            "type": "string"
+          },
+          "previous_event_type": {
+            "type": "string"
+          },
+          "previous_event_description": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "updated_by": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "log_id",
+          "previous_timestamp",
+          "previous_event_type",
+          "previous_event_description",
+          "updated_at",
+          "updated_by"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,240 @@
+{
+  "env_name": "URLManagementDatabase",
+  "description": "An application backend database designed for URL management stores records linking URLs to internal identifiers and possibly other metadata. It supports operations such as inserting new URLs, searching for existing URLs, and efficiently retrieving internal IDs or related attributes. Such databases are foundational for web services, analytics platforms, and content management systems requiring consistent URL tracking.",
+  "initial_parameter_schema": {
+    "url_records": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "l_id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "l_id",
+          "url",
+          "metadata"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_url_record_by_url": [
+      "url_records"
+    ],
+    "get_url_record_by_id": [
+      "url_records"
+    ],
+    "get_internal_id_by_url": [
+      "url_records"
+    ],
+    "search_urls_by_metadata": [
+      "url_records"
+    ],
+    "list_all_urls": [
+      "url_records"
+    ],
+    "add_url_record": [
+      "url_records"
+    ],
+    "update_url_metadata": [
+      "url_records"
+    ],
+    "delete_url_record": [
+      "url_records"
+    ],
+    "normalize_and_update_url": [
+      "url_records"
+    ],
+    "bulk_insert_url_records": [
+      "url_records"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_url_record_by_url",
+      "description": "Retrieve a URL record using exact or rule-based matching on the URL field.\n\nArgs:\n    url (str): The URL to search for.\n\nReturns:\n    dict: \n        - {\n            \"success\": True,\n            \"data\": URLRecordInfo  # The full record for the matching URL\n          }\n        - or {\n            \"success\": False,\n            \"error\": \"URL record not found\"\n          }\n\nConstraints:\n    - Matching is exact unless further rules are specified.\n    - URLs must be unique in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      }
+    },
+    {
+      "name": "get_url_record_by_id",
+      "description": "Retrieve a URL record (url, metadata) given its unique internal ID (l_id).\n\nArgs:\n    l_id (str): The internal unique identifier of the URL record.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": URLRecordInfo  # Complete info for the URL record\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of error if not found\n    }\n\nConstraints:\n    - l_id must exist in the database; otherwise, error should be returned.\n    - No permission checks or normalization are performed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "l_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "l_id"
+        ]
+      }
+    },
+    {
+      "name": "get_internal_id_by_url",
+      "description": "Retrieve only the internal ID (l_id) for a given URL.\n\nArgs:\n    url (str): The URL for which to retrieve the internal ID.\n\nReturns:\n    dict: \n        { \"success\": True, \"data\": str }                  # The l_id if found\n        or\n        { \"success\": False, \"error\": \"URL not found\" }    # If no match\n\nConstraints:\n    - Matches according to the system's matching rules (default: exact, case-sensitive).\n    - URLs in the system are unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      }
+    },
+    {
+      "name": "search_urls_by_metadata",
+      "description": "Find all URL records that match the supplied metadata attribute values.\n\nArgs:\n    metadata_filter (dict): Key-value pairs that must be exactly matched in the metadata of each URL record.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": [URLRecordInfo, ...]  # All matching URL records (list may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of error, e.g., input not dict or empty filter\n    }\n\nConstraints:\n    - Metadata filter must be a non-empty dictionary.\n    - Each URL record's 'metadata' must contain the keys with exactly matching values.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "metadata_filter": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "metadata_filter"
+        ]
+      }
+    },
+    {
+      "name": "list_all_urls",
+      "description": "Retrieve a complete list of all URL records in the system.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[URLRecordInfo],  # All URLRecordInfo dicts currently in the system. May be empty.\n        }\nConstraints:\n    - Returns all URL records, does not filter or error if empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "add_url_record",
+      "description": "Insert a new URL record with the provided internal ID, URL, and metadata.\n\nArgs:\n    l_id (str): Internal identifier for the URL (must be unique).\n    url (str): The URL to add (must be unique).\n    metadata (dict): Metadata dictionary associated with the URL. Must be a dict.\n\nReturns:\n    dict: On success:\n            {\n                \"success\": True,\n                \"message\": \"URL record added successfully\"\n            }\n          On failure:\n            {\n                \"success\": False,\n                \"error\": <reason>\n            }\n\nConstraints:\n    - URL and l_id must be unique in the system.\n    - Metadata must be a dict (further format validation can be added if needed).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "l_id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "l_id",
+          "url",
+          "metadata"
+        ]
+      }
+    },
+    {
+      "name": "update_url_metadata",
+      "description": "Update the metadata of a URL record, identified by l_id or URL.\nEnsures metadata validation rules are met before updating.\n\nArgs:\n    new_metadata (dict): Metadata dictionary to update in the record.\n    l_id (str, optional): The internal ID for the URL.\n    url (str, optional): The URL string itself.\n\nReturns:\n    dict: \n        { \"success\": True, \"message\": \"Metadata for URL record updated successfully\" }\n        or\n        { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - Either l_id or url must be provided.\n    - Metadata must adhere to defined formats/validation rules.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "new_metadata": {
+            "type": "object"
+          },
+          "l_id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "new_metadata"
+        ]
+      }
+    },
+    {
+      "name": "delete_url_record",
+      "description": "Remove a URL record from the database, by internal ID (l_id) or URL.\n\nArgs:\n    l_id (str, optional): Internal ID of the URL record to delete.\n    url (str, optional): The URL of the record to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str describing the deletion\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str error message\n    }\n\nConstraints:\n    - Either l_id or url must be specified (at least one).\n    - If both are specified, they must refer to the same record.\n    - The target record must exist.\n    - Deletion removes the record and maintains URL uniqueness invariants.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "l_id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "normalize_and_update_url",
+      "description": "Normalize the URL for the record identified by `l_id` according to predefined rules, and update the record.\n\nArgs:\n    l_id (str): The internal ID of the URL record to update.\n\nReturns:\n    dict: On success, {\"success\": True, \"message\": \"URL normalized and updated\"}\n          On failure, {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - URLs must remain unique post-normalization.\n    - If the normalized URL collides with another record's URL, operation must fail.\n    - If l_id does not exist, operation must fail.\n    - Normalization rules are assumed basic: lowercasing and trimming whitespace and removing trailing slash.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "l_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "l_id"
+        ]
+      }
+    },
+    {
+      "name": "bulk_insert_url_records",
+      "description": "Insert multiple new URL records (l_id, url, metadata) at once.\nEnsures:\n  - No duplicate URLs in the system (existing or within batch).\n  - Each URL must be non-empty and unique.\n  - l_id must be unique in the system and within the batch.\n  - Metadata must be a dictionary.\n\nArgs:\n    records (list of dict): Each dict should include:\n        - 'l_id' (str): Internal unique ID.\n        - 'url' (str): Unique URL.\n        - 'metadata' (dict): Metadata.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str,  # Status summary\n        \"inserted\": list of l_id actually inserted,\n        \"skipped\": list of {l_id, url, reason} for skipped records,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "records": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "l_id": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "metadata": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "l_id",
+                "url",
+                "metadata"
+              ]
+            }
+          }
+        },
+        "required": [
+          "records"
+        ]
+      }
+    }
+  ]
+}

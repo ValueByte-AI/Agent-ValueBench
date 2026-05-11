@@ -1,0 +1,530 @@
+{
+  "env_name": "RetailFraudDetectionSystem",
+  "description": "A Retail Fraud Detection System is engineered to monitor and analyze retail transactions in real time or batch processes, flagging those that exhibit suspicious characteristics. It maintains a dynamic list of transaction records, their risk assessments, flags, and their resolution status (e.g., verified, approved, rejected). The system supports operations such as querying flagged transactions, updating their status based on investigations, and generating reports for compliance and analytics.",
+  "initial_parameter_schema": {
+    "transactions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "merchant_id": {
+            "type": "string"
+          },
+          "payment_method": {
+            "type": "string"
+          },
+          "risk_score": {
+            "type": "number"
+          },
+          "flag_status": {
+            "type": "string"
+          },
+          "resolution_status": {
+            "type": "string"
+          },
+          "assessment_reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "timestamp",
+          "amount",
+          "customer_id",
+          "merchant_id",
+          "payment_method",
+          "risk_score",
+          "flag_status",
+          "resolution_status",
+          "assessment_reason"
+        ]
+      }
+    },
+    "flags": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "flag_id": {
+            "type": "string"
+          },
+          "transaction_id": {
+            "type": "string"
+          },
+          "flag_type": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "flag_id",
+          "transaction_id",
+          "flag_type",
+          "created_at",
+          "description"
+        ]
+      }
+    },
+    "customers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "risk_profile": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "name",
+          "contact_info",
+          "risk_profile"
+        ]
+      }
+    },
+    "resolutions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "reviewed_by": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "reviewed_at": {
+            "type": "string"
+          },
+          "comments_audit_trail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "reviewed_by",
+          "status",
+          "reviewed_at",
+          "comments_audit_trail"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_flagged_transactions": [
+      "transactions"
+    ],
+    "get_transaction_by_id": [
+      "transactions"
+    ],
+    "get_flags_for_transaction": [
+      "flags",
+      "transactions"
+    ],
+    "get_flag_by_id": [
+      "flags"
+    ],
+    "get_customer_by_id": [
+      "customers"
+    ],
+    "get_resolution_by_transaction": [
+      "resolutions"
+    ],
+    "list_transactions_by_status": [
+      "transactions"
+    ],
+    "get_transactions_for_customer": [
+      "transactions"
+    ],
+    "approve_transaction": [
+      "resolutions",
+      "transactions"
+    ],
+    "batch_approve_flagged_transactions": [
+      "resolutions",
+      "transactions"
+    ],
+    "update_flag_status": [
+      "resolutions",
+      "transactions"
+    ],
+    "resolve_transaction": [
+      "resolutions",
+      "transactions"
+    ],
+    "add_flag_to_transaction": [
+      "flags",
+      "transactions"
+    ],
+    "remove_flag_from_transaction": [
+      "flags",
+      "resolutions",
+      "transactions"
+    ],
+    "log_audit_entry": [
+      "resolutions",
+      "transactions"
+    ],
+    "update_transaction_field": [
+      "resolutions",
+      "transactions"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_flagged_transactions",
+      "description": "Retrieve all transactions that currently have flag_status set to 'flagged'.\n\nArgs:\n    None\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[TransactionInfo],  # May be empty if no flagged transactions\n        }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_transaction_by_id",
+      "description": "Retrieve the full details of a transaction given its transaction_id.\n\nArgs:\n    transaction_id (str): The unique identifier for the transaction.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": TransactionInfo,  # Full transaction info dict\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g. transaction not found\n    }\n\nConstraints:\n    - None (simple retrieval, no permission or audit logging needed).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id"
+        ]
+      }
+    },
+    {
+      "name": "get_flags_for_transaction",
+      "description": "Retrieve all flags associated with a given transaction.\n\nArgs:\n    transaction_id (str): The ID of the transaction to lookup flags for.\n\nReturns:\n    dict: \n        - If successful: { \"success\": True, \"data\": List[FlagInfo] }\n        - If failure:    { \"success\": False, \"error\": \"Transaction not found\" }\n\nConstraints:\n    - Transaction must exist in the system.\n    - All returned flags reference the specified transaction.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id"
+        ]
+      }
+    },
+    {
+      "name": "get_flag_by_id",
+      "description": "Retrieve flag information given a flag_id.\n\nArgs:\n    flag_id (str): The identifier of the flag.\n\nReturns:\n    dict: \n        - If found:\n            {\"success\": True, \"data\": FlagInfo}\n        - If not found:\n            {\"success\": False, \"error\": \"Flag not found\"}\n\nConstraints:\n    - The flag_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "flag_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "flag_id"
+        ]
+      }
+    },
+    {
+      "name": "get_customer_by_id",
+      "description": "Retrieve customer information given a customer_id.\n\nArgs:\n    customer_id (str): The unique customer identifier to retrieve.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": CustomerInfo\n            }\n        On failure (not found):\n            {\n                \"success\": False,\n                \"error\": \"Customer not found\"\n            }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "get_resolution_by_transaction",
+      "description": "Retrieve the resolution/audit trail for a given transaction.\n\nArgs:\n    transaction_id (str): The unique transaction identifier for which to fetch resolution info.\n\nReturns:\n    dict:\n        - If resolution exists:\n            {\"success\": True, \"data\": ResolutionInfo}\n        - If resolution does not exist:\n            {\"success\": False, \"error\": \"No resolution found for transaction\"}\n        \nConstraints:\n    - Resolution info must reference a valid transaction_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id"
+        ]
+      }
+    },
+    {
+      "name": "list_transactions_by_status",
+      "description": "List all transactions filtered by their resolution_status.\n\nArgs:\n    status (str): The resolution_status value to filter transactions by.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TransactionInfo], # List of matching transactions (may be empty)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "get_transactions_for_customer",
+      "description": "Retrieve all transactions associated with the specified customer_id.\n\nArgs:\n    customer_id (str): The customer identifier.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[TransactionInfo],  # May be empty if no transactions found\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Reason for failure (invalid input)\n        }\n\nConstraints:\n    - No check for existence of customer in self.customers. Returns all matching transactions.\n    - No modifications/auditing required for queries.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "approve_transaction",
+      "description": "Approve a single flagged transaction. Updates resolution_status, flag_status, and creates/updates an audit log entry.\n\nArgs:\n    transaction_id (str): ID of the transaction to approve.\n    agent (str): Username or identifier of the agent approving the transaction (required for audit).\n    comments (str, optional): Additional comments for audit/compliance log.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Transaction <id> approved and audit log updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Transaction must exist.\n    - Transaction must have flag_status == \"flagged\".\n    - All status changes must be timestamped and include agent and audit comments.\n    - Updates both transaction['resolution_status'] and transaction['flag_status'].\n    - Updates or creates an entry in self.resolutions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "agent": {
+            "type": "string"
+          },
+          "comments": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "agent"
+        ]
+      }
+    },
+    {
+      "name": "batch_approve_flagged_transactions",
+      "description": "Approve all transactions currently flagged (flag_status == 'flagged'):\n- Updates transaction's resolution_status to 'approved' and flag_status to 'approved'\n- Makes/updates ResolutionInfo with audit log (reviewed_by, reviewed_at, status, comments)\n- If reviewed_at is omitted, all audits are timestamped with current UTC time\n\nArgs:\n    reviewed_by (str): The agent/user who approves the flagged transactions (must not be empty).\n    comments (str, optional): Additional comments for all approvals (default blank).\n    reviewed_at (str, optional): Explicit review timestamp to store in the audit record.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str,  # Success message\n        \"approved_transactions\": List[str]  # List of transaction IDs processed\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\nConstraints:\n    - Only transactions with flag_status == \"flagged\" are processed\n    - Audit trails must be logged/resolution audit entry created/updated for each\n    - All status changes must be timestamped and linked to reviewed_by",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reviewed_by": {
+            "type": "string"
+          },
+          "comments": {
+            "type": "string"
+          },
+          "reviewed_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reviewed_by"
+        ]
+      }
+    },
+    {
+      "name": "update_flag_status",
+      "description": "Change the flag_status of a given transaction (e.g., from 'reviewed' to 'flagged' or 'approved')\nand log the change in the ResolutionInfo audit trail.\n\nArgs:\n    transaction_id (str): Transaction to update.\n    new_flag_status (str): New flag_status value.\n    user (str): Username/agent performing action (must not be empty).\n    comment (str, optional): Additional comment or reason.\n\nReturns:\n    dict: {\"success\": True, \"message\": \"...\"} on success;\n          {\"success\": False, \"error\": \"...\"} on error.\n\nConstraints:\n    - Updates must be logged for audit/compliance; log includes user, timestamp, old/new status, optional comment.\n    - Transaction must exist.\n    - user must not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "new_flag_status": {
+            "type": "string"
+          },
+          "user": {
+            "type": "string"
+          },
+          "comment": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "new_flag_status",
+          "user"
+        ]
+      }
+    },
+    {
+      "name": "resolve_transaction",
+      "description": "Set the resolution status (e.g., verified, approved, rejected) of a transaction and record the review (who, when, comments).\n\nArgs:\n    transaction_id (str): The ID of the transaction to resolve.\n    reviewed_by (str): The user/agent reviewing the transaction.\n    status (str): New resolution status (\"verified\", \"approved\", \"rejected\", etc.).\n    reviewed_at (str): Timestamp of review (ISO8601 or standard string format).\n    comments (str): Review comments or audit trail for compliance.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": f\"Transaction <transaction_id> resolved as <status> by <reviewed_by>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Transaction must exist.\n    - ResolutionInfo must be created/updated for auditing.\n    - Transaction's resolution_status must be updated.\n    - Transaction's flag_status is updated to the supplied final status so the item leaves the flagged queue.\n    - All status changes must be timestamped and linked to a reviewer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "reviewed_by": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "reviewed_at": {
+            "type": "string"
+          },
+          "comments": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "reviewed_by",
+          "status",
+          "reviewed_at",
+          "comments"
+        ]
+      }
+    },
+    {
+      "name": "add_flag_to_transaction",
+      "description": "Create and attach a new fraud flag to an existing transaction.\n\nArgs:\n    transaction_id (str): ID of the transaction to flag.\n    flag_type (str): The type/category of fraud suspicion.\n    description (str): Detail or reason for the flag.\n    created_at (str): ISO-format timestamp when the flag is created.\n    flag_id (str, optional): If provided, used as the flag's ID; if not, a unique one is generated.\n\nReturns:\n    dict:\n      - On success: { \"success\": True, \"message\": \"Flag added to transaction XYZ with flag_id ...\"}\n      - On failure: { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - The referenced transaction must exist.\n    - The flag_id must be unique.\n    - Each flag must reference a valid transaction.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "flag_type": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "flag_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "flag_type",
+          "description",
+          "created_at"
+        ]
+      }
+    },
+    {
+      "name": "remove_flag_from_transaction",
+      "description": "Remove or deactivate a specific flag from a transaction, and log/audit this action.\n\nArgs:\n    flag_id (str): The unique ID of the flag to remove.\n    removed_by (str): The username/agent performing the removal (for auditing).\n    removal_comment (str): Reason or context for the removal (for audit trail).\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Flag {flag_id} removed from transaction {transaction_id} and action audited.\" }\n        On failure:\n            { \"success\": False, \"error\": str }\n\nConstraints:\n    - The flag_id must exist.\n    - The flag's associated transaction_id must exist.\n    - The action must be auditable: log entry with timestamp, agent, reason.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "flag_id": {
+            "type": "string"
+          },
+          "removed_by": {
+            "type": "string"
+          },
+          "removal_comment": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "flag_id",
+          "removed_by",
+          "removal_comment"
+        ]
+      }
+    },
+    {
+      "name": "log_audit_entry",
+      "description": "Explicitly record an audit trail event for a transaction, including user/agent, action, timestamp, and comments.\n\nArgs:\n    transaction_id (str): ID of the transaction audited.\n    reviewed_by (str): User or agent performing the action.\n    action (str): What was done (action to record).\n    timestamp (str): When the action was performed (e.g., ISO string).\n    comments (str): Additional notes or explanation.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Audit entry recorded for transaction\"\n    }\n    or\n    dict: {\n        \"success\": False,\n        \"error\": str  # Reason, e.g., transaction does not exist\n    }\n\nConstraints:\n    - transaction_id must exist in the system.\n    - Audit entry must be appended to comments_audit_trail in ResolutionInfo.\n    - Audit entries must always include user, action, timestamp.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "reviewed_by": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "comments": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "reviewed_by",
+          "action",
+          "timestamp",
+          "comments"
+        ]
+      }
+    },
+    {
+      "name": "update_transaction_field",
+      "description": "Update an arbitrary transaction field and record the change in the audit log (ResolutionInfo).\n\nArgs:\n    transaction_id (str): The transaction identifier.\n    field (str): The TransactionInfo field to update.\n    value (Any): The new value for the field.\n    user_id (str): The user/agent performing the update (for auditing).\n    comment (str): Optional comment/justification for the change.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Field updated and audit logged.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Transaction must exist.\n    - Field must exist in TransactionInfo and be updatable (not 'transaction_id').\n    - All updates must be auditable (append to comments_audit_trail, update reviewed_at and reviewed_by in resolutions).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "field": {
+            "type": "string"
+          },
+          "value": {},
+          "user_id": {
+            "type": "string"
+          },
+          "comment": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "field",
+          "value",
+          "user_id"
+        ]
+      }
+    }
+  ]
+}

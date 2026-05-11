@@ -1,0 +1,556 @@
+{
+  "env_name": "TennisMatchTrackingSystem",
+  "description": "A tennis match tracking system manages and maintains the state of ongoing and completed tennis matches, including player rosters, match identifiers, and scoring details. This environment supports recording, updating, and retrieving data about matches for use in live updates, historical analysis, and scheduling. Such systems enable efficient access to structured match information for fans, broadcasters, and officials.",
+  "initial_parameter_schema": {
+    "players": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "ranking": {
+            "type": "integer"
+          },
+          "nationality": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id",
+          "name",
+          "ranking",
+          "nationality"
+        ]
+      }
+    },
+    "matches": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          },
+          "players": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scores": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "match_id": {
+                  "type": "string"
+                },
+                "player_id": {
+                  "type": "string"
+                },
+                "sets": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  }
+                },
+                "games_in_current_set": {
+                  "type": "integer"
+                },
+                "points_in_current_game": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "match_id",
+                "player_id",
+                "sets",
+                "games_in_current_set",
+                "points_in_current_game"
+              ]
+            }
+          },
+          "status": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "end_time": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "match_id",
+          "players",
+          "scores",
+          "status",
+          "start_time",
+          "end_time"
+        ]
+      }
+    },
+    "scores": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "match_id": {
+              "type": "string"
+            },
+            "player_id": {
+              "type": "string"
+            },
+            "sets": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            },
+            "games_in_current_set": {
+              "type": "integer"
+            },
+            "points_in_current_game": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "match_id",
+            "player_id",
+            "sets",
+            "games_in_current_set",
+            "points_in_current_game"
+          ]
+        }
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_match_by_id": [
+      "matches"
+    ],
+    "get_player_by_id": [
+      "players"
+    ],
+    "get_player_by_name": [
+      "players"
+    ],
+    "get_match_players": [
+      "matches",
+      "players"
+    ],
+    "get_match_scores": [
+      "matches"
+    ],
+    "get_player_score_in_match": [
+      "matches",
+      "players"
+    ],
+    "list_all_matches": [
+      "matches",
+      "players"
+    ],
+    "list_player_matches": [
+      "matches",
+      "players"
+    ],
+    "get_match_status": [
+      "matches"
+    ],
+    "update_match_score": [
+      "matches",
+      "players",
+      "scores"
+    ],
+    "start_match": [
+      "matches"
+    ],
+    "complete_match": [
+      "matches"
+    ],
+    "cancel_match": [
+      "matches"
+    ],
+    "create_match": [
+      "matches",
+      "players",
+      "scores"
+    ],
+    "edit_match_players": [
+      "matches",
+      "players",
+      "scores"
+    ],
+    "add_player": [
+      "players"
+    ],
+    "update_player_info": [
+      "players"
+    ],
+    "remove_player_from_roster": [
+      "matches",
+      "players"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_match_by_id",
+      "description": "Retrieve complete information for a given match by its match_id.\n\nArgs:\n    match_id (str): Unique identifier of the tennis match.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": MatchInfo,  # Full match info on success\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g. match not found\n    }\n\nConstraints:\n    - The specified match_id must exist in the matches dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id"
+        ]
+      }
+    },
+    {
+      "name": "get_player_by_id",
+      "description": "Retrieve all available details about a player (name, ranking, nationality)\ngiven their player_id.\n\nArgs:\n    player_id (str): Unique identifier for the player.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": PlayerInfo (if player exists)\n    } or {\n        \"success\": False,\n        \"error\": str (if the player does not exist)\n    }\n\nConstraints:\n    - player_id must exist in the player roster.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id"
+        ]
+      }
+    },
+    {
+      "name": "get_player_by_name",
+      "description": "Find player(s) by name (case-insensitive exact match).\n\nArgs:\n    name (str): The full name of the player to look up.\n\nReturns:\n    dict:\n        - If found: {\"success\": True, \"data\": List[PlayerInfo]}  # All matching players\n        - If not found: {\"success\": False, \"error\": \"Player not found\"}\n\nNotes:\n    - Returns all players with the exact provided name (case-insensitive).\n    - If multiple players have the same name, all are included in the list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_match_players",
+      "description": "Retrieve the list of participating players' IDs and names for a given match.\n\nArgs:\n    match_id (str): The unique identifier for the match.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[Dict[str, str]]  # Each dict contains \"player_id\" and \"name\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The match must exist.\n    - All player IDs in the match should exist in the player roster.\n\nEdge Cases:\n    - If any player_id from the match does not exist in the roster, this will be indicated in the player entry as name=None.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id"
+        ]
+      }
+    },
+    {
+      "name": "get_match_scores",
+      "description": "Retrieve all scoring information (sets, games, points) for both players in a given match.\n\nArgs:\n    match_id (str): The unique identifier of the tennis match.\n\nReturns:\n    dict:\n        - { \"success\": True, \"data\": Dict[str, ScoreInfo] }\n          data: player_id → ScoreInfo for both players in the match\n        - { \"success\": False, \"error\": str }\n          if match not found\n\nConstraints:\n    - The specified match_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id"
+        ]
+      }
+    },
+    {
+      "name": "get_player_score_in_match",
+      "description": "Retrieve score details (ScoreInfo) for a specific player in a given match.\n\nArgs:\n    match_id (str): The identifier of the match.\n    player_id (str): The identifier of the player.\n\nReturns:\n    dict: \n    {\n        \"success\": True,\n        \"data\": ScoreInfo,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # reason for failure\n    }\n\nConstraints:\n    - Both match and player must exist.\n    - Player must be a participant in the match.\n    - Score data must exist for player in match.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          },
+          "player_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id",
+          "player_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_matches",
+      "description": "Returns a list of all matches in the system, with summary info for each match.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[dict]  # Each dict includes match_id, status, and players (player_id + name)\n    }\n\nIf no matches exist, data is an empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_player_matches",
+      "description": "List all matches in which a particular player (by player_id) participates.\n\nArgs:\n    player_id (str): The ID of the target player.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MatchInfo],  # List of matches the player is in (empty if none)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g. player does not exist\n    }\n\nConstraints:\n    - The given player_id must exist in the player roster.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id"
+        ]
+      }
+    },
+    {
+      "name": "get_match_status",
+      "description": "Retrieve the current status (scheduled, ongoing, completed, canceled) of a given match.\n\nArgs:\n    match_id (str): The unique identifier for the match.\n\nReturns:\n    dict:\n        success: True and data: status (str) if match exists.\n        success: False and error message if match does not exist.\n\nConstraints:\n    - match_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id"
+        ]
+      }
+    },
+    {
+      "name": "update_match_score",
+      "description": "Modify the score (sets, games, points) for a player in a given match.\nAllowed only when match status is 'scheduled' or 'ongoing'.\nArgs:\n    match_id (str): The identifier of the match to update.\n    player_id (str): The identifier of the player whose score is being updated.\n    sets (List[int]): List of set scores for the player.\n    games_in_current_set (int): Number of games won in the current set.\n    points_in_current_game (int): Points in the current game.\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Score updated for player X in match Y.\"\n    } on success,\n    or {\n        \"success\": False,\n        \"error\": \"Reason for failure\"\n    }\nConstraints:\n    - Match must exist.\n    - Player must exist and be part of the match.\n    - Match status must be 'scheduled' or 'ongoing'.\n    - Only valid, basic type values for scores accepted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          },
+          "player_id": {
+            "type": "string"
+          },
+          "sets": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "games_in_current_set": {
+            "type": "integer"
+          },
+          "points_in_current_game": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "match_id",
+          "player_id",
+          "sets",
+          "games_in_current_set",
+          "points_in_current_game"
+        ]
+      }
+    },
+    {
+      "name": "start_match",
+      "description": "Change a match’s status from 'scheduled' to 'ongoing' and set its start_time.\n\nArgs:\n    match_id (str): Unique identifier of the match to start.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Match <match_id> started.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <description>\n    }\n\nConstraints:\n    - Match must exist in the system.\n    - Match status must be 'scheduled'.\n    - Sets start_time to the current time in ISO 8601 format.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id"
+        ]
+      }
+    },
+    {
+      "name": "complete_match",
+      "description": "Mark the specified match as completed and set its end_time.\n\nArgs:\n    match_id (str): Unique identifier of the match to complete.\n    end_time (Optional[str]): End time string (ISO or other consistent format). If None, uses current system time (ISO8601).\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"message\": \"Match <match_id> marked as completed.\"}\n        - On error: {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - Match must exist.\n    - Status must be 'ongoing' to complete the match.\n    - Status set to 'completed', end_time set to provided value or now.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "match_id"
+        ]
+      }
+    },
+    {
+      "name": "cancel_match",
+      "description": "Change the status of the given match to 'canceled', if permitted.\n\nArgs:\n    match_id (str): The unique identifier of the match to cancel.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"message\": \"Match <id> canceled.\"}\n        - On failure: {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - The match must exist.\n    - Only matches with status 'scheduled' or 'ongoing' can be canceled.\n    - Completed or already canceled matches cannot be changed to 'canceled'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id"
+        ]
+      }
+    },
+    {
+      "name": "create_match",
+      "description": "Add a new match to the system with exactly two players.\n\nArgs:\n    match_id (str): Unique identifier for the match.\n    player1_id (str): The player_id for the first player.\n    player2_id (str): The player_id for the second player.\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"message\": \"...\"}\n        - On error: {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - Both player1_id and player2_id must exist in the player roster.\n    - Match_id must be unique.\n    - The two players must be distinct.\n    - Each match must have exactly two players.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          },
+          "player1_id": {
+            "type": "string"
+          },
+          "player2_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id",
+          "player1_id",
+          "player2_id"
+        ]
+      }
+    },
+    {
+      "name": "edit_match_players",
+      "description": "Change the list of players in a match (only if status is 'scheduled').\n\nArgs:\n    match_id (str): Identifier for the match to edit.\n    new_players (list of str): List of exactly two player_ids (must exist).\n\nReturns:\n    dict: \n      On success: { \"success\": True, \"message\": \"Players updated for match <match_id>.\" }\n      On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Can only edit if match status is 'scheduled'.\n    - Exactly two unique player_ids required; both must exist in the player roster.\n    - Also updates scores accordingly (resets scores for new players).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          },
+          "new_players": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "match_id",
+          "new_players"
+        ]
+      }
+    },
+    {
+      "name": "add_player",
+      "description": "Register a new player in the roster.\n\nArgs:\n    player_id (str): Unique identifier for the player.\n    name (str): The player's name.\n    ranking (int): The player's ranking (should be non-negative).\n    nationality (str): The player's nationality.\n\nReturns:\n    dict:\n        - {\"success\": True, \"message\": \"Player added successfully\"}\n        - {\"success\": False, \"error\": <error reason>}\n\nConstraints:\n    - player_id must be unique (not already present in the roster).\n    - ranking should be non-negative.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "ranking": {
+            "type": "integer"
+          },
+          "nationality": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "name"
+            ]
+          },
+          {
+            "required": [
+              "ranking"
+            ]
+          },
+          {
+            "required": [
+              "nationality"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "update_player_info",
+      "description": "Edit the player attributes (name, ranking, nationality) for an existing player.\n\nArgs:\n    player_id (str): Unique id of the player to update.\n    name (str, optional): New name for the player.\n    ranking (int, optional): New ranking for the player.\n    nationality (str, optional): New nationality for the player.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Player info updated successfully\" }\n        On failure:\n            { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Player with player_id must exist in the roster.\n    - At least one updatable field must be provided.\n    - If ranking is given, it must be an int.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "ranking": {
+            "type": "integer"
+          },
+          "nationality": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id",
+          "name",
+          "ranking",
+          "nationality"
+        ]
+      }
+    },
+    {
+      "name": "remove_player_from_roster",
+      "description": "Remove a player from the player roster if and only if the player is not referenced by any matches.\n\nArgs:\n    player_id (str): The unique identifier of the player to remove.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Player <player_id> removed from roster\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Player must exist in roster.\n    - Player must not participate in any match (scheduled, ongoing, completed, or canceled).\n    - Does not remove/rewrite historical scores or modify matches.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id"
+        ]
+      }
+    }
+  ]
+}

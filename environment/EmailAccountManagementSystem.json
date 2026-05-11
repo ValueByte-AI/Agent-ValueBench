@@ -1,0 +1,455 @@
+{
+  "env_name": "EmailAccountManagementSystem",
+  "description": "An email account management system organizes and maintains users' email communications, including received and sent messages, folders, and attachments. It stores metadata such as timestamps, sender/recipient information, and unique identifiers for each component. The system allows users to perform operations such as searching for messages, previewing attachments, and managing mail storage.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "email_address": {
+            "type": "string"
+          },
+          "mailbox_setting": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "email_address",
+          "mailbox_setting"
+        ]
+      }
+    },
+    "mails": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "mail_id": {
+            "type": "string"
+          },
+          "sender_id": {
+            "type": "string"
+          },
+          "recipient_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "subject": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "folder_id": {
+            "type": "string"
+          },
+          "read_status": {
+            "type": "string"
+          },
+          "attachment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mail_id",
+          "sender_id",
+          "recipient_ids",
+          "subject",
+          "body",
+          "timestamp",
+          "folder_id",
+          "read_status",
+          "attachment_id"
+        ]
+      }
+    },
+    "folders": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "folder_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "folder_id",
+          "user_id",
+          "name"
+        ]
+      }
+    },
+    "attachments": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "attachment_id": {
+            "type": "string"
+          },
+          "mail_id": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "filetype": {
+            "type": "string"
+          },
+          "filesize": {
+            "type": "integer"
+          },
+          "preview_info": {
+            "type": "string"
+          },
+          "upload_timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "attachment_id",
+          "mail_id",
+          "filename",
+          "filetype",
+          "filesize",
+          "preview_info",
+          "upload_timestamp"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_attachment_by_id": [
+      "attachments"
+    ],
+    "get_mail_by_id": [
+      "mails"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_folder_by_id": [
+      "folders"
+    ],
+    "get_attachments_for_mail": [
+      "attachments",
+      "mails"
+    ],
+    "get_mails_for_user": [
+      "mails",
+      "users"
+    ],
+    "get_mail_folder": [
+      "folders",
+      "mails"
+    ],
+    "check_user_access_to_mail": [
+      "mails",
+      "users"
+    ],
+    "list_folders_for_user": [
+      "folders",
+      "users"
+    ],
+    "mark_mail_as_read": [
+      "mails"
+    ],
+    "move_mail_to_folder": [
+      "folders",
+      "mails"
+    ],
+    "delete_mail": [
+      "attachments",
+      "mails"
+    ],
+    "delete_attachment": [
+      "attachments",
+      "mails"
+    ],
+    "create_folder": [
+      "folders",
+      "users"
+    ],
+    "rename_folder": [
+      "folders"
+    ],
+    "remove_folder": [
+      "folders",
+      "mails"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_attachment_by_id",
+      "description": "Retrieve full metadata about an attachment given its attachment_id.\n\nArgs:\n    attachment_id (str): The unique identifier for the attachment.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": AttachmentInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The provided attachment_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "attachment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "attachment_id"
+        ]
+      }
+    },
+    {
+      "name": "get_mail_by_id",
+      "description": "Retrieve the email message information given its unique mail_id.\n\nArgs:\n    mail_id (str): The unique identifier for the email message.\n\nReturns:\n    dict:\n        - If found:\n            { \"success\": True, \"data\": MailInfo }\n        - If not found:\n            { \"success\": False, \"error\": \"Mail not found\" }\nConstraints:\n    - mail_id must exist in the emails system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mail_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mail_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user/account details using the user's _id.\n\nArgs:\n    _id (str): The unique user/account identifier.\n\nReturns:\n    dict: \n        If found: { \"success\": True, \"data\": UserInfo }\n        If not found: { \"success\": False, \"error\": \"User not found\" }\n\nConstraints:\n    - The user with the given _id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id"
+        ]
+      }
+    },
+    {
+      "name": "get_folder_by_id",
+      "description": "Retrieve folder details given a folder_id.\n\nArgs:\n    folder_id (str): Unique identifier of the folder.\n\nReturns:\n    dict:\n        - If successful: {\n            \"success\": True,\n            \"data\": FolderInfo  # Folder metadata including id, name, owner.\n          }\n        - If failure: {\n            \"success\": False,\n            \"error\": str  # Reason for failure, e.g. folder not found.\n          }\n\nConstraints:\n    - folder_id must exist in the folders collection.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "folder_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "folder_id"
+        ]
+      }
+    },
+    {
+      "name": "get_attachments_for_mail",
+      "description": "List all attachments associated with the given mail_id.\n\nArgs:\n    mail_id (str): The unique identifier of the email message.\n\nReturns:\n    dict: \n        - On success: \n            {\n                \"success\": True,\n                \"data\": List[AttachmentInfo]  # List of matching attachments (empty if none)\n            }\n        - On failure: \n            {\n                \"success\": False,\n                \"error\": str  # Description, e.g. mail does not exist\n            }\n\nConstraints:\n    - The mail_id must refer to an existing mail.\n    - Only attachments whose mail_id matches should be returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mail_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mail_id"
+        ]
+      }
+    },
+    {
+      "name": "get_mails_for_user",
+      "description": "Fetch all mails (MailInfo) sent or received by the specified user.\n\nArgs:\n    user_id (str): The unique ID of the user whose mails are to be retrieved.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MailInfo],  # Mails sent or received by the user (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g. user does not exist\n    }\n\nConstraints:\n    - user_id must correspond to a valid user in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_mail_folder",
+      "description": "Retrieve the folder information for a given mail_id.\n\nArgs:\n    mail_id (str): The unique identifier of the email.\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"data\": FolderInfo}\n        - On failure: {\"success\": False, \"error\": str}\n\nConstraints:\n    - The mail_id must exist in the system.\n    - The folder_id referenced by mail must exist in folders.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mail_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mail_id"
+        ]
+      }
+    },
+    {
+      "name": "check_user_access_to_mail",
+      "description": "Verify if a user has access rights to a given mail (either as sender or recipient).\n\nArgs:\n    user_id (str): The user ID to verify.\n    mail_id (str): The mail ID to check access for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": bool  # True if user is sender or recipient, False otherwise\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if user or mail does not exist\n    }\n\nConstraints:\n    - The user must exist.\n    - The mail must exist.\n    - Access is granted if user is sender or recipient for the mail.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "mail_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "mail_id"
+        ]
+      }
+    },
+    {
+      "name": "list_folders_for_user",
+      "description": "List all folders belonging to the specified user.\n\nArgs:\n    user_id (str): Unique identifier for the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[FolderInfo]  # List of all folders for this user (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g. user does not exist\n    }\n\nConstraints:\n    - Folder names are unique per user.\n    - The user with user_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "mark_mail_as_read",
+      "description": "Marks the specified mail as read by updating its 'read_status' field to 'read'.\n\nArgs:\n    mail_id (str): The unique ID of the mail to update.\n\nReturns:\n    dict: On success:\n              { \"success\": True, \"message\": \"Mail marked as read.\" }\n          On failure:\n              { \"success\": False, \"error\": \"Mail not found.\" }\n\nConstraints:\n    - mail_id must reference an existing email in the system.\n    - The operation is idempotent (already read mails remain 'read').",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mail_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mail_id"
+        ]
+      }
+    },
+    {
+      "name": "move_mail_to_folder",
+      "description": "Change a mail's folder association to another user folder.\n\nArgs:\n    mail_id (str): The identifier of the mail to be moved.\n    target_folder_id (str): The identifier of the target folder.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Mail moved to target folder.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Both mail and target folder must exist.\n    - Email can only be moved to a folder owned by the same user as the mail (according to sender/recipient/folder relationship).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mail_id": {
+            "type": "string"
+          },
+          "target_folder_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mail_id",
+          "target_folder_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_mail",
+      "description": "Remove an email from the system, including its attachments.\n\nArgs:\n    mail_id (str): The identifier of the email to be deleted.\n\nReturns:\n    dict: Success or error state.\n        On success: { \"success\": True, \"message\": \"Mail deleted\" }\n        On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Mail must exist.\n    - All attachments belonging to this email must also be deleted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mail_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mail_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_attachment",
+      "description": "Remove an attachment record by its attachment_id.\nAlso updates any associated mail to remove the reference to this attachment.\nEnsures that attachments are not orphaned.\n\nArgs:\n    attachment_id (str): The unique identifier of the attachment.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Attachment deleted successfully\" }\n        - On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Attachment must exist.\n    - Remove attachment reference from associated mail.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "attachment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "attachment_id"
+        ]
+      }
+    },
+    {
+      "name": "create_folder",
+      "description": "Create a new mail folder for a user, ensuring the folder name is unique for that user.\n\nArgs:\n    user_id (str): The ID of the user for whom the folder is created.\n    folder_name (str): The desired name of the new folder (must be unique for this user).\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"message\": \"Folder created\",\n            \"folder_id\": str   # ID of the created folder\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - User must exist.\n    - Folder name must be unique per user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "folder_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "folder_name"
+        ]
+      }
+    },
+    {
+      "name": "rename_folder",
+      "description": "Rename a folder to a new unique name for the same user.\n\nArgs:\n    folder_id (str): The identifier of the folder to be renamed.\n    new_name (str): The new, desired name for the folder.\n\nReturns:\n    dict:\n        - success: True and message if operation successful.\n        - success: False and error if folder not found or name conflict.\n\nConstraints:\n    - Folder must exist.\n    - New folder name must be unique for the user.\n    - No change is performed if the new name is the same as the current name, but still returns success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "folder_id": {
+            "type": "string"
+          },
+          "new_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "folder_id",
+          "new_name"
+        ]
+      }
+    },
+    {
+      "name": "remove_folder",
+      "description": "Delete a folder identified by folder_id, only if the folder is empty (i.e., contains no mails).\nDoes NOT move/reassign mails – if mails exist in the folder, operation fails.\n\nArgs:\n    folder_id (str): Unique identifier for the folder to remove.\n\nReturns:\n    dict: Success or failure message.\n        {\n            \"success\": True,\n            \"message\": \"Folder removed successfully.\"\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Reason for failure\n        }\n\nConstraints:\n    - Folder must exist.\n    - Folder must be empty (contain no mails).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "folder_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "folder_id"
+        ]
+      }
+    }
+  ]
+}

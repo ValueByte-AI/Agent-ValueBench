@@ -1,0 +1,694 @@
+{
+  "env_name": "MultiRoomChatApplication",
+  "description": "A multi-room chat application enables live text communication among users grouped into various chat rooms. It maintains persistent state for room memberships, message histories, user identities, and access controls. Typical operations include sending and receiving messages, joining rooms, managing users, and retrieving past conversations.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          },
+          "joined_room": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "display_name",
+          "account_status",
+          "joined_room"
+        ]
+      }
+    },
+    "chat_rooms": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string"
+          },
+          "room_name": {
+            "type": "string"
+          },
+          "topic": {
+            "type": "string"
+          },
+          "room_members": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "access_level": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_id",
+          "room_name",
+          "topic",
+          "room_members",
+          "access_level"
+        ]
+      }
+    },
+    "room_memberships": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "_id": {
+              "type": "string"
+            },
+            "room_id": {
+              "type": "string"
+            },
+            "membership_status": {
+              "type": "string"
+            },
+          "join_timestamp": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+            "role_in_room": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "_id",
+            "room_id",
+            "membership_status",
+            "join_timestamp",
+            "role_in_room"
+          ]
+        }
+      }
+    },
+    "messages": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "message_id": {
+              "type": "string"
+            },
+            "room_id": {
+              "type": "string"
+            },
+            "sender_id": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": [
+                "string",
+                "number"
+              ]
+            },
+            "message_type": {
+              "type": "string"
+            },
+            "sta": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "message_id",
+            "room_id",
+            "sender_id",
+            "content",
+            "timestamp",
+            "message_type",
+            "sta"
+          ]
+        }
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_user_by_username": [
+      "users"
+    ],
+    "check_user_account_status": [
+      "users"
+    ],
+    "list_joined_rooms": [
+      "users"
+    ],
+    "get_room_by_id": [
+      "chat_rooms"
+    ],
+    "get_room_by_name": [
+      "chat_rooms"
+    ],
+    "get_room_access_level": [
+      "chat_rooms"
+    ],
+    "list_room_members": [
+      "chat_rooms"
+    ],
+    "get_room_membership_status": [
+      "chat_rooms",
+      "room_memberships",
+      "users"
+    ],
+    "fetch_room_message_history": [
+      "chat_rooms",
+      "messages",
+      "room_memberships",
+      "users"
+    ],
+    "get_message_by_id": [
+      "messages"
+    ],
+    "list_user_room_memberships": [
+      "room_memberships",
+      "users"
+    ],
+    "send_message": [
+      "chat_rooms",
+      "messages",
+      "room_memberships",
+      "users"
+    ],
+    "join_room": [
+      "chat_rooms",
+      "room_memberships",
+      "users"
+    ],
+    "leave_room": [
+      "chat_rooms",
+      "room_memberships",
+      "users"
+    ],
+    "edit_message": [
+      "messages",
+      "room_memberships",
+      "users"
+    ],
+    "delete_message": [
+      "messages",
+      "users"
+    ],
+    "update_room_membership_status": [
+      "chat_rooms",
+      "room_memberships",
+      "users"
+    ],
+    "create_room": [
+      "chat_rooms",
+      "messages",
+      "room_memberships",
+      "users"
+    ],
+    "update_room_details": [
+      "chat_rooms"
+    ],
+    "add_user_to_room": [
+      "chat_rooms",
+      "room_memberships",
+      "users"
+    ],
+    "remove_user_from_room": [
+      "chat_rooms",
+      "room_memberships",
+      "users"
+    ],
+    "restore_message": [
+      "messages"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user information given a user ID.\n\nArgs:\n    _id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo,  # The user's info if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if not found\n    }\n\nConstraints:\n    - No access control; all fields are returned if user exists.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_username",
+      "description": "Retrieve user information given a username.\n\nArgs:\n    username (str): The username to query.\n\nReturns:\n    dict: \n        { \"success\": True, \"data\": UserInfo } if username exists,\n        { \"success\": False, \"error\": \"User not found\" } otherwise.\n\nConstraints:\n    - None specific for this query (does not involve permissions or state modification).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "check_user_account_status",
+      "description": "Query the account status (e.g., active, suspended, banned) for a user.\n\nArgs:\n    _id (str): The user's unique identifier.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"data\": str }  # account_status\n        On failure: { \"success\": False, \"error\": str }  # e.g., user not found\n\nConstraints:\n    - The user must exist in the application state.\n    - No special permission is required to query status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id"
+        ]
+      }
+    },
+    {
+      "name": "list_joined_rooms",
+      "description": "Retrieve the list of chat room IDs a user has joined.\n\nArgs:\n    user_id (str): Unique user identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str]   # List of joined room_ids, empty if none\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error reason, e.g., user not found\n    }\n\nConstraints:\n    - user_id must correspond to an existing user in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_room_by_id",
+      "description": "Fetch metadata for a chat room by room_id.\n\nArgs:\n    room_id (str): The unique identifier of the chat room.\n\nReturns:\n    dict: \n      On success:\n        {\n            \"success\": True,\n            \"data\": {\n                \"room_id\": str,\n                \"room_name\": str,\n                \"topic\": str,\n                \"access_level\": str,\n                \"room_members\": List[str]\n            }\n        }\n      On failure:\n        {\n            \"success\": False,\n            \"error\": \"Room not found\"\n        }\n\nConstraints:\n    - The room must exist in self.chat_rooms.\n    - No permissions are required for this metadata query.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_id"
+        ]
+      }
+    },
+    {
+      "name": "get_room_by_name",
+      "description": "Fetch chat room metadata (ChatRoomInfo) by room name.\n\nArgs:\n    room_name (str): The name of the chat room to fetch.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": ChatRoomInfo,   # Metadata for the room\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # \"Room not found\" if not found\n        }\n\nNotes:\n    - Room names are assumed to be unique.\n    - No access or membership checks are performed.\n\nEdge Cases:\n    - If room name does not exist, return error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_name"
+        ]
+      }
+    },
+    {
+      "name": "get_room_access_level",
+      "description": "Retrieve the access control level (public/private/invite-only) for a given room.\n\nArgs:\n    room_id (str): The unique identifier for the chat room.\n\nReturns:\n    dict: \n        If successful:\n            { \"success\": True, \"data\": access_level (str) }\n        If room does not exist:\n            { \"success\": False, \"error\": \"Room not found\" }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_id"
+        ]
+      }
+    },
+    {
+      "name": "list_room_members",
+      "description": "Retrieve the list of user IDs who are current members of the specified chat room.\n\nArgs:\n    room_id (str): The unique identifier of the chat room.\n\nReturns:\n    dict:\n        success: True and data is a List[str] of user IDs if the room exists.\n        success: False and error is a string if the room does not exist.\n\nConstraints:\n    - The room must exist.\n    - The output list may be empty if the room has no members.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_id"
+        ]
+      }
+    },
+    {
+      "name": "get_room_membership_status",
+      "description": "Retrieve the room membership status and role for a specific user in a specific room.\n\nArgs:\n    _id (str): The user id.\n    room_id (str): The chat room id.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"membership_status\": str,\n                    \"role_in_room\": str\n                }\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Description of the error (user/room/membership not found)\n            }\n\nConstraints:\n    - Both user and room must exist.\n    - Membership info must exist for the given user and room.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "room_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "room_id"
+        ]
+      }
+    },
+    {
+      "name": "fetch_room_message_history",
+      "description": "Retrieve the message history for a given chat room if the requesting user is allowed by membership and access control.\n\nArgs:\n    room_id (str): The id of the chat room.\n    user_id (str): The id of the requesting user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MessageInfo]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Only users who are members (with 'active' status) of a room may read messages from that room,\n      subject to access control.\n    - Returns all delivered/visible messages in the room.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_message_by_id",
+      "description": "Fetch the content and metadata of a specific message using message_id.\n\nArgs:\n    message_id (str): The unique identifier of the message.\n\nReturns:\n    dict:\n        - If found: { \"success\": True, \"data\": MessageInfo }\n        - If not found: { \"success\": False, \"error\": \"Message not found\" }\n\nConstraints:\n    - Assumes message_id is unique across all rooms.\n    - No access/membership control enforced in this operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id"
+        ]
+      }
+    },
+    {
+      "name": "list_user_room_memberships",
+      "description": "List all RoomMembershipInfo objects for the user (including current and historical).\n\nArgs:\n    user_id (str): The user id (_id) whose memberships to list.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RoomMembershipInfo],  # May be empty if no memberships\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g., user not found\n    }\n\nConstraints:\n    - The user must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "send_message",
+      "description": "Post a new message from a user to the specified chat room if constraints allow.\n\nArgs:\n    sender_id (str): The unique user ID of the sender.\n    room_id (str): The unique room ID for the chat room.\n    content (str): The content/text of the message.\n    message_type (str, optional): The type of message (default: \"text\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Message sent\",\n        \"message_id\": str  # The unique ID for the created message\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Explanation of why the message could not be sent\n    }\n\nConstraints:\n    - Only users with 'active' account status can send messages.\n    - Only users who are active members of the destination room may post.\n    - The room and user must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sender_id": {
+            "type": "string"
+          },
+          "room_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "message_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sender_id",
+          "room_id",
+          "content"
+        ]
+      }
+    },
+    {
+      "name": "join_room",
+      "description": "Add a user to a room. Creates or updates an active RoomMembershipInfo for the user-room pair,\nadds user to room's member list, and records membership in the user's joined_room list.\n\nArgs:\n    user_id (str): The user's unique identifier.\n    room_id (str): The chat room's unique identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User <user_id> joined room <room_id>.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - User must exist and be 'active'.\n    - Room must exist.\n    - Cannot join invite-only rooms without invite (not handled here).\n    - User must not already be an active member.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "room_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "room_id"
+        ]
+      }
+    },
+    {
+      "name": "leave_room",
+      "description": "Remove a user from a chat room.\nUpdates RoomMembershipInfo (membership_status -> 'left'), removes user from room_members (ChatRoomInfo),\nand removes the room from the user's joined_room list (UserInfo).\n\nArgs:\n    user_id (str): The ID of the user leaving the room.\n    room_id (str): The ID of the room to leave.\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"message\": \"User <user_id> has left room <room_id>\"\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": \"<error_message>\"\n        }\n\nConstraints:\n    - The user and room must exist.\n    - The user must currently be a member of the room.\n    - RoomMembershipInfo for (user_id, room_id) must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "room_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "room_id"
+        ]
+      }
+    },
+    {
+      "name": "edit_message",
+      "description": "Modify the content of an existing message (if allowed).\n\nArgs:\n    message_id (str): Identifier of the message to edit.\n    editor_id (str): User ID attempting the edit.\n    new_content (str): The new content for the message.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Message edited successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Only the sender (editor_id == sender_id) may edit a message.\n    - Editor's account_status must be 'active'.\n    - Editor must be an 'active' member of the room (membership_status == 'active').\n    - Message must exist and be editable ('sta' not 'deleted').",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "editor_id": {
+            "type": "string"
+          },
+          "new_content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id",
+          "editor_id",
+          "new_content"
+        ]
+      }
+    },
+    {
+      "name": "delete_message",
+      "description": "Logically delete a message by setting its 'sta' attribute to 'deleted'.\n\nArgs:\n    user_id (str): The ID of the user attempting the delete operation.\n    message_id (str): The ID of the message to be deleted.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Message deleted\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # error details\n    }\n\nConstraints:\n    - The message with message_id must exist.\n    - Only the sender of the message can delete it.\n    - User must have 'active' account_status.\n    - Mark the message's 'sta' as 'deleted'. If already 'deleted', still return success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "message_id"
+        ]
+      }
+    },
+    {
+      "name": "update_room_membership_status",
+      "description": "Change a user's membership status or role in a chat room.\n\nArgs:\n    _id (str): User identifier whose membership is to be updated.\n    room_id (str): The room's identifier.\n    membership_status (str, optional): The new membership status (e.g., 'active', 'banned', 'left'). If None, not updated.\n    role_in_room (str, optional): The new role in the room (e.g., 'member', 'moderator'). If None, not updated.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Membership status updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - User and room must exist.\n    - There must be an existing membership entry; otherwise error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "room_id": {
+            "type": "string"
+          },
+          "membership_status": {
+            "type": "string"
+          },
+          "role_in_room": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "room_id",
+          "membership_status",
+          "role_in_room"
+        ]
+      }
+    },
+    {
+      "name": "create_room",
+      "description": "Create a new chat room with the specified metadata, and assign the creator as an initial member and moderator.\n\nArgs:\n    room_id (str): Unique identifier for the room.\n    room_name (str): Human-readable name, must be unique.\n    topic (str): (Optional) Room topic or description.\n    access_level (str): Room policy: 'public', 'private', 'invite-only'.\n    creator_id (str): User ID of the creator; must exist and be active.\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"message\": \"Room created\",\n            \"room_id\": <room_id>\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": <reason>\n        }\n\nConstraints:\n    - room_id and room_name must be unique among all chat rooms.\n    - creator_id must be a valid, 'active' user.\n    - On creation, creator is added to room_members and made active moderator.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string"
+          },
+          "room_name": {
+            "type": "string"
+          },
+          "topic": {
+            "type": "string"
+          },
+          "access_level": {
+            "type": "string"
+          },
+          "creator_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_id",
+          "room_name",
+          "topic",
+          "access_level",
+          "creator_id"
+        ]
+      }
+    },
+    {
+      "name": "update_room_details",
+      "description": "Update a chat room's name, topic, and/or access level.\n\nArgs:\n    room_id (str): The unique ID of the chat room to update.\n    room_name (str, optional): New name for the chat room.\n    topic (str, optional): New topic for the chat room.\n    access_level (str, optional): New access level ('public', 'private', 'invite-only').\n\nReturns:\n    dict: On success:\n        {'success': True, 'message': 'Room details updated'}\n    On error:\n        {'success': False, 'error': <reason>}\n\nConstraints:\n    - room_id must exist.\n    - At least one of room_name, topic, access_level must be provided.\n    - If access_level provided, must be one of allowed values.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string"
+          },
+          "room_name": {
+            "type": "string"
+          },
+          "topic": {
+            "type": "string"
+          },
+          "access_level": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_id",
+          "room_name",
+          "topic",
+          "access_level"
+        ]
+      }
+    },
+    {
+      "name": "add_user_to_room",
+      "description": "Admin/mod operation to add a user to a room, typically for invite-only/private rooms.\n\nArgs:\n    admin_id (str): ID of the admin/moderator invoking the addition.\n    target_user_id (str): ID of the user to add to the room.\n    room_id (str): ID of the room.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n- All users and room must exist.\n- Only admins/moderators for the room can invoke this operation.\n- User must not already be an active member.\n- Target user's account_status must not be 'banned' or 'suspended'.\n- Room membership and user room lists updated atomically.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "admin_id": {
+            "type": "string"
+          },
+          "target_user_id": {
+            "type": "string"
+          },
+          "room_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "admin_id",
+          "target_user_id",
+          "room_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_user_from_room",
+      "description": "Forcibly remove (kick or ban) a user from a room. Requires admin/mod privileges.\n\nArgs:\n    admin_id (str): _id of user performing the action (must be moderator in room).\n    target_user_id (str): _id of user to remove from the room.\n    room_id (str): The chat room's id.\n    ban (bool): If True, set membership_status to 'banned'; else to 'left'.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User <id> has been removed from room <room_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\nConstraints:\n    - Only moderators/admins may remove users.\n    - Target must be a current active member to remove.\n    - Target and room must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "admin_id": {
+            "type": "string"
+          },
+          "target_user_id": {
+            "type": "string"
+          },
+          "room_id": {
+            "type": "string"
+          },
+          "ban": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "admin_id",
+          "target_user_id",
+          "room_id",
+          "ban"
+        ]
+      }
+    },
+    {
+      "name": "restore_message",
+      "description": "Restore a previously deleted message, setting its status from 'deleted' (or equivalent)\nback to 'delivered', if possible.\n\nArgs:\n    message_id (str): The unique ID of the message to restore.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Message restored successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"  # explanation if restoration isn't possible\n    }\n\nConstraints:\n    - Message must exist in message history.\n    - Message must have status 'deleted'.\n    - On success, set status to 'delivered'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id"
+        ]
+      }
+    }
+  ]
+}

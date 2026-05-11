@@ -1,0 +1,606 @@
+{
+  "env_name": "TwitterDatabase",
+  "description": "A Twitter database stores information about tweets, users, and relationships in a structured format. Each tweet is indexed with a unique identifier and includes metadata such as author, content, timestamp, and engagement statistics. The environment enables efficient searching, retrieval, and analysis of tweets, supporting a wide range of operations for both social media applications and external services.",
+  "initial_parameter_schema": {
+    "tweets": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "tweet_id": {
+            "type": "string"
+          },
+          "author_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "engagement_stats": {
+            "type": "object",
+            "properties": {
+              "likes": {
+                "type": "integer"
+              },
+              "retweets": {
+                "type": "integer"
+              },
+              "replies": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "likes",
+              "retweets",
+              "replies"
+            ]
+          },
+          "in_reply_to_status_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "media_attachment": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "tweet_id",
+          "author_id",
+          "content",
+          "timestamp",
+          "engagement_stats",
+          "in_reply_to_status_id",
+          "media_attachment"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "account_created_at": {
+            "type": "string"
+          },
+          "profile_info": {
+            "type": "string"
+          },
+          "is_verified": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "username",
+          "display_name",
+          "account_created_at",
+          "profile_info",
+          "is_verified",
+          "status"
+        ]
+      }
+    },
+    "relationships": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "follower_id": {
+            "type": "string"
+          },
+          "followee_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "follower_id",
+          "followee_id"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_tweet_by_id": [
+      "tweets"
+    ],
+    "get_tweets_by_ids": [
+      "tweets"
+    ],
+    "get_tweets_by_author": [
+      "tweets",
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_user_by_username": [
+      "users"
+    ],
+    "get_followers": [
+      "relationships",
+      "users"
+    ],
+    "get_followees": [
+      "relationships",
+      "users"
+    ],
+    "check_user_relationship": [
+      "relationships",
+      "users"
+    ],
+    "get_engagement_stats": [
+      "tweets"
+    ],
+    "get_tweet_thread": [
+      "tweets"
+    ],
+    "list_all_users": [
+      "users"
+    ],
+    "list_all_tweets": [
+      "tweets"
+    ],
+    "add_new_tweet": [
+      "tweets",
+      "users"
+    ],
+    "update_tweet_content": [
+      "tweets"
+    ],
+    "delete_tweet": [
+      "tweets"
+    ],
+    "update_engagement_stats": [
+      "tweets"
+    ],
+    "add_user": [
+      "users"
+    ],
+    "update_user_status": [
+      "users"
+    ],
+    "add_relationship": [
+      "relationships",
+      "users"
+    ],
+    "remove_relationship": [
+      "relationships",
+      "users"
+    ],
+    "remove_user": [
+      "relationships",
+      "tweets",
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_tweet_by_id",
+      "description": "Retrieve the full details of a single tweet given its tweet_id.\n\nArgs:\n    tweet_id (str): The unique ID of the tweet to query.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"data\": TweetInfo }\n        On failure:\n            { \"success\": False, \"error\": \"Tweet not found\" }\n\nConstraints:\n    - The tweet_id must exist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tweet_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tweet_id"
+        ]
+      }
+    },
+    {
+      "name": "get_tweets_by_ids",
+      "description": "Retrieve full details for a list of tweets specified by their tweet_ids.\n\nArgs:\n    tweet_ids (list of str): The tweet IDs to retrieve.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TweetInfo],  # List of tweet details found for the provided IDs.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Problem description, e.g. no valid tweet_ids found or invalid input.\n    }\n\nConstraints:\n    - tweet_id values are unique across all tweets.\n    - Valid tweet_ids must exist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tweet_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "tweet_ids"
+        ]
+      }
+    },
+    {
+      "name": "get_tweets_by_author",
+      "description": "Retrieve all tweets authored by the specified user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TweetInfo]  # List of tweets authored by the user (possibly empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g. user does not exist)\n    }\n\nConstraints:\n    - user_id must exist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user information for a given user_id.\n\nArgs:\n    user_id (str): The unique identifier of the user to retrieve.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo  # User metadata if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g. 'User not found'\n    }\n\nConstraints:\n    - user_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_username",
+      "description": "Retrieve user information for a user by their username.\n\nArgs:\n    username (str): The username to search for.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": UserInfo,  # full user information if found\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str,  # reason user was not found\n        }\n\nConstraints:\n    - Usernames are unique in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "get_followers",
+      "description": "Retrieve the list of user_ids who follow the specified user.\n\nArgs:\n    user_id (str): The user_id of the user to retrieve followers for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str],  # list of follower_ids (may be empty if no followers)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g., \"User does not exist\"\n    }\n\nConstraints:\n    - user_id must reference an existing User.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_followees",
+      "description": "Retrieve the list of user_ids that the specified user (user_id) is following.\n\nArgs:\n    user_id (str): The user ID of the follower.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str]  # List of followee user_ids (could be empty if not following anyone)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g., user does not exist)\n    }\n\nConstraints:\n  - user_id must reference an existing user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "check_user_relationship",
+      "description": "Determine if a user (follower_id) follows another user (followee_id).\n\nArgs:\n    follower_id (str): The user_id of the follower.\n    followee_id (str): The user_id of the followee.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": bool  # True if follower follows followee, False otherwise\n            }\n        On error:\n            {\n                \"success\": False,\n                \"error\": str  # Description of error (e.g., user not found)\n            }\n\nConstraints:\n    - Both follower_id and followee_id must reference existing users.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "follower_id": {
+            "type": "string"
+          },
+          "followee_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "follower_id",
+          "followee_id"
+        ]
+      }
+    },
+    {
+      "name": "get_engagement_stats",
+      "description": "Return engagement statistics (likes, retweets, replies) for a given tweet.\n\nArgs:\n    tweet_id (str): The ID of the tweet.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"likes\": int,\n            \"retweets\": int,\n            \"replies\": int\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g., tweet does not exist)\n    }\n\nConstraints:\n    - tweet_id must refer to an existing tweet.\n    - Engagement statistics are non-negative integers.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tweet_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tweet_id"
+        ]
+      }
+    },
+    {
+      "name": "get_tweet_thread",
+      "description": "Retrieve the full conversation thread associated with a given tweet_id,\nincluding the root tweet, the queried tweet, and all descendant replies\nthat belong to the same conversation tree.\n\nArgs:\n    tweet_id (str): The tweet whose thread is requested.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TweetInfo],  # List of tweets in the conversation tree, ordered chronologically from the root thread\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description, e.g. tweet not found\n    }\n\nConstraints:\n    - The given tweet_id must exist in the database.\n    - Each ancestor tweet referenced by in_reply_to_status_id must exist. Traversal stops at first missing ancestor.\n    - If descendant replies exist under the same conversation root, they are included in the returned thread data.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tweet_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tweet_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_users",
+      "description": "Retrieve a list of all users in the database.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[UserInfo]  # List of all users (could be empty if no users exist)\n    }\n\nConstraints/Notes:\n    - No input parameters.\n    - If no users exist, returns success with an empty list.\n    - Does NOT perform any status (active/suspended) checks.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_all_tweets",
+      "description": "Retrieve all tweets in the database.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TweetInfo]  # List of all tweet info dictionaries (may be empty if no tweets)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "add_new_tweet",
+      "description": "Add a new tweet to the database, enforcing constraints:\n  - tweet_id must be unique\n  - author_id must exist as a user\n  - engagement_stats must have non-negative integers for 'likes', 'retweets', 'replies'\n  - All fields required except in_reply_to_status_id and media_attachment (optional)\n\nArgs:\n    tweet_id (str): Unique identifier for the tweet.\n    author_id (str): User ID of the author (must exist in users).\n    content (str): Text/content of the tweet.\n    timestamp (str): Timestamp of tweet creation.\n    engagement_stats (dict): {'likes': int, 'retweets': int, 'replies': int}, all non-negative\n    in_reply_to_status_id (Optional[str]): If reply, id of parent tweet.\n    media_attachment (Optional[str]): Any media info/attachment.\n\nReturns:\n    dict: Success or error message as described above.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tweet_id": {
+            "type": "string"
+          },
+          "author_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "engagement_stats": {
+            "type": "object",
+            "properties": {
+              "likes": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "retweets": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "replies": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "likes",
+              "retweets",
+              "replies"
+            ]
+          },
+          "in_reply_to_status_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "media_attachment": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "tweet_id",
+          "author_id",
+          "content",
+          "timestamp",
+          "engagement_stats"
+        ]
+      }
+    },
+    {
+      "name": "update_tweet_content",
+      "description": "Update the content and/or media attachment of an existing tweet.\n\nArgs:\n    tweet_id (str): ID of the tweet to update.\n    new_content (Optional[str]): New content for the tweet. If None, content is unchanged.\n    new_media_attachment (Optional[str]): New media attachment. If None, unchanged.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Tweet content/media updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Explanation of problem.\"\n    }\n\nConstraints:\n    - tweet_id must reference an existing tweet.\n    - At least one of new_content or new_media_attachment must be provided and different from previous.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tweet_id": {
+            "type": "string"
+          },
+          "new_content": {
+            "type": "string"
+          },
+          "new_media_attachment": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tweet_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_tweet",
+      "description": "Remove a tweet from the database.\n\nArgs:\n    tweet_id (str): The ID of the tweet to be deleted.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Tweet deleted successfully.\" }\n        - On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - The tweet must exist.\n    - Cannot delete the tweet if any other tweet replies to it (i.e., where in_reply_to_status_id == tweet_id).\n    - tweet_id uniqueness is preserved by the dict data structure.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tweet_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tweet_id"
+        ]
+      }
+    },
+    {
+      "name": "update_engagement_stats",
+      "description": "Atomically update the engagement statistics (likes, retweets, replies) for a given tweet.\n\nArgs:\n    tweet_id (str): The unique identifier of the tweet to update.\n    likes (Optional[int]): New number of likes (must be non-negative if provided).\n    retweets (Optional[int]): New number of retweets (must be non-negative if provided).\n    replies (Optional[int]): New number of replies (must be non-negative if provided).\n\nReturns:\n    dict:\n        - On success:\n            { \"success\": True, \"message\": \"Engagement stats updated for tweet <tweet_id>\" }\n        - On failure:\n            { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Tweet must exist in the database.\n    - Engagement stats must be non-negative integers.\n    - If no stats are provided, operation is a no-op with a suitable message.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tweet_id": {
+            "type": "string"
+          },
+          "likes": {
+            "type": "integer"
+          },
+          "retweets": {
+            "type": "integer"
+          },
+          "replies": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "tweet_id"
+        ]
+      }
+    },
+    {
+      "name": "add_user",
+      "description": "Add a new user to the user database.\n\nArgs:\n    user_id (str): Unique identifier for the user.\n    username (str): Unique username.\n    display_name (str): Display name for the user.\n    account_created_at (str): Account creation timestamp (ISO format).\n    profile_info (str): Profile description/info.\n    is_verified (bool): Verification status.\n    status (str): 'active' or 'suspended'.\n\nReturns:\n    dict: \n        { \"success\": True, \"message\": \"User added successfully\" }\n        or\n        { \"success\": False, \"error\": <error description> }\n\nConstraints:\n    - user_id must be unique; must not already exist in users.\n    - username must be unique among all users.\n    - status should be 'active' or 'suspended'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "account_created_at": {
+            "type": "string"
+          },
+          "profile_info": {
+            "type": "string"
+          },
+          "is_verified": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "username",
+          "display_name",
+          "account_created_at",
+          "profile_info",
+          "is_verified",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "update_user_status",
+      "description": "Change a user's status (e.g., set to active or suspended).\n\nArgs:\n    user_id (str): The ID of the user to update.\n    new_status (str): The new status for the user ('active' or 'suspended').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User status updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <error message>\n    }\n\nConstraints:\n    - user_id must exist in the system.\n    - new_status must be one of 'active' or 'suspended'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "add_relationship",
+      "description": "Add a new 'follower' relationship from follower_id to followee_id.\n\nArgs:\n    follower_id (str): The user_id of the follower.\n    followee_id (str): The user_id of the user to be followed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Relationship added: <follower_id> follows <followee_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Both follower_id and followee_id must refer to existing users.\n    - The relationship must not already exist.\n    - follower_id cannot be the same as followee_id (no self-follow).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "follower_id": {
+            "type": "string"
+          },
+          "followee_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "follower_id",
+          "followee_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_relationship",
+      "description": "Remove a 'follower' relationship between two users.\n\nArgs:\n    follower_id (str): The user ID of the follower.\n    followee_id (str): The user ID of the followee.\n\nReturns:\n    dict: On success:\n        {\"success\": True, \"message\": \"Relationship removed: {follower_id} no longer follows {followee_id}\"}\n    On failure:\n        {\"success\": False, \"error\": \"...reason...\"}\n\nConstraints:\n    - Both follower_id and followee_id must reference existing users.\n    - Relationship must exist to be removed.\n    - No exceptions are raised; errors are returned as dicts.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "follower_id": {
+            "type": "string"
+          },
+          "followee_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "follower_id",
+          "followee_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_user",
+      "description": "Permanently delete a user (by user_id), and clean up all associated relationships and tweets.\n\nArgs:\n    user_id (str): The ID of the user to delete.\n\nReturns:\n    dict:\n        success (bool): Operation outcome.\n        message (str): Description if successful.\n        error (str): Description if failure.\n\nConstraints:\n    - User must exist.\n    - Remove all tweets authored by this user.\n    - Remove all relationships in which this user is follower or followee.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,553 @@
+{
+  "env_name": "EnterpriseReportManagementSystem",
+  "description": "An Enterprise Report Management System is a stateful environment for storing, indexing, and retrieving institutional reports. It typically collects reports from various business processes, attaches metadata such as report IDs, titles, authors, and issue dates, and enables authorized users to search for and access reports efficiently. The system supports operations including report creation, query by ID or attribute, version tracking, and secure distribution.",
+  "initial_parameter_schema": {
+    "reports": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "authors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "issue_date": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "content": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id",
+          "title",
+          "authors",
+          "issue_date",
+          "version",
+          "content",
+          "status"
+        ]
+      }
+    },
+    "report_versions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string"
+          },
+          "version_number": {
+            "type": "integer"
+          },
+          "created_date": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "change_description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id",
+          "version_number",
+          "created_date",
+          "content",
+          "change_description"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "access_level": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "role",
+          "access_level",
+          "account_status"
+        ]
+      }
+    },
+    "access_controls": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "report_id",
+          "user_id",
+          "permissions"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_report_by_id": [
+      "access_controls",
+      "reports",
+      "users"
+    ],
+    "check_user_access_to_report": [
+      "access_controls",
+      "reports",
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "list_reports_by_attribute": [
+      "reports"
+    ],
+    "get_report_versions": [
+      "report_versions",
+      "reports"
+    ],
+    "get_report_version_content": [
+      "report_versions"
+    ],
+    "search_reports": [
+      "reports"
+    ],
+    "list_user_permissions": [
+      "access_controls",
+      "users"
+    ],
+    "create_report": [
+      "access_controls",
+      "report_versions",
+      "reports",
+      "users"
+    ],
+    "update_report_metadata": [
+      "reports"
+    ],
+    "add_report_version": [
+      "report_versions",
+      "reports"
+    ],
+    "archive_report": [
+      "reports"
+    ],
+    "modify_access_control": [
+      "access_controls",
+      "reports",
+      "users"
+    ],
+    "register_user": [
+      "users"
+    ],
+    "update_user_status": [
+      "users"
+    ],
+    "delete_report": [
+      "access_controls",
+      "report_versions",
+      "reports",
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_report_by_id",
+      "description": "Retrieve the metadata and content of a report by its unique report_id for an authorized user.\n\nArgs:\n    report_id (str): The unique identifier for the report.\n    user_id (str): The unique identifier of the user requesting the report.\n\nReturns:\n    dict: \n        - If successful: { \"success\": True, \"data\": ReportInfo }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Only authorized users (with 'read' permission and active account) may access reports.\n    - Returns error if report or user does not exist or access is denied.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "check_user_access_to_report",
+      "description": "Determine if a user has the required permission (read, write, download) for a given report.\n\nArgs:\n    user_id (str): The ID of the user requesting access.\n    report_id (str): The ID of the report to check.\n    required_permission (str): The type of permission to check ('read', 'write', 'download').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"has_permission\": bool\n    }\n    or on error:\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Returns success with has_permission True/False if inputs valid.\n    - Returns error if user or report does not exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "report_id": {
+            "type": "string"
+          },
+          "required_permission": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "report_id",
+          "required_permission"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve details (role, access_level, account_status, name, etc.) for the given user_id.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo,  # if user is found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # if user_id is not found\n    }\n\nConstraints:\n    - user_id must exist in the system. If not, return an error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_reports_by_attribute",
+      "description": "Retrieve all reports matching specified attributes.\n\nArgs:\n    attributes: Keyword arguments for any subset of the following\n        (title, authors, issue_date, version, status, etc).\n        - 'authors' can be a string or a list (at least one must match).\n        - All other attributes checked with equality.\n\nReturns:\n    dict:\n        - success: True/False\n        - data: List[ReportInfo] (if successful)\n        - error: str (if not successful)\n\nConstraints:\n    - Attributes must be valid fields of ReportInfo.\n    - If no valid attributes specified, returns error.",
+      "parameters": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_report_versions",
+      "description": "List all available versions for a specific report_id.\n\nArgs:\n    report_id (str): The unique identifier of the report whose versions are to be listed.\n\nReturns:\n    dict: \n      - On success: {\n            \"success\": True,\n            \"data\": List[ReportVersionInfo]  # Sorted by version_number ascending\n        }\n      - On failure: {\n            \"success\": False,\n            \"error\": str  # Reason, e.g. \"Report ID does not exist\"\n        }\n\nConstraints:\n    - The report_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id"
+        ]
+      }
+    },
+    {
+      "name": "get_report_version_content",
+      "description": "Fetch the content and metadata of a specific version of a report.\n\nArgs:\n    report_id (str): The report's unique identifier.\n    version_number (int): The version number of the report to fetch.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ReportVersionInfo  # Content and metadata of the specified report version.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g., report/version not found.\n    }\n\nConstraints:\n    - The (report_id, version_number) combination must exist in the system.\n    - No access or permission check is required for this operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string"
+          },
+          "version_number": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "report_id",
+          "version_number"
+        ]
+      }
+    },
+    {
+      "name": "search_reports",
+      "description": "Search the report database using combinations of metadata attributes.\n\nSupported criteria keys:\n    - report_id (str; substring match, case-insensitive)\n    - title (str; substring match, case-insensitive)\n    - authors (str or List[str]; report matches if any supplied author matches any of its authors, case-insensitive)\n    - issue_date (str; exact match)\n    - version (int)\n    - status (str; e.g., 'active', 'archived')\n\nArgs:\n    **criteria: Arbitrary report metadata fields and values to filter on.\n\nReturns:\n    dict:\n        On success: {\"success\": True, \"data\": List[ReportInfo]}\n        On failure: {\"success\": False, \"error\": reason}\n\nConstraints:\n    - Unknown fields are ignored.\n    - All supplied criteria must be AND'ed (i.e., report must satisfy ALL provided filters).",
+      "parameters": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "report_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "authors": {
+            "type": "string"
+          },
+          "issue_date": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "list_user_permissions",
+      "description": "List all permissions a user has across all reports.\n\nArgs:\n    user_id (str): User identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[{\"report_id\": str, \"permissions\": List[str]}]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - user_id must exist in the system.\n    - Only reports the user's explicit permissions across all reports.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "create_report",
+      "description": "Add a new report to the system with metadata and initial content.\n\nArgs:\n    report_id (str): Unique ID for the report.\n    title (str): Title of the report.\n    authors (List[str]): List of author names or user IDs.\n    issue_date (str): The date the report is issued.\n    content (str): The body/content of the report.\n    created_by_user_id (str): The user ID of the creator.\n    status (str, optional): Initial report status. Defaults to 'active'.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Report created successfully.\"\n    }\n    or\n    dict: {\n        \"success\": False,\n        \"error\": str  # Reason for failure.\n    }\n\nConstraints:\n    - report_id must be unique.\n    - The user creating the report must exist and be 'active'.\n    - Initial version (1) must be created in version history.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "authors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "issue_date": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "created_by_user_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id",
+          "title",
+          "authors",
+          "issue_date",
+          "content",
+          "created_by_user_id"
+        ]
+      }
+    },
+    {
+      "name": "update_report_metadata",
+      "description": "Modify a report's metadata (title, authors, or issue_date).\n\nArgs:\n    report_id (str): The unique ID of the report to modify.\n    title (Optional[str]): New title for the report.\n    authors (Optional[List[str]]): New list of authors.\n    issue_date (Optional[str]): New issue date (string).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Report metadata updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - Report must exist.\n    - At least one metadata field (title, authors, issue_date) must be provided.\n    - authors (if provided) must be a list of strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "authors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "issue_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id"
+        ]
+      }
+    },
+    {
+      "name": "add_report_version",
+      "description": "Add a new version to an existing report, storing content and change description.\n\nArgs:\n    report_id (str): The unique report identifier for the report to version.\n    content (str): The new version's content.\n    change_description (str): Description of changes in this version.\n    created_date (str): ISO8601 or similar date string for when version is created.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Report version X for report <report_id> added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - report_id must exist in the system.\n    - Cannot add a version to an archived report.\n    - Active and draft reports may receive new versions.\n    - Version numbers are strictly incremented.\n    - Report metadata is updated accordingly.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "change_description": {
+            "type": "string"
+          },
+          "created_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id",
+          "content",
+          "change_description",
+          "created_date"
+        ]
+      }
+    },
+    {
+      "name": "archive_report",
+      "description": "Change the status of the specified report to \"archived\".\n\nArgs:\n    report_id (str): The unique identifier of the report to be archived.\n\nReturns:\n    dict: \n        - On success: {\n            \"success\": True,\n            \"message\": \"Report <report_id> has been archived.\"\n          }\n        - On failure: {\n            \"success\": False,\n            \"error\": \"Report not found.\"\n          }\n\nConstraints:\n    - The specified report must exist.\n    - Status is set to \"archived\" regardless of current state (idempotent).\n    - No user/permission check is performed in this operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id"
+        ]
+      }
+    },
+    {
+      "name": "modify_access_control",
+      "description": "Update access permissions for a user on a specific report (grant or revoke permissions).\n\nArgs:\n    report_id (str): The report whose access control is to be updated.\n    user_id (str): The user whose permissions are being changed.\n    permissions (list of str): List of permissions to grant or revoke. Supported: 'read', 'write', 'download'.\n    action (str): Either 'grant' (add/set permissions) or 'revoke' (remove specified permissions).\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": <description> }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - report_id and user_id must exist.\n    - The target user's account_status does not restrict access-control changes.\n    - permissions must not be empty, and all permissions must be valid.\n    - Grant: adds (without duplicating) or sets permissions. If entry does not exist, creates.\n    - Revoke: removes listed permissions; deletes the entry if no permissions remain.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "action": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id",
+          "user_id",
+          "permissions",
+          "action"
+        ]
+      }
+    },
+    {
+      "name": "register_user",
+      "description": "Create a new user account in the system.\n\nArgs:\n    user_id (str): Unique identifier for the user.\n    name (str): Display name of the user.\n    role (str): Role of the user (e.g., 'analyst', 'manager').\n    access_level (str): Access privilege level (e.g., 'basic', 'admin').\n    account_status (str): Account status, such as 'active', 'inactive'.\n\nReturns:\n    dict: {\n        \"success\": True, \"message\": \"User registered successfully.\"\n    }\n    or\n    {\n        \"success\": False, \"error\": <reason>\n    }\n\nConstraints:\n    - user_id must be unique.\n    - All fields must be provided and non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "access_level": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "role",
+          "access_level",
+          "account_status"
+        ]
+      }
+    },
+    {
+      "name": "update_user_status",
+      "description": "Change a user's account_status (e.g., set to active/inactive/suspended).\n\nArgs:\n    user_id (str): ID of the user whose status is to be updated.\n    new_status (str): New status string to set ('active', 'inactive', 'suspended', etc.).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User account_status updated to <new_status>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason for failure\"\n    }\n\nConstraints:\n    - user_id must refer to an existing user in the system.\n    - Only updates the 'account_status' field of the user record.\n    - No restriction on new_status value is specified, but typical values are 'active', 'inactive', 'suspended'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "delete_report",
+      "description": "Remove a report and all associated versions and access control entries from the system.\nOnly admin users may perform this operation.\n\nArgs:\n    report_id (str): The ID of the report to delete.\n    user_id (str): The user requesting the operation.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Confirmation if successful\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - Only users with role 'admin' can delete reports.\n    - Deletion removes all associated report versions and access controls.\n    - The report must exist.\n    - The requesting user must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id",
+          "user_id"
+        ]
+      }
+    }
+  ]
+}

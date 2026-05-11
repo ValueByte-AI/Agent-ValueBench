@@ -1,0 +1,412 @@
+{
+  "env_name": "DigitalLibraryContentManagementSystem",
+  "description": "A digital library content management system organizes and stores educational and scholarly resources in categorized structures, facilitating efficient browsing and retrieval of materials. It maintains metadata on categories, supports filtering and pagination for scalable browsing, and offers searchable access to a large collection of digital content. Such systems are widely used in academic, public, and specialized libraries for managing and distributing digital reading materials.",
+  "initial_parameter_schema": {
+    "categories": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "parent_category_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "is_education_related": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "category_id",
+          "name",
+          "description",
+          "parent_category_id",
+          "is_education_related"
+        ]
+      }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "publication_date": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          },
+          "content_type": {
+            "type": "string"
+          },
+          "access_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_id",
+          "title",
+          "author",
+          "publication_date",
+          "category_id",
+          "content_type",
+          "access_status"
+        ]
+      }
+    },
+    "pagination_states": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "page_number": {
+            "type": "integer"
+          },
+          "page_size": {
+            "type": "integer"
+          },
+          "filter_query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "page_number",
+          "page_size"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "filter_categories_by_attribute": [
+      "categories"
+    ],
+    "get_category_by_id": [
+      "categories"
+    ],
+    "list_categories_paginated": [
+      "categories"
+    ],
+    "get_category_children": [
+      "categories"
+    ],
+    "get_pagination_state": [
+      "pagination_states"
+    ],
+    "list_resources_by_category": [
+      "categories",
+      "resources"
+    ],
+    "set_pagination_state": [
+      "pagination_states"
+    ],
+    "next_page": [
+      "categories",
+      "pagination_states"
+    ],
+    "reset_pagination": [
+      "pagination_states"
+    ],
+    "update_category_parent": [
+      "categories"
+    ],
+    "add_category": [
+      "categories"
+    ],
+    "remove_category": [
+      "categories",
+      "resources"
+    ],
+    "add_resource_to_category": [
+      "categories",
+      "resources"
+    ],
+    "remove_resource_from_category": [
+      "categories",
+      "resources"
+    ]
+  },
+  "tools": [
+    {
+      "name": "filter_categories_by_attribute",
+      "description": "Return categories matching the given attribute values.\n\nArgs:\n    **filters: Arbitrary keyword arguments corresponding to CategoryInfo attributes\n        (e.g., is_education_related=True, name=\"Science\")\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CategoryInfo],  # Categories matching the filter (may be empty)\n    }\n\nConstraints:\n    - Category attribute values must match those provided in filters.\n    - Unknown attributes are ignored for filtering; categories will not match unless the attribute exists with the corresponding value.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filters": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "filters"
+        ]
+      }
+    },
+    {
+      "name": "get_category_by_id",
+      "description": "Retrieve metadata for a single category given its category_id.\n\nArgs:\n    category_id (str): Unique identifier of the category to retrieve.\n\nReturns:\n    dict: \n    - If success: { \"success\": True, \"data\": CategoryInfo }\n    - If category not found: { \"success\": False, \"error\": \"Category not found\" }\n\nConstraints:\n    - The category_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id"
+        ]
+      }
+    },
+    {
+      "name": "list_categories_paginated",
+      "description": "Retrieve a paginated list of categories, optionally filtering by name, description,\nor 'education_related' (filter_query == 'education_related' means only education-related categories).\n\nArgs:\n    page_number (int): The 1-based index of the desired results page (must be >= 1).\n    page_size (int): Number of categories per page (must be >= 1).\n    filter_query (str): Optional query string. If 'education_related', only categories where is_education_related==True are returned.\n                        Otherwise, performs substring match on name or description.\n\nReturns:\n    dict: On success,\n        {\n            \"success\": True,\n            \"data\": {\n                \"categories\": List[CategoryInfo], # paginated category info\n                \"total_count\": int,               # total number of items after filtering (all pages)\n                \"page_number\": int,               # current page\n                \"page_size\": int                  # page size\n            }\n        }\n        On error,\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - Pagination must respect requested page size.\n    - Only categories matching the filter are returned.\n    - Page numbers/pages_size must be positive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "page_number": {
+            "type": "integer"
+          },
+          "page_size": {
+            "type": "integer"
+          },
+          "filter_query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "page_number",
+          "page_size",
+          "filter_query"
+        ]
+      }
+    },
+    {
+      "name": "get_category_children",
+      "description": "Return the list of subcategories (children) for a given category by category_id.\n\nArgs:\n    category_id (str): The category ID whose immediate children (subcategories) are requested.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CategoryInfo]  # List of child categories, empty if none\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g. \"Category does not exist\"\n    }\n\nConstraints:\n    - category_id must exist in the categories dictionary.\n    - Only immediate children are returned (parent_category_id == category_id).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id"
+        ]
+      }
+    },
+    {
+      "name": "get_pagination_state",
+      "description": "Retrieve the current pagination state (page number, page size, filter query) for a given session/user.\n\nArgs:\n    session_id (str): Identifier for the session or user.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"data\": PaginationStateInfo}\n        - On failure: {\"success\": False, \"error\": \"Pagination state not found for session\"}\n\nConstraints:\n    - session_id must be present in the pagination state mapping.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "list_resources_by_category",
+      "description": "List all digital resources contained in a given category.\n\nArgs:\n    category_id (str): The unique identifier of the category to query.\n\nReturns:\n    dict:\n        - On success: {\n              \"success\": True,\n              \"data\": List[DigitalResourceInfo]  # Possibly empty if no resources\n          }\n        - On failure: {\n              \"success\": False,\n              \"error\": str  # Description of the error such as category not found\n          }\n\nConstraints:\n    - The specified category_id must exist in the system.\n    - Only resources belonging to exactly this category_id are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id"
+        ]
+      }
+    },
+    {
+      "name": "set_pagination_state",
+      "description": "Update (or initialize) the pagination state for a given session/user.\n\nArgs:\n    session_id (str): Unique identifier for session/user.\n    page_number (int): The page index (must be >= 1).\n    page_size (int): Items per page (must be >= 1).\n    filter_query (str): The filter string to apply (can be empty).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Pagination state updated for session_id <session_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - page_number and page_size must be positive integers.\n    - session_id must be non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "page_number": {
+            "type": "integer"
+          },
+          "page_size": {
+            "type": "integer"
+          },
+          "filter_query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "page_number",
+          "page_size",
+          "filter_query"
+        ]
+      }
+    },
+    {
+      "name": "next_page",
+      "description": "Advance the pagination state for a given session/context (`state_key`) to the next page, \naccording to the current filter query and page size.\n\nArgs:\n    state_key (str): Key referencing the pagination state to advance.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Description of new page number\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - Does not advance if already at last page.\n    - Pagination state must exist.\n    - Categories must be filtered per filter_query.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "state_key": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "state_key"
+        ]
+      }
+    },
+    {
+      "name": "reset_pagination",
+      "description": "Reset or initialize pagination state for the given session/user to the first page\nand default parameters (page_size=20, filter_query=\"\").\n\nArgs:\n    session_id (str): Unique identifier for session/user whose pagination is to be reset.\n\nReturns:\n    dict:\n        - If successful:\n            {\n                \"success\": True,\n                \"message\": \"Pagination state reset to first page with default parameters.\"\n            }\n        - If failed:\n            {\n                \"success\": False,\n                \"error\": \"Session ID not provided.\"\n            }\n\nConstraints:\n    - session_id must be provided and non-empty.\n    - Reset pagination state to page_number=1, page_size=20, filter_query=\"\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "update_category_parent",
+      "description": "Change or set the parent_category_id of a category.\n\nArgs:\n    category_id (str): The ID of the category to update.\n    parent_category_id (Optional[str]): The new parent category ID, or None to unset.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Parent category updated for <category_id>.\"\n    } or {\n        \"success\": False,\n        \"error\": <error message>\n    }\n\nConstraints:\n    - category_id must exist.\n    - parent_category_id must exist (if not None).\n    - category cannot be its own parent.\n    - Must not introduce a cycle (parent_category_id must not be a child/descendant of category_id).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          },
+          "parent_category_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "category_id",
+          "parent_category_id"
+        ]
+      }
+    },
+    {
+      "name": "add_category",
+      "description": "Create and add a new category to the library's set of categories.\n\nArgs:\n    category_id (str): Unique identifier for the category.\n    name (str): The name of the category.\n    description (str): Description text for the category.\n    is_education_related (bool): Whether this category is education-related.\n    parent_category_id (Optional[str]): ID of the parent category for nesting (can be None).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Category added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - category_id must be unique.\n    - parent_category_id, if provided, must reference an existing category.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "is_education_related": {
+            "type": "boolean"
+          },
+          "parent_category_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "category_id",
+          "name",
+          "description",
+          "is_education_related"
+        ]
+      }
+    },
+    {
+      "name": "remove_category",
+      "description": "Delete a category and handle orphaned resources or subcategories.\n\nArgs:\n    category_id (str): The ID of the category to be deleted.\n\nReturns:\n    dict: \n        - success: True/False\n        - message: Operation summary on success.\n        - details: On success, contains:\n            - updated_subcategories: list of subcategories whose parent_category_id reset to None.\n            - orphaned_resources: list of resource_ids for resources that now have no valid category.\n        - error: Description on failure.\n\nConstraints:\n    - Each DigitalResource must belong to at least one valid Category.\n    - Categories may be nested; subcategories' parent should be reset to None if their parent is deleted.\n    - If any DigitalResource becomes orphaned, include their IDs in the result.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id"
+        ]
+      }
+    },
+    {
+      "name": "add_resource_to_category",
+      "description": "Link a digital resource to a category.\n\nArgs:\n    resource_id (str): The resource to link.\n    category_id (str): The target category.\n\nReturns:\n    dict: {\n        'success': True,\n        'message': 'Resource <resource_id> linked to category <category_id>.'\n    } or {\n        'success': False,\n        'error': <reason>\n    }\n\nConstraints:\n    - Both resource and category must exist.\n    - Each resource must belong to at least one valid category.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_id",
+          "category_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_resource_from_category",
+      "description": "Unlink a resource from a specific category, ensuring the resource remains\nassociated with at least one valid category.\n\nArgs:\n    resource_id (str): The unique identifier of the digital resource.\n    category_id (str): The unique identifier of the category to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Resource unlinked from category\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - Resource and category must both exist.\n    - Resource must be associated with the specified category.\n    - Resource must be associated with at least one valid category after removal.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_id",
+          "category_id"
+        ]
+      }
+    }
+  ]
+}

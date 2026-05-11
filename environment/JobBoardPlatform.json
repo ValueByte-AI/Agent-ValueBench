@@ -1,0 +1,696 @@
+{
+  "env_name": "JobBoardPlatform",
+  "description": "A job board platform with an API is an online service designed to manage and distribute job listings from employers to job seekers. It maintains structured records of job posts, supporting criteria such as titles, companies, salaries, locations, and descriptions, and allows both interactive searching and programmatic access via API endpoints. Typical operations include posting jobs, searching/filtering listings, retrieving job details, and managing application workflows.",
+  "initial_parameter_schema": {
+    "job_posts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "company_id": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "salary_min": {
+            "type": "number"
+          },
+          "salary_max": {
+            "type": "number"
+          },
+          "date_posted": {
+            "type": "string"
+          },
+          "employment_type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "title",
+          "description",
+          "company_id",
+          "location",
+          "salary_min",
+          "salary_max",
+          "date_posted",
+          "employment_type",
+          "status"
+        ]
+      }
+    },
+    "companies": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "industry": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "profile": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id",
+          "name",
+          "industry",
+          "location",
+          "profile"
+        ]
+      }
+    },
+    "applications": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string"
+          },
+          "job_id": {
+            "type": "string"
+          },
+          "seeker_id": {
+            "type": "string"
+          },
+          "application_status": {
+            "type": "string"
+          },
+          "applied_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "application_id",
+          "job_id",
+          "seeker_id",
+          "application_status",
+          "applied_date"
+        ]
+      }
+    },
+    "job_seekers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "seeker_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "profile": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "seeker_id",
+          "name",
+          "profile",
+          "account_status"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "search_job_posts_by_keyword_and_salary": [
+      "job_posts"
+    ],
+    "search_job_posts_by_criteria": [
+      "job_posts"
+    ],
+    "get_job_post_by_id": [
+      "job_posts"
+    ],
+    "list_active_job_posts": [
+      "job_posts"
+    ],
+    "get_company_by_id": [
+      "companies"
+    ],
+    "get_company_for_job_post": [
+      "companies",
+      "job_posts"
+    ],
+    "get_applications_for_seeker": [
+      "applications",
+      "job_seekers"
+    ],
+    "get_applications_for_job_post": [
+      "applications",
+      "job_posts"
+    ],
+    "get_job_seeker_by_id": [
+      "job_seekers"
+    ],
+    "validate_job_status_active": [
+      "job_posts"
+    ],
+    "validate_job_salary_range": [
+      "job_posts"
+    ],
+    "list_all_companies": [
+      "companies"
+    ],
+    "create_job_post": [
+      "companies",
+      "job_posts"
+    ],
+    "update_job_post": [
+      "companies",
+      "job_posts"
+    ],
+    "set_job_post_status": [
+      "job_posts"
+    ],
+    "delete_job_post": [
+      "job_posts"
+    ],
+    "create_company": [
+      "companies"
+    ],
+    "update_company_info": [
+      "companies"
+    ],
+    "create_job_application": [
+      "applications",
+      "job_posts",
+      "job_seekers"
+    ],
+    "update_application_status": [
+      "applications"
+    ],
+    "withdraw_job_application": [
+      "applications"
+    ],
+    "create_job_seeker": [
+      "job_seekers"
+    ],
+    "update_job_seeker_profile": [
+      "job_seekers"
+    ],
+    "set_job_seeker_account_status": [
+      "job_seekers"
+    ]
+  },
+  "tools": [
+    {
+      "name": "search_job_posts_by_keyword_and_salary",
+      "description": "Search for active job posts where:\n  - The title or description contains the keyword (case-insensitive).\n  - The job's salary range overlaps with the given [salary_min, salary_max] range.\n\nArgs:\n    keyword (str): The keyword to search for (case-insensitive).\n    salary_min (float): Minimum salary to filter (inclusive).\n    salary_max (float): Maximum salary to filter (inclusive).\n\nReturns:\n    dict:\n        On success: {\n            \"success\": True,\n            \"data\": List[JobPostInfo]  # May be empty if no matches.\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - Only active (status=\"open\" or \"active\") jobs are included.\n    - salary_min must be <= salary_max.\n    - Returns job posts where their salary range [job.salary_min, job.salary_max] \n      overlaps with [salary_min, salary_max] (inclusive).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "keyword": {
+            "type": "string"
+          },
+          "salary_min": {
+            "type": "number"
+          },
+          "salary_max": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "keyword",
+          "salary_min",
+          "salary_max"
+        ]
+      }
+    },
+    {
+      "name": "search_job_posts_by_criteria",
+      "description": "Search active job posts by arbitrary criteria.\n\nArgs:\n    keyword (str, optional): Substring (case-insensitive) to match in title or description.\n    location (str, optional): Location string (exact match).\n    employment_type (str, optional): Employment type string (exact match).\n    company_id (str, optional): Company ID (exact match).\n    salary_min (float, optional): Require that job's salary_max >= salary_min. If 0, treat as not filtering on the lower salary bound.\n    salary_max (float, optional): Require that job's salary_min <= salary_max. If 0, treat as not filtering on the upper salary bound.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[JobPostInfo],  # All matching jobs (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error\n    }\n\nConstraints:\n    - Only jobs with status == \"open\" or \"active\" are returned.\n    - All provided criteria must be satisfied for a job to be included.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "keyword": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "employment_type": {
+            "type": "string"
+          },
+          "company_id": {
+            "type": "string"
+          },
+          "salary_min": {
+            "type": "number"
+          },
+          "salary_max": {
+            "type": "number"
+          }
+        },
+        "required": [
+          
+        ]
+      }
+    },
+    {
+      "name": "get_job_post_by_id",
+      "description": "Retrieve the full details of a specific job post by its job_id.\n\nArgs:\n    job_id (str): The unique identifier of the job post.\n\nReturns:\n    dict: If successful:\n              {\n                  \"success\": True,\n                  \"data\": JobPostInfo  # all fields of the job post\n              }\n          If job post not found or not active:\n              {\n                  \"success\": False,\n                  \"error\": <reason>\n              }\n\nConstraints:\n    - Only active job posts (status == \"open\" or \"active\") are retrievable via the API.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      }
+    },
+    {
+      "name": "list_active_job_posts",
+      "description": "List all currently active/open job posts.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[JobPostInfo]  # List of all job posts with status \"open\" or \"active\"\n    }\n\nConstraints:\n    - Only job posts with status \"open\" or \"active\" are included.\n    - If no such job posts exist, returns an empty list in 'data'.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_company_by_id",
+      "description": "Retrieve full details of a company by its company_id.\n\nArgs:\n    company_id (str): Unique identifier for the company.\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"data\": CompanyInfo}\n        - On failure: {\"success\": False, \"error\": \"Company not found\"}\nConstraints:\n    - The company must exist in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id"
+        ]
+      }
+    },
+    {
+      "name": "get_company_for_job_post",
+      "description": "Retrieve the company information associated with a specific (active) job post.\n\nArgs:\n    job_id (str): The ID of the job post.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": CompanyInfo  # Company associated with the job post\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (job post not found, not active, or missing company)\n    }\n\nConstraints:\n    - Only active (status=\"open\"/\"active\") job posts are retrievable.\n    - Associated company must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      }
+    },
+    {
+      "name": "get_applications_for_seeker",
+      "description": "Retrieve all applications submitted by a specific job seeker.\n\nArgs:\n    seeker_id (str): The unique identifier for the job seeker.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ApplicationInfo]  # all applications by given seeker (may be an empty list)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # reason for failure (e.g., seeker not found)\n    }\n\nConstraints:\n    - seeker_id must exist within self.job_seekers.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "seeker_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "seeker_id"
+        ]
+      }
+    },
+    {
+      "name": "get_applications_for_job_post",
+      "description": "List all applications submitted for a given job post.\n\nArgs:\n    job_id (str): The unique identifier of the job post.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[ApplicationInfo]  # May be empty if no applications\n            }\n        On error (job does not exist):\n            {\n                \"success\": False,\n                \"error\": str\n            }\nConstraints:\n    - job_id must exist in the current set of job postings.\n    - Any applications with the specified job_id should be returned,\n      regardless of application_status or job post status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      }
+    },
+    {
+      "name": "get_job_seeker_by_id",
+      "description": "Retrieve information about a job seeker using their seeker_id.\n\nArgs:\n    seeker_id (str): The unique identifier of the job seeker.\n\nReturns:\n    dict: \n        On success:\n            {\"success\": True, \"data\": JobSeekerInfo}\n        On failure:\n            {\"success\": False, \"error\": \"Job seeker not found\"}",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "seeker_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "seeker_id"
+        ]
+      }
+    },
+    {
+      "name": "validate_job_status_active",
+      "description": "Check whether a job post is currently active/open.\n\nArgs:\n    job_id (str): The unique identifier of the job post.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": bool  # True if job post is active/open, False otherwise\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": \"Job post not found\"\n        }\n\nConstraints:\n    - Only statuses \"open\" or \"active\" are considered active.\n    - Fails if the job post does not exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      }
+    },
+    {
+      "name": "validate_job_salary_range",
+      "description": "Check whether the salary range for the specified job post is well-formed (salary_min ≤ salary_max).\n\nArgs:\n    job_id (str): The job post ID to validate.\n\nReturns:\n    dict: \n        - If the job exists: { \"success\": True, \"valid\": bool }\n        - If job_id is invalid: { \"success\": False, \"error\": \"Job post does not exist\" }\nConstraints:\n    - The job post must exist.\n    - salary_min and salary_max must be compared numerically.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_companies",
+      "description": "Retrieve a list of all registered companies on the platform.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CompanyInfo],  # List of all company info dicts (empty if no companies)\n    }\n\nConstraints:\n    - No input parameters.\n    - Always succeeds (even if there are no companies).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "create_job_post",
+      "description": "Create a new job post, enforcing company association and salary constraints.\n\nArgs:\n    job_id (str): Unique identifier for the job post.\n    title (str): Job title.\n    description (str): Full job description.\n    company_id (str): ID of the associated company (must exist).\n    location (str): Location of the job.\n    salary_min (float): Minimum salary.\n    salary_max (float): Maximum salary.\n    date_posted (str): ISO date, or string representation of posting date.\n    employment_type (str): Type of employment (e.g., 'full-time').\n    status (str): Posting status ('open', 'active', etc).\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Job post created successfully.\" }\n        On failure: { \"success\": False, \"error\": <error_message> }\n\nConstraints:\n    - Job post must not duplicate an existing job_id.\n    - salary_min ≤ salary_max.\n    - company_id must exist in companies.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "company_id": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "salary_min": {
+            "type": "number"
+          },
+          "salary_max": {
+            "type": "number"
+          },
+          "date_posted": {
+            "type": "string"
+          },
+          "employment_type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "title",
+          "description",
+          "company_id",
+          "location",
+          "salary_min",
+          "salary_max",
+          "date_posted",
+          "employment_type",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "update_job_post",
+      "description": "Update attributes of an existing job post, ensuring salary range and status validity.\n\nArgs:\n    job_id (str): The identifier of the job post to update.\n    updates (dict): A dictionary with attribute names and new values to be applied.\n\nReturns:\n    dict: Success or error information:\n    - If success: { \"success\": True, \"message\": \"Job post <job_id> updated successfully\" }\n    - If error: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - salary_min must be ≤ salary_max if either/both are updated.\n    - status can only be updated to allowed values (\"open\", \"active\", etc.) if such constraint exists.\n    - If company_id is updated, it must refer to an existing company.\n    - Only existing job posts can be updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "job_id",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "set_job_post_status",
+      "description": "Change the status of a job post to the specified value.\n\nArgs:\n    job_id (str): Identifier of the job post to be updated.\n    new_status (str): The new status to set (e.g., \"open\", \"closed\", \"inactive\").\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Status of job post <job_id> updated to '<new_status>'.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason for failure\n            }\nConstraints:\n    - The job post with the specified job_id must exist.\n    - No restriction on allowed status strings (other than being non-empty).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "delete_job_post",
+      "description": "Remove a job post from the system.\n\nArgs:\n    job_id (str): The unique identifier for the job post to be deleted.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Job post <job_id> deleted.\" }\n        - On failure: { \"success\": False, \"error\": \"Job post does not exist.\" }\n\nConstraints:\n    - Only deletes the job post from system; existing applications pointing to it are not modified.\n    - If job_id does not exist, operation fails.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      }
+    },
+    {
+      "name": "create_company",
+      "description": "Add a new company to the platform.\n\nArgs:\n    company_id (str): Unique identifier for the company.\n    name (str): Company name.\n    industry (str): Industry category.\n    location (str): Company location.\n    profile (str): Company profile/description.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Company created successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - company_id must be unique. If already exists, operation fails.\n    - All fields are required and must be non-empty strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "industry": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "profile": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id",
+          "name",
+          "industry",
+          "location",
+          "profile"
+        ]
+      }
+    },
+    {
+      "name": "update_company_info",
+      "description": "Modify information for a company given its company_id. Only non-None values will be updated.\n\nArgs:\n    company_id (str): Unique identifier of the company to update.\n    name (str, optional): Updated company name.\n    industry (str, optional): Updated industry.\n    location (str, optional): Updated location.\n    profile (str, optional): Updated profile.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Company information updated.\" }\n        On failure: { \"success\": False, \"error\": \"Company not found.\" }\n\nConstraints:\n    - The company must exist (company_id is valid).\n    - Only provided fields are updated; others remain unchanged.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "industry": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "profile": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id"
+        ]
+      }
+    },
+    {
+      "name": "create_job_application",
+      "description": "Submit a new job application for a given job (if active/open).\n\nArgs:\n    job_id (str): The job post ID to apply to.\n    seeker_id (str): The job seeker ID submitting the application.\n\nReturns:\n    dict: On success:\n            {\n                \"success\": True,\n                \"message\": \"Application submitted\",\n                \"application_id\": <new_application_id>\n            }\n          On failure:\n            {\n                \"success\": False,\n                \"error\": <reason>\n            }\n\nConstraints:\n    - The job post must exist and have status \"open\" or \"active\".\n    - The job seeker must exist.\n    - The application receives status \"submitted\" and a benchmark-consistent applied_date.\n    - application_id must be unique within the system and must not depend on the host machine clock.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "seeker_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "seeker_id"
+        ]
+      }
+    },
+    {
+      "name": "update_application_status",
+      "description": "Change the status of an application (e.g., to reviewed, accepted, rejected).\n\nArgs:\n    application_id (str): The unique identifier for the application.\n    new_status (str): The new status to assign to the application.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Application status updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The application_id must exist in the applications database.\n    - No check on validity of new_status unless status values are restricted (not specified in environment).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "application_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "withdraw_job_application",
+      "description": "Withdraw (effectively remove) a previously submitted job application.\n\nArgs:\n    application_id (str): The ID of the application to withdraw.\n\nReturns:\n    dict: On success:\n              { \"success\": True, \"message\": \"Application withdrawn.\" }\n          On failure:\n              { \"success\": False, \"error\": <error message> }\nConstraints:\n    - Application must exist.\n    - Idempotent: If already withdrawn/doesn't exist, error is returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "application_id"
+        ]
+      }
+    },
+    {
+      "name": "create_job_seeker",
+      "description": "Register a new job seeker account.\n\nArgs:\n    seeker_id (str): Unique identifier for the job seeker.\n    name (str): Name of the job seeker.\n    profile (str): Profile or short description.\n    account_status (str): Status of the account (e.g., 'active').\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"message\": \"Job seeker account created.\"\n        }\n    or\n        {\n            \"success\": False,\n            \"error\": <Reason>\n        }\n\nConstraints:\n    - seeker_id must be unique.\n    - All fields are required and should not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "seeker_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "profile": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "seeker_id",
+          "name",
+          "profile",
+          "account_status"
+        ]
+      }
+    },
+    {
+      "name": "update_job_seeker_profile",
+      "description": "Update information and profile details for a job seeker.\n\nArgs:\n    seeker_id (str): The ID of the job seeker to update.\n    updates (dict): Dictionary of profile fields to update (e.g., {\"name\": ..., \"profile\": ...}).\n\nReturns:\n    dict: \n        - { \"success\": True, \"message\": \"Job seeker profile updated.\" } on success.\n        - { \"success\": False, \"error\": \"Job seeker not found.\" } if seeker_id does not exist.\n        - { \"success\": False, \"error\": \"No valid fields to update.\" } if no updates match.\n\nConstraints:\n    - seeker_id must exist.\n    - Only valid and allowed fields are updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "seeker_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "seeker_id",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "set_job_seeker_account_status",
+      "description": "Change the account status (e.g., active, disabled) of a job seeker.\n\nArgs:\n    seeker_id (str): The unique identifier of the job seeker.\n    new_status (str): The new account status to set (e.g., 'active', 'disabled').\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"message\": \"Job seeker account status updated.\"}\n        On failure:\n            {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - seeker_id must exist in the system.\n    - new_status cannot be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "seeker_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "seeker_id",
+          "new_status"
+        ]
+      }
+    }
+  ]
+}

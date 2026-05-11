@@ -1,0 +1,470 @@
+{
+  "env_name": "AviationWeatherInformationSystem",
+  "description": "An aviation weather information system maintains and provides access to structured meteorological reports, including real-time and archival TAFs and METARs, associated with airports worldwide. It supports querying by airport identifier, report type, and time ranges, furnishing flight operations and safety personnel with critical weather insights. The environment’s state includes airport records, weather observations, forecasts, and historical trends, enabling robust support for regulated aviation activities.",
+  "initial_parameter_schema": {
+    "airports": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "airport_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "ICAO_code": {
+            "type": "string"
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "latitude": {
+                "type": "number"
+              },
+              "longitude": {
+                "type": "number"
+              },
+              "elevation": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "latitude",
+              "longitude",
+              "elevation"
+            ]
+          },
+          "timezone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "airport_id",
+          "name",
+          "ICAO_code",
+          "location",
+          "timezone"
+        ]
+      }
+    },
+    "weather_reports": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string"
+          },
+          "airport_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "issue_time": {
+            "type": "string"
+          },
+          "validity_start_time": {
+            "type": "string"
+          },
+          "validity_end_time": {
+            "type": "string"
+          },
+          "raw_text": {
+            "type": "string"
+          },
+          "parsed_data": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "report_id",
+          "airport_id",
+          "type",
+          "issue_time",
+          "validity_start_time",
+          "validity_end_time",
+          "raw_text",
+          "parsed_data"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_airport_by_id": [
+      "airports"
+    ],
+    "list_airports": [
+      "airports"
+    ],
+    "get_weather_reports_by_airport": [
+      "airports",
+      "weather_reports"
+    ],
+    "get_weather_reports_by_airport_and_type": [
+      "airports",
+      "weather_reports"
+    ],
+    "get_most_recent_weather_report_by_type": [
+      "airports",
+      "weather_reports"
+    ],
+    "get_weather_reports_by_airport_type_and_time_range": [
+      "airports",
+      "weather_reports"
+    ],
+    "get_weather_report_by_id": [
+      "weather_reports"
+    ],
+    "get_parsed_data_from_report": [
+      "weather_reports"
+    ],
+    "get_weather_report_trend_for_airport": [
+      "airports",
+      "weather_reports"
+    ],
+    "add_airport": [
+      "airports"
+    ],
+    "add_weather_report": [
+      "airports",
+      "weather_reports"
+    ],
+    "update_weather_report": [
+      "airports",
+      "weather_reports"
+    ],
+    "delete_weather_report": [
+      "weather_reports"
+    ],
+    "delete_airport": [
+      "airports",
+      "weather_reports"
+    ],
+    "archive_weather_report": [
+      "weather_reports"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_airport_by_id",
+      "description": "Retrieve details of an airport using its airport_id.\n\nArgs:\n    airport_id (str): The unique identifier of the airport.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"data\": AirportInfo }\n        On failure: { \"success\": False, \"error\": \"Airport not found\" }\n\nConstraints:\n    - The airport_id must exist in the airport registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "airport_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "airport_id"
+        ]
+      }
+    },
+    {
+      "name": "list_airports",
+      "description": "List all registered airports in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AirportInfo],  # List of all airport records (may be empty)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_weather_reports_by_airport",
+      "description": "Retrieve all weather reports associated with the given airport.\n\nArgs:\n    airport_id (str): The ID of the airport to query.\n\nReturns:\n    dict: \n        - On success: \n            {\n                \"success\": True,\n                \"data\": [WeatherReportInfo, ...]  # List of all weather reports for the airport (may be empty)\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Error reason\n            }\n\nConstraints:\n    - The provided airport_id must exist in the airports registry.\n    - All matching weather reports (historical and current) are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "airport_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "airport_id"
+        ]
+      }
+    },
+    {
+      "name": "get_weather_reports_by_airport_and_type",
+      "description": "Retrieve all weather reports of a given type (METAR/TAF) for a specific airport.\n\nArgs:\n    airport_id (str): The airport identifier to search for.\n    report_type (str): Must be either \"METAR\" or \"TAF\".\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[WeatherReportInfo],  # May be empty if none exist\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (invalid airport, invalid report_type)\n    }\n\nConstraints:\n    - airport_id must exist in airports.\n    - report_type must be \"METAR\" or \"TAF\" (case-insensitive).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "airport_id": {
+            "type": "string"
+          },
+          "report_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "airport_id",
+          "report_type"
+        ]
+      }
+    },
+    {
+      "name": "get_most_recent_weather_report_by_type",
+      "description": "Retrieve the most recent weather report of a specified type (e.g., 'METAR' or 'TAF') for a particular airport.\n\nArgs:\n    airport_id (str): The target airport's ID.\n    report_type (str): The report type to filter by (\"METAR\" or \"TAF\").\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"data\": WeatherReportInfo}\n        On failure:\n            {\"success\": False, \"error\": <error reason>}\n\nConstraints:\n    - The airport_id must exist in the system.\n    - The report_type should match exactly (\"METAR\" or \"TAF\").\n    - Returns the most recent report by issue_time in UTC ISO 8601 format.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "airport_id": {
+            "type": "string"
+          },
+          "report_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "airport_id",
+          "report_type"
+        ]
+      }
+    },
+    {
+      "name": "get_weather_reports_by_airport_type_and_time_range",
+      "description": "Retrieve all weather reports of a specific type for a given airport within a specified UTC time range.\n\nArgs:\n    airport_id (str): The airport identifier.\n    report_type (str): \"METAR\" or \"TAF\".\n    start_time (str): Start of the UTC time range (inclusive), ISO 8601 string.\n    end_time (str): End of the UTC time range (inclusive), ISO 8601 string.\n\nReturns:\n    dict:\n        - {\"success\": True, \"data\": List[WeatherReportInfo]}\n          If successful (list may be empty if no matching reports)\n        - {\"success\": False, \"error\": str}\n          If the airport_id does not exist, report_type invalid, or time range invalid.\n\nConstraints:\n    - The provided airport_id must exist in the system.\n    - report_type must be \"METAR\" or \"TAF\".\n    - start_time and end_time must be valid ISO 8601 UTC timestamps; start_time <= end_time.\n    - Only WeatherReports with issue_time in [start_time, end_time] (inclusive) are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "airport_id": {
+            "type": "string"
+          },
+          "report_type": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "airport_id",
+          "report_type",
+          "start_time",
+          "end_time"
+        ]
+      }
+    },
+    {
+      "name": "get_weather_report_by_id",
+      "description": "Retrieve detailed information on a weather report using its report_id.\n\nArgs:\n    report_id (str): Unique identifier of the weather report.\n\nReturns:\n    dict:\n        On success: {\n            \"success\": True,\n            \"data\": WeatherReportInfo\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": \"Weather report not found\"\n        }\n\nConstraints:\n    - The report_id must exist in the weather_reports dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id"
+        ]
+      }
+    },
+    {
+      "name": "get_parsed_data_from_report",
+      "description": "Extract and return the structured parsed_data field from a WeatherReport.\n\nArgs:\n    report_id (str): The unique identifier of the weather report.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": dict,  # The parsed_data field of the WeatherReport\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": str,  # \"WeatherReport not found\"\n        }\nConstraints:\n    - The report_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id"
+        ]
+      }
+    },
+    {
+      "name": "get_weather_report_trend_for_airport",
+      "description": "Analyze and return weather trend statistics for an airport based on a series of METAR \nweather reports in a given UTC time range.\n\nArgs:\n    airport_id (str): The ID of the airport to analyze.\n    start_time (str): Lower bound of UTC time range (inclusive), ISO 8601 string. Trailing 'Z' is accepted.\n    end_time (str): Upper bound of UTC time range (inclusive), ISO 8601 string. Trailing 'Z' is accepted.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": trend_summaries   # dict[str,Any]: computed statistics (may be None/empty if no reports)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Airport must exist.\n    - start_time <= end_time (ISO 8601 UTC).\n    - Only METAR reports from airport and within range are used.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "airport_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "airport_id",
+          "start_time",
+          "end_time"
+        ]
+      }
+    },
+    {
+      "name": "add_airport",
+      "description": "Register a new airport in the system.\n\nArgs:\n    airport_id (str): Unique identifier for the airport.\n    name (str): Airport name.\n    ICAO_code (str): ICAO code.\n    location (dict): Dict with latitude (float), longitude (float), elevation (float).\n    timezone (str): Timezone string.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Airport added successfully\" }\n        - On error (duplicate): { \"success\": False, \"error\": \"Airport with this airport_id already exists\" }\n        - On malformed location: { \"success\": False, \"error\": \"Invalid location data\" }\n\nConstraints:\n    - airport_id must be unique in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "airport_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "ICAO_code": {
+            "type": "string"
+          },
+          "location": {
+            "type": "object"
+          },
+          "timezone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "airport_id",
+          "name",
+          "ICAO_code",
+          "location",
+          "timezone"
+        ]
+      }
+    },
+    {
+      "name": "add_weather_report",
+      "description": "Add a new WeatherReport to the system.\n\nArgs:\n    report_id (str): Unique report identifier (must not already exist).\n    airport_id (str): Associated airport (must exist).\n    type (str): \"METAR\" or \"TAF\".\n    issue_time (str): UTC ISO 8601 timestamp, e.g. \"2024-05-29T14:00:00Z\".\n    validity_start_time (str): UTC ISO 8601 timestamp.\n    validity_end_time (str): UTC ISO 8601 timestamp.\n    raw_text (str): The raw weather message.\n    parsed_data (dict): Dictionary with parsed weather fields.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"WeatherReport added successfully\"\n    }\n    or {\n        \"success\": False,\n        \"error\": str  # description of error\n    }\n\nConstraints:\n    - airport_id must exist in self.airports.\n    - All timestamps must be UTC format.\n    - report_id must be unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string"
+          },
+          "airport_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "issue_time": {
+            "type": "string"
+          },
+          "validity_start_time": {
+            "type": "string"
+          },
+          "validity_end_time": {
+            "type": "string"
+          },
+          "raw_text": {
+            "type": "string"
+          },
+          "parsed_data": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "report_id",
+          "airport_id",
+          "type",
+          "issue_time",
+          "validity_start_time",
+          "validity_end_time",
+          "raw_text",
+          "parsed_data"
+        ]
+      }
+    },
+    {
+      "name": "update_weather_report",
+      "description": "Modify the contents of an existing weather report.\n\nArgs:\n    report_id (str): The unique identifier of the weather report to update.\n    airport_id (str, optional): New airport ID (must exist in system).\n    type (str, optional): \"METAR\" or \"TAF\".\n    issue_time (str, optional): New UTC issue timestamp (ISO8601).\n    validity_start_time (str, optional): New UTC start timestamp.\n    validity_end_time (str, optional): New UTC end timestamp.\n    raw_text (str, optional): New raw weather data string.\n    parsed_data (dict, optional): New parsed weather data.\n\nReturns:\n    dict: \n        { \"success\": True, \"message\": \"Weather report updated successfully.\" }\n        Or\n        { \"success\": False, \"error\": str }\n\nConstraints:\n    - report_id must exist in the system.\n    - If airport_id is updated, it must refer to a valid airport.\n    - Only updates provided fields; unknown fields are ignored.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string"
+          },
+          "airport_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "issue_time": {
+            "type": "string"
+          },
+          "validity_start_time": {
+            "type": "string"
+          },
+          "validity_end_time": {
+            "type": "string"
+          },
+          "raw_text": {
+            "type": "string"
+          },
+          "parsed_data": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "report_id",
+          "airport_id",
+          "type",
+          "issue_time",
+          "validity_start_time",
+          "validity_end_time",
+          "raw_text",
+          "parsed_data"
+        ]
+      }
+    },
+    {
+      "name": "delete_weather_report",
+      "description": "Remove a weather report from the system, provided that deletion does not violate\narchival and regulatory compliance. Reports that are already archived, or if\ncompliance requires archiving instead, cannot be deleted.\n\nArgs:\n    report_id (str): The identifier for the weather report to remove.\n\nReturns:\n    dict: Success or error message.\n        - On success: {\n              \"success\": True,\n              \"message\": \"<report_id> deleted\"\n          }\n        - On failure: {\n              \"success\": False,\n              \"error\": <reason>\n          }\nConstraints:\n    - If historical compliance requires preservation, refuse deletion and recommend archiving instead.\n    - If the report does not exist, fail.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_airport",
+      "description": "Remove an airport from the system by its airport_id.\n\nArgs:\n    airport_id (str): The ID of the airport to remove.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"message\": \"Airport <ID> deleted.\"}\n        - On failure: {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - Blocks deletion if any non-archived WeatherReport is still linked to this airport.\n    - Archived reports are treated as compliance-preserved historical records and do not block airport deletion.\n    - Ensures WeatherReport referential integrity and archival value.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "airport_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "airport_id"
+        ]
+      }
+    },
+    {
+      "name": "archive_weather_report",
+      "description": "Mark a weather report as archived (logical deletion for audit compliance).\n\nArgs:\n    report_id (str): Identifier of the weather report to archive.\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"message\": \"Weather report archived\"}\n        - If already archived: {\"success\": True, \"message\": \"Weather report was already archived\"}\n        - On error (not found): {\"success\": False, \"error\": \"Weather report does not exist\"}\n\nConstraints:\n    - Physical deletion does not occur; only an 'archived' flag is set to True on the report.\n    - Rest of report data remains unchanged.\n    - Operation is idempotent.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id"
+        ]
+      }
+    }
+  ]
+}

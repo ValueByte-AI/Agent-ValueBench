@@ -1,0 +1,546 @@
+{
+  "env_name": "PackageTrackingManagementSystem",
+  "description": "A package tracking management system enables users to centrally monitor, update, and manage shipment statuses across multiple carriers. It maintains structured records associating tracking numbers, carrier names, locations, and delivery progress for each parcel. Typical operations include status querying, alert generation, and multilingual updates, supporting both individual and bulk shipment management within logistics workflows.",
+  "initial_parameter_schema": {
+    "shipments": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "shipment_id": {
+            "type": "string"
+          },
+          "carrier_name": {
+            "type": "string"
+          },
+          "tracking_number": {
+            "type": "string"
+          },
+          "current_status": {
+            "type": "string"
+          },
+          "current_location": {
+            "type": "string"
+          },
+          "destination_address": {
+            "type": "string"
+          },
+          "sender_info": {
+            "type": "string"
+          },
+          "recipient_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "shipment_id",
+          "carrier_name",
+          "tracking_number",
+          "current_status",
+          "current_location",
+          "destination_address",
+          "sender_info",
+          "recipient_info"
+        ]
+      }
+    },
+    "status_histories": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "shipment_id": {
+              "type": "string"
+            },
+            "status_timestamp": {
+              "type": "string"
+            },
+            "status_detail": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string"
+            },
+            "language": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "shipment_id",
+            "status_timestamp",
+            "status_detail",
+            "location",
+            "language"
+          ]
+        }
+      }
+    },
+    "carriers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "carrier_name": {
+            "type": "string"
+          },
+          "contact_details": {
+            "type": "string"
+          },
+          "tracking_endpoint": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "carrier_name",
+          "contact_details",
+          "tracking_endpoint"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "language_preference": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "managed_shipments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "_id",
+          "language_preference",
+          "contact_info",
+          "managed_shipments"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_user_language_preference": [
+      "users"
+    ],
+    "get_user_managed_shipments": [
+      "users"
+    ],
+    "is_user_authorized_for_shipment": [
+      "shipments",
+      "users"
+    ],
+    "get_shipment_by_id": [
+      "shipments"
+    ],
+    "get_shipment_by_tracking_number_and_carrier": [
+      "shipments"
+    ],
+    "get_shipments_by_ids": [
+      "shipments"
+    ],
+    "get_current_shipment_status": [
+      "shipments"
+    ],
+    "get_status_history_for_shipment": [
+      "shipments",
+      "status_histories"
+    ],
+    "get_latest_status_update_in_language": [
+      "shipments",
+      "status_histories"
+    ],
+    "get_carrier_info": [
+      "carriers"
+    ],
+    "add_status_update": [
+      "shipments",
+      "status_histories"
+    ],
+    "update_shipment_current_status": [
+      "shipments",
+      "status_histories"
+    ],
+    "associate_shipment_with_user": [
+      "shipments",
+      "users"
+    ],
+    "create_new_shipment": [
+      "carriers",
+      "shipments",
+      "status_histories"
+    ],
+    "bulk_add_status_updates": [
+      "shipments",
+      "status_histories"
+    ],
+    "import_shipments_for_user": [
+      "shipments",
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user profile and preferences by user ID.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The user_id must exist in the users dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_language_preference",
+      "description": "Get the preferred language of the user for formatting multilingual updates.\n\nArgs:\n    user_id (str): Unique identifier for the user.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": <language_preference:str> }\n        - On failure: { \"success\": False, \"error\": \"<reason>\" }\nConstraints:\n    - The user with the given ID must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_managed_shipments",
+      "description": "List all shipment IDs managed/monitored by a specific user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True,\n            \"data\": List[str]  # shipment IDs managed by the user (can be empty)\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": str  # description of the error (e.g., user not found)\n        }\n\nConstraints:\n    - Only existing users are supported; if the user does not exist, return an error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "is_user_authorized_for_shipment",
+      "description": "Check whether a user is authorized to view or update the given shipment.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n    shipment_id (str): The unique shipment ID.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"authorized\": True/False  # Indicates if the user is authorized for this shipment\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (user or shipment not found)\n    }\n\nConstraints:\n    - Only users whose managed_shipments include shipment_id are authorized.\n    - If the user or shipment does not exist, operation fails.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "shipment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "shipment_id"
+        ]
+      }
+    },
+    {
+      "name": "get_shipment_by_id",
+      "description": "Retrieve details of a shipment by its shipment_id.\n\nArgs:\n    shipment_id (str): The unique identifier of the shipment.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ShipmentInfo  # Dictionary with all shipment details\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Shipment not found\"\n    }\n\nConstraints:\n    - The given shipment_id must exist in the system.\n    - No user authorization enforced in this operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "shipment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "shipment_id"
+        ]
+      }
+    },
+    {
+      "name": "get_shipment_by_tracking_number_and_carrier",
+      "description": "Retrieve shipment details by matching both the given carrier_name and tracking_number.\n\nArgs:\n    carrier_name (str): The shipping carrier to query.\n    tracking_number (str): The shipment's tracking number.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"data\": ShipmentInfo }\n        On failure: { \"success\": False, \"error\": str }\n\nConstraints:\n    - Returns the first (and should be only) shipment matching both carrier and tracking number.\n    - Does not perform authorization checks.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "carrier_name": {
+            "type": "string"
+          },
+          "tracking_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "carrier_name",
+          "tracking_number"
+        ]
+      }
+    },
+    {
+      "name": "get_shipments_by_ids",
+      "description": "Retrieve details (ShipmentInfo) for multiple shipment IDs (batch query).\n\nArgs:\n    shipment_ids (list of str): List of shipment_id strings to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ShipmentInfo],  # List of found shipment info entries\n        \"not_found\": List[str],      # List of shipment_ids that do not exist (optional, for transparency)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\nConstraints:\n    - If shipment_ids is not a list or is empty, returns an error.\n    - Shipments not found are reported in 'not_found' key.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "shipment_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "shipment_ids"
+        ]
+      }
+    },
+    {
+      "name": "get_current_shipment_status",
+      "description": "Retrieve the current status, location, destination, and other relevant details for a shipment.\n\nArgs:\n    shipment_id (str): The unique identifier for the shipment.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": ShipmentInfo\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Shipment not found\"\n            }\n\nConstraints:\n    - The shipment with the given ID must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "shipment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "shipment_id"
+        ]
+      }
+    },
+    {
+      "name": "get_status_history_for_shipment",
+      "description": "Retrieve status updates for a shipment, optionally filtered by language and limited to the most recent entries.\n\nArgs:\n    shipment_id (str): The ID of the shipment whose status history to retrieve.\n    language (str, optional): If specified, only status updates in this language are returned.\n    limit (int, optional): If specified, return only up to 'limit' most recent status updates.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[StatusHistoryInfo]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Shipment must exist in the system.\n    - If 'language' is specified, only include updates matching that language.\n    - If 'limit' is specified, return at most the N most recent updates (by status_timestamp).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "shipment_id": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "shipment_id"
+        ]
+      }
+    },
+    {
+      "name": "get_latest_status_update_in_language",
+      "description": "Retrieve the most recent status entry (StatusHistoryInfo) for a shipment in the specified language.\n\nArgs:\n    shipment_id (str): Unique identifier for the shipment.\n    language (str): Language code (e.g., 'en', 'fr') in which to retrieve the status detail.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": StatusHistoryInfo  # The latest status entry in the given language.\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": str  # Error description.\n        }\n\nConstraints:\n    - shipment_id must exist.\n    - There must be at least one status entry in the specified language.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "shipment_id": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "shipment_id",
+          "language"
+        ]
+      }
+    },
+    {
+      "name": "get_carrier_info",
+      "description": "Retrieve contact details and tracking endpoint information for the specified carrier.\n\nArgs:\n    carrier_name (str): The name of the carrier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": CarrierInfo  # CarrierInfo dictionary if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., \"Carrier not found\"\n    }\n\nConstraints:\n    - The carrier must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "carrier_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "carrier_name"
+        ]
+      }
+    },
+    {
+      "name": "add_status_update",
+      "description": "Append a new status update to a shipment's history.\n\nArgs:\n    shipment_id (str): ID of the shipment to update.\n    status_detail (str): Status description.\n    status_timestamp (str): Timestamp of the update (ISO8601 or similar).\n    location (str): Where the status update occurred.\n    language (str, optional): Language code for the status text (default \"en\").\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True,\n            \"message\": \"Status update added to shipment <shipment_id>\"\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": \"<reason>\"\n        }\n\nConstraints:\n    - Shipment must exist.\n    - Status update must include timestamp and location.\n    - System must keep status_histories[shipment_id] updated.\n    - Shipment's current_status and current_location must reflect the most recent status update for the shipment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "shipment_id": {
+            "type": "string"
+          },
+          "status_detail": {
+            "type": "string"
+          },
+          "status_timestamp": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "shipment_id",
+          "status_detail",
+          "status_timestamp",
+          "location"
+        ]
+      }
+    },
+    {
+      "name": "update_shipment_current_status",
+      "description": "Update a shipment's current_status and current_location according to the latest status history entry.\n\nArgs:\n    shipment_id (str): The ID of the shipment to update.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Shipment status updated to the latest status history.\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Shipment must exist.\n    - Shipment must have at least one status history entry.\n    - The latest status history is determined by the highest status_timestamp (lexicographical comparison if ISO8601).\n    - Updates the current_status and current_location to match the latest status history entry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "shipment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "shipment_id"
+        ]
+      }
+    },
+    {
+      "name": "associate_shipment_with_user",
+      "description": "Add an existing shipment to a user's managed shipments list.\n\nArgs:\n    user_id (str): The ID of the user.\n    shipment_id (str): The ID of the shipment to associate.\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"message\": \"Shipment <shipment_id> associated with user <user_id>.\"\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": <reason>\n        }\n\nConstraints:\n    - Both user and shipment must exist.\n    - If shipment already present in user's managed shipments, operation is idempotent and returns success.\n    - Only modifies user's managed_shipments, not shipment data itself.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "shipment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "shipment_id"
+        ]
+      }
+    },
+    {
+      "name": "create_new_shipment",
+      "description": "Register a new shipment with valid tracking number, carrier, and initial status.\n\nArgs:\n    shipment_id (str): Unique identifier for the shipment.\n    carrier_name (str): Name of the shipping carrier.\n    tracking_number (str): Tracking number for the shipment.\n    current_status (str): The current status for the shipment (initial status).\n    current_location (str): Current location of the shipment.\n    destination_address (str): Final destination address.\n    sender_info (str): Information about the sender.\n    recipient_info (str): Information about the recipient.\n    status_detail (str): Status description for the status history.\n    status_timestamp (str): Timestamp of the initial status update.\n    status_location (str): Location for the initial status update.\n    language (str): Language code for the status update.\n\nReturns:\n    dict: Success or failure result with appropriate message.\n\nConstraints:\n    - Shipment ID must be unique.\n    - Carrier must exist.\n    - Tracking number must be provided.\n    - Status history requires timestamp and location (non-empty).\n    - All fields must be provided (non-empty).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "shipment_id": {
+            "type": "string"
+          },
+          "carrier_name": {
+            "type": "string"
+          },
+          "tracking_number": {
+            "type": "string"
+          },
+          "current_status": {
+            "type": "string"
+          },
+          "current_location": {
+            "type": "string"
+          },
+          "destination_address": {
+            "type": "string"
+          },
+          "sender_info": {
+            "type": "string"
+          },
+          "recipient_info": {
+            "type": "string"
+          },
+          "status_detail": {
+            "type": "string"
+          },
+          "status_timestamp": {
+            "type": "string"
+          },
+          "status_location": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "shipment_id",
+          "carrier_name",
+          "tracking_number",
+          "current_status",
+          "current_location",
+          "destination_address",
+          "sender_info",
+          "recipient_info",
+          "status_detail",
+          "status_timestamp",
+          "status_location",
+          "language"
+        ]
+      }
+    },
+    {
+      "name": "bulk_add_status_updates",
+      "description": "Insert status updates for multiple shipments at once.\n\nArgs:\n    status_updates (List[dict]): Each dict must include:\n        - shipment_id (str)\n        - status_timestamp (str)\n        - status_detail (str)\n        - location (str)\n        - language (str)\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"<count> status updates added. <count> failed.\",\n        \"errors\": List[str]  # optional, if any failed\n    }\n\nConstraints:\n    - Each status update must include all required fields.\n    - shipment_id must exist in the system.\n    - Skips invalid updates, returns per-update error messages.\n    - Does not abort the entire batch due to partial errors.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status_updates": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "required": [
+          "status_updates"
+        ]
+      }
+    },
+    {
+      "name": "import_shipments_for_user",
+      "description": "Bulk-associate a set of existing shipments with a user's managed shipments list.\n\nArgs:\n    user_id (str): The ID of the user who will manage/monitor the shipments.\n    shipment_ids (List[str]): List of shipment IDs to be associated.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Shipments successfully associated with user\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <error string>\n    }\n\nConstraints:\n    - The user must exist.\n    - All provided shipment_ids must correspond to existing shipments.\n    - No duplicate associations should occur—association is idempotent.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "shipment_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "user_id",
+          "shipment_ids"
+        ]
+      }
+    }
+  ]
+}

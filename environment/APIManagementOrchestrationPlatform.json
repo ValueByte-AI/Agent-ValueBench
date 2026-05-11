@@ -1,0 +1,721 @@
+{
+  "env_name": "APIManagementOrchestrationPlatform",
+  "description": "An API management and orchestration platform centrally governs the lifecycle, state, and access of multiple APIs and connected services. It maintains metadata, status, and endpoint definitions for each registered API, providing tools to perform queries, monitor health, check versions, and interact with domain-specific resources. This environment streamlines the integration, monitoring, and access control of diverse application programming interfaces within an organization.",
+  "initial_parameter_schema": {
+    "apis": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "api_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "endpoint": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "health_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_id",
+          "name",
+          "endpoint",
+          "status",
+          "version",
+          "metadata",
+          "health_status"
+        ]
+      }
+    },
+    "api_resources": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "api_id": {
+              "type": "string"
+            },
+            "resource_type": {
+              "type": "string"
+            },
+            "resource_id": {
+              "type": "string"
+            },
+            "resource_a": {}
+          },
+          "required": [
+            "api_id",
+            "resource_type",
+            "resource_id",
+            "resource_a"
+          ]
+        }
+      }
+    },
+    "access_policies": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "policy_id": {
+            "type": "string"
+          },
+          "api_id": {
+            "type": "string"
+          },
+          "allowed_users": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rate_lim": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "policy_id",
+          "api_id",
+          "allowed_users",
+          "roles",
+          "rate_lim"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_api_by_name": [
+      "apis"
+    ],
+    "get_api_by_id": [
+      "apis"
+    ],
+    "get_api_status": [
+      "apis"
+    ],
+    "get_api_version": [
+      "apis"
+    ],
+    "get_api_health_status": [
+      "apis"
+    ],
+    "list_apis": [
+      "apis"
+    ],
+    "list_api_versions": [
+      "apis"
+    ],
+    "get_api_metadata": [
+      "apis"
+    ],
+    "list_api_resources": [
+      "api_resources",
+      "apis"
+    ],
+    "get_api_resource_by_id": [
+      "api_resources",
+      "apis"
+    ],
+    "api_resource_exists": [
+      "api_resources",
+      "apis"
+    ],
+    "get_access_policy_by_api": [
+      "access_policies"
+    ],
+    "get_access_policy_by_user": [
+      "access_policies"
+    ],
+    "get_access_policy_by_role": [
+      "access_policies"
+    ],
+    "check_user_access_to_api": [
+      "access_policies",
+      "apis"
+    ],
+    "check_user_access_to_resource": [
+      "access_policies",
+      "api_resources",
+      "apis"
+    ],
+    "update_api_status": [
+      "apis"
+    ],
+    "update_api_version": [
+      "apis"
+    ],
+    "update_api_health_status": [
+      "apis"
+    ],
+    "update_api_metadata": [
+      "apis"
+    ],
+    "add_new_api": [
+      "api_resources",
+      "apis"
+    ],
+    "remove_api": [
+      "access_policies",
+      "api_resources",
+      "apis"
+    ],
+    "add_api_resource": [
+      "api_resources",
+      "apis"
+    ],
+    "remove_api_resource": [
+      "api_resources",
+      "apis"
+    ],
+    "update_access_policy": [
+      "access_policies"
+    ],
+    "add_access_policy": [
+      "access_policies",
+      "apis"
+    ],
+    "remove_access_policy": [
+      "access_policies"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_api_by_name",
+      "description": "Retrieve information about an API given its human-readable name.\n\nArgs:\n    name (str): The name of the API to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": APIInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"API not found\"\n    }\nConstraints:\n    - API version and status must be up to date and queryable at all times.\n    - If no API with the given name exists, operation fails.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_api_by_id",
+      "description": "Retrieve information about an API given its api_id.\n\nArgs:\n    api_id (str): The unique identifier of the API.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": APIInfo,  # full API metadata\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,  # e.g., \"API not found\"\n    }\n\nConstraints:\n    - The API info must always be queryable if api_id exists.\n    - No access policy or health requirements for this query.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_id"
+        ]
+      }
+    },
+    {
+      "name": "get_api_status",
+      "description": "Retrieve the current operational status of an API.\n\nArgs:\n    api_id (str): The unique identifier of the API.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": <status_str> }\n        - On failure: { \"success\": False, \"error\": \"API not found\" }\n\nConstraints:\n    - The API must exist in the platform.\n    - API status is always up-to-date and queryable.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_id"
+        ]
+      }
+    },
+    {
+      "name": "get_api_version",
+      "description": "Retrieve the current version string for an API.\n\nArgs:\n    api_id (str): The unique identifier of the API.\n\nReturns:\n    dict: \n      On success: { \"success\": True, \"data\": <API version string> }\n      On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The API identified by api_id must exist.\n    - API version must always be up to date and queryable.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_id"
+        ]
+      }
+    },
+    {
+      "name": "get_api_health_status",
+      "description": "Retrieve the health status (e.g., 'healthy', 'unhealthy') of the API with the specified api_id.\n\nArgs:\n    api_id (str): Unique identifier of the API.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": { \"api_id\": str, \"health_status\": str }\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g., API not found).\n    }\n\nConstraints:\n    - The API must exist in the platform.\n    - No permission check is enforced for this operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_id"
+        ]
+      }
+    },
+    {
+      "name": "list_apis",
+      "description": "List all APIs currently registered in the platform.\n\nArgs:\n    None.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[APIInfo],  # List of all APIs' info (may be empty if none)\n    }\n\nConstraints:\n    - API version and status must be up to date and queryable at all times.\n    - No access check required for this operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_api_versions",
+      "description": "List all available versions for a given API, if version history is supported.\n\nArgs:\n    api_name (str): The name of the API for which to list all versions.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str]  # Sorted list of unique version strings\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g. API name not found\n    }\n\nConstraints:\n    - If no API with the given name exists, return failure.\n    - Version history is inferred by multiple APIs with the same name but different version fields.\n    - Output is deduplicated and sorted (lexicographically).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_name"
+        ]
+      }
+    },
+    {
+      "name": "get_api_metadata",
+      "description": "Retrieve metadata associated with a specific API.\n\nArgs:\n    api_id (str): The ID of the API to query.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": <metadata_dict>\n            }\n        On failure (API not found):\n            {\n                \"success\": False,\n                \"error\": \"API not found\"\n            }\n\nConstraints:\n    - API must exist by api_id in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_id"
+        ]
+      }
+    },
+    {
+      "name": "list_api_resources",
+      "description": "List all resources associated with a specific API.\n\nArgs:\n    api_id (str): The ID of the API whose resources should be listed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[APIResourceInfo] # may be empty if API has no resources\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g., API does not exist\n    }\n\nConstraints:\n    - The API must exist in the platform.\n    - Returns empty list if API exists but has no resources.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_id"
+        ]
+      }
+    },
+    {
+      "name": "get_api_resource_by_id",
+      "description": "Retrieve a specific APIResource by API ID and resource_id.\n\nArgs:\n    api_id (str): The ID of the API to search under.\n    resource_id (str): The resource ID within the specified API.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": APIResourceInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (API not found, resource not found, etc.)\n    }\n\nConstraints:\n    - The API must exist in the registry.\n    - The resource must exist within the API's resource catalog.\n    - APIResource existence depends on the API's state and resource catalog.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_id": {
+            "type": "string"
+          },
+          "resource_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_id",
+          "resource_id"
+        ]
+      }
+    },
+    {
+      "name": "api_resource_exists",
+      "description": "Check for the existence of a specific APIResource by API (`api_id`), optionally filtered\nby resource_type and/or resource_id.\n\nArgs:\n    api_id (str): The API's unique identifier.\n    resource_type (str, optional): The type of the resource to check for.\n    resource_id (str, optional): The resource's unique identifier to look for.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"exists\": <bool> }\n        - On error (e.g., API does not exist): { \"success\": False, \"error\": <str> }\n\nConstraints:\n    - api_id must exist in the APIs registry.\n    - If resource_type/resource_id are provided, apply as filters.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_id": {
+            "type": "string"
+          },
+          "resource_type": {
+            "type": "string"
+          },
+          "resource_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_id",
+          "resource_type",
+          "resource_id"
+        ]
+      }
+    },
+    {
+      "name": "get_access_policy_by_api",
+      "description": "Retrieve all access policies governing the specified API.\n\nArgs:\n    api_id (str): Identifier of the API whose access policies are to be retrieved.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AccessPolicyInfo],  # List of policies for the api_id (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., \"API not found\"\n    }\n\nConstraints:\n    - If the API exists but has no matching policies, returns an empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_id"
+        ]
+      }
+    },
+    {
+      "name": "get_access_policy_by_user",
+      "description": "Retrieve all access policies associated with the given user.\n\nArgs:\n    user_id (str): The user identifier to match in the allowed_users field of access policies.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AccessPolicyInfo],  # All policies where user_id is in allowed_users\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - user_id must be non-empty string.\n    - Operation always succeeds with an empty list if no policies match.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_access_policy_by_role",
+      "description": "Retrieve all access policies associated with a given role.\n\nArgs:\n    role (str): The role to search for among all access policies.\n\nReturns:\n    dict:\n        - success (bool): Always True if input is valid.\n        - data (List[AccessPolicyInfo]): A list of policies where 'role' is present in the policy's 'roles'.\n\nConstraints:\n    - If no policies are found for the provided role, an empty list is returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "role"
+        ]
+      }
+    },
+    {
+      "name": "check_user_access_to_api",
+      "description": "Determines if a specified user has access to a given API.\n\nArgs:\n    api_id (str): The identifier of the API to query.\n    user_id (str): The user whose access is being checked.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": bool  # True if user has access, False if not\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g., API does not exist)\n    }\n\nConstraints:\n    - If API does not exist, return error.\n    - Only direct user access (allowed_users) is checked.\n    - If no policy gives access, data=False.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "check_user_access_to_resource",
+      "description": "Determines if a specified user can access a given APIResource.\n\nArgs:\n    user_id (str): The user identifier to check access for.\n    api_id (str): The API ID to which the resource belongs.\n    resource_id (str): The resource ID of the APIResource.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"access_granted\": bool,\n                    \"reason\": str\n                }\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str\n            }\nConstraints:\n    - The API and the resource must both exist.\n    - There must be an access policy for the API.\n    - API must be healthy (health_status == \"healthy\") for access.\n    - User must be in allowed_users (role checks not implemented unless role-user association present).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "api_id": {
+            "type": "string"
+          },
+          "resource_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "api_id",
+          "resource_id"
+        ]
+      }
+    },
+    {
+      "name": "update_api_status",
+      "description": "Change the status of a specified API (e.g., enable/disable/maintenance).\n\nArgs:\n    api_id (str): The unique identifier for the API to update.\n    new_status (str): The new status to set ('enabled', 'disabled', 'maintenance', etc.).\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"API status updated to '<new_status>' for API <api_id>\" }\n        On failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - The API must exist.\n    - Status is updated immediately to ensure queryability.\n    - (Optional) Only certain status values allowed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "update_api_version",
+      "description": "Update the version field of a specified API.\n\nArgs:\n    api_id (str): The identifier for the API whose version should be updated.\n    new_version (str): The new version string to assign.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"API version updated successfully.\" }\n        On error:   { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - API with the given api_id must exist.\n    - API version becomes immediately queryable after update.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_id": {
+            "type": "string"
+          },
+          "new_version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_id",
+          "new_version"
+        ]
+      }
+    },
+    {
+      "name": "update_api_health_status",
+      "description": "Set or update the `health_status` of a specified API.\n\nArgs:\n    api_id (str): The API identifier to update.\n    health_status (str): The new health status value (\"healthy\", \"unhealthy\", etc.).\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"API health_status updated\" }\n        On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - `api_id` must exist in the platform.\n    - Health status should be updated to reflect the immediate new state.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_id": {
+            "type": "string"
+          },
+          "health_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_id",
+          "health_status"
+        ]
+      }
+    },
+    {
+      "name": "update_api_metadata",
+      "description": "Modify (merge) the metadata dictionary associated with a specific API.\n\nArgs:\n    api_id (str): The unique identifier of the API to update.\n    metadata_update (dict): New/updated metadata fields to merge into the API's existing metadata.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"API metadata updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g., API not found, bad metadata_update type)\n    }\n\nConstraints:\n    - API must exist.\n    - Only modifies/merges specified metadata fields; does not replace the whole metadata dict.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_id": {
+            "type": "string"
+          },
+          "metadata_update": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "api_id",
+          "metadata_update"
+        ]
+      }
+    },
+    {
+      "name": "add_new_api",
+      "description": "Registers a new API in the platform.\n\nArgs:\n    api_id (str): Unique identifier for the API to register.\n    name (str): Name of the API.\n    endpoint (str): Endpoint URL or path for the API.\n    status (str): Initial status of the API.\n    version (str): API version string.\n    metadata (dict): Arbitrary metadata to associate with the API.\n    health_status (str): Initial health status of the API.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"API registered successfully\" }\n        On error:   { \"success\": False, \"error\": \"API with this ID already exists\" }\n\nConstraints:\n    - The api_id must not already exist.\n    - All supplied fields are required.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "endpoint": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "health_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_id",
+          "name",
+          "endpoint",
+          "status",
+          "version",
+          "metadata",
+          "health_status"
+        ]
+      }
+    },
+    {
+      "name": "remove_api",
+      "description": "Deregister an API from the platform. This operation will:\n- Remove the API entry from self.apis\n- Remove all APIResources associated with the api_id\n- Remove all AccessPolicy entries referencing this api_id\n\nArgs:\n    api_id (str): The unique identifier of the API to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"API <api_id> deregistered successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - API must exist to be removed.\n    - All associated APIResources and AccessPolicies must be cleaned up.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_id"
+        ]
+      }
+    },
+    {
+      "name": "add_api_resource",
+      "description": "Add/register a new resource under a specified API.\n\nArgs:\n    api_id (str): The API under which the resource should be registered.\n    resource_type (str): The type/kind of the resource (e.g., \"person\").\n    resource_id (str): The unique identifier of this resource under the API.\n    resource_a (Any): Resource-specific content/data.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Resource <resource_id> registered under API <api_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Corresponding API must exist and be healthy (health_status == \"healthy\").\n    - resource_id must be unique under the given API.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_id": {
+            "type": "string"
+          },
+          "resource_type": {
+            "type": "string"
+          },
+          "resource_id": {
+            "type": "string"
+          },
+          "resource_a": {}
+        },
+        "required": [
+          "api_id",
+          "resource_type",
+          "resource_id",
+          "resource_a"
+        ]
+      }
+    },
+    {
+      "name": "remove_api_resource",
+      "description": "Remove or deregister an existing APIResource.\n\nArgs:\n    api_id (str): The ID of the API to which the resource belongs.\n    resource_id (str): The ID of the resource to remove.\n\nReturns:\n    dict:\n        - On success: {\n            \"success\": True,\n            \"message\": \"APIResource <resource_id> removed from API <api_id>.\"\n        }\n        - On failure: {\n            \"success\": False,\n            \"error\": \"reason\"\n        }\n\nConstraints:\n    - The provided API must exist.\n    - The specified resource must exist for the API.\n    - APIResource existence depends on corresponding API's current state and catalog.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_id": {
+            "type": "string"
+          },
+          "resource_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_id",
+          "resource_id"
+        ]
+      }
+    },
+    {
+      "name": "update_access_policy",
+      "description": "Modify the access policy of a specific API by policy_id.\nAny of the allowed_users, roles, or rate_lim fields can be updated, if provided (others are left unchanged).\n\nArgs:\n    policy_id (str): The unique policy identifier to update.\n    allowed_users (List[str], optional): New list of allowed users. If None, leave unchanged.\n    roles (List[str], optional): New list of allowed roles. If None, leave unchanged.\n    rate_lim (int, optional): New rate limit integer. If None, leave unchanged.\n\nReturns:\n    dict\n        On success: { \"success\": True, \"message\": \"Access policy updated.\" }\n        On failure: { \"success\": False, \"error\": \"reason\" }\nConstraints:\n    - policy_id must exist in self.access_policies.\n    - Only updates provided fields.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "policy_id": {
+            "type": "string"
+          },
+          "allowed_users": {
+            "type": "array",
+            "items":{
+              "type": "string"
+            }
+          },
+          "roles": {
+            "type": "array",
+            "items":{
+              "type": "string"
+            }
+          },
+          "rate_lim": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "policy_id",
+          "allowed_users",
+          "roles",
+          "rate_lim"
+        ]
+      }
+    },
+    {
+      "name": "add_access_policy",
+      "description": "Create a new access policy for an API.\n\nArgs:\n    policy_id (str): Unique identifier for the access policy.\n    api_id (str): The API to which this policy applies (must exist).\n    allowed_users (list[str]): List of user identifiers allowed by this policy.\n    roles (list[str]): Roles granted by this policy.\n    rate_lim (int): Rate limit for API access (must be positive int).\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Access policy <policy_id> added for API <api_id>\" }\n        On failure: { \"success\": False, \"error\": <reason_string> }\n\nConstraints:\n    - policy_id must be unique (not already present).\n    - api_id must refer to an existing API.\n    - allowed_users and roles must be lists.\n    - rate_lim must be a positive integer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "policy_id": {
+            "type": "string"
+          },
+          "api_id": {
+            "type": "string"
+          },
+          "allowed_users": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rate_lim": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "policy_id",
+          "api_id",
+          "allowed_users",
+          "roles",
+          "rate_lim"
+        ]
+      }
+    },
+    {
+      "name": "remove_access_policy",
+      "description": "Delete an access policy from the system.\n\nArgs:\n    policy_id (str): The unique identifier of the access policy to be removed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Access policy <policy_id> removed successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Access policy <policy_id> does not exist.\"\n    }\n\nConstraints:\n    - The specified access policy must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "policy_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "policy_id"
+        ]
+      }
+    }
+  ]
+}

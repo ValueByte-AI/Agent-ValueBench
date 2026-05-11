@@ -1,0 +1,448 @@
+{
+  "env_name": "WebAppUserSessionManagementSystem",
+  "description": "A Web Application User Session Management System is responsible for managing user logins, tracking active sessions, and recording activity logs for audit and troubleshooting purposes. It maintains metadata on session lifecycles, user identities, timestamps, and actions performed within each session. The system enables administrators to monitor user interactions, enforce security policies, and retrieve historical data related to session activities.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "account_sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "email",
+          "account_sta"
+        ]
+      }
+    },
+    "sessions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "session_status": {
+            "type": "string"
+          },
+          "ip_add": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "user_id",
+          "start_time",
+          "end_time",
+          "session_status",
+          "ip_add"
+        ]
+      }
+    },
+    "activity_logs": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "activity_id": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "action_type": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "activity_id",
+          "session_id",
+          "timestamp",
+          "action_type",
+          "detail"
+        ]
+      }
+    },
+    "single_session_per_user": {
+      "type": [
+        "boolean",
+        "string"
+      ]
+    },
+    "single_session_per_user_enabled": {
+      "type": [
+        "boolean",
+        "string"
+      ]
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_username": [
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "list_all_users": [
+      "users"
+    ],
+    "get_user_sessions": [
+      "sessions",
+      "users"
+    ],
+    "get_session_by_id": [
+      "sessions"
+    ],
+    "list_user_active_sessions": [
+      "sessions",
+      "users"
+    ],
+    "get_session_activity_logs": [
+      "activity_logs",
+      "sessions"
+    ],
+    "list_user_activity_logs": [
+      "activity_logs",
+      "sessions",
+      "users"
+    ],
+    "get_activity_log_by_id": [
+      "activity_logs"
+    ],
+    "get_session_status": [
+      "sessions"
+    ],
+    "check_user_account_status": [
+      "users"
+    ],
+    "session_policy_info": [
+      "single_session_per_user"
+    ],
+    "start_new_session": [
+      "sessions",
+      "users"
+    ],
+    "end_session": [
+      "sessions"
+    ],
+    "append_activity_log": [
+      "activity_logs",
+      "sessions"
+    ],
+    "lock_user_account": [
+      "users"
+    ],
+    "unlock_user_account": [
+      "users"
+    ],
+    "enforce_single_session_policy": [
+      "sessions",
+      "single_session_per_user_enabled"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_username",
+      "description": "Given a username, find and return the corresponding user information.\n\nArgs:\n    username (str): The username to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo  # User info for the given username\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if the username is not found\n    }\n\nConstraints:\n    - Username is assumed to be unique.\n    - Only returns information, no state changes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve a user's information by their unique user id.\n\nArgs:\n    user_id (str): The unique user _id to search for.\n\nReturns:\n    dict: \n        - If found: {'success': True, 'data': UserInfo}\n        - If not found: {'success': False, 'error': 'User not found'}\n\nConstraints:\n    - The user_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_users",
+      "description": "Return details of all users in the system.\n\nArgs:\n    None.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[UserInfo],    # List of all users, possibly empty.\n    }\n\nNotes:\n    - If there are no users, the list will be empty.\n    - No filtering, returns all known UserInfo.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_user_sessions",
+      "description": "Fetch all sessions initiated by a given user.\n\nArgs:\n    user_id (str): The unique user id.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": List[SessionInfo]  # List of SessionInfo dicts for this user (may be empty if none)\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": str  # Reason, e.g. user does not exist\n        }\n\nConstraints:\n    - User must exist in the system.\n    - Sessions are always linked to users by user_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_session_by_id",
+      "description": "Retrieve detailed information of a session with the specified session id.\n\nArgs:\n    session_id (str): Unique identifier of the session.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": SessionInfo,  # Complete session info if found\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": \"Session not found\"\n        }\n\nConstraints:\n    - session_id must refer to an existing session.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "list_user_active_sessions",
+      "description": "List all currently active sessions for a specified user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SessionInfo],  # All active sessions for this user (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g., user does not exist)\n    }\n\nConstraints:\n    - The specified user_id must exist.\n    - Only sessions with session_status == 'active' are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_session_activity_logs",
+      "description": "Retrieve all activity logs (ActivityLogInfo) associated with the specified session.\n\nArgs:\n    session_id (str): Unique session identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ActivityLogInfo],  # list of logs for the session (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error reason (e.g., session does not exist)\n    }\n\nConstraints:\n    - The provided session_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "list_user_activity_logs",
+      "description": "Retrieve all activity logs performed by a user across all their sessions.\n\nArgs:\n    user_id (str): The unique ID of the user whose logs are to be retrieved.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ActivityLogInfo],  # May be empty if no logs\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g. \"User does not exist\"\n    }\n\nConstraints:\n    - The user must exist in the system.\n    - Only logs for sessions linked to this user will be returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_activity_log_by_id",
+      "description": "Retrieve details for a specific activity log item.\n\nArgs:\n    activity_id (str): Unique identifier for the activity log.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ActivityLogInfo  # The activity log details\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., \"Activity log not found\"\n    }\n\nConstraints:\n    - The activity log must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "activity_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "activity_id"
+        ]
+      }
+    },
+    {
+      "name": "get_session_status",
+      "description": "Check the current status (e.g., 'active', 'ended') of a given session.\n\nArgs:\n    session_id (str): The unique identifier for the session.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": str  # The session's current status\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g., session does not exist\n    }\n\nConstraints:\n    - The session_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "check_user_account_status",
+      "description": "Retrieve the account status (e.g., 'active', 'locked', etc.) for a user.\n\nArgs:\n    user_id (str): The unique user ID.\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"data\": str  # The user's account status, e.g. 'active'\n        }\n        On failure (user does not exist):\n        {\n            \"success\": False,\n            \"error\": \"User not found\"\n        }\n\nConstraints:\n    - User must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "session_policy_info",
+      "description": "Retrieve the current session policy information, specifically whether the\n'single session per user' constraint is enforced.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"single_session_per_user_enforced\": bool\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Returns policy in effect. If policy flag is undefined in the system, returns error.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "start_new_session",
+      "description": "Initiate a new session for a specified user.\n\nArgs:\n    user_id (str): The User's unique identifier for which to start the session.\n    ip_add (str): The IP address from which the session is being initiated.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Session started\",\n                \"session_info\": {SessionInfo}\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"<reason>\"\n            }\nConstraints:\n    - User must exist and have 'active' account_sta.\n    - If single session per user is enforced, user must not have any 'active' (unfinished) sessions.\n    - Sessions are associated with exactly one user.\n    - Automatically generates session_id and ISO timestamp.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "ip_add": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "ip_add"
+        ]
+      }
+    },
+    {
+      "name": "end_session",
+      "description": "Mark an existing session as ended by setting its 'end_time' to the current timestamp\nand its 'session_status' to 'ended'.\n\nArgs:\n    session_id (str): The ID of the session to end.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Session <session_id> ended successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Session does not exist.\" or \"Session is already ended.\"\n    }\n\nConstraints:\n    - The session must exist.\n    - If the session is already ended, no changes are made and error message returned.\n    - Sets end_time to current UTC time (ISO string) and session_status to 'ended'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "append_activity_log",
+      "description": "Record a new immutable activity log under a valid session.\n\nArgs:\n    session_id (str): The session to associate with the activity log.\n    action_type (str): The type of action (e.g., 'login', 'file_upload', etc.).\n    detail (str): Additional detail about the action.\n    timestamp (str): ISO timestamp when the action occurred.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Activity log recorded successfully.\",\n        \"activity_id\": <activity_id: str>\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <error message>\n    }\n\nConstraints:\n    - The session_id must refer to an existing session.\n    - Only sessions with 'active' or 'ended' status can have logs recorded.\n    - Activity logs are immutable once created.\n    - Each activity log id is unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "action_type": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "action_type",
+          "detail",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "lock_user_account",
+      "description": "Lock a user's account by changing their 'account_sta' field to 'locked'.\n\nArgs:\n    _id (str): The unique identifier of the user to lock.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User account locked\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"User not found\" | \"Account already locked\"\n    }\n\nConstraints:\n    - User must exist in self.users.\n    - If already locked, no change and return appropriate error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id"
+        ]
+      }
+    },
+    {
+      "name": "unlock_user_account",
+      "description": "Change a user's account status to 'active'.\n\nArgs:\n    user_id (str): The unique user identifier (_id).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User account unlocked and set to active.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - User must exist.\n    - Setting status to 'active' is always permitted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "enforce_single_session_policy",
+      "description": "Toggle or apply the \"single session per user\" constraint policy for security.\n\nArgs:\n    enabled (bool): True to enable the policy (only one active session per user),\n                    False to disable the policy (multiple active sessions allowed).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Policy enabled/disabled. [Optional: users with multiple active sessions: N]\",\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure\",\n    }\n\nNotes/Constraints:\n    - The actual enforcement on session start/end is handled elsewhere.\n    - Report users with >1 active session when enabling (for admin info).\n    - No sessions are forcibly ended or modified here.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ]
+      }
+    }
+  ]
+}

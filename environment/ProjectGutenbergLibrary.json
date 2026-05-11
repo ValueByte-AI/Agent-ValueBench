@@ -1,0 +1,570 @@
+{
+  "env_name": "ProjectGutenbergLibrary",
+  "description": "The Project Gutenberg digital library is a structured repository that provides access to thousands of public domain books in electronic formats. It maintains comprehensive metadata for each book, including unique identifiers, titles, authors, language, download resources, and usage statistics. The environment offers search and retrieval functions, allowing users to locate and download literary works efficiently.",
+  "initial_parameter_schema": {
+    "books": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "subject_tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "publication_date": {
+            "type": "string"
+          },
+          "download_count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "book_id",
+          "title",
+          "language",
+          "description",
+          "subject_tags",
+          "publication_date",
+          "download_count"
+        ]
+      }
+    },
+    "authors": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "author_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "birth_year": {
+            "type": "integer"
+          },
+          "death_year": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "author_id",
+          "name",
+          "birth_year",
+          "death_year"
+        ]
+      }
+    },
+    "book_authors": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "resource_id": {
+              "type": "string"
+            },
+            "book_id": {
+              "type": "string"
+            },
+            "format": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "resource_id",
+            "book_id",
+            "format",
+            "url"
+          ]
+        }
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "search_books_by_metadata": [
+      "books"
+    ],
+    "get_book_info": [
+      "books"
+    ],
+    "get_books_info_batch": [
+      "books"
+    ],
+    "get_book_authors": [
+      "authors",
+      "book_authors",
+      "books"
+    ],
+    "get_author_info": [
+      "authors"
+    ],
+    "get_book_resources": [
+      "books",
+      "resources"
+    ],
+    "get_download_count": [
+      "books"
+    ],
+    "list_books_by_author": [
+      "authors",
+      "book_authors"
+    ],
+    "list_all_books": [
+      "books"
+    ],
+    "list_all_authors": [
+      "authors"
+    ],
+    "increment_download_count": [
+      "books",
+      "resources"
+    ],
+    "add_book": [
+      "books",
+      "resources"
+    ],
+    "update_book_metadata": [
+      "books"
+    ],
+    "delete_book": [
+      "book_authors",
+      "books",
+      "resources"
+    ],
+    "add_author": [
+      "authors"
+    ],
+    "link_author_to_book": [
+      "authors",
+      "book_authors",
+      "books"
+    ],
+    "add_resource_to_book": [
+      "books",
+      "resources"
+    ],
+    "remove_resource_from_book": [
+      "books",
+      "resources"
+    ],
+    "update_resource": [
+      "resources"
+    ]
+  },
+  "tools": [
+    {
+      "name": "search_books_by_metadata",
+      "description": "Search for books where the query term appears in any indexed metadata field\n(title, subject_tags, description), returning a list of matching book IDs.\n\nArgs:\n    query_term (str): The string to search for (case-insensitive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str],  # book_ids of all matching books.\n    }\n    or in case of input error:\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The search is case-insensitive.\n    - The query term is matched as a substring of the field (for lists like subject_tags, match to any tag).\n    - If no matches, return an empty list.\n    - Indexed metadata fields: title, subject_tags, description.\n    - If query_term is empty or whitespace, returns empty list (success).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query_term": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query_term"
+        ]
+      }
+    },
+    {
+      "name": "get_book_info",
+      "description": "Retrieve metadata of a book given its book_id.\n\nArgs:\n    book_id (str): The unique identifier of the book.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": BookInfo  # Book metadata (title, language, description, etc.)\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": \"Book not found\"\n        }\n\nConstraints:\n    - book_id must exist in the library.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id"
+        ]
+      }
+    },
+    {
+      "name": "get_books_info_batch",
+      "description": "Retrieve metadata for multiple books given a list of book_ids.\n\nArgs:\n    book_ids (list[str]): A list of book_id strings.\n\nReturns:\n    dict:\n        success: True and data as list of BookInfo for found book_ids, preserving input order and skips missing.\n            { \"success\": True, \"data\": [BookInfo, ...] }\n        OR\n        success: False and error message if none found.\n            { \"success\": False, \"error\": \"No valid book_ids found.\" }\n\nConstraints:\n    - Returns BookInfo only for book_ids that exist in the library.\n    - Preserves the input order and includes duplicates if present.\n    - If no IDs found, returns error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "book_ids"
+        ]
+      }
+    },
+    {
+      "name": "get_book_authors",
+      "description": "Given a book_id, retrieve the list of associated author IDs and their full information\n(author_id, name, birth_year, death_year).\n\nArgs:\n    book_id (str): The ID of the book.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[Dict[str, Any]],  # Each entry contains author_id, name, birth_year, death_year.\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Book must exist.\n    - Authors should exist for all associated author_ids.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id"
+        ]
+      }
+    },
+    {
+      "name": "get_author_info",
+      "description": "Retrieve the full metadata for an author by their author_id.\n\nArgs:\n    author_id (str): Unique identifier for the author.\n\nReturns:\n    dict: \n        - If found: { \"success\": True, \"data\": AuthorInfo }\n        - If not found: { \"success\": False, \"error\": \"Author not found\" }\n\nConstraints:\n    - author_id must exist in the authors dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "author_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "author_id"
+        ]
+      }
+    },
+    {
+      "name": "get_book_resources",
+      "description": "Retrieve all downloadable resources for a given book.\n\nArgs:\n    book_id (str): The unique identifier for the book.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ResourceInfo]  # All downloadable resources for the book\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g. book not found or no resources\n    }\n\nConstraints:\n    - Book with book_id must exist.\n    - Book must have at least one resource (by environment constraint).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id"
+        ]
+      }
+    },
+    {
+      "name": "get_download_count",
+      "description": "Retrieve the current download count for a given book.\n\nArgs:\n    book_id (str): The unique identifier of the book.\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"data\": int  # The download count for the specified book\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": str  # \"Book not found\"\n        }\nConstraints:\n    - Book must exist in the library.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id"
+        ]
+      }
+    },
+    {
+      "name": "list_books_by_author",
+      "description": "Retrieve all book_ids authored by the specified author.\n\nArgs:\n    author_id (str): The unique identifier of the author.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[str]  # list of book_ids authored by author_id (may be empty)\n            }\n        On error:\n            {\n                \"success\": False,\n                \"error\": \"Author does not exist\"\n            }\n\nConstraints:\n    - The author_id must exist in the library.\n    - Only book_ids to which this author is linked will be returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "author_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "author_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_books",
+      "description": "Retrieve the IDs and minimal information (book_id and title) for all books in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[{\"book_id\": str, \"title\": str}],  # minimal info per book\n    }\n    or\n    {\n        \"success\": True,\n        \"data\": []  # if no books exist\n    }\n\nConstraints:\n    - None (simply lists all books, no filtering).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_all_authors",
+      "description": "Retrieve full info for all authors in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AuthorInfo]  # List of all authors' info (may be empty if no authors)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "increment_download_count",
+      "description": "Simulate access of a download resource, incrementing the associated book's download_count.\n\nArgs:\n    book_id (str): The unique identifier of the book whose resource is being accessed.\n    resource_id (str): The unique identifier of the resource being downloaded.\n\nReturns:\n    dict: \n        On Success:\n            {\n                \"success\": True,\n                \"message\": \"Download count incremented for book <book_id>\"\n            }\n        On Failure:\n            {\n                \"success\": False,\n                \"error\": <reason>\n            }\n\nConstraints:\n    - book_id must exist in the library.\n    - resource_id must exist for the given book_id.\n    - Download count is incremented only when a valid resource is accessed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          },
+          "resource_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id",
+          "resource_id"
+        ]
+      }
+    },
+    {
+      "name": "add_book",
+      "description": "Add a new book to the library with metadata and initial downloadable resource(s).\n\nArgs:\n    book_id (str): Unique identifier for the book.\n    title (str): Book title.\n    language (str): Language code or name.\n    description (str): Description text.\n    subject_tags (List[str]): List of subject keywords.\n    publication_date (str): Book's original publication date.\n    resources (List[ResourceInfo]): List of downloadable resources for the book. At least one required.\n    download_count (int, optional): Initial download count. Defaults to 0.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Book <book_id> added successfully.\" }\n        On failure: { \"success\": False, \"error\": <error_message> }\n\nConstraints:\n    - book_id must be unique (not already in system).\n    - At least one resource must be provided, and all must match this book_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "subject_tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "publication_date": {
+            "type": "string"
+          },
+          "resources": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "resource_id": {
+                  "type": "string"
+                },
+                "book_id": {
+                  "type": "string"
+                },
+                "format": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "resource_id",
+                "book_id",
+                "format",
+                "url"
+              ]
+            }
+          },
+          "download_count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "book_id",
+          "title",
+          "language",
+          "description",
+          "subject_tags",
+          "publication_date",
+          "resources"
+        ]
+      }
+    },
+    {
+      "name": "update_book_metadata",
+      "description": "Modify the metadata fields (title, language, description, subject_tags, publication_date) of an existing book.\n\nArgs:\n    book_id (str): the ID of the book to update.\n    title (str, optional): new title.\n    language (str, optional): new language.\n    description (str, optional): new description.\n    subject_tags (List[str], optional): new subject tags.\n    publication_date (str, optional): new publication date.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Book metadata updated successfully\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n    \nConstraints:\n    - Book must exist.\n    - Only allows update of title, language, description, subject_tags, publication_date.\n    - At least one valid field to update must be provided.\n    - Does not permit update of book_id or download_count.\n    - Field types must be correct.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "subject_tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "publication_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_book",
+      "description": "Remove a book (by book_id) from the library, including:\n- The book's core metadata,\n- All associated author relationships,\n- All resources for this book.\n\nArgs:\n    book_id (str): The unique identifier for the book to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Book and its relationships/resources deleted.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"Book not found\"\n    }\n\nConstraints:\n    - If the book does not exist, no changes made, error returned.\n    - All references to the book must be removed from all state spaces.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id"
+        ]
+      }
+    },
+    {
+      "name": "add_author",
+      "description": "Add a new author entity to the library.\n\nArgs:\n    author_id (str): Unique identifier for the author. Must not already exist.\n    name (str): The author's name.\n    birth_year (int): The year the author was born.\n    death_year (int): The year the author died.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Author <name> (ID: <author_id>) added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Author IDs must be unique within the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "author_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "birth_year": {
+            "type": "integer"
+          },
+          "death_year": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "author_id",
+          "name",
+          "birth_year",
+          "death_year"
+        ]
+      }
+    },
+    {
+      "name": "link_author_to_book",
+      "description": "Associate an additional author with an existing book.\n\nArgs:\n    book_id (str): The identifier for the book to link.\n    author_id (str): The identifier for the author to associate.\n\nReturns:\n    dict: \n        - {\"success\": True, \"message\": \"Author linked to book successfully.\"}\n        - {\"success\": False, \"error\": <reason str>}\n\nConstraints:\n    - Both book and author must exist.\n    - The association must not already be present (no duplicates).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          },
+          "author_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id",
+          "author_id"
+        ]
+      }
+    },
+    {
+      "name": "add_resource_to_book",
+      "description": "Add a new downloadable resource (by format and url) to an existing book.\n\nArgs:\n    book_id (str): ID of the book to which to add the resource.\n    format (str): Resource format string (e.g., 'epub', 'html', 'pdf').\n    url (str): Download URL for the resource.\n\nReturns:\n    dict: Success or failure.\n        - On success: { \"success\": True, \"message\": str }\n        - On failure: { \"success\": False, \"error\": str }\n\nConstraints:\n    - book_id must exist.\n    - format and url must be non-empty.\n    - Duplicate (format, url) for this book not allowed.\n    - Resource_id will be a generated UUID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id",
+          "format",
+          "url"
+        ]
+      }
+    },
+    {
+      "name": "remove_resource_from_book",
+      "description": "Remove an existing downloadable resource (by resource_id) from a book.\n\nArgs:\n    book_id (str): The unique identifier of the book.\n    resource_id (str): The identifier of the resource to remove.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Resource <resource_id> removed from book <book_id>.\" }\n        On failure:\n            { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The book must exist.\n    - The resource must exist for the specified book.\n    - The book must have at least one resource after removal.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          },
+          "resource_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id",
+          "resource_id"
+        ]
+      }
+    },
+    {
+      "name": "update_resource",
+      "description": "Update the metadata (format, url) for a specific resource by resource_id.\n\nArgs:\n    resource_id (str): Unique identifier of the resource to update.\n    format (str, optional): New format value for the resource.\n    url (str, optional): New URL for the resource.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Resource not found, or no update parameters provided.\n    }\n\nConstraints:\n    - The resource must exist in the library.\n    - At least one of `format` or `url` must be provided to update.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_id"
+        ]
+      }
+    }
+  ]
+}

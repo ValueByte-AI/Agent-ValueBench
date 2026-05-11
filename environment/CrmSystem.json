@@ -1,0 +1,603 @@
+{
+  "env_name": "CrmSystem",
+  "description": "A Customer Relationship Management (CRM) system is a structured environment used by organizations to store, organize, and manage information about their business contacts, clients, and associates. It maintains records such as names, locations, communication methods, organizational affiliations, and interaction histories. CRMs support operations including searching, updating, and reporting on contact data to facilitate business communications and relationship management.",
+  "initial_parameter_schema": {
+    "contacts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": "string"
+          },
+          "communication_method": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "contact_id",
+          "name",
+          "location",
+          "organization_id",
+          "communication_method"
+        ]
+      }
+    },
+    "communication_methods": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "method_id": {
+            "type": "string"
+          },
+          "contact_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "method_id",
+          "contact_id",
+          "type",
+          "value"
+        ]
+      }
+    },
+    "organizations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id",
+          "name",
+          "address"
+        ]
+      }
+    },
+    "interactions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "interaction_id": {
+            "type": "string"
+          },
+          "contact_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "interaction_id",
+          "contact_id",
+          "date",
+          "type",
+          "note"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "search_contacts_by_name": [
+      "contacts"
+    ],
+    "search_contacts_by_location": [
+      "contacts"
+    ],
+    "search_contacts_by_name_and_location": [
+      "contacts"
+    ],
+    "get_contact_by_id": [
+      "contacts"
+    ],
+    "get_communication_methods_for_contact": [
+      "communication_methods",
+      "contacts"
+    ],
+    "get_organization_by_id": [
+      "organizations"
+    ],
+    "get_contact_organization": [
+      "contacts",
+      "organizations"
+    ],
+    "get_interactions_for_contact": [
+      "contacts",
+      "interactions"
+    ],
+    "communication_method_validity_check": [],
+    "list_all_contacts": [
+      "contacts"
+    ],
+    "get_contacts_in_organization": [
+      "contacts",
+      "organizations"
+    ],
+    "add_new_contact": [
+      "communication_methods",
+      "contacts",
+      "organizations"
+    ],
+    "update_contact_info": [
+      "contacts",
+      "organizations"
+    ],
+    "add_communication_method_to_contact": [
+      "communication_methods",
+      "contacts"
+    ],
+    "update_communication_method": [
+      "communication_methods"
+    ],
+    "remove_communication_method": [
+      "communication_methods",
+      "contacts"
+    ],
+    "affiliate_contact_with_organization": [
+      "contacts",
+      "organizations"
+    ],
+    "disaffiliate_contact_from_organization": [
+      "contacts"
+    ],
+    "add_interaction_for_contact": [
+      "contacts",
+      "interactions"
+    ],
+    "update_interaction": [
+      "contacts",
+      "interactions"
+    ],
+    "delete_contact": [
+      "communication_methods",
+      "contacts",
+      "interactions"
+    ],
+    "delete_interaction": [
+      "interactions"
+    ]
+  },
+  "tools": [
+    {
+      "name": "search_contacts_by_name",
+      "description": "Search for contacts whose name matches (partially or fully, case-insensitive) the provided query string.\n\nArgs:\n    name_query (str): The (partial or full) name to search for (case-insensitive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ContactInfo],  # List may be empty if no matches.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # On invalid input (e.g., empty query)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name_query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name_query"
+        ]
+      }
+    },
+    {
+      "name": "search_contacts_by_location",
+      "description": "Search for contacts whose location matches the provided geographic location.\n\nArgs:\n    location (str): The location string to match (case-insensitive, exact match).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ContactInfo],  # List of matching contacts (may be empty)\n    }\n\nConstraints:\n    - Match is case-insensitive and must be exact on the 'location' field.\n    - No error returned for zero matches.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location"
+        ]
+      }
+    },
+    {
+      "name": "search_contacts_by_name_and_location",
+      "description": "Search for contacts matching both a given name and location.\n\nArgs:\n    name (str): The name to search for (exact match).\n    location (str): The location to search for (exact match).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ContactInfo]  # All matching contacts (empty if none found)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "location"
+        ]
+      }
+    },
+    {
+      "name": "get_contact_by_id",
+      "description": "Retrieve the full profile data for a contact using their contact_id.\n\nArgs:\n    contact_id (str): The unique identifier of the contact.\n\nReturns:\n    dict: \n        - On success: {\n              \"success\": True,\n              \"data\": ContactInfo\n          }\n        - On failure: {\n              \"success\": False,\n              \"error\": str\n          }\n\nConstraints:\n    - contact_id must exist in the CRM system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "contact_id"
+        ]
+      }
+    },
+    {
+      "name": "get_communication_methods_for_contact",
+      "description": "List all communication methods associated with a specific contact.\n\nArgs:\n    contact_id (str): The ID of the contact whose communication methods are to be retrieved.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CommunicationMethodInfo],  # List of communication methods for the contact\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message, e.g. \"Contact not found\"\n    }\nConstraints:\n    - Contact must exist in the CRM system.\n    - Only actual, existing communication methods will be returned (dangling/invalid method_ids are ignored).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "contact_id"
+        ]
+      }
+    },
+    {
+      "name": "get_organization_by_id",
+      "description": "Retrieve detailed information about an organization given its organization_id.\n\nArgs:\n    organization_id (str): Unique identifier for the organization.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": OrganizationInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Organization not found\"\n    }\n\nConstraints:\n    - Organization ID must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id"
+        ]
+      }
+    },
+    {
+      "name": "get_contact_organization",
+      "description": "Retrieve the organization affiliation details for a contact, if any.\n\nArgs:\n    contact_id (str): The ID of the contact.\n\nReturns:\n    dict:\n        - If the contact exists and is affiliated:\n            {\"success\": True, \"data\": OrganizationInfo}\n        - If the contact exists but is unaffiliated:\n            {\"success\": True, \"data\": None}\n        - If the contact not found:\n            {\"success\": False, \"error\": \"Contact not found\"}\n        - If the organization reference is broken:\n            {\"success\": False, \"error\": \"Organization not found for this contact\"}\n\nConstraints:\n    - Organization affiliation is optional (organization_id may be None).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "contact_id"
+        ]
+      }
+    },
+    {
+      "name": "get_interactions_for_contact",
+      "description": "Retrieve all recorded interactions associated with the specified contact.\n\nArgs:\n    contact_id (str): The unique identifier for the contact.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[InteractionInfo]  # List of the contact's interactions (can be empty)\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., contact does not exist\n    }\n\nConstraints:\n    - The contact must exist in the CRM.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "contact_id"
+        ]
+      }
+    },
+    {
+      "name": "communication_method_validity_check",
+      "description": "Verify that a given communication method value conforms to its type specification.\n\nArgs:\n    type (str): Type of communication method (e.g., 'email', 'phone').\n    value (str): The value to validate (e.g., email address, phone number).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": bool  # True if valid, False if invalid\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Description of error (e.g. unsupported type)\n    }\n\nSupported types:\n    - 'email': Must be a valid email format.\n    - 'phone': Must be a plausible international or local phone number.\n\nConstraints:\n    - Only simple format validation is performed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "value"
+        ]
+      }
+    },
+    {
+      "name": "list_all_contacts",
+      "description": "Retrieve a list of all contacts in the CRM system.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[ContactInfo]  # List of all contacts (may be empty if none)\n            }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_contacts_in_organization",
+      "description": "List all contacts affiliated with a given organization.\n\nArgs:\n    organization_id (str): The unique ID of the target organization.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ContactInfo]  # List of contacts with matching organization_id, possibly empty.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Indicates if the organization does not exist.\n    }\n\nConstraints:\n    - organization_id must exist in the CRM system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id"
+        ]
+      }
+    },
+    {
+      "name": "add_new_contact",
+      "description": "Add a new contact to the CRM, ensuring at least one valid communication method exists.\n\nArgs:\n    contact_id (str): Unique identifier for the contact.\n    name (str): Name of the contact.\n    location (str): Location of the contact.\n    communication_methods (List[Dict[str, str]]): Each dict contains:\n        - 'type': str (e.g., 'email', 'phone')\n        - 'value': str (value for that type)\n    organization_id (Optional[str]): ID of affiliated organization (or None).\n\nReturns:\n    dict: {\n        'success': True,\n        'message': str,  # description of successful addition\n        'contact_id': str\n    }\n    or\n    {\n        'success': False,\n        'error': str\n    }\n\nConstraints:\n    - Must provide at least one valid communication method.\n    - contact_id must be unique.\n    - organization_id must exist (if provided).\n    - Communication methods validated for type.\n    - Communication method ids generated to be unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "communication_methods": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "contact_id",
+          "name",
+          "location",
+          "communication_methods"
+        ]
+      }
+    },
+    {
+      "name": "update_contact_info",
+      "description": "Edit the profile information for an existing contact.\nOnly the provided fields will be updated.\n\nArgs:\n    contact_id (str): The ID of the contact to update.\n    name (Optional[str]): New name (if any).\n    location (Optional[str]): New location (if any).\n    organization_id (Optional[str]): New organization_id (if any). If None, will disaffiliate the contact.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Contact info updated\"\n    } or {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - contact_id must exist.\n    - If organization_id is provided and not None, must exist in self.organizations.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "contact_id"
+        ]
+      }
+    },
+    {
+      "name": "add_communication_method_to_contact",
+      "description": "Add a new communication method to an existing contact with value validation for the specified type.\n\nArgs:\n    contact_id (str): The ID of the target contact.\n    type (str): Type of communication method (e.g., 'email', 'phone').\n    value (str): The contact detail for the communication method.\n\nReturns:\n    dict: {\n        'success': True,\n        'message': 'Communication method added to contact'\n    }\n    or\n    {\n        'success': False,\n        'error': 'reason for failure'\n    }\n\nConstraints:\n    - Contact must exist.\n    - Value must be valid for the given type ('email' must be a valid email, 'phone' must be a valid phone).\n    - Automatically generate unique method_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "contact_id",
+          "type",
+          "value"
+        ]
+      }
+    },
+    {
+      "name": "update_communication_method",
+      "description": "Update the 'type' and/or 'value' of a communication method given its method_id.\n\nArgs:\n    method_id (str): The unique identifier of the communication method.\n    type (Optional[str]): The new type ('email', 'phone', etc.), if to be changed.\n    value (Optional[str]): The new value (email address, phone number, etc.), if to be changed.\n\nReturns:\n    dict: On success:\n        { \"success\": True, \"message\": \"Communication method updated.\" }\n          On failure:\n        { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - method_id must exist.\n    - At least one of type or value must be provided.\n    - The resulting (type, value) must be valid (e.g., email format, phone format).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "method_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "method_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_communication_method",
+      "description": "Remove a communication method from a contact, but only if at least one remains.\n\nArgs:\n    method_id (str): The identifier for the communication method to remove.\n\nReturns:\n    dict: \n        On success:\n            { \"success\": True, \"message\": \"Communication method <method_id> removed from contact <contact_id>.\" }\n        On failure:\n            { \"success\": False, \"error\": str }\n\nConstraints:\n    - Each contact must always have at least one communication method on record.\n    - The communication method must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "method_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "method_id"
+        ]
+      }
+    },
+    {
+      "name": "affiliate_contact_with_organization",
+      "description": "Assign or update an organization_id for a specific contact.\n\nArgs:\n    contact_id (str): ID of the contact to affiliate.\n    organization_id (str): ID of the organization to affiliate with.\n\nReturns:\n    dict: {\n       \"success\": True,\n       \"message\": \"Contact {contact_id} affiliated with organization {organization_id}\"\n    }\n    or\n    {\n       \"success\": False,\n       \"error\": \"reason\"\n    }\n\nConstraints:\n    - Both contact_id and organization_id must exist.\n    - Updates contact's organization_id field.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "contact_id",
+          "organization_id"
+        ]
+      }
+    },
+    {
+      "name": "disaffiliate_contact_from_organization",
+      "description": "Remove organization affiliation from the contact specified by contact_id.\n\nArgs:\n    contact_id (str): The unique identifier of the contact.\n\nReturns:\n    dict:\n        - On success:\n          { \"success\": True, \"message\": \"Organization affiliation removed from contact.\" }\n        - On error:\n          { \"success\": False, \"error\": \"Contact not found.\"}\n\nConstraints:\n    - The contact must exist in the CRM.\n    - After this operation, the contact has no organization affiliation.\n    - Operation is idempotent if the contact is already unaffiliated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "contact_id"
+        ]
+      }
+    },
+    {
+      "name": "add_interaction_for_contact",
+      "description": "Record a new interaction (meeting, call, email, etc.) tied to a contact.\n\nArgs:\n    contact_id (str): The contact id the interaction is associated with. Contact must exist.\n    date (str): When the interaction occurred (string format, e.g., 'YYYY-MM-DD').\n    interaction_type (str): Type of the interaction (e.g., 'call', 'meeting').\n    note (str): Description or summary of the interaction.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Interaction recorded successfully.\" }\n        On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - The provided contact_id must exist.\n    - Required fields must not be empty.\n    - The interaction_id will be automatically generated and will be unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "interaction_type": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "contact_id",
+          "date",
+          "interaction_type",
+          "note"
+        ]
+      }
+    },
+    {
+      "name": "update_interaction",
+      "description": "Edit the details of a previously recorded interaction.\n\nArgs:\n    interaction_id (str): The unique ID of the interaction to update.\n    contact_id (str, optional): New contact_id to associate with, if changing.\n    date (str, optional): New date value.\n    type (str, optional): New type value.\n    note (str, optional): New note value.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Interaction updated successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <str: reason>\n    }\n\nConstraints:\n    - interaction_id must exist.\n    - If contact_id is updated, the new contact_id must exist in the system.\n    - At least one update field should be provided (optional: ignore if all None).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "interaction_id": {
+            "type": "string"
+          },
+          "contact_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "interaction_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_contact",
+      "description": "Permanently remove a contact and all associated communication methods and interactions,\nbut only if the contact_id exists. Cleans up references in other tables as necessary.\n\nArgs:\n    contact_id (str): The unique identifier of the contact to delete.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Contact and associated data deleted.\" }\n        On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Contact must exist.\n    - Upon deletion, all associated communication methods and interactions are also deleted.\n    - No constraint is violated since non-existent contacts do not factor into the rule about each contact having at least one communication method.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "contact_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_interaction",
+      "description": "Remove an interaction history entry for a contact.\n\nArgs:\n    interaction_id (str): The unique identifier of the interaction to be deleted.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Interaction deleted successfully.\" }\n        - On failure: { \"success\": False, \"error\": \"Interaction not found.\" }\n\nConstraints:\n    - The interaction with the specified interaction_id must exist in the system.\n    - Deleting an interaction does not affect other entities or violate system constraints.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "interaction_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "interaction_id"
+        ]
+      }
+    }
+  ]
+}

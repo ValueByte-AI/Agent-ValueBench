@@ -1,0 +1,416 @@
+{
+  "env_name": "ChessGameDatabase",
+  "description": "An online chess platform game database stores records of chess games played between users, including player identities, timestamps, move sequences, and results. It supports operations such as querying games by ID, retrieving move histories, and displaying game outcomes. This environment is central to the functioning of chess platforms, enabling analysis, replay, and sharing of completed games.",
+  "initial_parameter_schema": {
+    "players": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "player_id",
+          "username",
+          "rating"
+        ]
+      }
+    },
+    "games": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "game_id": {
+            "type": "string"
+          },
+          "white_player_id": {
+            "type": "string"
+          },
+          "black_player_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "moves": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "game_id",
+          "white_player_id",
+          "black_player_id",
+          "timestamp",
+          "moves",
+          "result"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_game_by_id": [
+      "games"
+    ],
+    "get_game_moves": [
+      "games"
+    ],
+    "get_game_result": [
+      "games"
+    ],
+    "get_player_by_id": [
+      "players"
+    ],
+    "get_player_by_username": [
+      "players"
+    ],
+    "list_games_for_player": [
+      "games",
+      "players"
+    ],
+    "get_recent_games_for_player": [
+      "games",
+      "players"
+    ],
+    "validate_game_integrity": [
+      "games",
+      "players"
+    ],
+    "add_new_game": [
+      "games",
+      "players"
+    ],
+    "update_game_moves": [
+      "games"
+    ],
+    "update_game_result": [
+      "games"
+    ],
+    "add_new_player": [
+      "players"
+    ],
+    "update_player_info": [
+      "players"
+    ],
+    "delete_game_by_id": [
+      "games"
+    ],
+    "delete_player_by_id": [
+      "games",
+      "players"
+    ],
+    "correct_game_player_reference": [
+      "games",
+      "players"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_game_by_id",
+      "description": "Retrieve the complete game information for a given game_id.\n\nArgs:\n    game_id (str): The unique identifier of the chess game.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": GameInfo,   # The full game data\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str        # \"Game not found\"\n    }\n\nConstraints:\n    - The provided game_id must exist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "game_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "game_id"
+        ]
+      }
+    },
+    {
+      "name": "get_game_moves",
+      "description": "Retrieve the list of moves (in notation) for a given game_id.\n\nArgs:\n    game_id (str): The unique ID of the chess game.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str]  # List of move strings (possibly empty if no moves)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g., game not found\n    }\n\nConstraints:\n    - The given game_id must exist in the game database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "game_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "game_id"
+        ]
+      }
+    },
+    {
+      "name": "get_game_result",
+      "description": "Retrieve the final result/outcome of the game for the specified game_id.\n\nArgs:\n    game_id (str): The unique identifier of the chess game.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": str  # The game's result field, e.g., \"1-0\", \"0-1\", \"1/2-1/2\", \"aborted\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # E.g., \"Game ID does not exist\"\n            }\nConstraints:\n    - The specified game_id must exist in the game database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "game_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "game_id"
+        ]
+      }
+    },
+    {
+      "name": "get_player_by_id",
+      "description": "Retrieve platform user (Player) information given a player_id.\n\nArgs:\n    player_id (str): The unique identifier for the player.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": PlayerInfo  # The player's complete info\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g., player does not exist\n    }\n\nConstraints:\n    - The player_id must exist in self.players.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id"
+        ]
+      }
+    },
+    {
+      "name": "get_player_by_username",
+      "description": "Retrieve PlayerInfo using the username.\n\nArgs:\n    username (str): The unique username of the player.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": PlayerInfo  # Information of the matched player\n            }\n        On error (not found):\n            {\n                \"success\": False,\n                \"error\": \"Player not found\"\n            }\nConstraints:\n    - Username is expected to be unique across all players.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "list_games_for_player",
+      "description": "Retrieve all games played by a player (as white or black), given player_id or username.\n\nArgs:\n    player_id (str, optional): The unique id of the player.\n    username (str, optional): The username of the player.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[GameInfo]  # All games where the player was white or black\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (player not found, missing/conflicting ids)\n    }\n\nConstraints:\n    - At least one of player_id or username must be provided.\n    - If both are provided they must refer to the same player.\n    - The player must exist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "get_recent_games_for_player",
+      "description": "Retrieve a list of games played by the given player, sorted by timestamp descending (most recent first).\n\nArgs:\n    player_id (str): The ID of the player to look up.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[GameInfo],  # List of games with this player, sorted by timestamp descending.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # 'Player does not exist'\n    }\n\nConstraints:\n    - Player ID must exist in players.\n    - Returned list is sorted most recent first (timestamp descending).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id"
+        ]
+      }
+    },
+    {
+      "name": "validate_game_integrity",
+      "description": "Check if a game references valid players, contains a plausible move list, and a valid result.\n\nArgs:\n    game_id (str): ID of the game to validate.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": {\n                \"valid\": bool,              # True if game passes all integrity checks\n                \"problems\": List[str],      # List of problems found (empty if valid)\n            }\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str                   # Explanation if operation cannot proceed (e.g., game_id invalid)\n        }\n\nConstraints:\n    - Game must exist.\n    - Both player references (white and black) must exist.\n    - Move list must be a list of plausible (string) moves.\n    - Result must be a valid chess outcome (\"1-0\", \"0-1\", \"1/2-1/2\", \"aborted\").\n    - Obvious system-error move tokens such as `ERR_*`, `SYS_*`, or hex-style crash markers like `0x...` are treated as integrity problems.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "game_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "game_id"
+        ]
+      }
+    },
+    {
+      "name": "add_new_game",
+      "description": "Add a new game record to the database after validating:\n  - Unique game_id\n  - Existing player references for both sides\n  - Moves is a non-empty list of strings (basic validation)\n  - Result is an accepted chess outcome\n\nArgs:\n    game_id (str): Unique identifier for the chess game.\n    white_player_id (str): Player ID of the white side.\n    black_player_id (str): Player ID of the black side.\n    timestamp (str): Timestamp in ISO8601 format.\n    moves (List[str]): List of move strings (in SAN or algebraic notation).\n    result (str): Result of the game (\"1-0\", \"0-1\", \"1/2-1/2\", \"aborted\", etc.).\n\nReturns:\n    dict:\n        {\"success\": True, \"message\": \"Game record added.\"}\n        or\n        {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - game_id must be unique.\n    - Both player IDs must exist in self.players.\n    - moves must be a non-empty list of strings.\n    - result must be a valid chess result.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "game_id": {
+            "type": "string"
+          },
+          "white_player_id": {
+            "type": "string"
+          },
+          "black_player_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "moves": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "game_id",
+          "white_player_id",
+          "black_player_id",
+          "timestamp",
+          "moves",
+          "result"
+        ]
+      }
+    },
+    {
+      "name": "update_game_moves",
+      "description": "Update the moves list for a specific game, for correction or modification.\n\nArgs:\n    game_id (str): Unique identifier for the game to update.\n    moves (List[str]): The new move list (each a string in SAN/algebraic notation).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Moves updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Game ID must exist.\n    - Moves list must be a list of strings (only basic type/format check, full chess legality not enforced here).\n    - Game's player references and result remain unchanged.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "game_id": {
+            "type": "string"
+          },
+          "moves": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "game_id",
+          "moves"
+        ]
+      }
+    },
+    {
+      "name": "update_game_result",
+      "description": "Update the final result of a specific game (to correct mistakes or adjudicate).\n\nArgs:\n    game_id (str): The unique identifier of the game to update.\n    result (str): The new game result value (\"1-0\", \"0-1\", \"1/2-1/2\", \"aborted\", etc.).\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Game result updated successfully.\" }\n        On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Game must exist.\n    - Result must be a valid chess outcome.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "game_id": {
+            "type": "string"
+          },
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "game_id",
+          "result"
+        ]
+      }
+    },
+    {
+      "name": "add_new_player",
+      "description": "Add a new player to the player database with a given username and rating.\n\nArgs:\n    username (str): The desired unique username for the player.\n    rating (int): The initial rating for the player (must be non-negative).\n\nReturns:\n    dict:\n        - On success:\n            {\"success\": True, \"message\": \"Player <username> added with id <player_id>\"}\n        - On failure:\n            {\"success\": False, \"error\": \"<reason>\"}\nConstraints:\n    - username must be unique in self.players (no two players with the same username)\n    - rating must be non-negative\n    - player_id must be globally unique",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "username",
+          "rating"
+        ]
+      }
+    },
+    {
+      "name": "update_player_info",
+      "description": "Modify a player’s username and/or rating.\n\nArgs:\n    player_id (str): The ID of the player to update.\n    username (str, optional): New username. If None, username is not changed.\n    rating (int, optional): New rating. If None, rating is not changed.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"message\": \"Player info updated\"\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": <reason>\n        }\n\nConstraints:\n    - Player must exist in the database (player_id in self.players).\n    - At least one of username or rating must be provided.\n    - rating, if set, must be integer.\n    - username, if set, must be string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "player_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_game_by_id",
+      "description": "Remove a game from the database by its ID.\n\nArgs:\n    game_id (str): Unique identifier of the game to delete.\n\nReturns:\n    dict: \n        On success: \n            { \"success\": True, \"message\": \"Game <game_id> deleted.\" }\n        On failure: \n            { \"success\": False, \"error\": \"Game ID not found.\" }\n\nConstraints:\n    - The specified game_id must exist in the games database.\n    - This operation does not affect any players (they aren't deleted/modified).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "game_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "game_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_player_by_id",
+      "description": "Remove a player from the system by their player_id.\nIf the player is referenced in any games as either white or black, prevent deletion.\n\nArgs:\n    player_id (str): The unique identifier for the player to be deleted.\n\nReturns:\n    dict:\n        - On success:\n            {\"success\": True, \"message\": \"Player deleted successfully.\"}\n        - On failure:\n            {\"success\": False, \"error\": \"Reason for failure (not found, referenced in games, etc.)\"}\n\nConstraints:\n    - Player must exist.\n    - Player must not be referenced in any games as white or black.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id"
+        ]
+      }
+    },
+    {
+      "name": "correct_game_player_reference",
+      "description": "Update the white or black player reference in a game after validating that both\nthe game and the player exist, and the color is either 'white' or 'black'.\n\nArgs:\n    game_id (str): The ID of the game to update.\n    color (str): Which player to update: 'white' or 'black'.\n    new_player_id (str): The new player_id to set.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Player reference updated for game <game_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The game must exist.\n    - The new player must exist.\n    - The color must be 'white' or 'black'.\n    - After update, both player references should still be valid.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "game_id": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "new_player_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "game_id",
+          "color",
+          "new_player_id"
+        ]
+      }
+    }
+  ]
+}

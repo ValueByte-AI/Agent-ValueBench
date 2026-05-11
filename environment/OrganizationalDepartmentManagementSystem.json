@@ -1,0 +1,553 @@
+{
+  "env_name": "OrganizationalDepartmentManagementSystem",
+  "description": "An organizational department management system maintains structured records of the various departments within an enterprise, including department names, assigned managers, and budgetary allocations. It facilitates operations such as querying department budgets, updating personnel assignments, and managing the lifecycle of departments. This environment supports typical administrative tasks and decision-making processes necessary for effective organizational oversight.",
+  "initial_parameter_schema": {
+    "departments": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "department_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "manager_id": {
+            "type": "string"
+          },
+          "budget_amount": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "department_id",
+          "name",
+          "manager_id",
+          "budget_amount",
+          "status"
+        ]
+      }
+    },
+    "employees": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string"
+          },
+          "full_name": {
+            "type": "string"
+          },
+          "position": {
+            "type": "string"
+          },
+          "department_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "employee_id",
+          "full_name",
+          "position",
+          "department_id"
+        ]
+      }
+    },
+    "is_employee_active": {
+      "type": "string"
+    }
+  },
+  "tool_state_dependencies": {
+    "get_department_by_name": [
+      "departments"
+    ],
+    "get_department_by_id": [
+      "departments"
+    ],
+    "get_department_budget": [
+      "departments"
+    ],
+    "list_departments": [
+      "departments"
+    ],
+    "get_department_manager": [
+      "departments",
+      "employees"
+    ],
+    "is_department_name_unique": [
+      "departments"
+    ],
+    "get_employee_by_name": [
+      "employees"
+    ],
+    "get_employee_by_id": [
+      "employees"
+    ],
+    "list_employees": [
+      "employees"
+    ],
+    "is_employee_active": [
+      "employees"
+    ],
+    "get_employee_managed_department": [
+      "departments",
+      "employees"
+    ],
+    "list_active_employees": [
+      "employees"
+    ],
+    "create_department": [
+      "departments",
+      "employees"
+    ],
+    "assign_department_manager": [
+      "departments",
+      "employees",
+      "is_employee_active"
+    ],
+    "remove_department_manager": [
+      "departments"
+    ],
+    "update_department_budget": [
+      "departments"
+    ],
+    "rename_department": [
+      "departments"
+    ],
+    "update_department_status": [
+      "departments"
+    ],
+    "reallocate_manager": [
+      "departments",
+      "employees",
+      "is_employee_active"
+    ],
+    "delete_department": [
+      "departments"
+    ],
+    "transfer_employee": [
+      "departments",
+      "employees"
+    ],
+    "add_employee": [
+      "departments",
+      "employees"
+    ],
+    "update_employee_info": [
+      "departments",
+      "employees"
+    ],
+    "remove_employee": [
+      "departments",
+      "employees"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_department_by_name",
+      "description": "Retrieve the details of a department by its unique name.\n\nArgs:\n    name (str): The unique name of the department to query.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": DepartmentInfo  # Department information dictionary\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": \"Department not found\"\n            }\n\nConstraints:\n    - Department names are unique; will match at most one department.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_department_by_id",
+      "description": "Retrieve department details by department_id.\n\nArgs:\n    department_id (str): The unique identifier for the department.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": DepartmentInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Department not found\"\n    }\n\nConstraints:\n    - department_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "department_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "department_id"
+        ]
+      }
+    },
+    {
+      "name": "get_department_budget",
+      "description": "Retrieve the budget_amount for a specified department by department_id or name.\n\nArgs:\n    department_id (str, optional): The unique identifier of the department.\n    name (str, optional): The name of the department.\n\nReturns:\n    dict: \n        { \"success\": True, \"data\": <budget_amount (float)> }\n        or \n        { \"success\": False, \"error\": <error_message> }\n\nConstraints:\n    - At least one of department_id or name must be provided.\n    - Department name is globally unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "department_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+        ]
+      }
+    },
+    {
+      "name": "list_departments",
+      "description": "List all departments and their details (department_id, name, manager_id, budget_amount, status).\n\nArgs:\n    None.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DepartmentInfo]  # List may be empty if no departments exist\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_department_manager",
+      "description": "Retrieve the manager's employee information for the given department.\n\nArgs:\n    department_id (str): The unique identifier of the department.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": EmployeeInfo  # Manager information for department\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g. department not found or no manager assigned\n    }\n\nConstraints:\n    - Department must exist.\n    - Department must have a manager assigned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "department_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "department_id"
+        ]
+      }
+    },
+    {
+      "name": "is_department_name_unique",
+      "description": "Check whether a given department name is unique (not currently in use).\n\nArgs:\n    name (str): Department name to check.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": bool  # True if unique, False if in use\n        }\n\nNote:\n    - Name uniqueness is enforced across all departments, regardless of status.\n    - Name comparison is case-sensitive unless further specified.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_employee_by_name",
+      "description": "Retrieve an employee's information by their full name.\n\nArgs:\n    full_name (str): The full name of the employee.\n\nReturns:\n    dict: \n        If one match: {\n            \"success\": True,\n            \"data\": EmployeeInfo\n        }\n        If zero matches or ambiguous name: {\n            \"success\": False,\n            \"error\": \"No employee found with the given name\" or \"Multiple employees found with the given name\"\n        }\n\nNotes/Constraints:\n    - Employee names are not guaranteed to be unique; error is returned if multiple matches found.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "full_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "full_name"
+        ]
+      }
+    },
+    {
+      "name": "get_employee_by_id",
+      "description": "Retrieve an employee's information from the system given the employee_id.\n\nArgs:\n    employee_id (str): The unique identifier of the employee.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": EmployeeInfo  # information of the found employee\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Employee not found\"  # if the given ID does not exist\n    }\n\nConstraints:\n    - No constraints affect this query operation; simply lookup by key.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "employee_id"
+        ]
+      }
+    },
+    {
+      "name": "list_employees",
+      "description": "List all employees and their current department assignments.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n       \"success\": True,\n       \"data\": List[EmployeeInfo]  # all employee entries (may be empty)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "is_employee_active",
+      "description": "Check if the specified employee is active (eligible to be assigned as a manager).\n\nArgs:\n    employee_id (str): Unique ID of the employee to check.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": bool,  # True if employee is active, False otherwise\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # If employee does not exist or status attribute missing\n        }\n\nConstraints:\n    - Only active employees may be assigned as managers.\n    - Employee must exist.\n    - If active status cannot be determined, treat as not active.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "employee_id"
+        ]
+      }
+    },
+    {
+      "name": "get_employee_managed_department",
+      "description": "Determine which department (if any) the given employee is managing.\n\nArgs:\n    employee_id (str): The unique ID of the employee.\n\nReturns:\n    dict:\n        - success: True if query processed; False if employee not found.\n        - data: DepartmentInfo if the employee manages a department, else None.\n        - error: Only present if employee does not exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "employee_id"
+        ]
+      }
+    },
+    {
+      "name": "list_active_employees",
+      "description": "List all employees currently eligible to be assigned as managers\n(i.e., employees with 'active' status if such a status attribute exists;\notherwise, returns all employees).\n\nReturns:\n    dict:\n    {\n        \"success\": True,\n        \"data\": List[EmployeeInfo]  # active employees only, or all if no 'status' info\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # description of error\n    }\n\nConstraints:\n    - If EmployeeInfo records have 'status' or 'active' fields, only return those matching 'active'.\n    - If there is no such field, return all employees.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "create_department",
+      "description": "Establish a new department with the specified name, manager, budget, and status.\n\nArgs:\n    name (str): Proposed department name. Must be unique across all departments.\n    manager_id (str): Employee to assign as manager. Use an empty string to create the department without an initial manager; a non-empty manager must be active and must not already manage another department.\n    budget_amount (float): Initial budget allocation. Must be zero or positive.\n    status (str): Initial lifecycle status (\"active\",\"inactive\", etc.)\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str,\n        \"department_id\": str\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Department name must be unique.\n    - Budget amount must be non-negative.\n    - Manager (if specified) must be an existing (and active) employee not already managing another department.\n    - Each manager can only manage at most one department at a time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "manager_id": {
+            "type": "string"
+          },
+          "budget_amount": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "manager_id",
+          "budget_amount",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "assign_department_manager",
+      "description": "Assign an eligible employee as the manager of a department.\n\nArgs:\n    department_id (str): ID of the department to assign the manager to.\n    employee_id (str): ID of the employee to assign as manager.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Employee X assigned as manager for department Y.\" }\n        On failure: { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - The department must exist and be active.\n    - The employee must exist and be active.\n    - The employee must not already manage any department.\n    - Each department can have at most one assigned manager.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "department_id": {
+            "type": "string"
+          },
+          "employee_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "department_id",
+          "employee_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_department_manager",
+      "description": "Remove the current manager from a department.\n\nArgs:\n    department_id (str): The unique identifier of the department.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Manager removed from department <department_id>\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The department must exist.\n    - If the department currently has no manager assigned, returns failure.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "department_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "department_id"
+        ]
+      }
+    },
+    {
+      "name": "update_department_budget",
+      "description": "Change the budget allocation of a department. The new budget must be non-negative.\n\nArgs:\n    department_id (str): The ID of the department whose budget is to be changed.\n    new_budget_amount (float): The new budget value. Must be non-negative.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Budget for department <name> updated to <amount>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Description of the failure.\"\n    }\n\nConstraints:\n    - department_id must exist in the system.\n    - new_budget_amount >= 0",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "department_id": {
+            "type": "string"
+          },
+          "new_budget_amount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "department_id",
+          "new_budget_amount"
+        ]
+      }
+    },
+    {
+      "name": "rename_department",
+      "description": "Rename a department to a new unique name.\n\nArgs:\n    department_id (str): ID of the department to rename.\n    new_name (str): The new unique department name.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Department renamed from <old_name> to <new_name>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Department ID must exist.\n    - New name must be unique among all departments.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "department_id": {
+            "type": "string"
+          },
+          "new_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "department_id",
+          "new_name"
+        ]
+      }
+    },
+    {
+      "name": "update_department_status",
+      "description": "Change the lifecycle status of a department (active, inactive, deleted).\n\nArgs:\n    department_id (str): The identifier of the department to update.\n    new_status (str): The new status value, must be one of \"active\", \"inactive\", \"deleted\".\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Department status updated to <new_status>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - department must exist.\n    - new_status must be one of: \"active\", \"inactive\", \"deleted\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "department_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "department_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "reallocate_manager",
+      "description": "Change which department an employee manages, respecting constraints:\n  - An employee can manage at most one department.\n  - Only active employees may be assigned as managers.\n  - A department can have at most one assigned manager.\n\nArgs:\n    employee_id (str): The ID of the employee to be reassigned as a manager.\n    new_department_id (str): The ID of the department to assign as manager.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Employee <eid> reassigned as manager to department <did>.\"\n    }\n    or failure dict:\n    {\n        \"success\": False,\n        \"error\": <description>\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string"
+          },
+          "new_department_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "employee_id",
+          "new_department_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_department",
+      "description": "Mark a department as deleted by updating its status to 'deleted'.\n\nArgs:\n    department_id (str): The unique identifier for the department to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Department <name> marked as deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Department must exist.\n    - If already deleted, return error and do not repeat.\n    - Department is not physically removed; only 'status' is set to 'deleted'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "department_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "department_id"
+        ]
+      }
+    },
+    {
+      "name": "transfer_employee",
+      "description": "Move an employee from their current department to another department.\n\nArgs:\n    employee_id (str): ID of the employee to transfer.\n    target_department_id (str): ID of the department to transfer the employee to.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": <success_message>\n    } on success,\n    {\n        \"success\": False,\n        \"error\": <reason>\n    } on failure.\n\nConstraints:\n    - employee_id must exist.\n    - target_department_id must exist.\n    - Employee must not already be in the target department.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string"
+          },
+          "target_department_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "employee_id",
+          "target_department_id"
+        ]
+      }
+    },
+    {
+      "name": "add_employee",
+      "description": "Add a new employee to the system.\n\nArgs:\n    employee_id (str): Unique identifier for the employee.\n    full_name (str): Full name of the employee.\n    position (str): Position or job title.\n    department_id (str): The department the employee belongs to.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Employee added successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <str error reason>\n    }\n\nConstraints:\n    - employee_id must be unique within the system.\n    - department_id must refer to an existing department.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string"
+          },
+          "full_name": {
+            "type": "string"
+          },
+          "position": {
+            "type": "string"
+          },
+          "department_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "employee_id",
+          "full_name",
+          "position",
+          "department_id"
+        ]
+      }
+    },
+    {
+      "name": "update_employee_info",
+      "description": "Modify the details (full_name, position, department_id) of an existing employee.\n\nArgs:\n    employee_id (str): The ID of the employee to modify.\n    full_name (str, optional): New full name for the employee.\n    position (str, optional): New position for the employee.\n    department_id (str, optional): New department ID to assign the employee.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Employee information updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - employee_id must exist in the system.\n    - If department_id is specified, it must exist in the departments.\n    - At least one of the fields must be provided for update.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string"
+          },
+          "full_name": {
+            "type": "string"
+          },
+          "position": {
+            "type": "string"
+          },
+          "department_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "employee_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_employee",
+      "description": "Remove an employee from the system.\n\nArgs:\n    employee_id (str): The ID of the employee to remove.\n\nReturns:\n    dict: \n      - success=True, with message on successful removal.\n      - success=False, with error if the employee does not exist.\n\nConstraints:\n    - If the employee is assigned as manager in any department, \n      set the department's manager_id to \"\" upon removal to maintain referential integrity.\n    - Other attributes or references to the employee must not remain in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "employee_id"
+        ]
+      }
+    }
+  ]
+}

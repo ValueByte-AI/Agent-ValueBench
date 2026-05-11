@@ -1,0 +1,593 @@
+{
+  "env_name": "VenmoPeerToPeerPaymentSystem",
+  "description": "Venmo is a mobile-focused peer-to-peer payment platform that allows users to send and receive money instantly. The system maintains user profiles, account balances, transaction records, and manages authentication and authorization for each operation. It supports actions such as sending payments, requesting money, viewing transaction histories, and connecting with contacts using usernames or profile information.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "profile_info": {
+            "type": "string"
+          },
+          "authentication_status": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "display_name",
+          "profile_info",
+          "authentication_status",
+          "account_status"
+        ]
+      }
+    },
+    "accounts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "balance": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "balance",
+          "currency"
+        ]
+      }
+    },
+    "transactions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "sender_id": {
+            "type": "string"
+          },
+          "recipient_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "transaction_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "sender_id",
+          "recipient_id",
+          "amount",
+          "currency",
+          "status",
+          "timestamp",
+          "note",
+          "transaction_type"
+        ]
+      }
+    },
+    "contacts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "_id": {
+              "type": "string"
+            },
+            "contact_user_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "_id",
+            "contact_user_id"
+          ]
+        }
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_username": [
+      "users"
+    ],
+    "get_user_by_display_name": [
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "list_all_users": [
+      "users"
+    ],
+    "check_user_authentication_status": [
+      "users"
+    ],
+    "check_user_account_status": [
+      "users"
+    ],
+    "get_account_by_user_id": [
+      "accounts",
+      "users"
+    ],
+    "get_account_balance": [
+      "accounts",
+      "users"
+    ],
+    "get_contacts_for_user": [
+      "contacts",
+      "users"
+    ],
+    "get_transaction_by_id": [
+      "transactions"
+    ],
+    "list_transactions_for_user": [
+      "transactions",
+      "users"
+    ],
+    "check_transaction_id_unique": [
+      "transactions"
+    ],
+    "send_payment": [
+      "accounts",
+      "transactions",
+      "users"
+    ],
+    "request_payment": [
+      "transactions",
+      "users"
+    ],
+    "record_transaction": [
+      "transactions"
+    ],
+    "update_transaction_status": [
+      "transactions"
+    ],
+    "add_contact": [
+      "contacts",
+      "users"
+    ],
+    "update_account_balance": [
+      "accounts",
+      "users"
+    ],
+    "mark_authentication_status": [
+      "users"
+    ],
+    "set_account_status": [
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_username",
+      "description": "Retrieve the full UserInfo record for a user specified by username.\n\nArgs:\n    username (str): The username of the user to lookup.\n\nReturns:\n    dict:\n        On success: {\n            \"success\": True,\n            \"data\": UserInfo\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": \"User with specified username does not exist\"\n        }\n        If multiple users are found (violation of uniqueness constraint): {\n            \"success\": False,\n            \"error\": \"Multiple users found with the same username\"\n        }\nConstraints:\n    - Each username should identify one unique, valid account.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_display_name",
+      "description": "Retrieve all users matching the given display name.\n\nArgs:\n    display_name (str): Display name to search for.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[UserInfo]  # List of all users with that display name (possibly empty)\n        }\n\nNotes:\n    - Multiple users can share the same display name.\n    - If no users are found, returns an empty list (not an error).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "display_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "display_name"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Fetches and returns user information for the given unique user ID.\n\nArgs:\n    user_id (str): The unique user identifier (_id).\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": UserInfo }\n        - On failure: { \"success\": False, \"error\": \"User not found\" }\n\nConstraints:\n    - User _id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_users",
+      "description": "Retrieve a list of all registered users.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[UserInfo]  # possibly empty\n        }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "check_user_authentication_status",
+      "description": "Query the current authentication status of a user.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": str  # The authentication status of the user (e.g., \"authenticated\", \"not authenticated\", etc.)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g., user not found.\n    }\n\nConstraints:\n    - user_id must correspond to a valid user in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "check_user_account_status",
+      "description": "Retrieve the current account status for a user.\n\nArgs:\n    user_id (str): The unique identifier for the user (_id field).\n\nReturns:\n    dict: \n        - On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"user_id\": str,\n                    \"account_status\": str  # e.g., 'active', 'suspended', 'closed'\n                }\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": str  # \"User not found\"\n            }\n\nConstraints:\n    - user_id must map to an existing user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_account_by_user_id",
+      "description": "Retrieve account details (including balance and currency) for a given user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict:\n        - success: True, and 'data' contains the AccountInfo if lookup is successful.\n        - success: False, and 'error' describes reason (user/account not found).\n\nConstraints:\n    - user_id must exist in the system.\n    - The user must have a linked account.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_account_balance",
+      "description": "Return the balance and currency of the account associated with a given user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\"balance\": float, \"currency\": str},\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,\n    }\n\nConstraints:\n    - The user must exist.\n    - The account associated with the user must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_contacts_for_user",
+      "description": "Retrieve the list of contact users (friends) for a specific user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ContactInfo]  # List of contact relationships (can be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., user does not exist\n    }\n\nConstraints:\n    - The user must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_transaction_by_id",
+      "description": "Fetch a specific transaction record by its transaction_id.\n\nArgs:\n    transaction_id (str): The unique identifier for the transaction.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": TransactionInfo }\n        - On failure: { \"success\": False, \"error\": \"Transaction not found\" }\n\nConstraints:\n    - The given transaction_id must exist in the transaction records.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id"
+        ]
+      }
+    },
+    {
+      "name": "list_transactions_for_user",
+      "description": "Retrieve the history of all transactions (sent/received/requests) for a given user.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n\nReturns:\n    dict:\n        On success: {\n            \"success\": True,\n            \"data\": List[TransactionInfo],  # all transactions involving the user (may be empty)\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": str  # error message\n        }\n\nConstraints:\n    - user_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "check_transaction_id_unique",
+      "description": "Check if a proposed transaction ID is unique (not already used).\n\nArgs:\n    transaction_id (str): The transaction ID to check for uniqueness.\n\nReturns:\n    dict:\n        - If input is valid:\n            {\"success\": True, \"data\": bool}\n            # True if unique, False if already exists\n        - If input is invalid:\n            {\"success\": False, \"error\": str}\n\nConstraints:\n    - Transaction ID must be a non-empty string.\n    - Transactions must have unique identifiers.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id"
+        ]
+      }
+    },
+    {
+      "name": "send_payment",
+      "description": "Send money from sender to recipient, performing validation and recording the transaction.\n\nArgs:\n    sender_id (str): User ID of sender.\n    recipient_id (str): User ID of recipient.\n    amount (float): Amount to send (must be > 0).\n    currency (str): Currency code (e.g., \"USD\").\n    note (str, optional): Transaction note.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": str,  # Description of payment.\n                \"transaction_id\": str  # The new transaction ID\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Description of why payment failed\n            }\n\nConstraints enforced:\n    - Sender must be authenticated.\n    - Sender and recipient accounts must be valid and active.\n    - Sender balance >= amount.\n    - Currency must match both accounts.\n    - Cannot send payment to oneself.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sender_id": {
+            "type": "string"
+          },
+          "recipient_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sender_id",
+          "recipient_id",
+          "amount",
+          "currency"
+        ]
+      }
+    },
+    {
+      "name": "request_payment",
+      "description": "Create a payment request transaction (pending status) from requester to target.\n\nArgs:\n    requester_id (str): ID of the user making the request.\n    target_id (str): ID of the user to be requested from.\n    amount (float): Amount to be requested. Must be > 0.\n    currency (str): Currency code (e.g., 'USD').\n    note (str, optional): Description or note for the request.\n    timestamp (str, optional): Timestamp; if not provided, will use current time.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Payment request created\",\n        \"transaction_id\": str,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Requester must be authenticated and have active account.\n    - Target user must exist and have active account.\n    - Amount must be positive.\n    - All IDs must resolve to existing users.\n    - Transaction ID must be unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "requester_id": {
+            "type": "string"
+          },
+          "target_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requester_id",
+          "target_id",
+          "amount",
+          "currency"
+        ]
+      }
+    },
+    {
+      "name": "record_transaction",
+      "description": "Create a new transaction record in the transaction history, enforcing idempotency.\n\nArgs:\n    transaction_info (TransactionInfo): The full transaction data to be recorded. Must contain:\n        transaction_id, sender_id, recipient_id, amount, currency, status, timestamp, note, transaction_type\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Transaction recorded successfully\" }\n        On idempotency: { \"success\": True, \"message\": \"Transaction already recorded (idempotent)\" }\n        On error: { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - transaction_id must be unique unless the same transaction_info is supplied (idempotency).\n    - transaction_info should follow the TransactionInfo schema.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_info": {
+            "type": "object",
+            "properties": {
+              "transaction_id": {
+                "type": "string"
+              },
+              "sender_id": {
+                "type": "string"
+              },
+              "recipient_id": {
+                "type": "string"
+              },
+              "amount": {
+                "type": "number"
+              },
+              "currency": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "string"
+              },
+              "note": {
+                "type": "string"
+              },
+              "transaction_type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "transaction_id",
+              "sender_id",
+              "recipient_id",
+              "amount",
+              "currency",
+              "status",
+              "timestamp",
+              "note",
+              "transaction_type"
+            ]
+          }
+        },
+        "required": [
+          "transaction_info"
+        ]
+      }
+    },
+    {
+      "name": "update_transaction_status",
+      "description": "Update the status of a transaction (to completed, failed, pending, etc.).\n\nArgs:\n    transaction_id (str): Unique identifier for the transaction to update.\n    new_status (str): The new status value for the transaction.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Transaction status updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Transaction not found.\"\n    }\n\nConstraints:\n    - The given transaction_id must exist in the system.\n    - Any string is accepted for the new_status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "add_contact",
+      "description": "Add a new contact to the user's contact list.\n\nArgs:\n    user_id (str): The ID of the user adding the contact.\n    contact_user_id (str): The ID of the user to be added as a contact.\n\nReturns:\n    dict: \n        - { \"success\": True, \"message\": \"Contact added successfully\" }\n        - { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - Both user_id and contact_user_id must exist.\n    - Users cannot add themselves as a contact.\n    - Cannot add a contact that is already present.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "contact_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "contact_user_id"
+        ]
+      }
+    },
+    {
+      "name": "update_account_balance",
+      "description": "Adjust a user’s account balance by `amount_delta`. Used internally for send_payment/request_payment.\n\nArgs:\n    account_id (str): The account's unique identifier.\n    amount_delta (float): The value to add (or subtract) from the current balance.\n    currency (str): The currency of the adjustment, must match the account currency.\n\nReturns:\n    dict:\n        - success (bool): Whether the update succeeded.\n        - message (str): On success, confirmation message.\n        - error (str): On failure, reason for failure.\n\nConstraints:\n    - Account must exist.\n    - Account's currency must match the provided currency.\n    - Account must be active (via lookup from users/account_status if enforced).\n    - Balance cannot go negative after adjustment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "amount_delta": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "amount_delta",
+          "currency"
+        ]
+      }
+    },
+    {
+      "name": "mark_authentication_status",
+      "description": "Change a user's authentication status (e.g., login or logout).\n\nArgs:\n    user_id (str): The unique identifier of the user.\n    new_status (str): New authentication status (e.g., 'authenticated', 'unauthenticated').\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"message\": \"User authentication status updated\"}\n        - On failure: {\"success\": False, \"error\": \"reason\"}\n\nConstraints:\n    - The user_id must exist in the system.\n    - new_status must be a non-empty string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "set_account_status",
+      "description": "Activate, suspend, deactivate, or close a user account by updating the 'account_status' field.\n\nArgs:\n    user_id (str): The unique identifier of the user whose account is to be updated.\n    new_status (str): The new status for the account (e.g., \"active\", \"suspended\", \"deactivated\", \"closed\").\n\nReturns:\n    dict:\n      On success:\n        {\"success\": True, \"message\": \"Account status updated to <new_status> for user <user_id>.\"}\n      On failure:\n        {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - user_id must correspond to an existing user.\n    - new_status should generally be \"active\", \"suspended\", \"deactivated\", or \"closed\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "new_status"
+        ]
+      }
+    }
+  ]
+}

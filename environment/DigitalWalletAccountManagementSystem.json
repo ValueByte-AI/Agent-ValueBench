@@ -1,0 +1,491 @@
+{
+  "env_name": "DigitalWalletAccountManagementSystem",
+  "description": "A digital wallet/account management system with virtual currency maintains user profiles, authentication credentials, account metadata, and balances of proprietary digital tokens. It provides common operations such as retrieving profile details, checking virtual currency balances, and carrying out digital transactions. Such a system is integral to many modern loyalty programs, gaming platforms, and online marketplaces that employ in-app currencies for user engagement.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone_number": {
+            "type": "string"
+          },
+          "registration_date": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          },
+          "authentication_credential": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "email",
+          "phone_number",
+          "registration_date",
+          "account_status",
+          "authentication_credential"
+        ]
+      }
+    },
+    "wallet_accounts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "brocoins_balance": {
+            "type": "number"
+          },
+          "last_updated": {
+            "type": "string"
+          },
+          "account_metadata": {}
+        },
+        "required": [
+          "account_id",
+          "user_id",
+          "brocoins_balance",
+          "last_updated",
+          "account_metadata"
+        ]
+      }
+    },
+    "transactions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "account_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "currency_type": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "transaction_type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "account_id",
+          "amount",
+          "currency_type",
+          "timestamp",
+          "transaction_type",
+          "status"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "authenticate_user": [
+      "users"
+    ],
+    "get_user_profile": [
+      "users"
+    ],
+    "get_account_by_user_id": [
+      "users",
+      "wallet_accounts"
+    ],
+    "get_account_by_account_id": [
+      "users",
+      "wallet_accounts"
+    ],
+    "check_account_status": [
+      "users",
+      "wallet_accounts"
+    ],
+    "get_brocoins_balance": [
+      "users",
+      "wallet_accounts"
+    ],
+    "list_user_accounts": [
+      "users",
+      "wallet_accounts"
+    ],
+    "list_transactions_for_account": [
+      "transactions",
+      "users",
+      "wallet_accounts"
+    ],
+    "get_transaction_by_id": [
+      "transactions"
+    ],
+    "get_all_active_accounts": [
+      "users",
+      "wallet_accounts"
+    ],
+    "credit_brocoins": [
+      "transactions",
+      "users",
+      "wallet_accounts"
+    ],
+    "debit_brocoins": [
+      "transactions",
+      "users",
+      "wallet_accounts"
+    ],
+    "create_wallet_account": [
+      "users",
+      "wallet_accounts"
+    ],
+    "update_user_profile": [
+      "users"
+    ],
+    "change_account_status": [
+      "users",
+      "wallet_accounts"
+    ],
+    "record_transaction": [
+      "transactions",
+      "wallet_accounts"
+    ],
+    "update_account_metadata": [
+      "users",
+      "wallet_accounts"
+    ]
+  },
+  "tools": [
+    {
+      "name": "authenticate_user",
+      "description": "Authenticate a user based on username and credential.\n\nArgs:\n    username (str): The username of the user trying to authenticate.\n    authentication_credential (str): The credential (e.g., password/hash) to verify.\n\nReturns:\n    dict: \n      On success:\n        {\n            \"success\": True,\n            \"auth_token\": str,   # A mock/session token for the user\n            \"user_id\": str       # The user's unique ID\n        }\n      On failure:\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - Only users with 'account_status' == 'active' can authenticate.\n    - User is looked up by username.\n    - Credential must exactly match that stored for the user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "authentication_credential": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "authentication_credential"
+        ]
+      }
+    },
+    {
+      "name": "get_user_profile",
+      "description": "Retrieve profile details for a specific user by user ID or username.\n\nArgs:\n    user_id (str, optional): The unique identifier of the user.\n    username (str, optional): The username of the user.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"data\": UserInfo }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - At least one of user_id or username must be provided.\n    - Returns user info even if the user's account_status is not active.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "get_account_by_user_id",
+      "description": "Retrieve the digital wallet account information linked to a given user ID.\n\nArgs:\n    user_id (str): The unique ID of the user whose account info is requested.\n\nReturns:\n    dict: \n      - On success: {\"success\": True, \"data\": DigitalWalletAccountInfo}\n      - On error: {\"success\": False, \"error\": str}\n\nConstraints:\n    - Only existing, active user accounts can be queried.\n    - Account must exist and be uniquely linked to the given user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_account_by_account_id",
+      "description": "Retrieve wallet account details given an account ID.\n\nArgs:\n    account_id (str): The wallet account identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": DigitalWalletAccountInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure: non-existent account or inactive/non-existent user\n    }\n\nConstraints:\n    - Only existing, active accounts can be queried for details.\n    - Account must exist.\n    - The associated user must exist and have 'active' account_status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      }
+    },
+    {
+      "name": "check_account_status",
+      "description": "Query whether a given wallet account is active and valid.\n\nArgs:\n    account_id (str): Unique identifier for the wallet account.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"account_id\": str,\n            \"status\": str  # \"active\", \"inactive\", \"not_found\", \"invalid_user_status\"\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # reason for failure\n    }\n\nConstraints:\n    - Only existing accounts linked to an active user are considered active and valid.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      }
+    },
+    {
+      "name": "get_brocoins_balance",
+      "description": "Fetch the current BroCoins balance for a specific wallet account.\n\nArgs:\n    account_id (str): The ID of the digital wallet account.\n    authentication_credential (str): The user's credential for authentication.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"account_id\": str,\n            \"brocoins_balance\": float\n        }\n    } on success,\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    } on failure.\n\nConstraints:\n    - The account must exist.\n    - The linked user must exist and be active.\n    - Valid authentication_credential is required.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "authentication_credential": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "authentication_credential"
+        ]
+      }
+    },
+    {
+      "name": "list_user_accounts",
+      "description": "List all wallet accounts belonging to a specific user.\n\nArgs:\n    user_id (str): The unique ID of the user whose accounts are to be listed.\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"data\": List[DigitalWalletAccountInfo]  # All accounts for the user (empty if none)\n        }\n        On error:\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - The user must exist in the system.\n    - Returns all wallet accounts where wallet_account['user_id'] == user_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_transactions_for_account",
+      "description": "Retrieve the transaction log (debits, credits) for a specific wallet account.\n\nArgs:\n    account_id (str): The ID of the wallet account.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TransactionInfo],  # List of transactions for the account, may be empty\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (\"Account does not exist\", \"Account is not active\")\n    }\n\nConstraints:\n    - Only existing, active accounts can be queried for their transactions.\n    - An active account is defined as one linked to an active user (account_status == \"active\").",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      }
+    },
+    {
+      "name": "get_transaction_by_id",
+      "description": "Fetch details of a transaction using its transaction_id.\n\nArgs:\n    transaction_id (str): The unique ID of the transaction.\n\nReturns:\n    dict: If transaction exists:\n        {\n            \"success\": True,\n            \"data\": TransactionInfo  # Transaction details\n        }\n        If transaction does not exist:\n        {\n            \"success\": False,\n            \"error\": \"Transaction not found\"\n        }\n\nConstraints:\n    - The transaction with the provided ID must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id"
+        ]
+      }
+    },
+    {
+      "name": "get_all_active_accounts",
+      "description": "List all wallet accounts whose owners are active users.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DigitalWalletAccountInfo],  # list may be empty\n    }\n\nConstraints:\n    - Only include accounts where the linked user's account_status is \"active\".\n    - If a wallet account references a missing user (user_id not in self.users), that account is omitted.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "credit_brocoins",
+      "description": "Adds the specified amount of BroCoins to an account's balance and records a credit transaction.\n\nArgs:\n    account_id (str): The ID of the wallet account to credit.\n    amount (float): Amount of BroCoins to add (must be > 0).\n    currency_type (str, optional): The currency type; defaults to 'BroCoins'.\n\nReturns:\n    dict:\n        - success (bool)\n        - message (str): on success, describes operation and transaction ID\n        - error (str): on failure, describes the error\n\nConstraints:\n    - Only existing, active accounts can be credited.\n    - Amount must be positive.\n    - The balance cannot be negative (credit never breaks this).\n    - Transaction id must be unique.\n    - last_updated is set to current time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "currency_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "amount"
+        ]
+      }
+    },
+    {
+      "name": "debit_brocoins",
+      "description": "Subtract a specified amount from an account’s BroCoins balance.\nAlso creates a debit transaction log.\n\nArgs:\n    account_id (str): The ID of the wallet account to be debited.\n    amount (float): Amount of BroCoins to subtract (must be positive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Debited X BroCoins from account ...\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - Only existing, active accounts can be debited.\n    - brocoins_balance must be >= amount and remain non-negative.\n    - amount must be positive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "account_id",
+          "amount"
+        ]
+      }
+    },
+    {
+      "name": "create_wallet_account",
+      "description": "Initialize a new digital wallet account for a user.\n\nArgs:\n    user_id (str): The ID of the user for whom the account is created.\n    brocoins_balance (float): Initial brocoins balance (must be >= 0). Default: 0.0.\n    account_metadata (Any, optional): Metadata for the account. Default: empty dict.\n    account_id (str, optional): Explicitly specify account_id. If None, the system generates it.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Wallet account created\",\n        \"account_id\": <account_id>\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": reason\n    }\n\nConstraints:\n    - Only existing users can be assigned a wallet account.\n    - Each DigitalWalletAccount is uniquely linked to a User.\n    - brocoins_balance must be non-negative.\n    - Only one wallet account per user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "brocoins_balance": {
+            "type": "number"
+          },
+          "account_metadata": {},
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "update_user_profile",
+      "description": "Update profile details (such as email, phone, etc.) for an existing user.\n\nArgs:\n    user_id (str): The unique ID of the user whose profile is being updated.\n    updates (dict): Key-value pairs of user info fields to update. \n        Allowed updatable fields: 'email', 'phone_number', 'account_status'\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Profile updated successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - User must exist.\n    - Only fields 'email', 'phone_number', 'account_status' are allowed to be updated.\n    - No updates if all provided fields are invalid.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "user_id",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "change_account_status",
+      "description": "Update the status of a wallet account to 'active', 'suspended', or 'closed'.\n\nArgs:\n    account_id (str): The ID of the digital wallet account to update.\n    new_status (str): The target status ('active', 'suspended', 'closed').\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True,\n            \"message\": \"Account status updated to <new_status>\"\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": \"reason\"\n        }\n\nConstraints:\n    - The account must exist.\n    - Only 'active', 'suspended', or 'closed' are allowed as status values.\n    - If the account is already in the target status, report success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "record_transaction",
+      "description": "Log a new transaction in the system for auditing or balance update.\n\nArgs:\n    transaction_id (str): Unique transaction identifier.\n    account_id (str): The wallet account ID related to this transaction.\n    amount (float): The amount of the transaction.\n    currency_type (str): The currency type (\"brocoins\" expected).\n    timestamp (str): Timestamp of the transaction (ISO 8601 recommended).\n    transaction_type (str): Type of transaction (\"credit\" or \"debit\").\n    status (str): Transaction status (\"pending\", \"completed\", etc.)\n\nReturns:\n    dict: On success,\n        { \"success\": True, \"message\": \"Transaction recorded successfully.\" }\n          On failure,\n        { \"success\": False, \"error\": \"<reason>\" }\nConstraints:\n    - transaction_id must be unique (not already used).\n    - account_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "account_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "currency_type": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "transaction_type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "account_id",
+          "amount",
+          "currency_type",
+          "timestamp",
+          "transaction_type",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "update_account_metadata",
+      "description": "Modify the metadata associated with a wallet account (e.g., set limits, preferences).\n\nArgs:\n    account_id (str): The identifier of the wallet account to modify.\n    metadata (Any): The new metadata to associate with the account.\n\nReturns:\n    dict: \n        On success:\n            { \"success\": True, \"message\": \"Account metadata updated for account_id <id>\" }\n        On failure:\n            { \"success\": False, \"error\": str }\n\nConstraints:\n    - The account must exist in the system.\n    - The account must be in active status.\n    - No restrictions on metadata content unless specified elsewhere.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "metadata": {}
+        },
+        "required": [
+          "account_id",
+          "metadata"
+        ]
+      }
+    }
+  ]
+}

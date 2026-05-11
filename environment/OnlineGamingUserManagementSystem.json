@@ -1,0 +1,587 @@
+{
+  "env_name": "OnlineGamingUserManagementSystem",
+  "description": "An online gaming platform user management system maintains persistent records for individual players, including unique identifiers, account profiles, achievements, and game progress. It enables operations such as user registration, information retrieval, updates, and secure storage of credentials and preferences. This environment is fundamental to providing personalized and stateful gaming experiences in multiplayer and social game ecosystems.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "password_hash": {
+            "type": "string"
+          },
+          "registration_date": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          },
+          "preferences": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "password_hash",
+          "registration_date",
+          "email",
+          "account_status",
+          "preferences"
+        ]
+      }
+    },
+    "user_profiles": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "avatar_url": {
+            "type": "string"
+          },
+          "bio": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "display_name",
+          "avatar_url",
+          "bio",
+          "contact_info"
+        ]
+      }
+    },
+    "achievements": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "achievement_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "achievement_type": {
+            "type": "string"
+          },
+          "date_earned": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "achievement_id",
+          "user_id",
+          "achievement_type",
+          "date_earned",
+          "metadata"
+        ]
+      }
+    },
+    "game_progress": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "game_id": {
+            "type": "string"
+          },
+          "level": {
+            "type": "integer"
+          },
+          "score": {
+            "type": "integer"
+          },
+          "progress_data": {
+            "type": "object"
+          },
+          "last_played": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "game_id",
+          "level",
+          "score",
+          "progress_data",
+          "last_played"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_user_profile": [
+      "user_profiles"
+    ],
+    "get_user_achievements": [
+      "achievements",
+      "users"
+    ],
+    "get_user_game_progress": [
+      "game_progress",
+      "users"
+    ],
+    "list_users_by_status": [
+      "users"
+    ],
+    "get_account_status": [
+      "users"
+    ],
+    "search_users_by_username": [
+      "users"
+    ],
+    "check_user_permission": [
+      "users"
+    ],
+    "register_new_user": [
+      "users"
+    ],
+    "update_user_profile": [
+      "user_profiles",
+      "users"
+    ],
+    "update_user_preferences": [
+      "users"
+    ],
+    "update_account_status": [
+      "users"
+    ],
+    "add_user_achievement": [
+      "achievements",
+      "users"
+    ],
+    "update_game_progress": [
+      "game_progress",
+      "users"
+    ],
+    "delete_user_account": [
+      "achievements",
+      "game_progress",
+      "user_profiles",
+      "users"
+    ],
+    "change_user_password": [
+      "users"
+    ],
+    "remove_user_achievement": [
+      "achievements",
+      "users"
+    ],
+    "reset_user_preferences": [
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve non-sensitive user information by user ID, excluding the password hash.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: \n      - {\n            \"success\": True, \n            \"data\": {UserInfo (without 'password_hash')}\n        }\n      - OR\n        {\n            \"success\": False, \n            \"error\": \"User not found\"\n        }\n\nConstraints:\n    - password_hash must never be included in the output.\n    - Returns only information if the user exists.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_profile",
+      "description": "Retrieve the extended profile (display name, avatar, bio, contact info) for the given user ID.\n\nArgs:\n    user_id (str): Unique user identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserProfileInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g. \"User profile not found\"\n    }\n\nConstraints:\n    - The user ID must exist in the user_profiles mapping.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_achievements",
+      "description": "List all achievements earned by a specific user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": List[AchievementInfo]  # All achievements for this user (may be empty)\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason for failure (e.g., user does not exist)\n            }\n\nConstraints:\n    - User with user_id must exist in the system.\n    - Only achievements for the specified user_id are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_game_progress",
+      "description": "List all game progress records for a specific user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[GameProgressInfo],  # may be empty if user has no progress\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # error message, e.g., if user does not exist\n    }\n\nConstraints:\n    - The user (user_id) must exist in the system.\n    - Only game progress records associated with the user are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_users_by_status",
+      "description": "Retrieve a list of users filtered by their account_status.\n\nArgs:\n    account_status (str): Status value to filter users by (e.g., 'active', 'banned', etc.).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[dict],  # List of users' public info (never includes password_hash)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Only if an input is invalid or an internal error occurs\n    }\n\nConstraints:\n    - Never return password_hash in any user entry.\n    - If no users match, return an empty list with success=True.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_status"
+        ]
+      }
+    },
+    {
+      "name": "get_account_status",
+      "description": "Query the account status (e.g., active, suspended, banned) for a given user.\n\nArgs:\n    user_id (str): Unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"user_id\": str,\n            \"account_status\": str\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The user ID must exist in the system.\n    - No sensitive information (e.g., password) is ever revealed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "search_users_by_username",
+      "description": "Retrieve a list of users whose usernames partially or fully match the provided query string.\n\nArgs:\n    username_query (str): The substring (case-insensitive) to search for in usernames.\n\nReturns:\n    dict:\n        - If successful:\n            {\n                \"success\": True,\n                \"data\": List[UserInfo (without password_hash)],\n            }\n        - If input is invalid:\n            {\n                \"success\": False,\n                \"error\": str\n            }\n\nConstraints:\n    - password_hash field is never returned or revealed.\n    - Empty username_query returns error {\"success\": False, \"error\": \"...\"}.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username_query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username_query"
+        ]
+      }
+    },
+    {
+      "name": "check_user_permission",
+      "description": "Checks if the caller has the required permission level (admin or owner)\nto operate on the target user account.\n\nArgs:\n    caller_id (str): The user_id of the requesting user.\n    target_user_id (str): The user_id of the user whose data is being operated on.\n    required_permission (str): Permission type to check, e.g., \"admin\" or \"owner\".\n\nReturns:\n    dict:\n        { \"success\": True, \"has_permission\": bool }\n        or\n        { \"success\": False, \"error\": str } on input or logic errors.\n\nConstraints:\n    - Both user IDs must exist.\n    - Owner means caller == target and account_status is \"active\".\n    - Admin means account_status is \"admin\".\n    - Suspended/banned/etc. users cannot be granted any permissions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "caller_id": {
+            "type": "string"
+          },
+          "target_user_id": {
+            "type": "string"
+          },
+          "required_permission": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "caller_id",
+          "target_user_id",
+          "required_permission"
+        ]
+      }
+    },
+    {
+      "name": "register_new_user",
+      "description": "Register a new user account with a unique user ID and a securely stored password hash.\n\nArgs:\n    _id (str): Unique user identifier.\n    username (str): Desired username (must be unique).\n    password_hash (str): Secure hash of user's password (never plaintext).\n    email (str): User's email address.\n    registration_date (str): ISO or platform-consistent registration date.\n    preferences (dict, optional): User preference settings. Defaults to {}.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User registered successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure\"\n    }\n\nConstraints:\n    - Each user_id (_id) must be unique.\n    - Each username must be unique.\n    - Password_hash must be supplied, never stored/received as plaintext.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "password_hash": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "registration_date": {
+            "type": "string"
+          },
+          "preferences": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "password_hash",
+          "email",
+          "registration_date"
+        ]
+      }
+    },
+    {
+      "name": "update_user_profile",
+      "description": "Update fields in a user's extended profile (display_name, avatar_url, bio, contact_info).\n\nArgs:\n    user_id (str): The unique identifier of the user whose profile to update.\n    updates (dict): Dictionary of fields to update (keys: display_name, avatar_url, bio, contact_info).\n    requester_id (str): The unique identifier of the user making the request.\n    is_admin (bool): Whether the requester has administrative privileges (default: False).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User profile updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Only the owner or an admin may modify the profile.\n    - Updates are restricted to display_name, avatar_url, bio, and contact_info.\n    - If the account is banned or suspended, updates are allowed only for admins.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          },
+          "requester_id": {
+            "type": "string"
+          },
+          "is_admin": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "user_id",
+          "updates",
+          "requester_id"
+        ]
+      }
+    },
+    {
+      "name": "update_user_preferences",
+      "description": "Modify a user's preference settings if permitted.\n\nArgs:\n    user_id (str): The unique identifier of the user whose preferences should be modified.\n    new_preferences (dict): Key-value pairs to update/add in the user's preferences.\n    requester_id (str): ID of the user making the request (must be user themselves or admin).\n    is_admin (bool): If True, the requester is an admin and can override most restrictions.\n\nReturns:\n    dict: \n        On success: \n            { \"success\": True, \"message\": \"User preferences updated successfully.\" }\n        On failure: \n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Only the account holder or an admin can modify preferences.\n    - If the account is not active, update is not allowed, unless requester is admin.\n    - Preferences must be a dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "new_preferences": {
+            "type": "object"
+          },
+          "requester_id": {
+            "type": "string"
+          },
+          "is_admin": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "user_id",
+          "new_preferences",
+          "requester_id"
+        ]
+      }
+    },
+    {
+      "name": "update_account_status",
+      "description": "Change a user's account status (e.g., activate, suspend, ban).\nConstraints:\n  - Only users with proper administrative privilege can perform this operation.\n  - Both requester_id and target_user_id must exist.\n  - new_status must be a valid status string (e.g., 'active', 'suspended', 'banned').\n  - User cannot change their own status unless permitted by platform policy.\n\nArgs:\n    requester_id (str): The user attempting to perform the status change.\n    target_user_id (str): The user account whose status is to be changed.\n    new_status (str): The new status string.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Account status updated to <new_status> for user <target_user_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "requester_id": {
+            "type": "string"
+          },
+          "target_user_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requester_id",
+          "target_user_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "add_user_achievement",
+      "description": "Add a new achievement for a given user.\n\nArgs:\n    achievement_id (str): Unique identifier for the achievement.\n    user_id (str): User's unique identifier to associate the achievement with.\n    achievement_type (str): Type or category of the achievement.\n    date_earned (str): Date the achievement was earned.\n    metadata (dict): Additional metadata related to the achievement.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"message\": \"Achievement added for user <user_id>\"}\n        On failure:\n            {\"success\": False, \"error\": \"reason\"}\n\nConstraints:\n    - achievement_id must be unique.\n    - user_id must exist in self.users.\n    - Achievement must be associated with a valid user.\n    - User's account status must allow adding achievements (must be 'active').",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "achievement_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "achievement_type": {
+            "type": "string"
+          },
+          "date_earned": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "achievement_id",
+          "user_id",
+          "achievement_type",
+          "date_earned",
+          "metadata"
+        ]
+      }
+    },
+    {
+      "name": "update_game_progress",
+      "description": "Modify or add a user's game progress record.\n\nArgs:\n    user_id (str): The ID of the user whose progress to modify/add.\n    game_id (str): The ID of the game.\n    level (int): The user level in the game.\n    score (int): The user score in the game.\n    progress_data (dict): Additional progress information.\n    last_played (str): ISO date/time string of last played.\n\nReturns:\n    dict: On success: {\n        \"success\": True, \n        \"message\": \"Game progress for user {user_id} & game {game_id} updated/added.\"\n    }\n    On failure: {\n        \"success\": False, \n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - user_id must exist and be active (account status must not be suspended/banned).\n    - game_progress record key is composite of user_id and game_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "game_id": {
+            "type": "string"
+          },
+          "level": {
+            "type": "integer"
+          },
+          "score": {
+            "type": "integer"
+          },
+          "progress_data": {
+            "type": "object"
+          },
+          "last_played": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "game_id",
+          "level",
+          "score",
+          "progress_data",
+          "last_played"
+        ]
+      }
+    },
+    {
+      "name": "delete_user_account",
+      "description": "Permanently remove a user and all associated data (admin only).\n\nArgs:\n    user_id (str): The ID of the user to delete.\n    requester_id (str): The ID of the user performing the operation (for admin check).\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"User and associated data permanently removed.\" }\n        On failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Only an administrator can perform this operation.\n    - All associated data (profile, achievements, game progress) is also removed.\n    - Operation must not leak any credentials or sensitive values.\n    - If user does not exist, return error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "requester_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "requester_id"
+        ]
+      }
+    },
+    {
+      "name": "change_user_password",
+      "description": "Update a user's password (as hash). Only the user themselves or an admin may attempt this.\nRestrictions:\n  - Only self-service or admin may change a user's password.\n  - Account must exist.\n  - For non-admin, account_status must not be suspended/banned.\n  - The new password_hash must not be empty.\n  - Password is stored as a hash (never plaintext).\n\nArgs:\n    requesting_user_id (str): The user performing the operation.\n    target_user_id (str): The account whose password is to be changed.\n    new_password_hash (str): The new password hash value (must not be blank).\n    admin_override (bool): If True, requesting user acts as admin.\n\nReturns:\n    dict: {\n      \"success\": True,\n      \"message\": \"Password updated successfully\"\n    }\n    OR\n    dict: {\n      \"success\": False,\n      \"error\": \"<reason>\"\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "requesting_user_id": {
+            "type": "string"
+          },
+          "target_user_id": {
+            "type": "string"
+          },
+          "new_password_hash": {
+            "type": "string"
+          },
+          "admin_override": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "requesting_user_id",
+          "target_user_id",
+          "new_password_hash"
+        ]
+      }
+    },
+    {
+      "name": "remove_user_achievement",
+      "description": "Delete an achievement from the user's record.\n\nArgs:\n    achievement_id (str): The ID of the achievement to delete.\n    requester_id (str): The ID of the user making the delete request.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Achievement removed from user record.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"reason for failure\"\n    }\n\nConstraints:\n    - Achievement must exist.\n    - Only the owner (achievement.user_id) or a platform admin can remove the achievement.\n    - Account status may restrict access (e.g., banned/suspended users may not perform actions).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "achievement_id": {
+            "type": "string"
+          },
+          "requester_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "achievement_id",
+          "requester_id"
+        ]
+      }
+    },
+    {
+      "name": "reset_user_preferences",
+      "description": "Restore a user's preferences to platform defaults.\n\nArgs:\n    user_id (str): Unique identifier of the user whose preferences will be reset.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Preferences reset to platform defaults.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": <reason>\n            }\nConstraints:\n    - The user must exist.\n    - The user's account_status must be 'active'.\n    - Platform default preferences should be applied.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    }
+  ]
+}

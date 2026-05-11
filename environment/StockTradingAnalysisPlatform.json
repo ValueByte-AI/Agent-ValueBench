@@ -1,0 +1,414 @@
+{
+  "env_name": "StockTradingAnalysisPlatform",
+  "description": "A stock trading and analysis platform manages real-time and historical financial data for a wide universe of publicly traded stocks. It calculates and tracks various technical indicators and chart patterns, enabling users to search, filter, and analyze securities based on complex criteria. The platform also typically offers features for data visualization, paginated result lists, and trading execution tools.",
+  "initial_parameter_schema": {
+    "stocks": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "stock_id": {
+            "type": "string"
+          },
+          "symbol": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "exchange": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "stock_id",
+          "symbol",
+          "name",
+          "exchange"
+        ]
+      }
+    },
+    "price_data": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "stock_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "open": {
+              "type": "number"
+            },
+            "close": {
+              "type": "number"
+            },
+            "high": {
+              "type": "number"
+            },
+            "low": {
+              "type": "number"
+            },
+            "volume": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "stock_id",
+            "timestamp",
+            "open",
+            "close",
+            "high",
+            "low",
+            "volume"
+          ]
+        }
+      }
+    },
+    "technical_signals": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "stock_id": {
+              "type": "string"
+            },
+            "signal_type": {
+              "type": "string"
+            },
+            "signal_time": {
+              "type": "string"
+            },
+            "signal_a": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "stock_id",
+            "signal_type",
+            "signal_time",
+            "signal_a"
+          ]
+        }
+      }
+    },
+    "pagination_states": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "query_id": {
+            "type": "string"
+          },
+          "current_page": {
+            "type": "integer"
+          },
+          "page_size": {
+            "type": "integer"
+          },
+          "total_result": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query_id",
+          "current_page",
+          "page_size",
+          "total_result"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_stocks_by_signal_type": [
+      "stocks",
+      "technical_signals"
+    ],
+    "get_technical_signals_by_stock": [
+      "stocks",
+      "technical_signals"
+    ],
+    "get_signal_details": [
+      "stocks",
+      "technical_signals"
+    ],
+    "get_stock_info_by_id": [
+      "stocks"
+    ],
+    "get_stock_info_by_symbol": [
+      "stocks"
+    ],
+    "list_all_stocks": [
+      "stocks"
+    ],
+    "get_price_data": [
+      "price_data",
+      "stocks"
+    ],
+    "get_pagination_state": [
+      "pagination_states"
+    ],
+    "initialize_pagination": [
+      "pagination_states"
+    ],
+    "go_to_next_page": [
+      "pagination_states"
+    ],
+    "go_to_previous_page": [
+      "pagination_states"
+    ],
+    "set_page_size": [
+      "pagination_states"
+    ],
+    "reset_pagination": [
+      "pagination_states"
+    ],
+    "update_pagination_state": [
+      "pagination_states"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_stocks_by_signal_type",
+      "description": "Retrieve a list of StockInfo objects for stocks that have at least one technical signal of the specified type.\n\nArgs:\n    signal_type (str): The technical signal type to search for (e.g. \"Bullish Hammer\").\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[StockInfo],  # Possibly empty list if no matches\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Reason for failure, e.g., missing/invalid input\n        }\n\nConstraints:\n    - Only stocks recognized in self.stocks are considered.\n    - No duplicates in result.\n    - Results reflect only valid (referenced) stock_ids from technical signals.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "signal_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "signal_type"
+        ]
+      }
+    },
+    {
+      "name": "get_technical_signals_by_stock",
+      "description": "Fetch all technical signals for a given stock_id.\n\nArgs:\n    stock_id (str): The unique identifier of the stock.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TechnicalSignalInfo]  # all technical signals for the stock, possibly empty\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # reason of failure, e.g. stock_id does not exist\n    }\n\nConstraints:\n    - stock_id must refer to an existing stock.\n    - Signal records must reference existing stocks.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stock_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "stock_id"
+        ]
+      }
+    },
+    {
+      "name": "get_signal_details",
+      "description": "Retrieve detailed information for a specified technical signal.\n\nArgs:\n    stock_id (str): The stock ID to which the signal belongs.\n    signal_type (str): Type of technical signal (e.g., 'Bullish Hammer').\n    signal_time (str): Time the signal was generated (ISO format).\n\nReturns:\n    dict:\n        success: True and data with the TechnicalSignalInfo on success;\n        otherwise success: False and a descriptive error.\n\nConstraints:\n    - The stock must exist.\n    - The signal must exist for the provided stock, type, and time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stock_id": {
+            "type": "string"
+          },
+          "signal_type": {
+            "type": "string"
+          },
+          "signal_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "stock_id",
+          "signal_type",
+          "signal_time"
+        ]
+      }
+    },
+    {
+      "name": "get_stock_info_by_id",
+      "description": "Retrieve the full StockInfo dictionary for a given stock_id.\n\nArgs:\n    stock_id (str): The unique identifier of the stock.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": StockInfo }\n        - On failure (not found): { \"success\": False, \"error\": \"Stock not found\" }\n\nConstraints:\n    - The stock_id must exist in the platform's records.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stock_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "stock_id"
+        ]
+      }
+    },
+    {
+      "name": "get_stock_info_by_symbol",
+      "description": "Retrieve StockInfo for a given stock symbol.\n\nArgs:\n    symbol (str): The ticker symbol to search for.\n\nReturns:\n    dict:\n        { \"success\": True, \"data\": StockInfo } if found,\n        { \"success\": False, \"error\": \"Stock symbol not found\" } otherwise.\n\nConstraints:\n    - Symbol matching is case-insensitive.\n    - Symbol must match a loaded stock.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol"
+        ]
+      }
+    },
+    {
+      "name": "list_all_stocks",
+      "description": "Return the complete list of all supported stocks.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[StockInfo]  # List of all stocks, empty if none\n    }\n\nConstraints:\n    - No input or selection constraint.\n    - Returns all supported stocks currently loaded in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_price_data",
+      "description": "Fetch price data (historical/real-time) for a specified stock, optionally within a given time window.\n\nArgs:\n    stock_id (str): The ID of the stock for which to fetch price data.\n    start_time (Optional[str]): Inclusive lower bound for timestamp (ISO8601 or UNIX string). If None, no lower bound.\n    end_time (Optional[str]): Inclusive upper bound for timestamp. If None, no upper bound.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PriceDataInfo]   # List of matching price data entries (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message\n    }\n\nConstraints:\n    - stock_id must exist in the stocks dictionary.\n    - If both start_time and end_time are provided and start_time > end_time, returns error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stock_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "stock_id"
+        ]
+      }
+    },
+    {
+      "name": "get_pagination_state",
+      "description": "Retrieve the current pagination state for a given query.\n\nArgs:\n    query_id (str): The identifier for the paginated result set.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": PaginationStateInfo,  # Pagination info (page number, size, total results, etc.)\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason, e.g. \"Query ID not found\"\n            }\n\nConstraints:\n    - query_id must exist in the pagination_states mapping to be valid.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query_id"
+        ]
+      }
+    },
+    {
+      "name": "initialize_pagination",
+      "description": "Initialize a new paginated result set for the specific query, tracked by query_id.\n\nArgs:\n    query_id (str): Unique identifier for pagination context/query.\n    page_size (int): Number of results per page (must be > 0).\n    total_result (int): Total results available for this query (must be >= 0).\n\nReturns:\n    dict: \n        On success: {\"success\": True, \"message\": \"Pagination initialized for query_id <query_id>\"}\n        On failure: {\"success\": False, \"error\": \"<reason>\"}\n    \nConstraints:\n    - query_id must not already exist in pagination_states.\n    - page_size must be a positive integer.\n    - total_result must be a non-negative integer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query_id": {
+            "type": "string"
+          },
+          "page_size": {
+            "type": "integer"
+          },
+          "total_result": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query_id",
+          "page_size",
+          "total_result"
+        ]
+      }
+    },
+    {
+      "name": "go_to_next_page",
+      "description": "Advance to the next page for the given paginated query.\n\nArgs:\n    query_id (str): Unique identifier for the paginated query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Current page advanced to N\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error\n    }\n\nConstraints:\n    - Cannot advance past the last page.\n    - Pagination state for the query_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query_id"
+        ]
+      }
+    },
+    {
+      "name": "go_to_previous_page",
+      "description": "Move to the previous page for the given paginated query.\n\nArgs:\n    query_id (str): The unique identifier for the paginated query session.\n\nReturns:\n    dict: \n        - On success:\n            {\"success\": True, \"message\": \"Moved to previous page\", \"current_page\": int}\n        - On failure:\n            {\"success\": False, \"error\": str}\nConstraints:\n    - If already at the first page (current_page == 1), stay at page 1 (do not decrement below 1).\n    - query_id must exist in pagination_states.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query_id"
+        ]
+      }
+    },
+    {
+      "name": "set_page_size",
+      "description": "Adjust the number of results returned per page for a given paginated query.\n\nArgs:\n    query_id (str): The identifier for the paginated query.\n    page_size (int): The new page size (must be positive integer).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - query_id must exist in self.pagination_states.\n    - page_size must be a positive integer (> 0).\n    - If current_page is now out of range given new page_size and total_result,\n      adjust current_page to the maximum valid page.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query_id": {
+            "type": "string"
+          },
+          "page_size": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query_id",
+          "page_size"
+        ]
+      }
+    },
+    {
+      "name": "reset_pagination",
+      "description": "Reset pagination state to the first page (current_page = 1) for a given query.\n\nArgs:\n    query_id (str): The identifier of the pagination state to reset.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Pagination reset to first page for query <query_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Pagination state with query_id ... does not exist.\"\n    }\nConstraints:\n    - The pagination state for the given query_id must exist.\n    - Only current_page is updated to 1; other fields remain unchanged.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query_id"
+        ]
+      }
+    },
+    {
+      "name": "update_pagination_state",
+      "description": "Manually update page number or navigation parameters for a paginated result set.\n\nArgs:\n    query_id (str): Identifier for the paginated result set.\n    current_page (int, optional): The new page number to set (must be >=1 and <= max page).\n    page_size (int, optional): The new page size to set (must be >=1).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Success message.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error reason.\n    }\n\nConstraints:\n    - Pagination state must exist for the given query_id.\n    - current_page >= 1 and page_size >= 1.\n    - After update, current_page cannot exceed total number of pages.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query_id": {
+            "type": "string"
+          },
+          "current_page": {
+            "type": "integer"
+          },
+          "page_size": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query_id"
+        ]
+      }
+    }
+  ]
+}

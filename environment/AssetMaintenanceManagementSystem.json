@@ -1,0 +1,667 @@
+{
+  "env_name": "AssetMaintenanceManagementSystem",
+  "description": "An Asset Maintenance Management System (CMMS) tracks equipment across multiple locations, recording details about each asset, associated maintenance schedules, and service histories. It allows users to query, update, and manage upcoming maintenance tasks for optimized resource allocation and compliance. Typical operations include scheduling, tracking, and reporting on maintenance activities for various types of facility assets.",
+  "initial_parameter_schema": {
+    "facilities": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "facility_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "facility_id",
+          "name",
+          "location",
+          "contact_info"
+        ]
+      }
+    },
+    "assets": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "asset_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "facility_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "install_date": {
+            "type": "string"
+          },
+          "serial_num": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "asset_id",
+          "type",
+          "facility_id",
+          "status",
+          "install_date",
+          "serial_num"
+        ]
+      }
+    },
+    "maintenance_schedules": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          },
+          "asset_id": {
+            "type": "string"
+          },
+          "scheduled_date": {
+            "type": "string"
+          },
+          "recurrence_pattern": {
+            "type": "string"
+          },
+          "last_maintenance_date": {
+            "type": "string"
+          },
+          "next_maintenance_date": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schedule_id",
+          "asset_id",
+          "scheduled_date",
+          "recurrence_pattern",
+          "last_maintenance_date",
+          "next_maintenance_date",
+          "status"
+        ]
+      }
+    },
+    "maintenance_histories": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "history_id": {
+            "type": "string"
+          },
+          "asset_id": {
+            "type": "string"
+          },
+          "maintenance_date": {
+            "type": "string"
+          },
+          "performed_by": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "history_id",
+          "asset_id",
+          "maintenance_date",
+          "performed_by",
+          "notes",
+          "outcome"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_facility_by_name": [
+      "facilities"
+    ],
+    "get_facility_by_id": [
+      "facilities"
+    ],
+    "list_facilities": [
+      "facilities"
+    ],
+    "get_assets_by_facility": [
+      "assets",
+      "facilities"
+    ],
+    "get_assets_by_type": [
+      "assets"
+    ],
+    "get_asset_by_id": [
+      "assets"
+    ],
+    "get_assets_by_status": [
+      "assets"
+    ],
+    "get_eligible_assets_for_maintenance": [
+      "assets",
+      "facilities"
+    ],
+    "get_maintenance_schedules_by_asset": [
+      "assets",
+      "maintenance_schedules"
+    ],
+    "get_next_maintenance_schedule_for_asset": [
+      "assets",
+      "maintenance_schedules"
+    ],
+    "get_assets_by_facility_and_type": [
+      "assets",
+      "facilities"
+    ],
+    "get_maintenance_history_by_asset": [
+      "assets",
+      "maintenance_histories"
+    ],
+    "add_asset": [
+      "assets",
+      "facilities"
+    ],
+    "update_asset_status": [
+      "assets"
+    ],
+    "assign_asset_to_facility": [
+      "assets",
+      "facilities"
+    ],
+    "schedule_maintenance_for_asset": [
+      "assets",
+      "maintenance_schedules"
+    ],
+    "update_maintenance_schedule": [
+      "assets",
+      "maintenance_schedules"
+    ],
+    "add_maintenance_history_entry": [
+      "assets",
+      "maintenance_histories"
+    ],
+    "remove_asset": [
+      "assets",
+      "maintenance_histories",
+      "maintenance_schedules"
+    ],
+    "remove_maintenance_schedule": [
+      "maintenance_schedules"
+    ],
+    "update_facility_info": [
+      "facilities"
+    ],
+    "add_facility": [
+      "facilities"
+    ],
+    "remove_facility": [
+      "assets",
+      "facilities"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_facility_by_name",
+      "description": "Retrieve facility information for a facility matching the given name.\n\nArgs:\n    name (str): The facility's name to search for.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"data\": FacilityInfo}\n        - On error (not found): {\"success\": False, \"error\": \"Facility not found\"}\n\nConstraints:\n    - Facility names are assumed to be unique; if not, the first match will be returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_facility_by_id",
+      "description": "Retrieve facility information given a facility_id.\n\nArgs:\n    facility_id (str): The unique identifier for the facility.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": FacilityInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - facility_id must exist in the facilities database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "facility_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "facility_id"
+        ]
+      }
+    },
+    {
+      "name": "list_facilities",
+      "description": "List all facilities in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[FacilityInfo]  # List of all facilities (may be empty if none exist)\n    }\nConstraints:\n    - None specific; returns current state of self.facilities.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_assets_by_facility",
+      "description": "List all assets assigned to a specific facility.\n\nArgs:\n    facility_id (str): The unique identifier for the facility.\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"data\": [AssetInfo, ...]}\n        - On failure: {\"success\": False, \"error\": \"Facility does not exist\"}\n\nConstraints:\n    - The facility must exist in the system.\n    - All assets returned have asset['facility_id'] == facility_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "facility_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "facility_id"
+        ]
+      }
+    },
+    {
+      "name": "get_assets_by_type",
+      "description": "Retrieve all assets of the given type.\n\nArgs:\n    asset_type (str): The type of asset to filter for (e.g., 'scale', 'HVAC').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AssetInfo]  # List of assets matching the type (empty if none found)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error\n    }\n\nConstraints:\n    - asset_type must be provided (not None or empty).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "asset_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "asset_type"
+        ]
+      }
+    },
+    {
+      "name": "get_asset_by_id",
+      "description": "Fetch detailed information for a specific asset by its unique asset_id.\n\nArgs:\n    asset_id (str): The unique ID of the asset to query.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": AssetInfo  # Asset info dictionary.\n            }\n        - On failure (not found):\n            {\n                \"success\": False,\n                \"error\": \"Asset not found\"\n            }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "asset_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "asset_id"
+        ]
+      }
+    },
+    {
+      "name": "get_assets_by_status",
+      "description": "Fetch all assets filtered by their status (e.g., 'active', 'inactive', 'out-of-service').\n\nArgs:\n    status (str): The target asset status to filter on.\n\nReturns:\n    dict: {\n        'success': True,\n        'data': List[AssetInfo]  # All assets with the given status (empty list if none found)\n    }\n    or\n    {\n        'success': False,\n        'error': str  # Reason for failure (e.g., invalid input)\n    }\n\nConstraints:\n    - No asset state is changed.\n    - Status comparison is case-sensitive.\n    - Returns empty list if no assets match; that is not an error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "get_eligible_assets_for_maintenance",
+      "description": "Retrieve all assets that are:\n  - assigned to a valid facility (facility_id in self.facilities), AND\n  - have a status of 'active'\nThese assets are eligible for future maintenance scheduling.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AssetInfo]\n    }\n\nConstraints:\n    - Only assets with status 'active' are eligible.\n    - Asset must be assigned to a facility that exists in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_maintenance_schedules_by_asset",
+      "description": "Retrieve all maintenance schedules associated with a given asset.\n\nArgs:\n    asset_id (str): The ID of the asset to retrieve maintenance schedules for.\n\nReturns:\n    dict: \n        - { \"success\": True, \"data\": List[MaintenanceScheduleInfo] }\n          (Empty list if none exist for the asset)\n        - { \"success\": False, \"error\": str } if the asset does not exist.\n\nConstraints:\n    - asset_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "asset_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "asset_id"
+        ]
+      }
+    },
+    {
+      "name": "get_next_maintenance_schedule_for_asset",
+      "description": "Retrieve the next upcoming (future) maintenance schedule for the given asset.\n\nArgs:\n    asset_id (str): The unique identifier of the asset.\n\nReturns:\n    dict:\n      - On success and schedule found:\n        {\n            \"success\": True,\n            \"data\": MaintenanceScheduleInfo  # Dict with the next schedule for this asset\n        }\n      - On success but no upcoming schedules:\n        {\n            \"success\": True,\n            \"data\": None\n        }\n      - On error:\n        {\n            \"success\": False,\n            \"error\": str  # Reason for failure\n        }\n\nConstraints:\n    - The asset must exist in the system.\n    - Only shows schedules for this asset that are in the future (scheduled_date or next_maintenance_date > now).\n    - Returns the schedule with the soonest future scheduled_date (or next_maintenance_date).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "asset_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "asset_id"
+        ]
+      }
+    },
+    {
+      "name": "get_assets_by_facility_and_type",
+      "description": "Retrieve all assets of a certain type at a specific facility.\n\nArgs:\n    facility_id (str): The unique identifier of the facility.\n    asset_type (str): The type/category of asset to retrieve.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"data\": List[AssetInfo]}  # List may be empty if no match\n        On error:\n            {\"success\": False, \"error\": str}\n\nConstraints:\n    - The facility_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "facility_id": {
+            "type": "string"
+          },
+          "asset_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "facility_id",
+          "asset_type"
+        ]
+      }
+    },
+    {
+      "name": "get_maintenance_history_by_asset",
+      "description": "Retrieve all maintenance history records for the specified asset.\n\nArgs:\n    asset_id (str): The ID of the asset for which history is requested.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MaintenanceHistoryInfo]  # List may be empty if no history exists\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g. asset does not exist\n    }\n\nConstraints:\n    - The asset_id must exist in the system (must be present in self.assets).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "asset_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "asset_id"
+        ]
+      }
+    },
+    {
+      "name": "add_asset",
+      "description": "Register a new asset and assign it to a facility.\n\nArgs:\n    asset_id (str): Unique ID for the asset (must not already exist).\n    type (str): Type/category of the asset.\n    facility_id (str): The facility to which the asset will be assigned (must exist).\n    status (str): The status of the asset (e.g., 'active', 'inactive').\n    install_date (str): Date asset was installed (ISO or other standard format).\n    serial_num (str): Serial number of the asset.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - asset_id must be unique\n    - facility_id must exist in the system",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "asset_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "facility_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "install_date": {
+            "type": "string"
+          },
+          "serial_num": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "asset_id",
+          "type",
+          "facility_id",
+          "status",
+          "install_date",
+          "serial_num"
+        ]
+      }
+    },
+    {
+      "name": "update_asset_status",
+      "description": "Change the status of an asset (e.g., mark as active, inactive, retired, etc.).\n\nArgs:\n    asset_id (str): The ID of the asset to update.\n    new_status (str): The new status to apply to the asset.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"message\": \"Asset status updated successfully.\"}\n        - On failure: {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - Asset must exist in the system (asset_id in self.assets).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "asset_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "asset_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "assign_asset_to_facility",
+      "description": "Move or reassign an asset to a different facility.\n\nArgs:\n    asset_id (str): The ID of the asset to reassign.\n    facility_id (str): The ID of the facility to assign the asset to.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Asset <asset_id> assigned to facility <facility_id>\" }\n        On failure:\n            { \"success\": False, \"error\": <description> }\n\nConstraints:\n    - Asset must exist in the system.\n    - Facility must exist in the system.\n    - Each asset must be assigned to exactly one facility after the operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "asset_id": {
+            "type": "string"
+          },
+          "facility_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "asset_id",
+          "facility_id"
+        ]
+      }
+    },
+    {
+      "name": "schedule_maintenance_for_asset",
+      "description": "Create a new maintenance schedule entry for an asset.\n\nArgs:\n    asset_id (str): Asset ID to schedule maintenance for. Must exist and be active/eligible.\n    scheduled_date (str): Date for scheduled maintenance (ISO 8601 string or agreed format).\n    recurrence_pattern (str): Recurrence rule/pattern (e.g., 'monthly').\n    status (str): Status of the schedule (e.g. 'scheduled').\n    last_maintenance_date (str, optional): Last maintenance date (may be empty for new).\n    next_maintenance_date (str, optional): Next maintenance date (computed or given).\n    schedule_id (str, optional): Provide to override/generated if omitted.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Maintenance schedule created\",\n        \"schedule_id\": <id>,\n    }\n    or {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - asset_id must be present in self.assets and have an 'active' status (or otherwise eligible).\n    - schedule_id must not already exist.\n    - All required fields must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "asset_id": {
+            "type": "string"
+          },
+          "scheduled_date": {
+            "type": "string"
+          },
+          "recurrence_pattern": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "last_maintenance_date": {
+            "type": "string"
+          },
+          "next_maintenance_date": {
+            "type": "string"
+          },
+          "schedule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "asset_id",
+          "scheduled_date",
+          "recurrence_pattern",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "update_maintenance_schedule",
+      "description": "Modifies the timing or recurrence details of an existing maintenance schedule.\n\nArgs:\n    schedule_id (str): The ID of the maintenance schedule to update.\n    scheduled_date (str, optional): New scheduled maintenance date.\n    recurrence_pattern (str, optional): New schedule recurrence pattern.\n    last_maintenance_date (str, optional): New last maintenance date.\n    next_maintenance_date (str, optional): New next scheduled date.\n    status (str, optional): New status for the schedule.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Maintenance schedule updated successfully.\"\n    } on success, or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    } on failure.\n\nConstraints:\n    - Schedule must exist.\n    - Associated asset must exist.\n    - If next_maintenance_date or scheduled_date is provided, the associated asset must have an 'active' status.\n    - At least one field to update must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          },
+          "scheduled_date": {
+            "type": "string"
+          },
+          "recurrence_pattern": {
+            "type": "string"
+          },
+          "last_maintenance_date": {
+            "type": "string"
+          },
+          "next_maintenance_date": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schedule_id"
+        ]
+      }
+    },
+    {
+      "name": "add_maintenance_history_entry",
+      "description": "Record a recently performed maintenance event in maintenance history.\n\nArgs:\n    history_id (str): Unique identifier for the maintenance history record.\n    asset_id (str): The asset this maintenance was performed on; asset must exist.\n    maintenance_date (str): Date of maintenance (format assumed to be valid).\n    performed_by (str): Persone/role who performed maintenance.\n    notes (str): Maintenance details.\n    outcome (str): Result of the maintenance.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Maintenance history entry recorded.\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n  - asset_id must exist in the system.\n  - history_id must be unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "history_id": {
+            "type": "string"
+          },
+          "asset_id": {
+            "type": "string"
+          },
+          "maintenance_date": {
+            "type": "string"
+          },
+          "performed_by": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "history_id",
+          "asset_id",
+          "maintenance_date",
+          "performed_by",
+          "notes",
+          "outcome"
+        ]
+      }
+    },
+    {
+      "name": "remove_asset",
+      "description": "Remove an asset identified by asset_id, subject to business logic:\n  - Asset must exist.\n  - Asset cannot be removed if it is referenced by maintenance schedules or histories.\n\nArgs:\n    asset_id (str): The asset's unique identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Asset <asset_id> removed successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Cannot remove asset if referenced in MaintenanceSchedule or MaintenanceHistory.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "asset_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "asset_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_maintenance_schedule",
+      "description": "Delete a scheduled maintenance entry from the system.\n\nArgs:\n    schedule_id (str): The identifier of the maintenance schedule to delete.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Maintenance schedule removed successfully\" }\n        On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - The schedule_id must exist in the system.\n    - Removal does NOT cascade to maintenance history or assets (no additional changes).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schedule_id"
+        ]
+      }
+    },
+    {
+      "name": "update_facility_info",
+      "description": "Edit facility details: name, location, and/or contact_info.\n\nArgs:\n    facility_id (str): ID of the facility to update.\n    name (str, optional): New facility name (if updating).\n    location (str, optional): New location (if updating).\n    contact_info (str, optional): New contact info (if updating).\n\nReturns:\n    dict:\n        - On success:\n            {\"success\": True, \"message\": \"Facility info updated\"}\n        - On failure:\n            {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - Facility must exist.\n    - At least one field (name, location, contact_info) must be provided for update.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "facility_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "facility_id"
+        ]
+      }
+    },
+    {
+      "name": "add_facility",
+      "description": "Register a new facility in the system.\n\nArgs:\n    facility_id (str): Unique identifier for the facility.\n    name (str): Facility name.\n    location (str): Physical location.\n    contact_info (str): Contact information.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Facility [facility_id] added successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"error reason\"\n    }\n\nConstraints:\n    - facility_id must not already exist in self.facilities\n    - All fields must be non-empty strings",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "facility_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "facility_id",
+          "name",
+          "location",
+          "contact_info"
+        ]
+      }
+    },
+    {
+      "name": "remove_facility",
+      "description": "Delete a facility by its ID, only if no assets are assigned to it.\n\nArgs:\n    facility_id (str): Identifier of the facility to remove.\n\nReturns:\n    dict: If success:\n        {\n            \"success\": True,\n            \"message\": \"Facility <facility_id> removed successfully.\"\n        }\n        If failure:\n        {\n            \"success\": False,\n            \"error\": \"<reason>\"\n        }\n\nConstraints:\n    - Facility must exist.\n    - Must have no assets assigned to this facility.\n    - No cascading deletes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "facility_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "facility_id"
+        ]
+      }
+    }
+  ]
+}

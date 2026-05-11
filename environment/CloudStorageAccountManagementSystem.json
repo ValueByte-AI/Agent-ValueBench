@@ -1,0 +1,597 @@
+{
+  "env_name": "CloudStorageAccountManagementSystem",
+  "description": "A cloud storage account management system organizes files and folders within user accounts, maintaining detailed records of file metadata, hierarchical directory structures, and storage quotas. It supports operations like uploading, deleting, listing files, and tracking overall space usage per user. This environment is commonly used for managing and accessing digital documents remotely through web interfaces or APIs.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "storage_quota": {
+            "type": "number"
+          },
+          "storage_used": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "email",
+          "storage_quota",
+          "storage_used"
+        ]
+      }
+    },
+    "folders": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "folder_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "parent_folder_id": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "files": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "folder_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          },
+          "type": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "modified_at": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id",
+          "user_id",
+          "folder_id",
+          "name",
+          "size",
+          "type",
+          "created_at",
+          "modified_at",
+          "path"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_username": [
+      "users"
+    ],
+    "get_user_storage_usage": [
+      "users"
+    ],
+    "recalculate_user_storage_usage": [
+      "files",
+      "users"
+    ],
+    "list_user_folders": [
+      "folders",
+      "users"
+    ],
+    "get_folder_by_path": [
+      "folders"
+    ],
+    "get_folder_by_id": [
+      "folders"
+    ],
+    "list_files_in_folder": [
+      "files",
+      "folders"
+    ],
+    "get_file_by_id": [
+      "files"
+    ],
+    "get_file_by_name_in_folder": [
+      "files",
+      "folders"
+    ],
+    "get_folder_structure": [
+      "folders",
+      "users"
+    ],
+    "upload_file": [
+      "files",
+      "folders",
+      "users"
+    ],
+    "delete_file": [
+      "files",
+      "users"
+    ],
+    "move_file": [
+      "files",
+      "folders"
+    ],
+    "rename_file": [
+      "files",
+      "folders"
+    ],
+    "create_folder": [
+      "folders",
+      "users"
+    ],
+    "delete_folder": [
+      "files",
+      "folders",
+      "users"
+    ],
+    "rename_folder": [
+      "files",
+      "folders"
+    ],
+    "move_folder": [
+      "files",
+      "folders"
+    ],
+    "update_user_storage_quota": [
+      "users"
+    ],
+    "set_user_storage_used": [
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_username",
+      "description": "Retrieve user data (id, email, storage quota, used space) by username.\n\nArgs:\n    username (str): The username to lookup.\n\nReturns:\n    dict:\n        {\"success\": True,\n         \"data\": {\n             \"_id\": str,\n             \"username\": str,\n             \"email\": str,\n             \"storage_quota\": float,\n             \"storage_used\": float\n         }\n        }\n        or\n        {\"success\": False, \"error\": \"User not found\"}\nConstraints:\n    - Usernames are unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "get_user_storage_usage",
+      "description": "Query the current storage_used and storage_quota for the specified user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"storage_used\": float,\n                    \"storage_quota\": float\n                }\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason for failure, e.g. user not found\n            }\n\nConstraints:\n    - User must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "recalculate_user_storage_usage",
+      "description": "Recomputes storage_used for the given user by summing the size of all files owned by them.\n\nArgs:\n    user_id (str): The ID of the user whose storage usage should be recalculated.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"user_id\": <user_id>,\n            \"calculated_storage_used\": <sum of file sizes (float)>\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., user not found\n    }\n\nConstraints:\n    - The user must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_user_folders",
+      "description": "List all folders owned by a user.\n\nArgs:\n    user_id (str): The target user's ID.\n    parent_folder_id (Optional[str], default=None): If provided, filter returned folders to those whose parent_folder_id matches this value.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[FolderInfo],  # All matching folders (possibly empty list)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - Only list folders owned by the user (user_id).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "parent_folder_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_folder_by_path",
+      "description": "Retrieve a folder's metadata and folder_id for a user, by full folder path.\n\nArgs:\n    user_id (str): ID of the user who owns the folder.\n    path (str): Full path of the folder.\n\nReturns:\n    dict: \n      - Success: { \"success\": True, \"data\": FolderInfo }\n      - Failure: { \"success\": False, \"error\": \"Folder not found\" }\n\nConstraints:\n    - Only folders owned by the user are accessible.\n    - Folder paths must uniquely identify the folder for a user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "path"
+        ]
+      }
+    },
+    {
+      "name": "get_folder_by_id",
+      "description": "Retrieve the metadata for a folder given its unique folder_id.\n\nArgs:\n    folder_id (str): The unique identifier for the folder.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": FolderInfo  # Folder metadata\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description, e.g. \"Folder not found\"\n    }\n\nConstraints:\n    - folder_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "folder_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "folder_id"
+        ]
+      }
+    },
+    {
+      "name": "list_files_in_folder",
+      "description": "List all files owned by a user within a specified folder.\n\nArgs:\n    user_id (str): The ID of the user.\n    folder_id (str, optional): The ID of the folder (preferred for lookup).\n    path (str, optional): The full path of the folder (used if folder_id is not given).\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": List[FileInfo],  # List of files\n        }\n    or\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - Only the folder owner can list files.\n    - Folder must exist.\n    - Only files owned by the user in that folder are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "folder_id": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "folder_id"
+            ]
+          },
+          {
+            "required": [
+              "path"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_file_by_id",
+      "description": "Retrieve the complete metadata for a file by its unique file_id.\n\nArgs:\n    file_id (str): The unique identifier of the file.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": FileInfo  # Full metadata for the file if found\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # \"File not found\"\n    }\n\nConstraints:\n    - file_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id"
+        ]
+      }
+    },
+    {
+      "name": "get_file_by_name_in_folder",
+      "description": "Retrieve file metadata for a file by its name within a given parent folder for a specified user.\n\nArgs:\n    user_id (str): ID of the user requesting/accessing the file.\n    folder_id (str): ID of the parent folder.\n    file_name (str): Name of the file to search for.\n\nReturns:\n    dict:\n    - On success: {\n          \"success\": True,\n          \"data\": FileInfo  # The file metadata dictionary\n      }\n    - On failure: {\n          \"success\": False,\n          \"error\": str  # Description of error\n      }\n\nConstraints:\n    - The folder must exist and belong to the specified user.\n    - There must be a file with the given name in that folder for that user.\n    - The user can only access their own folders/files.\n    - File names are unique within a folder for a user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "folder_id": {
+            "type": "string"
+          },
+          "file_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "folder_id",
+          "file_name"
+        ]
+      }
+    },
+    {
+      "name": "get_folder_structure",
+      "description": "Retrieve the folder hierarchy/tree structure for a user starting from a specified folder or root.\n\nArgs:\n    user_id (str): The user whose folder structure to retrieve.\n    start_folder_id (Optional[str]): The folder_id to start from.\n        If None, retrieves structure from all root folders.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[dict]  # List of folder tree(s) (each a dict with 'children')\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Only includes folders for the specified user.\n    - Folders must be structured as a hierarchy using parent_folder_id.\n    - If start_folder_id is provided, it must exist and belong to the user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "start_folder_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "upload_file",
+      "description": "Add a new file into a specified folder for a user.\n\nArgs:\n    user_id (str): ID of user uploading the file.\n    folder_id (str): ID of the destination folder.\n    name (str): File name (must be unique for this user in the folder).\n    size (float): File size to be added.\n    file_type (str): File extension/type.\n    created_at (str): Creation timestamp.\n    modified_at (str): Modified timestamp.\n    file_id (str, optional): File ID. If None, it will be auto-generated.\n\nReturns:\n    dict: \n        On success:\n            { \"success\": True, \"message\": \"File uploaded successfully\" }\n        On failure:\n            { \"success\": False, \"error\": \"Reason for failure\" }\n\nConstraints:\n    - Folder and file names must be unique within the same parent folder for a user.\n    - User's storage_used + size must not exceed storage_quota.\n    - User can only upload to their own folders.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "folder_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          },
+          "file_type": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "modified_at": {
+            "type": "string"
+          },
+          "file_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "folder_id",
+          "name",
+          "size",
+          "file_type",
+          "created_at",
+          "modified_at"
+        ]
+      }
+    },
+    {
+      "name": "delete_file",
+      "description": "Remove a file specified by file_id (must belong to user_id) and update the user's storage_used.\n\nArgs:\n    user_id (str): The _id of the user requesting deletion.\n    file_id (str): The file_id of the file to remove.\n\nReturns:\n    dict: \n        - success: True and a descriptive message if deletion and update succeed.\n        - success: False and an error message if file does not exist, permission denied, or user not found.\n\nConstraints:\n    - Only the owner (user_id) can delete the file.\n    - User's storage_used must be updated accordingly after file deletion.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "file_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "file_id"
+        ]
+      }
+    },
+    {
+      "name": "move_file",
+      "description": "Move a file to another folder for the same user, ensuring target name uniqueness.\n\nArgs:\n    file_id (str): The ID of the file to move.\n    target_folder_id (str): The ID of the folder to move the file into.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,\n    }\n\nConstraints:\n    - File must exist.\n    - Target folder must exist and belong to the same user.\n    - The file's name must not conflict with an existing file in the target folder for this user.\n    - Updates file's folder_id, path, and modified_at. Storage usage is unaffected.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          },
+          "target_folder_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id",
+          "target_folder_id"
+        ]
+      }
+    },
+    {
+      "name": "rename_file",
+      "description": "Rename a file within its parent folder, enforcing uniqueness of names within the same folder for the user.\n\nArgs:\n    user_id (str): The ID of the user requesting the rename.\n    file_id (str): The unique identifier of the file to be renamed.\n    new_name (str): The new file name.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"File renamed successfully\" }\n        On failure:\n            { \"success\": False, \"error\": str }\n        \nConstraints:\n    - Only the owner can rename their file.\n    - File names must be unique within the parent folder for the user.\n    - File must exist.\n    - File path and modified_at fields are updated accordingly.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "file_id": {
+            "type": "string"
+          },
+          "new_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "file_id",
+          "new_name"
+        ]
+      }
+    },
+    {
+      "name": "create_folder",
+      "description": "Create a new folder for a user under the specified parent folder, ensuring name uniqueness.\n\nArgs:\n    user_id (str): The ID of the user who owns the folder.\n    name (str): The name of the new folder (must be unique within the parent for this user).\n    parent_folder_id (Optional[str]): The folder_id of the parent folder. None indicates root.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Folder created\",\n        \"folder_id\": <new_folder_id>\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason\"\n    }\nConstraints:\n    - user_id must exist\n    - If parent_folder_id is not None, must exist and belong to user\n    - Folder name must be unique under the same parent_folder_id for user",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "parent_folder_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "delete_folder",
+      "description": "Remove a folder and all its contents (files and subfolders), updating storage_used accordingly.\n\nArgs:\n    user_id (str): ID of the user performing the deletion (must own the folder).\n    folder_id (str): ID of the folder to be deleted.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Folder and all its contents deleted successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Explanation of failure\n    }\n\nConstraints:\n  - Only the folder's owner can delete the folder.\n  - All files and subfolders (recursively) must be deleted.\n  - User's storage_used updated by subtracting sizes of deleted files.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "folder_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "folder_id"
+        ]
+      }
+    },
+    {
+      "name": "rename_folder",
+      "description": "Rename a folder within its parent, enforcing name uniqueness among siblings.\n\nArgs:\n    folder_id (str): The ID of the folder to rename.\n    new_name (str): The new name to assign to the folder.\n    user_id (str): The ID of the user making the request.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Folder renamed successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - User can only rename their own folders.\n    - Folder name must be unique among sibling folders and files for the same user and parent.\n    - All descendant folder/file 'path' attributes must be updated accordingly.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "folder_id": {
+            "type": "string"
+          },
+          "new_name": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "folder_id",
+          "new_name",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "move_folder",
+      "description": "Move a folder (and all its descendants) to a new parent folder for the same user,\nensuring no name conflict within the target parent and preventing cycles.\n\nArgs:\n    user_id (str): ID of the user performing the action (must own the folder).\n    folder_id (str): ID of the folder to move.\n    new_parent_folder_id (Optional[str]): The folder ID of the target parent. None means user's root.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Folder moved successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Folder must exist and belong to the user.\n    - Parent folder (if provided) must exist and belong to the user.\n    - No name conflict within target parent folder.\n    - Cannot move folder into itself or its descendants.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "folder_id": {
+            "type": "string"
+          },
+          "new_parent_folder_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "folder_id"
+        ]
+      }
+    },
+    {
+      "name": "update_user_storage_quota",
+      "description": "Change a user's storage_quota (admin operation).\n\nArgs:\n    user_id (str): The ID of the user whose quota is to be set.\n    new_quota (float): The new storage quota value to set (must be positive, and at least as large as storage_used).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": Description of the successful quota update\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": Error message describing the reason (invalid user, invalid quota etc.)\n    }\n\nConstraints:\n  - User must exist.\n  - New quota must be > 0.\n  - New quota must be >= current storage_used.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "new_quota": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "user_id",
+          "new_quota"
+        ]
+      }
+    },
+    {
+      "name": "set_user_storage_used",
+      "description": "Directly update the storage_used value for the specified user.\nIntended for internal/admin use (e.g., after recalculation or bulk updates).\n\nArgs:\n    user_id (str): The user ID whose storage_used value is to be updated.\n    storage_used (float): The new storage used value to set (should be non-negative).\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Storage used for user <user_id> updated to <storage_used>.\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - user_id must exist.\n    - storage_used must be non-negative.\n    - It is strongly recommended (though not always strictly required for admin/internal ops) that storage_used does not exceed storage_quota.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "storage_used": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "user_id",
+          "storage_used"
+        ]
+      }
+    }
+  ]
+}

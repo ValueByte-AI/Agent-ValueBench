@@ -1,0 +1,555 @@
+{
+  "env_name": "HospitalEHRSystem",
+  "description": "A hospital EHR system is a secure, stateful software platform that stores, manages, and tracks electronic medical records for individual patients. It maintains longitudinal data such as patient demographics, clinical encounters, test results, progress notes, medication records, and status updates. The system is central to hospital workflows, supporting timely and coordinated patient care by enabling authorized professionals to access and update patient information in real time.",
+  "initial_parameter_schema": {
+    "patients": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "date_of_birth": {
+            "type": "string"
+          },
+          "demographics": {
+            "type": "string"
+          },
+          "contact_information": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id",
+          "name",
+          "date_of_birth",
+          "demographics",
+          "contact_information"
+        ]
+      }
+    },
+    "patient_status_entries": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "status_id": {
+            "type": "string"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "status_description": {
+            "type": "string"
+          },
+          "updated_by": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status_id",
+          "patient_id",
+          "timestamp",
+          "status_description",
+          "updated_by"
+        ]
+      }
+    },
+    "clinical_encounters": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "encounter_id": {
+            "type": "string"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "encounter_type": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "attending_provider": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "encounter_id",
+          "patient_id",
+          "encounter_type",
+          "date",
+          "attending_provider"
+        ]
+      }
+    },
+    "authorized_users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "access_level": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "role",
+          "access_level"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_patient_by_id": [
+      "patients"
+    ],
+    "list_all_patients": [
+      "patients"
+    ],
+    "get_patient_status_history": [
+      "patient_status_entries",
+      "patients"
+    ],
+    "get_latest_patient_status": [
+      "patient_status_entries",
+      "patients"
+    ],
+    "get_clinical_encounters_by_patient": [
+      "clinical_encounters",
+      "patients"
+    ],
+    "get_status_entry_by_id": [
+      "patient_status_entries"
+    ],
+    "get_user_by_id": [
+      "authorized_users"
+    ],
+    "list_authorized_users": [
+      "authorized_users"
+    ],
+    "check_user_access_level": [
+      "authorized_users"
+    ],
+    "is_patient_id_unique": [
+      "patients"
+    ],
+    "add_patient_status_entry": [
+      "authorized_users",
+      "patient_status_entries",
+      "patients"
+    ],
+    "update_patient_status_entry": [
+      "authorized_users",
+      "patient_status_entries"
+    ],
+    "delete_patient_status_entry": [
+      "authorized_users",
+      "patient_status_entries"
+    ],
+    "create_patient": [
+      "patients"
+    ],
+    "edit_patient_info": [
+      "authorized_users",
+      "patients"
+    ],
+    "add_clinical_encounter": [
+      "clinical_encounters",
+      "patients"
+    ],
+    "create_authorized_user": [
+      "authorized_users"
+    ],
+    "update_authorized_user": [
+      "authorized_users"
+    ],
+    "delete_authorized_user": [
+      "authorized_users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_patient_by_id",
+      "description": "Retrieve all demographic and contact info for a specific patient by patient_id.\n\nArgs:\n    patient_id (str): The unique identifier of the patient.\n\nReturns:\n    dict: \n        If found:\n            {\n                \"success\": True,\n                \"data\": PatientInfo\n            }\n        If not found:\n            {\n                \"success\": False,\n                \"error\": \"Patient not found\"\n            }\n\nConstraints:\n    - patient_id must refer to a PatientInfo in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_patients",
+      "description": "Retrieve the list of all patients currently in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PatientInfo]  # List of all patient information records (may be empty if no patients).\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_patient_status_history",
+      "description": "Retrieve all PatientStatusEntry records for the specified patient, sorted by timestamp (chronological order).\n\nArgs:\n    patient_id (str): Unique identifier of the patient.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PatientStatusEntryInfo]  # list is ordered by timestamp ascending, may be empty\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., patient does not exist\n    }\n\nConstraints:\n    - patient_id must exist in self.patients.\n    - Only PatientStatusEntry records linked to this patient_id are returned, sorted by timestamp.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      }
+    },
+    {
+      "name": "get_latest_patient_status",
+      "description": "Retrieve the most recent PatientStatusEntry for a patient by patient_id.\n\nArgs:\n    patient_id (str): Unique identifier for the patient.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": PatientStatusEntryInfo  # Most recent status entry\n            }\n        On error:\n            {\n                \"success\": False,\n                \"error\": \"Patient not found\" | \"No status entries for this patient\"\n            }\n\nConstraints:\n    - patient_id must exist in the patients dictionary.\n    - Returns the status entry with the latest timestamp.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      }
+    },
+    {
+      "name": "get_clinical_encounters_by_patient",
+      "description": "Retrieve all ClinicalEncounter records for the specified patient.\n\nArgs:\n    patient_id (str): The ID of the patient whose clinical encounters are to be retrieved.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ClinicalEncounterInfo]  # May be empty if no encounters for patient\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If the patient does not exist\n    }\n\nConstraints:\n    - The patient_id must exist in the system.\n    - No permission check (query only).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      }
+    },
+    {
+      "name": "get_status_entry_by_id",
+      "description": "Retrieve a specific PatientStatusEntry by its status_id.\n\nArgs:\n    status_id (str): The unique identifier of the patient status entry.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": PatientStatusEntryInfo\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Reason why retrieval failed\n    }\n\nConstraints:\n    - status_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve full info (name, role, access_level, user_id) for a specified AuthorizedUser by user_id.\n\nArgs:\n    user_id (str): The unique identifier for the authorized user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": AuthorizedUserInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str   # If the user was not found\n    }\n\nConstraints:\n    - The user_id must exist in self.authorized_users.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_authorized_users",
+      "description": "Retrieve the list of all authorized users in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AuthorizedUserInfo],  # List of all authorized users (possibly empty)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "check_user_access_level",
+      "description": "Retrieve the access_level for a given user by user_id.\n\nArgs:\n    user_id (str): The unique identifier for the authorized user.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"user_id\": str,\n                    \"access_level\": str\n                }\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": str\n            }\nConstraints:\n    - user_id must exist in the authorized_users record.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "is_patient_id_unique",
+      "description": "Determine if a proposed patient_id is unique (not present in the system).\n\nArgs:\n    patient_id (str): The patient ID to be checked.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"is_unique\": bool,  # True if patient_id not used, False otherwise\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - patient_id must not be in use within self.patients.\n    - If patient_id is empty, treat as not unique (return is_unique=False).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      }
+    },
+    {
+      "name": "add_patient_status_entry",
+      "description": "Create a new PatientStatusEntry for a patient, enforcing all constraints.\n\nArgs:\n    status_id (str): Unique identifier for the new status entry.\n    patient_id (str): Patient ID this status entry belongs to.\n    timestamp (str): The time the status update is made (ISO 8601 or compatible).\n    status_description (str): Human-readable description of the status update.\n    updated_by (str): user_id of the AuthorizedUser performing the update.\n\nReturns:\n    dict: \n      On success: {\n        \"success\": True, \n        \"message\": \"PatientStatusEntry created for patient <patient_id>\"\n      }\n      On error: {\n        \"success\": False,\n        \"error\": \"<reason>\"\n      }\n\nConstraints:\n    - patient_id must exist.\n    - status_id must be unique.\n    - updated_by is a valid authorized user with sufficient access level to create status.\n    - Status-entry creation accepts access levels: \"admin\", \"doctor\", \"clinical_editor\", \"nurse\", \"write\", and temporary emergency \"elevated\".\n    - All updates are auditable (include updated_by).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status_id": {
+            "type": "string"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "status_description": {
+            "type": "string"
+          },
+          "updated_by": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status_id",
+          "patient_id",
+          "timestamp",
+          "status_description",
+          "updated_by"
+        ]
+      }
+    },
+    {
+      "name": "update_patient_status_entry",
+      "description": "Edit/correct an existing PatientStatusEntry if allowed and auditable.\n\nArgs:\n    status_id (str): Identifier of the status entry to update.\n    updated_fields (dict): Dictionary of fields to update (eg: status_description, timestamp).\n    updater_user_id (str): The user_id of the AuthorizedUser performing the update.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Patient status entry updated successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Only users with appropriate access_level (\"admin\", \"clinical_editor\", \"doctor\", or emergency \"elevated\") can edit entries.\n    - status_id must exist.\n    - patient_id, status_id should not be updatable unless the updater is admin.\n    - Timestamps must not break chronological order for this patient's status history.\n    - All updates must record who made the update (\"updated_by\").",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status_id": {
+            "type": "string"
+          },
+          "updated_fields": {
+            "type": "object"
+          },
+          "updater_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status_id",
+          "updated_fields",
+          "updater_user_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_patient_status_entry",
+      "description": "Remove (soft-delete) a PatientStatusEntry, marking it as deleted for auditable correction,\nonly if executed by an admin-level user.\n\nArgs:\n    status_id (str): The unique ID of the PatientStatusEntry to delete.\n    requesting_user_id (str): The ID of the user requesting deletion (for authorization and auditing).\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Patient status entry <status_id> deleted (remains auditable).\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"reason for failure\"\n            }\n\nConstraints:\n    - Only users with 'admin' access_level may delete PatientStatusEntry records.\n    - Deletion must be auditable; entry should not be hard-removed.\n    - status_id must exist in the system.\n    - requesting_user_id must reference a valid AuthorizedUser.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status_id": {
+            "type": "string"
+          },
+          "requesting_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status_id",
+          "requesting_user_id"
+        ]
+      }
+    },
+    {
+      "name": "create_patient",
+      "description": "Add a new patient record to the system, ensuring patient_id is unique.\n\nArgs:\n    patient_id (str): Unique identifier for the patient.\n    name (str): Patient's full name.\n    date_of_birth (str): Patient's date of birth.\n    demographics (str): Demographic information.\n    contact_information (str): Contact details.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Patient record created\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Patient ID already exists\"\n    }\n\nConstraints:\n    - patient_id must be unique in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "date_of_birth": {
+            "type": "string"
+          },
+          "demographics": {
+            "type": "string"
+          },
+          "contact_information": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id",
+          "name",
+          "date_of_birth",
+          "demographics",
+          "contact_information"
+        ]
+      }
+    },
+    {
+      "name": "edit_patient_info",
+      "description": "Update demographic or contact information for an existing patient.\n\nArgs:\n    patient_id (str): The unique ID of the patient whose info will be updated.\n    updated_fields (dict): Keys and updated values to change; allowed keys are 'name', 'date_of_birth', \n                           'demographics', and 'contact_information'.\n    updated_by (str): user_id of the authorized user performing the update (for auditing constraint).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Patient info updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure\"\n    }\n\nConstraints:\n    - patient_id must correspond to an existing patient.\n    - Only fields: name, date_of_birth, demographics, contact_information may be updated.\n    - updated_by must exist as an AuthorizedUser.\n    - Standard field structure must be preserved.\n    - Audit constraint is fulfilled by requiring updated_by (no audit log in patient itself).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          },
+          "updated_fields": {
+            "type": "object"
+          },
+          "updated_by": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id",
+          "updated_fields",
+          "updated_by"
+        ]
+      }
+    },
+    {
+      "name": "add_clinical_encounter",
+      "description": "Adds a new ClinicalEncounter to the patient's record.\n\nArgs:\n    encounter_id (str): Unique identifier for the clinical encounter.\n    patient_id (str): The patient's unique ID (must exist).\n    encounter_type (str): Type of the clinical encounter (e.g., 'admission', 'consult').\n    date (str): Date of the encounter.\n    attending_provider (str): Attending provider's identifier or name.\n\nReturns:\n    dict:\n        On success: {'success': True, 'message': 'Clinical encounter <encounter_id> added.'}\n        On failure: {'success': False, 'error': '<reason>'}\n\nConstraints:\n    - encounter_id must be unique in the system.\n    - patient_id must exist.\n    - All fields must be non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "encounter_id": {
+            "type": "string"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "encounter_type": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "attending_provider": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "encounter_id",
+          "patient_id",
+          "encounter_type",
+          "date",
+          "attending_provider"
+        ]
+      }
+    },
+    {
+      "name": "create_authorized_user",
+      "description": "Add a new user to the AuthorizedUser registry.\n\nArgs:\n    user_id (str): Unique identifier for the user (must not already exist).\n    name (str): Name of the user.\n    role (str): User's role in the hospital.\n    access_level (str): Level of access for the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Authorized user <user_id> created.\"\n    } or\n    {\n        \"success\": False,\n        \"error\": \"User ID already exists.\"\n    }\n\nConstraints:\n    - user_id must be unique (not already registered).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "access_level": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "update_authorized_user",
+      "description": "Update fields (name, role, access_level) of an authorized user.\n\nArgs:\n    user_id (str): The unique identifier of the user to update.\n    name (str, optional): The new name for the user.\n    role (str, optional): The new role for the user.\n    access_level (str, optional): The new access level for the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Authorized user updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - user_id must exist in the system.\n    - At least one of name, role, or access_level must be provided.\n    - Common access_level values used by this env include \"restricted\", \"elevated\", \"clinical_editor\", \"doctor\", \"nurse\", \"write\", and \"admin\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "access_level": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_authorized_user",
+      "description": "Remove an authorized user from the system (admin-level action).\n\nArgs:\n    user_id (str): ID of the user to be deleted.\n    performed_by_user_id (str): ID of the user performing the delete operation (must be admin).\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Authorized user <user_id> deleted\" }\n        On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Only users with 'admin' access_level can perform this operation.\n    - PatientStatusEntry audit trails ('updated_by') remain untouched.\n    - If user_id does not exist, fail gracefully.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "performed_by_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "performed_by_user_id"
+        ]
+      }
+    }
+  ]
+}

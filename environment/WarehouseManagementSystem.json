@@ -1,0 +1,756 @@
+{
+  "env_name": "WarehouseManagementSystem",
+  "description": "A Warehouse Management System tracks the storage and movement of inventory within warehouses, often subdivided into locations and zones for logistical efficiency. It maintains records of product IDs, quantities, placements, zone assignments, and timestamps for inventory changes. The system supports operations such as inventory reconciliation, stock querying, historical reporting, and product allocation across warehouses and zones.",
+  "initial_parameter_schema": {
+    "warehouses": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "warehouse_id": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "warehouse_id",
+          "location",
+          "name"
+        ]
+      }
+    },
+    "zones": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "zone_id": {
+            "type": "string"
+          },
+          "warehouse_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "zone_id",
+          "warehouse_id",
+          "name"
+        ]
+      }
+    },
+    "products": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "name",
+          "category",
+          "description"
+        ]
+      }
+    },
+    "inventory_records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "warehouse_id": {
+            "type": "string"
+          },
+          "zone_id": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "timestamp": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "product_id",
+          "warehouse_id",
+          "zone_id",
+          "quantity",
+          "timestamp"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_warehouse_by_location": [
+      "warehouses"
+    ],
+    "get_warehouse_by_id": [
+      "warehouses"
+    ],
+    "list_all_warehouses": [
+      "warehouses"
+    ],
+    "list_zones_in_warehouse": [
+      "warehouses",
+      "zones"
+    ],
+    "get_zone_by_name": [
+      "warehouses",
+      "zones"
+    ],
+    "list_all_zones": [
+      "zones"
+    ],
+    "get_product_by_id": [
+      "products"
+    ],
+    "list_products_by_criteria": [
+      "products"
+    ],
+    "get_inventory_records": [
+      "inventory_records",
+      "products",
+      "warehouses",
+      "zones"
+    ],
+    "get_current_inventory_status": [
+      "inventory_records"
+    ],
+    "get_inventory_history": [
+      "inventory_records"
+    ],
+    "get_inventory_record_by_key": [
+      "inventory_records"
+    ],
+    "get_zone_warehouse_relationship": [
+      "warehouses",
+      "zones"
+    ],
+    "check_zone_belongs_to_warehouse": [
+      "zones"
+    ],
+    "add_inventory_record": [
+      "inventory_records",
+      "products",
+      "warehouses",
+      "zones"
+    ],
+    "update_inventory_quantity": [
+      "inventory_records",
+      "products",
+      "warehouses",
+      "zones"
+    ],
+    "transfer_inventory_between_zones": [
+      "inventory_records",
+      "products",
+      "warehouses",
+      "zones"
+    ],
+    "reconcile_inventory": [
+      "inventory_records",
+      "products",
+      "warehouses",
+      "zones"
+    ],
+    "delete_inventory_record": [
+      "inventory_records"
+    ],
+    "add_zone_to_warehouse": [
+      "warehouses",
+      "zones"
+    ],
+    "add_warehouse": [
+      "warehouses"
+    ],
+    "add_product": [
+      "products"
+    ],
+    "update_product_info": [
+      "products"
+    ],
+    "update_zone_info": [
+      "warehouses",
+      "zones"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_warehouse_by_location",
+      "description": "Retrieve all warehouse info(s) matching the specified city/state location.\n\nArgs:\n    location (str): The city/state string to use for warehouse lookup.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[WarehouseInfo],  # List of WarehouseInfo matching location\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"No warehouse found in given location\"\n    }\nConstraints:\n    - Returns all warehouses whose location field matches the input string exactly.\n    - If none found, returns error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location"
+        ]
+      }
+    },
+    {
+      "name": "get_warehouse_by_id",
+      "description": "Retrieve warehouse info using the warehouse ID.\n\nArgs:\n    warehouse_id (str): The unique warehouse identifier.\n\nReturns:\n    dict:\n        - {\"success\": True, \"data\": WarehouseInfo} if warehouse found\n        - {\"success\": False, \"error\": \"Warehouse not found\"} otherwise\n\nConstraints:\n    - warehouse_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "warehouse_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "warehouse_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_warehouses",
+      "description": "Retrieve a list of all warehouses in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[WarehouseInfo], # May be empty\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_zones_in_warehouse",
+      "description": "Retrieve all zones belonging to the specified warehouse.\n\nArgs:\n    warehouse_id (str): Unique identifier for the target warehouse.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ZoneInfo]  # List of zones in the warehouse; empty list if none.\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # If warehouse does not exist.\n    }\n\nConstraints:\n    - warehouse_id must refer to an existing warehouse.\n    - Returns all zones linked to this warehouse.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "warehouse_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "warehouse_id"
+        ]
+      }
+    },
+    {
+      "name": "get_zone_by_name",
+      "description": "Retrieve zone info(s) by name, optionally within a given warehouse.\n\nArgs:\n    name (str): The name of the zone to search for.\n    warehouse_id (str, optional): If provided, restrict search to this warehouse context.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[ZoneInfo]  # may be empty if no matches\n            }\n        On error (invalid warehouse):\n            {\n                \"success\": False,\n                \"error\": str\n            }\n\nConstraints:\n    - If warehouse_id is supplied, it must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "warehouse_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "list_all_zones",
+      "description": "List all zones across all warehouses.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ZoneInfo]  # List of all zones (may be empty)\n    }\nConstraints:\n    - Simply returns all ZoneInfo objects present in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_product_by_id",
+      "description": "Retrieve product details by product ID.\n\nArgs:\n    product_id (str): The unique identifier for the product.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ProductInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Product not found\"\n    }\n\nConstraints:\n    - Returns failure if the product_id does not exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "list_products_by_criteria",
+      "description": "List products whose name, category, or description matches the provided criteria.\nAll criteria parameters are optional. Matching is case-insensitive and will do substring search.\nIf no criteria are provided, all products will be returned.\n\nArgs:\n    name (str, optional): Substring to match against product 'name'.\n    category (str, optional): Substring to match against product 'category'.\n    description (str, optional): Substring to match against product 'description'.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ProductInfo]  # All products matching any criteria, or all products if no criteria\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          
+        ]
+      }
+    },
+    {
+      "name": "get_inventory_records",
+      "description": "Retrieve all inventory records filtered by product_ids, warehouse_ids, zone_ids, \nand optional date range.\n\nArgs:\n    product_ids (list[str]): List of product IDs to filter (must exist).\n    warehouse_ids (list[str]): List of warehouse IDs to filter (must exist).\n    zone_ids (list[str]): List of zone IDs to filter (must exist).\n    start_timestamp (float, optional): Only records with timestamp >= this value.\n    end_timestamp (float, optional): Only records with timestamp <= this value.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[InventoryRecordInfo]  # May be empty\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error\n    }\n\nConstraints:\n    - All IDs supplied must correspond to existing products, warehouses, or zones.\n    - If timestamps are provided, start_timestamp <= end_timestamp.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "warehouse_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "zone_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "start_timestamp": {
+            "type": "number"
+          },
+          "end_timestamp": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "product_ids",
+          "warehouse_ids",
+          "zone_ids"
+        ]
+      }
+    },
+    {
+      "name": "get_current_inventory_status",
+      "description": "Get the latest inventory quantity (by most recent timestamp)\nfor given product IDs in specified warehouse(s) and zone(s).\n\nArgs:\n    product_ids (List[str]): Product IDs to query (required).\n    warehouse_ids (List[str], optional): Filter for only these warehouses. If None, include all.\n    zone_ids (List[str], optional): Filter for only these zones. If None, include all.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[InventoryRecordInfo]  # latest records per (product_id, warehouse_id, zone_id)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # error message\n    }\nConstraints:\n    - Product quantities must be non-negative.\n    - Only most recent (latest timestamp) record per combo.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "warehouse_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "zone_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "product_ids"
+        ]
+      }
+    },
+    {
+      "name": "get_inventory_history",
+      "description": "Retrieve historical inventory changes filtered by products, warehouses/zones, and date range.\n\nArgs:\n    product_ids (List[str], optional): Only include these product_ids.\n    warehouse_ids (List[str], optional): Only include these warehouse_ids.\n    zone_ids (List[str], optional): Only include these zone_ids.\n    start_time (float, optional): Only include records with timestamp >= start_time.\n    end_time (float, optional): Only include records with timestamp <= end_time.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[InventoryRecordInfo]  # filtered records\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Filters are all optional and combinable.\n    - If no records match, data is an empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "warehouse_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "zone_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "start_time": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          
+        ]
+      }
+    },
+    {
+      "name": "get_inventory_record_by_key",
+      "description": "Retrieve a specific inventory record by composite key (product_id, warehouse_id, zone_id, timestamp).\n\nArgs:\n    product_id (str): Product identifier.\n    warehouse_id (str): Warehouse identifier.\n    zone_id (str): Zone identifier.\n    timestamp (float): Unix timestamp of the record.\n\nReturns:\n    dict: \n        {\"success\": True, \"data\": InventoryRecordInfo} if found.\n        {\"success\": False, \"error\": \"Inventory record not found.\"} otherwise.\n\nConstraints:\n    - InventoryRecord is unique on (product_id, warehouse_id, zone_id, timestamp).\n    - Inventory quantity must be non-negative.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "warehouse_id": {
+            "type": "string"
+          },
+          "zone_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "product_id",
+          "warehouse_id",
+          "zone_id",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "get_zone_warehouse_relationship",
+      "description": "Validate and retrieve the warehouse that a given zone belongs to.\n\nArgs:\n    zone_id (str): The ID of the zone.\n\nReturns:\n    dict: {\n      \"success\": True,\n      \"data\": WarehouseInfo  # Info of the warehouse the zone belongs to\n    }\n    or\n    {\n      \"success\": False,\n      \"error\": str  # Reason (zone not found, warehouse not found)\n    }\n\nConstraints:\n    - The specified zone must exist.\n    - The zone must reference a warehouse that exists in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "zone_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "zone_id"
+        ]
+      }
+    },
+    {
+      "name": "check_zone_belongs_to_warehouse",
+      "description": "Verify if a specified zone is within a specific warehouse.\n\nArgs:\n    zone_id (str): The unique ID of the zone to check.\n    warehouse_id (str): The unique ID of the warehouse.\n\nReturns:\n    dict:\n        - If the zone exists:\n            {\"success\": True, \"data\": True}   # If zone belongs to warehouse\n            {\"success\": True, \"data\": False}  # If zone does not belong to warehouse\n        - If the zone does not exist:\n            {\"success\": False, \"error\": \"Zone does not exist\"}\n\nConstraints:\n    - The zone must exist in the system to check membership.\n    - Each zone can only belong to one warehouse.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "zone_id": {
+            "type": "string"
+          },
+          "warehouse_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "zone_id",
+          "warehouse_id"
+        ]
+      }
+    },
+    {
+      "name": "add_inventory_record",
+      "description": "Add a new inventory record (transaction), ensuring:\n  - Uniqueness by (product_id, warehouse_id, zone_id, timestamp)\n  - Product, warehouse, and zone exist\n  - Zone belongs to warehouse\n  - Quantity is non-negative\n\nArgs:\n    product_id (str): The product identifier.\n    warehouse_id (str): The warehouse identifier.\n    zone_id (str): The zone identifier.\n    quantity (int): The quantity of the product (must be non-negative).\n    timestamp (float): The timestamp for the record (Unix seconds).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Inventory record added for (product_id, warehouse_id, zone_id, timestamp)\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "warehouse_id": {
+            "type": "string"
+          },
+          "zone_id": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "timestamp": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "product_id",
+          "warehouse_id",
+          "zone_id",
+          "quantity",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "update_inventory_quantity",
+      "description": "Update the inventory quantity for a specific product in a zone of a warehouse.\nAppends a new InventoryRecordInfo with the given quantity and current timestamp.\n\nArgs:\n    product_id (str): ID of the product.\n    warehouse_id (str): ID of the warehouse.\n    zone_id (str): ID of the zone (must belong to warehouse_id).\n    quantity (int): The updated (non-negative) inventory quantity to record.\n\nReturns:\n    dict:\n        Success: {\n            \"success\": True,\n            \"message\": \"Inventory quantity updated for product <product_id> in warehouse <warehouse_id>, zone <zone_id>.\"\n        }\n        Failure: {\n            \"success\": False,\n            \"error\": <description of the error>\n        }\n\nConstraints:\n    - product_id, warehouse_id, zone_id must exist\n    - zone must belong to warehouse\n    - quantity must be non-negative\n    - new record gets accurate current timestamp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "warehouse_id": {
+            "type": "string"
+          },
+          "zone_id": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "product_id",
+          "warehouse_id",
+          "zone_id",
+          "quantity"
+        ]
+      }
+    },
+    {
+      "name": "transfer_inventory_between_zones",
+      "description": "Move a quantity of product from one zone to another (possibly across warehouses), updating inventory records.\nArgs:\n    product_id (str): The product to move.\n    from_warehouse_id (str): Warehouse ID of the source zone.\n    from_zone_id (str): Source zone ID.\n    to_warehouse_id (str): Warehouse ID of the destination zone.\n    to_zone_id (str): Destination zone ID.\n    quantity (int): Number of product units to move (must be > 0).\nReturns:\n    dict: \n        On success:\n          { \"success\": True, \"message\": \"Transferred X units of product_id from ... to ...\" }\n        On failure:\n          { \"success\": False, \"error\": <reason> }\nConstraints:\n    - Zones and warehouses must exist.\n    - Product must exist.\n    - Source zone must have sufficient quantity (quantity must not go negative).\n    - Product quantities must never be negative.\n    - All changes must be timestamped with current time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "from_warehouse_id": {
+            "type": "string"
+          },
+          "from_zone_id": {
+            "type": "string"
+          },
+          "to_warehouse_id": {
+            "type": "string"
+          },
+          "to_zone_id": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "product_id",
+          "from_warehouse_id",
+          "from_zone_id",
+          "to_warehouse_id",
+          "to_zone_id",
+          "quantity"
+        ]
+      }
+    },
+    {
+      "name": "reconcile_inventory",
+      "description": "Adjust inventory to match a physical count and record the adjustment for audit.\n\nArgs:\n    product_id (str): The product's unique identifier.\n    warehouse_id (str): The warehouse's unique identifier.\n    zone_id (str): The zone's unique identifier within the warehouse.\n    new_quantity (int): The new physically counted product quantity (must be >= 0).\n    timestamp (float, optional): The time of reconciliation as Unix epoch seconds. If None, uses current time.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Inventory for product <product_id> in warehouse <warehouse_id>, zone <zone_id> reconciled to <new_quantity> at <timestamp>.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": <error message>\n            }\n\nConstraints:\n    - Product, warehouse, and zone must all exist.\n    - Zone must belong to the warehouse.\n    - Quantity must be non-negative.\n    - An inventory record is always added (never overwritten).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "warehouse_id": {
+            "type": "string"
+          },
+          "zone_id": {
+            "type": "string"
+          },
+          "new_quantity": {
+            "type": "integer"
+          },
+          "timestamp": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "product_id",
+          "warehouse_id",
+          "zone_id",
+          "new_quantity"
+        ]
+      }
+    },
+    {
+      "name": "delete_inventory_record",
+      "description": "Remove an erroneous inventory record.\n\nArgs:\n    product_id (str): Product identifier.\n    warehouse_id (str): Warehouse identifier.\n    zone_id (str): Zone identifier.\n    timestamp (float): The timestamp (unique record key).\n    approved (bool): Admin/audit approval flag (must be True).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Inventory record deleted\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The record must exist (match all keys).\n    - Deletion requires explicit admin/audit approval (approved=True).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "warehouse_id": {
+            "type": "string"
+          },
+          "zone_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "approved": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "product_id",
+          "warehouse_id",
+          "zone_id",
+          "timestamp",
+          "approved"
+        ]
+      }
+    },
+    {
+      "name": "add_zone_to_warehouse",
+      "description": "Create a new zone assigned to a specified warehouse.\n\nArgs:\n    zone_id (str): Unique identifier for the zone.\n    warehouse_id (str): Identifier of the warehouse to assign the zone to.\n    name (str): Name of the zone.\n\nReturns:\n    dict:\n        On Success:\n            {\n                \"success\": True,\n                \"message\": \"Zone <zone_id> added to warehouse <warehouse_id>.\"\n            }\n        On Failure:\n            {\n                \"success\": False,\n                \"error\": \"<description>\"\n            }\n\nConstraints:\n    - warehouse_id must exist in the system.\n    - zone_id must be unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "zone_id": {
+            "type": "string"
+          },
+          "warehouse_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "zone_id",
+          "warehouse_id",
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "add_warehouse",
+      "description": "Add a new warehouse to the system.\n\nArgs:\n    warehouse_id (str): Unique identifier for the warehouse.\n    location (str): Text description of the warehouse location (e.g., city/state).\n    name (str): Human-readable name for the warehouse.\n\nReturns:\n    dict: \n        On success:\n            {\"success\": True, \"message\": \"Warehouse added successfully\"}\n        On failure:\n            {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - warehouse_id must be unique.\n    - All input fields must be non-empty strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "warehouse_id": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "warehouse_id",
+          "location",
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "add_product",
+      "description": "Register a new product in the system.\n\nArgs:\n    product_id (str): Unique identifier of the product.\n    name (str): Name of the product.\n    category (str): Category of the product.\n    description (str): Product description.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Product <product_id> successfully added.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g., duplicate product_id)\n    }\n\nConstraints:\n    - product_id must be unique (not already registered).\n    - All fields should be non-empty strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "update_product_info",
+      "description": "Edit the details of an existing product.\n\nArgs:\n    product_id (str): The ID of the product to update.\n    name (str, optional): The new name of the product.\n    category (str, optional): The new category of the product.\n    description (str, optional): The new description of the product.\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"message\": \"Product info updated for product_id <id>\"\n        }\n        On error:\n        {\n            \"success\": False,\n            \"error\": <error message>\n        }\n\nConstraints:\n    - product_id must exist in self.products.\n    - Only name, category, and description can be updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "name",
+          "category",
+          "description"
+        ]
+      }
+    },
+    {
+      "name": "update_zone_info",
+      "description": "Update the name and/or warehouse assignment of a zone.\n\nArgs:\n    zone_id (str): The unique identifier of the zone to be updated.\n    name (str, optional): The new name for the zone.\n    warehouse_id (str, optional): The new warehouse ID for the zone (must exist).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Zone info updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason for failure>\"\n    }\n\nConstraints:\n    - The specified zone must exist.\n    - If warehouse_id is provided, it must correspond to an existing warehouse.\n    - At least one of 'name' or 'warehouse_id' must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "zone_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "warehouse_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "zone_id"
+        ]
+      }
+    }
+  ]
+}

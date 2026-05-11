@@ -1,0 +1,600 @@
+{
+  "env_name": "SportsTeamMediaAssetManagementSystem",
+  "description": "A Sports Team Media Asset Management System is designed to organize, store, and retrieve digital media assets linked to sports teams. It maintains structured records linking teams—identified by unique IDs—to collections of media content such as photos, videos, and promotional materials. Typical operations include uploading, categorizing, searching, and retrieving media based on team or event metadata.",
+  "initial_parameter_schema": {
+    "teams": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "team_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sport_type": {
+            "type": "string"
+          },
+          "league": {
+            "type": "string"
+          },
+          "other_metadata": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "team_id",
+          "name",
+          "sport_type",
+          "league",
+          "other_metadata"
+        ]
+      }
+    },
+    "media_assets": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string"
+          },
+          "file_path": {
+            "type": "string"
+          },
+          "media_type": {
+            "type": "string"
+          },
+          "upload_date": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "event_id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "team_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "media_id",
+          "file_path",
+          "media_type",
+          "upload_date",
+          "category",
+          "event_id",
+          "description",
+          "tags",
+          "team_ids"
+        ]
+      }
+    },
+    "events": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "participating_team_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "name",
+          "date",
+          "location",
+          "participating_team_id"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_team_by_id": [
+      "teams"
+    ],
+    "list_all_teams": [
+      "teams"
+    ],
+    "get_media_by_team_id": [
+      "media_assets",
+      "teams"
+    ],
+    "search_media_by_metadata": [
+      "media_assets"
+    ],
+    "get_media_by_event_id": [
+      "media_assets"
+    ],
+    "get_media_by_id": [
+      "media_assets"
+    ],
+    "get_event_by_id": [
+      "events"
+    ],
+    "list_media_associated_teams": [
+      "media_assets",
+      "teams"
+    ],
+    "validate_media_team_association": [
+      "media_assets",
+      "teams"
+    ],
+    "upload_media_asset": [
+      "events",
+      "media_assets",
+      "teams"
+    ],
+    "update_media_metadata": [
+      "events",
+      "media_assets",
+      "teams"
+    ],
+    "delete_media_asset": [
+      "media_assets"
+    ],
+    "link_media_to_team": [
+      "media_assets",
+      "teams"
+    ],
+    "unlink_media_from_team": [
+      "media_assets",
+      "teams"
+    ],
+    "add_team": [
+      "teams"
+    ],
+    "update_team_info": [
+      "teams"
+    ],
+    "add_event": [
+      "events",
+      "teams"
+    ],
+    "update_event_info": [
+      "events",
+      "teams"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_team_by_id",
+      "description": "Retrieve the full information of a team given its unique team_id.\n\nArgs:\n    team_id (str): The unique identifier of the team.\n\nReturns:\n    dict:\n        - If team exists: { \"success\": True, \"data\": TeamInfo }\n        - If not found:   { \"success\": False, \"error\": \"Team not found\" }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "team_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_teams",
+      "description": "Retrieve a list of all registered teams in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TeamInfo]  # All TeamInfo dicts (may be empty if no teams)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description\n    }\n\nConstraints:\n    - None specifically for this operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_media_by_team_id",
+      "description": "Retrieve all media assets associated with a specified team_id.\n\nArgs:\n    team_id (str): The unique identifier of the team.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MediaAssetInfo],  # List of matching media assets (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g., team not found)\n    }\n\nConstraints:\n    - team_id must exist in the system.\n    - Only return media assets that include the team_id in their team_ids field.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "team_id"
+        ]
+      }
+    },
+    {
+      "name": "search_media_by_metadata",
+      "description": "Search for media assets using optional filtering criteria.\nFilters can be any subset of: category, media_type, event_id, tags, upload_date.\n\nArgs:\n    category (str, optional): Restrict to media of this category.\n    media_type (str, optional): Restrict to media of this type (e.g., photo, video).\n    event_id (str, optional): Restrict to media linked to this event.\n    tags (List[str], optional): Restrict to media containing ALL these tags.\n    upload_date (str, optional): Restrict to media uploaded on this date (format: YYYY-MM-DD).\n\nReturns:\n    dict:\n        On success:\n            {\n              \"success\": True,\n              \"data\": List[MediaAssetInfo],  # May be empty if no matches.\n            }\n        On invalid/no criteria:\n            {\n              \"success\": False,\n              \"error\": str  # Explains problem\n            }\n\nConstraints:\n    - Search uses AND logic: a media asset matches only if it satisfies every given filter.\n    - For tags, asset must include ALL the specified tags.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "media_type": {
+            "type": "string"
+          },
+          "event_id": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "upload_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+        ]
+      }
+    },
+    {
+      "name": "get_media_by_event_id",
+      "description": "Retrieve all media assets associated with a specific event_id.\n\nArgs:\n    event_id (str): The unique ID of the event whose media assets to retrieve.\n\nReturns:\n    dict:\n        success (bool): True if search completed.\n        data (List[MediaAssetInfo]): List of all matching media assets (may be empty).\n    or\n        success (bool): False on error.\n        error (str): Reason for failure.\n\nConstraints:\n    - Only returns media assets where 'event_id' matches exactly.\n\n    Edge cases:\n    - If the given event_id does not exist, returns success with empty list.\n    - If no media assets are linked to the given event_id, returns success with empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "get_media_by_id",
+      "description": "Retrieve the metadata and file location of a specific media asset by media_id.\n\nArgs:\n    media_id (str): The unique identifier of the media asset.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": MediaAssetInfo  # All metadata of the media asset\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Media asset not found\"\n            }\n\nConstraints:\n    - media_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_id"
+        ]
+      }
+    },
+    {
+      "name": "get_event_by_id",
+      "description": "Retrieve event information for a given unique event_id.\n\nArgs:\n    event_id (str): The unique identifier for the event.\n\nReturns:\n    dict:\n        - If found: { \"success\": True, \"data\": EventInfo }\n        - If not found: { \"success\": False, \"error\": \"Event not found.\" }\n\nConstraints:\n    - event_id must exist in the system's event records.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "list_media_associated_teams",
+      "description": "List all team records (TeamInfo) associated with the specified media asset.\n\nArgs:\n    media_id (str): Unique identifier for the media asset.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": List[TeamInfo],  # List with team info of associated teams\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": \"Media asset does not exist.\",\n            }\n\nConstraints:\n    - The media asset (media_id) must exist.\n    - Result includes only teams which exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_id"
+        ]
+      }
+    },
+    {
+      "name": "validate_media_team_association",
+      "description": "Confirm whether a given media asset is linked to a specific team.\n\nArgs:\n    media_id (str): Unique identifier for the media asset.\n    team_id (str): Unique identifier for the team.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": bool   # True if linked, False if not linked\n    }\n    or,\n    {\n        \"success\": False,\n        \"error\": str   # error description, e.g. if media or team not found\n    }\n\nConstraints:\n    - Both media_id and team_id must be valid (exist in the system).\n    - Association means team_id appears in media_asset[\"team_ids\"].",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string"
+          },
+          "team_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_id",
+          "team_id"
+        ]
+      }
+    },
+    {
+      "name": "upload_media_asset",
+      "description": "Add (upload) a new media asset to the system.\n\nArgs:\n    media_id (str): Unique ID for the media asset.\n    file_path (str): File path or location.\n    media_type (str): Type of media (photo, video, etc.).\n    upload_date (str): Date the media was uploaded.\n    category (str): Media category/tag.\n    description (str): Descriptive text.\n    tags (List[str]): Tags for search/categorization.\n    team_ids (List[str]): IDs of teams this media is associated with; must contain at least one valid team.\n    event_id (str, optional): ID of associated event, if any.\n\nReturns:\n    dict: { \"success\": True, \"message\": ... } on success, or\n          { \"success\": False, \"error\": ... } on failure.\n\nConstraints:\n    - Each MediaAsset must have a unique media_id.\n    - Must be associated with at least one team (team_ids non-empty and all must exist).\n    - If event_id is given (not None), it must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string"
+          },
+          "file_path": {
+            "type": "string"
+          },
+          "media_type": {
+            "type": "string"
+          },
+          "upload_date": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "team_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_id",
+          "file_path",
+          "media_type",
+          "upload_date",
+          "category",
+          "description",
+          "tags",
+          "team_ids"
+        ]
+      }
+    },
+    {
+      "name": "update_media_metadata",
+      "description": "Update the metadata fields of an existing media asset.\nAny non-None metadata fields will be updated for the specified asset.\n\nArgs:\n    media_id (str): The media asset's unique identifier.\n    category (str, optional): New media category.\n    tags (List[str], optional): New list of tags.\n    description (str, optional): New description.\n    team_ids (List[str], optional): New list of associated team IDs (must be valid, at least one).\n    event_id (str, optional): New associated event ID (must exist if provided).\n    file_path (str, optional): New file path/location.\n    media_type (str, optional): New media type.\n    upload_date (str, optional): New upload date.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Media asset metadata updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - media_id must exist.\n    - If team_ids is updated, must be non-empty and all values exist in teams.\n    - If event_id is updated and is not None, event_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "description": {
+            "type": "string"
+          },
+          "team_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "event_id": {
+            "type": "string"
+          },
+          "file_path": {
+            "type": "string"
+          },
+          "media_type": {
+            "type": "string"
+          },
+          "upload_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_media_asset",
+      "description": "Remove a media asset from the system by its media_id.\n\nArgs:\n    media_id (str): The unique identifier of the media asset to delete.\n\nReturns:\n    dict: \n        On success: {\"success\": True, \"message\": \"Media asset <media_id> deleted.\"}\n        On failure: {\"success\": False, \"error\": \"Media asset does not exist.\"}\n\nConstraints:\n    - The specified media_id must exist in the media_assets dictionary.\n    - No operation if the media_id does not exist; return an error message.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_id"
+        ]
+      }
+    },
+    {
+      "name": "link_media_to_team",
+      "description": "Associate an existing media asset with an additional team.\n\nArgs:\n    media_id (str): The unique identifier of the media asset.\n    team_id (str): The unique identifier of the team to be linked.\n\nReturns:\n    dict: If successful,\n            {\n                \"success\": True,\n                \"message\": \"Media asset <media_id> successfully linked to team <team_id>\"\n            }\n          If an error occurs,\n            {\n                \"success\": False,\n                \"error\": \"<reason>\"\n            }\n\nConstraints:\n    - Both media_id and team_id must exist.\n    - Media asset must not already be associated with the team (no duplicates).\n    - Each MediaAsset must have at least one team in its team_ids (always satisfied when linking).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string"
+          },
+          "team_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_id",
+          "team_id"
+        ]
+      }
+    },
+    {
+      "name": "unlink_media_from_team",
+      "description": "Remove an association between a media asset and a team, ensuring that at least one team remains linked.\n\nArgs:\n    media_id (str): Unique identifier for the media asset.\n    team_id (str): Unique identifier for the team to be unlinked.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Unlinked team <team_id> from media asset <media_id>.\" }\n        On failure:\n            { \"success\": False, \"error\": <description of reason> }\n\nConstraints:\n    - Each MediaAsset must always be linked to at least one team after the operation.\n    - team_id must be present in the media asset's team_ids.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string"
+          },
+          "team_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_id",
+          "team_id"
+        ]
+      }
+    },
+    {
+      "name": "add_team",
+      "description": "Add a new sports team record to the system.\n\nArgs:\n    team_id (str): Unique identifier for the team.\n    name (str): Name of the team.\n    sport_type (str): Sport type for the team.\n    league (str): League or division for the team.\n    other_metadata (str): Any additional metadata.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Team <team_id> added successfully.\"\n    } on success,\n    or\n    {\n        \"success\": False,\n        \"error\": \"Team ID already exists.\"\n    } if duplicate team_id.\n\nConstraints:\n    - team_id must be unique in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sport_type": {
+            "type": "string"
+          },
+          "league": {
+            "type": "string"
+          },
+          "other_metadata": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "team_id",
+          "name",
+          "sport_type",
+          "league",
+          "other_metadata"
+        ]
+      }
+    },
+    {
+      "name": "update_team_info",
+      "description": "Update the metadata fields of an existing team.\n\nArgs:\n    team_id (str): Team identifier for the team to update. Must exist.\n    name (str, optional): New team name.\n    sport_type (str, optional): New sport type.\n    league (str, optional): New league.\n    other_metadata (str, optional): New other metadata string.\n\nReturns:\n    dict: On success:\n        { \"success\": True, \"message\": \"Team info updated for team_id <team_id>\" }\n    On failure:\n        { \"success\": False, \"error\": <error_message> }\n\nConstraints:\n    - team_id must correspond to an existing team.\n    - At least one field should be specified for update (name, sport_type, league, other_metadata).\n    - Only these fields can be updated; team_id itself is not modifiable.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sport_type": {
+            "type": "string"
+          },
+          "league": {
+            "type": "string"
+          },
+          "other_metadata": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "team_id"
+        ]
+      }
+    },
+    {
+      "name": "add_event",
+      "description": "Add a new event record to the system.\n\nArgs:\n    event_id (str): Unique identifier for the event.\n    name (str): Event name.\n    date (str): Event date (string format).\n    location (str): Event location.\n    participating_team_id (str): Team ID of the participating team.\n\nReturns:\n    dict: \n        - { \"success\": True, \"message\": \"Event added successfully\" }\n        - { \"success\": False, \"error\": \"Event ID already exists\" }\n        - { \"success\": False, \"error\": \"Participating team ID does not exist\" }\n\nConstraints:\n    - event_id must be unique.\n    - participating_team_id must reference an existing team.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "participating_team_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "name",
+          "date",
+          "location",
+          "participating_team_id"
+        ]
+      }
+    },
+    {
+      "name": "update_event_info",
+      "description": "Update the information of an existing event (name, date, location, team).\n\nArgs:\n    event_id (str): Unique identifier for the event.\n    name (str, optional): New name for the event.\n    date (str, optional): New date for the event.\n    location (str, optional): New location for the event.\n    participating_team_id (str, optional): New participating team ID (must exist in teams if provided).\n\nReturns:\n    dict:\n        - If success: {\"success\": True, \"message\": \"Event information updated successfully\"}\n        - If error: {\"success\": False, \"error\": <error_message>}\n\nConstraints:\n    - event_id must correspond to an existing event.\n    - If participating_team_id is provided, it must reference an existing team.\n    - At least one updatable field must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "participating_team_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    }
+  ]
+}

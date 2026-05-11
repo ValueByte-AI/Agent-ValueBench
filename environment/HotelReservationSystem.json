@@ -1,0 +1,473 @@
+{
+  "env_name": "HotelReservationSystem",
+  "description": "A hotel reservation system is a domain-specific environment that tracks multiple room types, guest bookings, and availability across specific date ranges. It maintains state for each room, including reservations, occupancy status, and attributes such as type and amenities. The system supports searching for available rooms, managing bookings, and handling guest check-in and check-out procedures.",
+  "initial_parameter_schema": {
+    "rooms": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "amenities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "occupancy_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_id",
+          "type",
+          "amenities",
+          "occupancy_status"
+        ]
+      }
+    },
+    "reservations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "reservation_id": {
+            "type": "string"
+          },
+          "room_id": {
+            "type": "string"
+          },
+          "guest_id": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reservation_id",
+          "room_id",
+          "guest_id",
+          "start_date",
+          "end_date",
+          "status"
+        ]
+      }
+    },
+    "guests": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "guest_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "guest_id",
+          "name",
+          "contact_info"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "list_rooms_by_type": [
+      "rooms"
+    ],
+    "get_room_info": [
+      "rooms"
+    ],
+    "list_all_rooms": [
+      "rooms"
+    ],
+    "get_room_reservations": [
+      "reservations",
+      "rooms"
+    ],
+    "get_reservations_in_date_range": [
+      "reservations"
+    ],
+    "check_room_availability": [
+      "reservations",
+      "rooms"
+    ],
+    "get_room_occupancy_status": [
+      "rooms"
+    ],
+    "get_reservation_status": [
+      "reservations"
+    ],
+    "list_guest_reservations": [
+      "guests",
+      "reservations"
+    ],
+    "find_available_rooms": [
+      "reservations",
+      "rooms"
+    ],
+    "create_reservation": [
+      "guests",
+      "reservations",
+      "rooms"
+    ],
+    "cancel_reservation": [
+      "reservations"
+    ],
+    "check_in_guest": [
+      "reservations",
+      "rooms"
+    ],
+    "check_out_guest": [
+      "reservations",
+      "rooms"
+    ],
+    "update_room_occupancy_status": [
+      "rooms"
+    ],
+    "modify_reservation_dates": [
+      "reservations"
+    ],
+    "update_reservation_status": [
+      "reservations"
+    ],
+    "register_guest": [
+      "guests"
+    ]
+  },
+  "tools": [
+    {
+      "name": "list_rooms_by_type",
+      "description": "Retrieve all room records matching a specified type.\n\nArgs:\n    room_type (str): The room type to filter by (e.g., \"single\", \"double\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RoomInfo],  # List of matching rooms, possibly empty\n    }\n\nNotes:\n    - Returns an empty list if no rooms match the specified type.\n    - No error if the type does not exist among rooms in the system.\n    - No permission or status checking is involved.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_type"
+        ]
+      }
+    },
+    {
+      "name": "get_room_info",
+      "description": "Retrieve full information about a specific room, given its room_id.\n\nArgs:\n    room_id (str): Identifier of the room to fetch.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": RoomInfo  # Room details if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if room not found\n    }\n\nConstraints:\n    - The room_id must exist in the hotel room records.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_rooms",
+      "description": "List all rooms in the hotel with their attributes.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": List[RoomInfo]  # All rooms, possibly empty if none present\n        }\nNotes:\n    - No input arguments are required.\n    - Returns an empty list if there are no rooms in the hotel.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_room_reservations",
+      "description": "Retrieve all reservations associated with a given room_id.\n\nArgs:\n    room_id (str): The ID of the room.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ReservationInfo]  # All reservations for this room (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if room does not exist.\n    }\n\nConstraints:\n    - The room must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_id"
+        ]
+      }
+    },
+    {
+      "name": "get_reservations_in_date_range",
+      "description": "Retrieve all reservations that overlap with the given date range, optionally filtering by reservation status.\n\nArgs:\n    start_date (str): Start of the date range (format \"YYYY-MM-DD\").\n    end_date (str): End of the date range (format \"YYYY-MM-DD\").\n    status (Optional[str]): Reservation status to filter by (if provided).\n\nReturns:\n    dict:\n        - On success:\n            { \"success\": True, \"data\": List[ReservationInfo] }\n        - On error:\n            { \"success\": False, \"error\": str }\n\nConstraints:\n    - start_date and end_date must be valid dates, and start_date <= end_date.\n    - Reservations overlap if their date ranges share any day.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "start_date",
+          "end_date"
+        ]
+      }
+    },
+    {
+      "name": "check_room_availability",
+      "description": "Check whether a specific room is available for a given date range.\n\nArgs:\n    room_id (str): The room's unique identifier.\n    start_date (str): The requested start date (YYYY-MM-DD).\n    end_date (str): The requested end date (YYYY-MM-DD), must be on or after start_date.\n\nReturns:\n    dict:\n        If success:\n            {\n                \"success\": True,\n                \"available\": bool  # True if available, False if not\n            }\n        If error:\n            {\n                \"success\": False,\n                \"error\": str\n            }\n\nConstraints:\n    - Room must exist.\n    - Date range must be valid.\n    - Availability is blocked by overlapping active reservations (\"booked\" or \"checked-in\").\n    - Rooms in \"maintenance\" or \"cleaning\" status are unavailable regardless of dates.\n    - Same-day turnover is allowed: a reservation ending on the requested start date does not block availability.\n    - Same-day bookings (start_date == end_date) are treated as occupying that calendar day.\n    - Date format must be 'YYYY-MM-DD'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_id",
+          "start_date",
+          "end_date"
+        ]
+      }
+    },
+    {
+      "name": "get_room_occupancy_status",
+      "description": "Query the current occupancy status of a specified room.\n\nArgs:\n    room_id (str): The unique identifier for the room.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"room_id\": <room_id>,\n                    \"occupancy_status\": <occupancy_status>\n                }\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Room does not exist\"\n            }\n\nConstraints:\n    - The room_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_id"
+        ]
+      }
+    },
+    {
+      "name": "get_reservation_status",
+      "description": "Retrieve the status of a reservation by its reservation_id.\n\nArgs:\n    reservation_id (str): The unique identifier of the reservation.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": str  # Reservation status (e.g., 'booked', 'checked-in', 'canceled')\n            }\n        On error:\n            {\n                \"success\": False,\n                \"error\": \"Reservation not found\"\n            }\n\nConstraints:\n    - The reservation_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reservation_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reservation_id"
+        ]
+      }
+    },
+    {
+      "name": "list_guest_reservations",
+      "description": "List all reservations made by a specific guest.\n\nArgs:\n    guest_id (str): The unique identifier for the guest.\n\nReturns:\n    dict:\n        - success (bool): Whether the operation succeeded.\n        - data (List[ReservationInfo]): Reservations made by the guest (empty list if none), if success.\n        - error (str): If failure, error message.\n\nConstraints:\n    - The guest_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "guest_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "guest_id"
+        ]
+      }
+    },
+    {
+      "name": "find_available_rooms",
+      "description": "For a given date range and optional room type, return a list of all rooms available for booking.\n\nArgs:\n    start_date (str): Desired booking start date (YYYY-MM-DD).\n    end_date (str): Desired booking end date (YYYY-MM-DD).\n    room_type (str, optional): Room type filter (e.g., 'single', 'double'). Omit this field, or pass an empty string, to search across all room types.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RoomInfo],  # List of available rooms matching criteria (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of invalid input or error\n    }\n\nConstraints:\n    - Only rooms blocked by overlapping active reservations ('booked' or 'checked-in') are filtered out.\n    - Rooms in 'maintenance' or 'cleaning' status are also excluded.\n    - Same-day turnover is allowed: a reservation ending on the requested start date does not block availability.\n    - If room_type is provided, only rooms of that type are included.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          },
+          "room_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "start_date",
+          "end_date"
+        ]
+      }
+    },
+    {
+      "name": "create_reservation",
+      "description": "Book a room for a guest for a specific date range, enforcing constraints:\n- Room exists.\n- Guest exists.\n- Date range is valid (YYYY-MM-DD, start <= end).\n- Room is not already blocked by an overlapping active reservation.\n- Only active reservations ('booked' or 'checked-in') block new bookings; canceled or checked-out reservations do not.\n- Rooms in 'maintenance' or 'cleaning' status cannot be booked.\n- Same-day turnover is allowed: a reservation ending on the new start date does not count as overlap.\n\nArgs:\n    room_id (str): ID of room to book.\n    guest_id (str): ID of guest making reservation.\n    start_date (str): Reservation start date (YYYY-MM-DD).\n    end_date (str): Reservation end date (YYYY-MM-DD).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Reservation created\",\n        \"reservation_id\": <reservation_id>\n    } on success; or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    } on failure.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string"
+          },
+          "guest_id": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_id",
+          "guest_id",
+          "start_date",
+          "end_date"
+        ]
+      }
+    },
+    {
+      "name": "cancel_reservation",
+      "description": "Cancel a reservation by setting its status to 'canceled', if allowed.\n\nArgs:\n    reservation_id (str): The unique ID of the reservation to cancel.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Reservation <id> cancelled.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason for failure>\"\n    }\n\nConstraints:\n    - Only reservations that exist and are not already 'canceled' or 'checked-out' can be canceled.\n    - Updates the status in-place.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reservation_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reservation_id"
+        ]
+      }
+    },
+    {
+      "name": "check_in_guest",
+      "description": "Mark a reservation as 'checked-in' and update the associated room's occupancy_status to 'occupied'.\n\nArgs:\n    reservation_id (str): The reservation to check in.\n\nReturns:\n    dict:\n        - On success: {\n            \"success\": True,\n            \"message\": \"Guest checked in, reservation and room updated\"\n          }\n        - On failure: {\n            \"success\": False,\n            \"error\": <reason>\n          }\n\nConstraints:\n    - Reservation must exist and its status must be 'booked'.\n    - The associated room must exist and must not already be 'occupied'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reservation_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reservation_id"
+        ]
+      }
+    },
+    {
+      "name": "check_out_guest",
+      "description": "Update reservation and associated room state to reflect guest check-out.\n\nArgs:\n    reservation_id (str): The ID of the reservation for which to check out the guest.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Guest checked out successfully.\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Reservation must exist and be in 'checked-in' status.\n    - Room associated with reservation must exist.\n    - After checkout, reservation status set to 'checked-out', room's occupancy_status set to 'available'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reservation_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reservation_id"
+        ]
+      }
+    },
+    {
+      "name": "update_room_occupancy_status",
+      "description": "Change or set a room's occupancy status (e.g., available, vacant, occupied, cleaning, maintenance).\n\nArgs:\n    room_id (str): The unique ID of the room to update.\n    occupancy_status (str): The new occupancy status to assign to the room.\n\nReturns:\n    dict: \n        On success:\n            { \"success\": True, \"message\": \"Room occupancy status updated to <occupancy_status> for room <room_id>\" }\n        On failure:\n            { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - The room with the given room_id must exist.\n    - Accepted statuses include 'available', 'vacant', 'occupied', 'cleaning', and 'maintenance'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string"
+          },
+          "occupancy_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_id",
+          "occupancy_status"
+        ]
+      }
+    },
+    {
+      "name": "modify_reservation_dates",
+      "description": "Change the start or end date of an existing reservation, enforcing constraints.\n\nArgs:\n    reservation_id (str): The ID of the reservation to modify.\n    new_start_date (str, optional): New start date in 'YYYY-MM-DD' format. If None, retains old value.\n    new_end_date (str, optional): New end date in 'YYYY-MM-DD' format. If None, retains old value.\n\nReturns:\n    dict: \n     - On success: { \"success\": True, \"message\": \"Reservation dates updated\" }\n     - On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Reservation must exist and be modifiable unless it is already canceled or checked-out.\n    - Booked and checked-in reservations may be adjusted.\n    - new_start_date <= new_end_date (if both provided).\n    - No overlap with other active reservations for the same room (status 'booked' or 'checked-in').\n    - Same-day turnover is allowed: a reservation ending on another reservation's start date is not considered overlapping.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reservation_id": {
+            "type": "string"
+          },
+          "new_start_date": {
+            "type": "string"
+          },
+          "new_end_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reservation_id"
+        ]
+      }
+    },
+    {
+      "name": "update_reservation_status",
+      "description": "Update the status (e.g., 'booked', 'checked-in', 'canceled') of a reservation.\n\nArgs:\n    reservation_id (str): The unique identifier of the reservation to update.\n    new_status (str): The new status string. Must be one of: 'booked', 'checked-in', 'canceled'.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Reservation status updated to <new_status>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Reservation with reservation_id must exist.\n    - new_status must be a valid status value.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reservation_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reservation_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "register_guest",
+      "description": "Register a new guest in the hotel reservation system.\n\nArgs:\n    name (str): Full name of the guest.\n    contact_info (str): The guest's contact details.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Guest registered with guest_id <guest_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason for failure\"\n    }\n\nConstraints:\n    - guest_id is auto-generated and unique.\n    - Name and contact_info must not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "contact_info"
+        ]
+      }
+    }
+  ]
+}

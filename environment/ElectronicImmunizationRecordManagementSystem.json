@@ -1,0 +1,579 @@
+{
+  "env_name": "ElectronicImmunizationRecordManagementSystem",
+  "description": "An electronic immunization record management system is a specialized healthcare environment designed to securely store, track, and update vaccination histories for individuals. It maintains stateful records for patients, vaccines administered, dates, and batch details. Common operations include adding new immunization events, querying records, and modifying or deleting entries as needed for clinical or administrative purposes.",
+  "initial_parameter_schema": {
+    "patients": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "date_of_birth": {
+            "type": "string"
+          },
+          "gender": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id",
+          "name",
+          "date_of_birth",
+          "gender",
+          "contact_info"
+        ]
+      }
+    },
+    "vaccines": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "vaccine_id": {
+            "type": "string"
+          },
+          "vaccine_name": {
+            "type": "string"
+          },
+          "manufacturer": {
+            "type": "string"
+          },
+          "recommended_dosage": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vaccine_id",
+          "vaccine_name",
+          "manufacturer",
+          "recommended_dosage",
+          "type"
+        ]
+      }
+    },
+    "immunization_events": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "vaccine_id": {
+            "type": "string"
+          },
+          "date_administered": {
+            "type": "string"
+          },
+          "batch_number": {
+            "type": "string"
+          },
+          "administering_clinician": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "patient_id",
+          "vaccine_id",
+          "date_administered",
+          "batch_number",
+          "administering_clinician",
+          "location",
+          "notes"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_patient_by_name": [
+      "patients"
+    ],
+    "get_patient_by_id": [
+      "patients"
+    ],
+    "list_all_patients": [
+      "patients"
+    ],
+    "get_vaccine_by_name": [
+      "vaccines"
+    ],
+    "get_vaccine_by_id": [
+      "vaccines"
+    ],
+    "list_all_vaccines": [
+      "vaccines"
+    ],
+    "list_immunization_events_by_patient": [
+      "immunization_events",
+      "patients"
+    ],
+    "get_immunization_event_by_id": [
+      "immunization_events"
+    ],
+    "list_immunization_events_by_vaccine": [
+      "immunization_events",
+      "vaccines"
+    ],
+    "check_patient_references": [
+      "immunization_events",
+      "patients"
+    ],
+    "check_vaccine_references": [
+      "immunization_events",
+      "vaccines"
+    ],
+    "can_delete_immunization_event": [
+      "immunization_events"
+    ],
+    "add_immunization_event": [
+      "immunization_events",
+      "patients",
+      "vaccines"
+    ],
+    "update_immunization_event": [
+      "immunization_events",
+      "patients",
+      "vaccines"
+    ],
+    "delete_immunization_event": [
+      "immunization_events"
+    ],
+    "add_patient": [
+      "patients"
+    ],
+    "update_patient_info": [
+      "patients"
+    ],
+    "delete_patient": [
+      "immunization_events",
+      "patients"
+    ],
+    "add_vaccine": [
+      "vaccines"
+    ],
+    "update_vaccine_info": [
+      "vaccines"
+    ],
+    "delete_vaccine": [
+      "immunization_events",
+      "vaccines"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_patient_by_name",
+      "description": "Retrieve all patient records that match the given name.\n\nArgs:\n    name (str): The full name to look up.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PatientInfo]  # All patients with matching name (may be empty)\n    }\n\nNotes:\n    - Returns all matching patients; names are not unique.\n    - No error if no patient found: data = [].",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_patient_by_id",
+      "description": "Retrieve patient information by their unique patient_id.\n\nArgs:\n    patient_id (str): The unique identifier of the patient.\n\nReturns:\n    dict: \n        On success: {\"success\": True, \"data\": PatientInfo}\n        On failure: {\"success\": False, \"error\": str}",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_patients",
+      "description": "List all patients stored in the immunization record system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PatientInfo]  # List of all patients; may be empty if none.\n    }\n\nConstraints:\n    - No special constraints. All patients in the system are listed.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_vaccine_by_name",
+      "description": "Retrieve vaccine details using the vaccine_name.\n\nArgs:\n    vaccine_name (str): The vaccine name to search for.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"data\": VaccineInfo }\n        On failure (not found):\n            { \"success\": False, \"error\": \"Vaccine not found\" }\n        On invalid input:\n            { \"success\": False, \"error\": str }\n\nConstraints:\n    - Vaccine name comparison is case-sensitive.\n    - Returns the first matching vaccine found if multiple exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vaccine_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vaccine_name"
+        ]
+      }
+    },
+    {
+      "name": "get_vaccine_by_id",
+      "description": "Retrieve information on a vaccine by its vaccine_id.\n\nArgs:\n    vaccine_id (str): The ID of the vaccine to retrieve.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": VaccineInfo,  # Vaccine metadata dictionary\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Vaccine not found\"\n            }\n\nConstraints:\n    - vaccine_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vaccine_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vaccine_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_vaccines",
+      "description": "List all available vaccine records in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[VaccineInfo]  # A list of all vaccine entries (possibly empty)\n    }\n\nThis operation has no constraints or error cases: it always succeeds.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_immunization_events_by_patient",
+      "description": "List all immunization events for the specified patient.\n\nArgs:\n    patient_id (str): The ID of the patient.\n\nReturns:\n    dict:\n        success: True and data (list of ImmunizationEventInfo) if the patient exists,\n                 list will be empty if the patient has no events.\n        success: False and error message if the patient does not exist.\n\nConstraints:\n    - Patient must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      }
+    },
+    {
+      "name": "get_immunization_event_by_id",
+      "description": "Retrieve the full details of an immunization event using its unique event ID.\n\nArgs:\n    event_id (str): Unique identifier for the immunization event.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ImmunizationEventInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g. event not found\n    }\n\nConstraints:\n    - The referenced event_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "list_immunization_events_by_vaccine",
+      "description": "List all immunization events for a specific vaccine.\n\nArgs:\n    vaccine_id (str): The unique identifier of the vaccine to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ImmunizationEventInfo]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g., vaccine not found)\n    }\n\nConstraints:\n    - The vaccine_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vaccine_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vaccine_id"
+        ]
+      }
+    },
+    {
+      "name": "check_patient_references",
+      "description": "Check if a patient is referenced by any ImmunizationEvent records.\n\nArgs:\n    patient_id (str): The unique identifier of the patient.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"referenced\": bool,  # True if referenced by any ImmunizationEvent, False otherwise\n            \"referencing_event_ids\": List[str],  # List of event_ids referencing the patient\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": str  # e.g., \"Patient does not exist\"\n        }\n\nConstraints:\n    - Patient must exist.\n    - Does not perform any deletion; only reports references.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      }
+    },
+    {
+      "name": "check_vaccine_references",
+      "description": "Check if a vaccine is referenced by any ImmunizationEvent records.\n\nArgs:\n    vaccine_id (str): The unique identifier of the vaccine to check.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"referenced\": bool  # True if referenced by any event, False otherwise\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If the vaccine does not exist\n    }\n\nConstraints:\n    - Vaccine must exist in the records.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vaccine_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vaccine_id"
+        ]
+      }
+    },
+    {
+      "name": "can_delete_immunization_event",
+      "description": "Check whether deletion of an immunization event with event_id is permitted for the given user,\naccording to retention/audit policies and user authorization.\n\nArgs:\n    event_id (str): The ID of the immunization event to check.\n    user (str): The user requesting to perform the deletion.\n\nReturns:\n    dict:\n        - success (bool): Whether the check was performed successfully.\n        - can_delete (bool): If success and permitted, True; otherwise not present.\n        - message (str): Info message for success.\n        - error (str): Error message if not allowed.\n\nConstraints:\n    - Event must exist.\n    - User must be authorized (assumed: user == 'admin' is authorized; can be expanded).\n    - Audit/retention policies must allow deletion (assumed allowed for this implementation).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "user": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "user"
+        ]
+      }
+    },
+    {
+      "name": "add_immunization_event",
+      "description": "Add a new immunization event (record administration of a vaccine to a patient).\n\nArgs:\n    event_id (str): Unique event identifier.\n    patient_id (str): ID of the patient who received the vaccine.\n    vaccine_id (str): ID of the vaccine administered.\n    date_administered (str): Date/time of administration (ISO format recommended).\n    batch_number (str): Batch/lot number of the vaccine dose.\n    administering_clinician (str): Name or ID of clinician.\n    location (str): Administration site location.\n    notes (str): Additional notes.\n\nReturns:\n    dict:\n        {\"success\": True, \"message\": \"...\"} on success,\n        {\"success\": False, \"error\": \"...\"} on validation error.\n\nConstraints:\n    - event_id must be unique (not in system).\n    - patient_id must reference an existing patient.\n    - vaccine_id must reference an existing vaccine.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "vaccine_id": {
+            "type": "string"
+          },
+          "date_administered": {
+            "type": "string"
+          },
+          "batch_number": {
+            "type": "string"
+          },
+          "administering_clinician": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "patient_id",
+          "vaccine_id",
+          "date_administered",
+          "batch_number",
+          "administering_clinician",
+          "location",
+          "notes"
+        ]
+      }
+    },
+    {
+      "name": "update_immunization_event",
+      "description": "Edit allowed details of an existing immunization event.\n\nArgs:\n    event_id (str): The immunization event to update.\n    updates (dict): Dict of fields/values to update. Allowed fields include:\n        'patient_id', 'vaccine_id', 'date_administered', 'batch_number',\n        'administering_clinician', 'location', 'notes'.\n    authorized (bool, optional): Must be True for modification to proceed.\n\nReturns:\n    dict: On success: { \"success\": True, \"message\": <...> }\n          On error:   { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Only authorized users can modify events.\n    - The event must exist.\n    - If patient_id or vaccine_id are updated, the new references must exist.\n    - Only recognized fields can be updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          },
+          "authorized": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "event_id",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "delete_immunization_event",
+      "description": "Delete an ImmunizationEvent from the system, subject to constraints:\n- Only authorized users (e.g., roles: 'admin', 'clinician') can delete.\n- If event_id does not exist, returns an error.\n- In a production system, audit/log retention means a true delete should not remove all history;\n  here, deletion removes from the active records only.\n\nArgs:\n    event_id (str): The unique identifier for the immunization event to be deleted.\n    user_role (str): The role of the user performing this operation (authorization).\n\nReturns:\n    dict:\n        { \"success\": True, \"message\": \"Immunization event deleted successfully\" }\n        or\n        { \"success\": False, \"error\": <str> }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "user_role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "user_role"
+        ]
+      }
+    },
+    {
+      "name": "add_patient",
+      "description": "Register a new patient in the system.\n\nArgs:\n    patient_id (str): Unique identifier for the patient.\n    name (str): Patient's name.\n    date_of_birth (str): Date of birth (ISO formatted recommended).\n    gender (str): Patient's gender.\n    contact_info (str): Contact information.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Patient added successfully.\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - patient_id must be unique (not already present).\n    - All fields must be non-empty strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "date_of_birth": {
+            "type": "string"
+          },
+          "gender": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      }
+    },
+    {
+      "name": "update_patient_info",
+      "description": "Edit a patient's demographic or contact information.\n\nArgs:\n    patient_id (str): Unique ID of the patient to update.\n    name (str, optional): Updated patient name.\n    date_of_birth (str, optional): Updated date of birth (ISO format recommended).\n    gender (str, optional): Updated gender.\n    contact_info (str, optional): Updated contact information.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Patient information updated successfully.\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The patient must exist.\n    - At least one field to update must be provided.\n    - Only demographic and contact-info fields may be updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "date_of_birth": {
+            "type": "string"
+          },
+          "gender": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id",
+          "name",
+          "date_of_birth",
+          "gender",
+          "contact_info"
+        ]
+      }
+    },
+    {
+      "name": "delete_patient",
+      "description": "Remove a patient from the system, only if not referenced by any immunization event.\n\nArgs:\n    patient_id (str): The unique identifier for the patient to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Patient <id> deleted successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason for failure>\"\n    }\n\nConstraints:\n    - The patient must exist.\n    - The patient must not be referenced by any ImmunizationEvent in the system.\n    - Does not remove any associated events, nor does it bypass retention checks.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      }
+    },
+    {
+      "name": "add_vaccine",
+      "description": "Add a new vaccine record to the system.\n\nArgs:\n    vaccine_id (str): Unique identifier for the vaccine.\n    vaccine_name (str): Name of the vaccine.\n    manufacturer (str): Manufacturer of the vaccine.\n    recommended_dosage (str): Recommended dosage details.\n    type (str): The vaccine's category/type.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Vaccine record added successfully.\" }\n        On failure: { \"success\": False, \"error\": <error reason> }\n\nConstraints:\n    - vaccine_id must be unique (must not already exist in the system).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vaccine_id": {
+            "type": "string"
+          },
+          "vaccine_name": {
+            "type": "string"
+          },
+          "manufacturer": {
+            "type": "string"
+          },
+          "recommended_dosage": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vaccine_id",
+          "vaccine_name",
+          "manufacturer",
+          "recommended_dosage",
+          "type"
+        ]
+      }
+    },
+    {
+      "name": "update_vaccine_info",
+      "description": "Edit vaccine details for a given vaccine.\n\nArgs:\n    vaccine_id (str): The unique ID of the vaccine to modify.\n    update_fields (dict): Dictionary of fields to update with their new values.\n        Valid keys: 'vaccine_name', 'manufacturer', 'recommended_dosage', 'type'\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"message\": \"Vaccine information updated successfully.\"}\n        On failure:\n            {\"success\": False, \"error\": <reason>}\nConstraints:\n    - Vaccine must exist.\n    - Only editable fields are affected.\n    - Only authorized users can modify vaccines (assumed permitted).\n    - At least one field must be updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vaccine_id": {
+            "type": "string"
+          },
+          "update_fields": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "vaccine_id",
+          "update_fields"
+        ]
+      }
+    },
+    {
+      "name": "delete_vaccine",
+      "description": "Delete a vaccine from the system, only if it is not referenced by any immunization event.\n\nArgs:\n    vaccine_id (str): The unique identifier of the vaccine to be deleted.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"message\": \"Vaccine deleted.\"}\n        On error:\n            {\"success\": False, \"error\": <reason>}\nConstraints:\n    - Vaccine cannot be deleted if referenced by any ImmunizationEvent.\n    - If the vaccine does not exist, operation fails.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vaccine_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vaccine_id"
+        ]
+      }
+    }
+  ]
+}

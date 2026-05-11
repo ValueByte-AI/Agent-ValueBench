@@ -1,0 +1,613 @@
+{
+  "env_name": "FinancialTradingPlatformBackend",
+  "description": "A financial trading platform backend is an infrastructure environment responsible for processing, recording, and reconciling market transactions and associated data. It maintains the state of-account balances, executed trades, system logs, and synchronized server clocks to ensure time-sensitive operations are tracked precisely. The backend exposes interfaces for querying current server time, market statuses, and operational metrics, serving as the authoritative source for timing and data consistency in financial activities.",
+  "initial_parameter_schema": {
+    "server_clock": {
+      "type": "object",
+      "properties": {
+        "current_time": {
+          "type": "string"
+        },
+        "timezone": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "current_time",
+        "timezone"
+      ]
+    },
+    "accounts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "balance": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "balance",
+          "currency",
+          "status"
+        ]
+      }
+    },
+    "trades": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "trade_id": {
+            "type": "string"
+          },
+          "account_id": {
+            "type": "string"
+          },
+          "instrument_id": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "price": {
+            "type": "number"
+          },
+          "trade_time": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "trade_id",
+          "account_id",
+          "instrument_id",
+          "quantity",
+          "price",
+          "trade_time",
+          "status"
+        ]
+      }
+    },
+    "markets": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "market_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "open_time": {
+            "type": "string"
+          },
+          "close_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "market_id",
+          "status",
+          "open_time",
+          "close_time"
+        ]
+      }
+    },
+    "system_logs": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "log_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "log_id",
+          "timestamp",
+          "event_type",
+          "message",
+          "severity"
+        ]
+      }
+    },
+    "operational_metrics": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "metric_id": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "metric_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "metric_id",
+          "value",
+          "timestamp",
+          "metric_type"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_current_server_time": [
+      "server_clock"
+    ],
+    "get_account_info": [
+      "accounts"
+    ],
+    "list_all_accounts": [
+      "accounts"
+    ],
+    "get_account_balance": [
+      "accounts"
+    ],
+    "list_trades_by_account": [
+      "accounts",
+      "trades"
+    ],
+    "get_trade_info": [
+      "trades"
+    ],
+    "list_open_trades": [
+      "trades"
+    ],
+    "list_markets": [
+      "markets"
+    ],
+    "get_market_status": [
+      "markets"
+    ],
+    "get_system_log_by_id": [
+      "system_logs"
+    ],
+    "list_system_logs": [
+      "system_logs"
+    ],
+    "get_operational_metrics": [
+      "operational_metrics"
+    ],
+    "synchronize_server_clock": [
+      "server_clock"
+    ],
+    "record_trade": [
+      "accounts",
+      "server_clock",
+      "trades"
+    ],
+    "update_account_balance": [
+      "accounts"
+    ],
+    "update_market_status": [
+      "markets",
+      "server_clock"
+    ],
+    "log_system_event": [
+      "server_clock",
+      "system_logs"
+    ],
+    "update_operational_metric": [
+      "operational_metrics",
+      "server_clock"
+    ],
+    "update_trade_status": [
+      "trades"
+    ],
+    "create_account": [
+      "accounts"
+    ],
+    "close_account": [
+      "accounts"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_current_server_time",
+      "description": "Retrieve the authoritative current platform time and timezone from ServerClock.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ServerClockInfo  # Dict with 'current_time' and 'timezone'\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description if ServerClock is not properly set up\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_account_info",
+      "description": "Retrieve account details (status, balance, currency) given an account_id.\n\nArgs:\n    account_id (str): The account's unique identifier.\n\nReturns:\n    dict:\n        On success:\n        {\n            \"success\": True,\n            \"data\": AccountInfo  # Dictionary of account details\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": \"Account not found\"\n        }\n\nConstraints:\n    - The account_id must exist in the platform.\n    - No exceptions raised; errors returned as dict.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_accounts",
+      "description": "List all existing trading accounts with their current balances and statuses.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AccountInfo],  # May be empty if no accounts exist\n    }\n\nConstraints:\n    - No constraints directly apply for query operation.\n    - Returns an empty list if no accounts are present.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_account_balance",
+      "description": "Obtain the current balance and currency of a specific account.\n\nArgs:\n    account_id (str): The unique identifier for the account.\n\nReturns:\n    dict:\n        On success: {\n            \"success\": True,\n            \"data\": {\n                \"balance\": float,\n                \"currency\": str\n            }\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - The account_id must exist in the platform's accounts.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      }
+    },
+    {
+      "name": "list_trades_by_account",
+      "description": "List all executed trades for the given account_id.\n\nArgs:\n    account_id (str): The account identifier to retrieve trades for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TradeInfo],  # A list of matching trade dicts, or empty if no trades found.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error when account not found.\n    }\n\nConstraints:\n    - The account_id must exist in the accounts dictionary.\n    - Only trades where trade_info[\"account_id\"] == account_id are included.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      }
+    },
+    {
+      "name": "get_trade_info",
+      "description": "Retrieve comprehensive details of a trade by trade_id.\n\nArgs:\n    trade_id (str): The unique identifier of the trade.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": TradeInfo  # details of the trade\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Trade not found\"\n            }\n\nConstraints:\n    - trade_id must exist in the self.trades dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "trade_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "trade_id"
+        ]
+      }
+    },
+    {
+      "name": "list_open_trades",
+      "description": "List all trades that have the specified status (default: \"open\") in the system.\n\nArgs:\n    status (str): Trade status to filter by (e.g., \"open\", \"active\", \"filled\", etc.).\n                  Defaults to \"open\".\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[TradeInfo]  # List of trades matching the status (may be empty)\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Error message\n            }\n\nConstraints:\n    - No state change; only trade status is filtered.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "list_markets",
+      "description": "Retrieve basic information about all configured markets.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MarketInfo],  # List of all market info (can be empty)\n    }\n\nConstraints:\n    - No parameters needed.\n    - Always succeeds (even with zero markets).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_market_status",
+      "description": "Query the current status and scheduled open/close hours for a specified market.\n\nArgs:\n    market_id (str): The unique identifier of the market.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"market_id\": str,\n                    \"status\": str,\n                    \"open_time\": float|str,\n                    \"close_time\": float|str\n                }\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # e.g., \"Market not found\"\n            }\n\nConstraints:\n    - The specified market_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "market_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "market_id"
+        ]
+      }
+    },
+    {
+      "name": "get_system_log_by_id",
+      "description": "Retrieve details of a specific system log entry by its unique log_id.\n\nArgs:\n    log_id (str): The unique identifier of the system log entry.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": SystemLogInfo   # The log entry data\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str   # Description of error, e.g., \"Log entry not found\"\n    }\n\nConstraints:\n    - The log_id must exist in self.system_logs.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "log_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "log_id"
+        ]
+      }
+    },
+    {
+      "name": "list_system_logs",
+      "description": "Fetch system logs with optional filters.\n\nArgs:\n    event_type (Optional[str]): Only return logs with this event_type if provided.\n    severity (Optional[str]): Only return logs with this severity if provided.\n    start_time (Optional[float]): Only logs with timestamp >= start_time (if provided).\n    end_time (Optional[float]): Only logs with timestamp <= end_time (if provided).\n\nReturns:\n    dict:\n        success: bool\n        data: List[SystemLogInfo] (may be empty if no logs match)\n        error: str  (only on parameter type failure)\n\nConstraints:\n    - All logs have timestamps.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_type": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "number"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "get_operational_metrics",
+      "description": "Retrieve recent or aggregated operational statistics (operational metrics),\noptionally filtered by metric_type.\n\nArgs:\n    metric_type (str, optional): If provided, only metrics of this type are returned.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[OperationalMetricInfo]  # List of metrics matching the filter (possibly empty)\n    }\n\nConstraints:\n    - No modification; purely informational.\n    - Returns all metrics if metric_type is None.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "metric_type": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "synchronize_server_clock",
+      "description": "Update ServerClock to align with an external authoritative time source.\n\nArgs:\n    current_time (float|str): The new current time for the authoritative clock. Should be non-negative float (UNIX ts) or valid ISO string.\n    timezone (str): The timezone of the authoritative clock (e.g. 'UTC').\n\nReturns:\n    dict: \n      - On success: { \"success\": True, \"message\": \"ServerClock synchronized to new time.\" }\n      - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - ServerClock must reflect the new authoritative time and timezone.\n    - current_time must be valid (not negative if numeric, non-empty if string).\n    - timezone must be a non-empty string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "current_time": {
+            "type": [
+              "number",
+              "string"
+            ]
+          },
+          "timezone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_time",
+          "timezone"
+        ]
+      }
+    },
+    {
+      "name": "record_trade",
+      "description": "Add a new executed trade to the platform, updating account balances and time-stamping via ServerClock.\n\nArgs:\n    trade_id (str): Unique identifier for the trade (must not duplicate).\n    account_id (str): The ID of the trading account (must exist).\n    instrument_id (str): Financial instrument's identifier (str, required, assumed valid if non-empty).\n    quantity (float): Amount of asset being traded (>0 for buy, <0 for sell).\n    price (float): Trade execution price (must be >0).\n    status (str): Status of the trade (executed, pending, etc.).\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Trade recorded and account balance updated.\" }\n        On failure: { \"success\": False, \"error\": \"Description of the problem\" }\n\nConstraints:\n    - trade_id must be unique.\n    - account_id must exist.\n    - instrument_id must be non-empty.\n    - Account balance cannot become negative (unless margin trading enabled, which we assume False).\n    - Trades must use ServerClock for time-stamping.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "trade_id": {
+            "type": "string"
+          },
+          "account_id": {
+            "type": "string"
+          },
+          "instrument_id": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "price": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "trade_id",
+          "account_id",
+          "instrument_id",
+          "quantity",
+          "price",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "update_account_balance",
+      "description": "Adjusts the balance of the specified account by a given amount,\nenforcing the constraint that balances cannot become negative.\n\nArgs:\n    account_id (str): The account whose balance is to be updated.\n    amount (float): The amount to adjust (positive for deposit/increase, negative for withdrawal/decrease).\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Balance updated for account <id>: new balance is <value>\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Account must exist.\n    - The resulting balance must not be negative.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "account_id",
+          "amount"
+        ]
+      }
+    },
+    {
+      "name": "update_market_status",
+      "description": "Change the operational status of a market (open/close/pause), recording the transition time.\n\nArgs:\n    market_id (str): The identifier of the market to update.\n    new_status (str): The new status (\"open\", \"closed\", or \"paused\").\n\nReturns:\n    dict: { \"success\": True, \"message\": \"Market status updated for <id> to <status>\" }\n          or { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Market must exist.\n    - Status must be one of \"open\", \"closed\", \"paused\".\n    - Status transition timestamp must be recorded with server clock.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "market_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "market_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "log_system_event",
+      "description": "Create a new entry in the system log with a timestamp for auditing/debugging.\n\nArgs:\n    log_id (str): Unique identifier for this log entry.\n    event_type (str): Category/type of the event (e.g., 'trade', 'error').\n    message (str): Informative message about the event.\n    severity (str): Severity level (e.g., 'info', 'warning', 'error').\n\nReturns:\n    dict: \n      - If successful: { \"success\": True, \"message\": \"System event logged\" }\n      - If failed (duplicate log_id): { \"success\": False, \"error\": \"Log ID already exists\" }\n\nConstraints:\n    - log_id must be unique in current logs.\n    - All log entries are timestamped with the current ServerClock time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "log_id": {
+            "type": "string"
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "log_id",
+          "event_type",
+          "message",
+          "severity"
+        ]
+      }
+    },
+    {
+      "name": "update_operational_metric",
+      "description": "Modify or add a new operational metric at the current server time.\nAlways records the update with the up-to-date server clock timestamp.\n\nArgs:\n    metric_id (str): Unique identifier of the metric.\n    value (float): The value to assign to the metric.\n    metric_type (str): Type/category of the metric (e.g., 'latency', 'throughput').\n\nReturns:\n    dict: \n        {\"success\": True, \"message\": \"...\"}\n        or\n        {\"success\": False, \"error\": \"<error description>\"}\n\nConstraints:\n    - metric_id must be a non-empty string.\n    - metric_type must be a non-empty string.\n    - value must be a float.\n    - timestamp must be set to the current server time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "metric_id": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          },
+          "metric_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "metric_id",
+          "value",
+          "metric_type"
+        ]
+      }
+    },
+    {
+      "name": "update_trade_status",
+      "description": "Alter the status of an executed trade to the specified new status.\n\nArgs:\n    trade_id (str): Unique identifier of the trade to update.\n    new_status (str): The new status to assign to the trade.\n\nReturns:\n    dict: \n      - On success: { \"success\": True, \"message\": \"Trade status updated.\" }\n      - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The trade must exist (trade_id must be in self.trades).\n    - Status can be changed to any string (no restriction unless specified).\n    - Does not log the status update or record its time unless this is required elsewhere.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "trade_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "trade_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "create_account",
+      "description": "Add a new account to the platform with an initial balance and status.\n\nArgs:\n    account_id (str): Unique identifier for the new account.\n    balance (float): Initial balance (must be non-negative unless margin trading is enabled).\n    currency (str): Currency code, e.g., 'USD'.\n    status (str): Initial status of the account, e.g., 'active'.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Account <account_id> created successfully.\"\n    }\n    or {\n        \"success\": False,\n        \"error\": \"Reason why account was not created.\"\n    }\n\nConstraints:\n    - Account_id must be unique.\n    - Initial balance must not be negative (assuming no margin trading support).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "balance": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "balance",
+          "currency",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "close_account",
+      "description": "Close an account by setting its status to 'closed'.\n\nArgs:\n    account_id (str): The identifier of the account to close.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Account {account_id} status set to closed.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - The account must exist.\n    - Sets status to 'closed' regardless of current balance.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      }
+    }
+  ]
+}

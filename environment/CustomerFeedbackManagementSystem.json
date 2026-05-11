@@ -1,0 +1,597 @@
+{
+  "env_name": "CustomerFeedbackManagementSystem",
+  "description": "A Customer Feedback Management System is an application environment that stores, organizes, and analyzes customer feedback data, including survey responses, ratings, and metrics like NPS. It maintains structured records associated with entities such as customers and organizations, enabling efficient querying and reporting of aggregated and granular feedback. These systems support typical business use cases such as trend analysis, campaign tracking, and performance monitoring across multiple organizations or business units.",
+  "initial_parameter_schema": {
+    "organizations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "business_un": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id",
+          "name",
+          "business_un"
+        ]
+      }
+    },
+    "customers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "name",
+          "organization_id",
+          "email"
+        ]
+      }
+    },
+    "surveys": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "survey_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "question_set": {
+            "type": "array"
+          },
+          "active_period": {
+            "type": "string"
+          },
+          "associated_organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "survey_id",
+          "title",
+          "question_set",
+          "active_period",
+          "associated_organization_id"
+        ]
+      }
+    },
+    "survey_responses": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "response_id": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": "string"
+          },
+          "survey_date": {
+            "type": "string"
+          },
+          "answers": {},
+          "nps_score": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "response_id",
+          "customer_id",
+          "organization_id",
+          "survey_date",
+          "answers",
+          "nps_score"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_organization_by_id": [
+      "organizations"
+    ],
+    "list_customers_by_organization": [
+      "customers",
+      "organizations"
+    ],
+    "list_surveys_by_organization": [
+      "organizations",
+      "surveys"
+    ],
+    "list_survey_responses_by_organization": [
+      "organizations",
+      "survey_responses"
+    ],
+    "list_survey_responses_by_customer": [
+      "customers",
+      "survey_responses"
+    ],
+    "get_survey_response_by_id": [
+      "survey_responses"
+    ],
+    "calculate_nps_for_organization": [
+      "organizations",
+      "survey_responses"
+    ],
+    "calculate_nps_for_organization_by_survey": [
+      "organizations",
+      "survey_responses",
+      "surveys"
+    ],
+    "get_survey_by_id": [
+      "surveys"
+    ],
+    "add_survey_response": [
+      "customers",
+      "organizations",
+      "survey_responses"
+    ],
+    "update_survey_response": [
+      "customers",
+      "organizations",
+      "survey_responses"
+    ],
+    "delete_survey_response": [
+      "survey_responses"
+    ],
+    "add_customer": [
+      "customers",
+      "organizations"
+    ],
+    "update_customer": [
+      "customers",
+      "organizations"
+    ],
+    "add_survey": [
+      "organizations",
+      "surveys"
+    ],
+    "update_survey": [
+      "organizations",
+      "surveys"
+    ],
+    "add_organization": [
+      "organizations"
+    ],
+    "update_organization": [
+      "organizations"
+    ],
+    "delete_customer": [
+      "customers",
+      "survey_responses"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_organization_by_id",
+      "description": "Retrieve organization info (name, business unit, etc) for the specified organization_id.\n\nArgs:\n    organization_id (str): The unique organization identifier.\n\nReturns:\n    dict:\n        On success: {\n            \"success\": True,\n            \"data\": OrganizationInfo  # Includes organization_id, name, business_un\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": str  # Reason such as \"Organization not found\"\n        }\n\nConstraints:\n    - organization_id must exist in the organizations registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id"
+        ]
+      }
+    },
+    {
+      "name": "list_customers_by_organization",
+      "description": "Return a list of all CustomerInfo objects associated with a given organization_id.\n\nArgs:\n    organization_id (str): The ID of the organization whose customers you want to fetch.\n\nReturns:\n    dict:\n      - On success:\n          {\n            \"success\": True,\n            \"data\": List[CustomerInfo]  # List may be empty\n          }\n      - On failure (organization does not exist):\n          {\n            \"success\": False,\n            \"error\": \"Organization does not exist\"\n          }\n\nConstraints:\n    - The organization_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id"
+        ]
+      }
+    },
+    {
+      "name": "list_surveys_by_organization",
+      "description": "Return all SurveyInfo records for surveys sent to or associated with the organization.\n\nArgs:\n    organization_id (str): The organization identifier.\n\nReturns:\n    dict: On success,\n        {\n            \"success\": True,\n            \"data\": List[SurveyInfo]   # List of matching surveys (possibly empty)\n        }\n        On failure,\n        {\n            \"success\": False,\n            \"error\": str  # Reason, e.g., organization not found\n        }\n\nConstraints:\n    - The organization must exist.\n    - Only surveys where associated_organization_id == organization_id are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id"
+        ]
+      }
+    },
+    {
+      "name": "list_survey_responses_by_organization",
+      "description": "Retrieve all SurveyResponseInfo entries where organization_id matches the given value.\n\nArgs:\n    organization_id (str): The ID of the organization whose responses are to be listed.\n\nReturns:\n    dict:\n        - success: True and data (List[SurveyResponseInfo]) if organization is found.\n        - success: False and error (str) if organization does not exist.\n\nConstraints:\n    - The organization_id must refer to an existing organization.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id"
+        ]
+      }
+    },
+    {
+      "name": "list_survey_responses_by_customer",
+      "description": "Retrieve all SurveyResponseInfo records submitted by the specified customer.\n\nArgs:\n    customer_id (str): The ID of the customer.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SurveyResponseInfo]  # List of survey responses by the customer, could be empty\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If the customer does not exist\n    }\n\nConstraints:\n    - The customer_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "get_survey_response_by_id",
+      "description": "Retrieve details of a survey response by its response_id.\n\nArgs:\n    response_id (str): The unique ID of the survey response to fetch.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": SurveyResponseInfo  # All fields for the response\n            }\n        On error:\n            {\n                \"success\": False,\n                \"error\": str  # error message if not found\n            }\nConstraints:\n    - The response_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "response_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "response_id"
+        ]
+      }
+    },
+    {
+      "name": "calculate_nps_for_organization",
+      "description": "Aggregate all survey responses for the specified organization and compute the NPS\n(Net Promoter Score) using the standard methodology:\n  - Promoters: nps_score >= 9\n  - Detractors: nps_score <= 6\n  - Passives: nps_score in [7, 8]\n\nNPS = (% Promoters - % Detractors), percentages are of total responses.\n\nArgs:\n    organization_id (str): The ID of the organization to aggregate responses for.\n\nReturns:\n    dict: Success: {\n              \"success\": True,\n              \"data\": {\n                  \"organization_id\": ...,\n                  \"nps\": float or None,\n                  \"counts\": {\"promoters\": int, \"detractors\": int, \"passives\": int, \"total\": int}\n              }\n          }\n          Failure: {\n              \"success\": False,\n              \"error\": \"Organization does not exist\"\n          }\n\nConstraints:\n    - Organization must exist.\n    - If no responses exist for the organization, \"nps\" will be None and counts will be zero.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id"
+        ]
+      }
+    },
+    {
+      "name": "calculate_nps_for_organization_by_survey",
+      "description": "Computes the Net Promoter Score (NPS) for the given organization, broken down by each survey.\nFor each survey sent by the organization, computes NPS using the following:\n  - Promoters: nps_score >= 9\n  - Passives: nps_score in [7, 8]\n  - Detractors: nps_score <= 6\nNPS = 100*(Promoters-Detractors)/Total respondents\n\nArgs:\n    organization_id (str): Target organization.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": {\n                survey_id: {\n                    \"survey_title\": str,\n                    \"num_promoters\": int,\n                    \"num_passives\": int,\n                    \"num_detractors\": int,\n                    \"nps\": float or None,  # None if no responses\n                    \"num_responses\": int\n                },\n                ...\n            }\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - Organization must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id"
+        ]
+      }
+    },
+    {
+      "name": "get_survey_by_id",
+      "description": "Retrieve SurveyInfo for the given survey_id.\n\nArgs:\n    survey_id (str): Unique identifier of the survey.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": SurveyInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\nConstraints:\n    - survey_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "survey_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "survey_id"
+        ]
+      }
+    },
+    {
+      "name": "add_survey_response",
+      "description": "Store a new SurveyResponseInfo object after validating customer and organization linkage.\n\nArgs:\n    survey_response (SurveyResponseInfo): The survey response data to add.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Survey response added\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": Reason for failure\n    }\n\nConstraints:\n    - response_id must be unique.\n    - customer_id must exist.\n    - organization_id must exist.\n    - The customer’s organization_id must match the response’s organization_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "survey_response": {
+            "type": "object",
+            "properties": {
+              "response_id": {
+                "type": "string"
+              },
+              "customer_id": {
+                "type": "string"
+              },
+              "organization_id": {
+                "type": "string"
+              },
+              "survey_date": {
+                "type": "string"
+              },
+              "answers": {
+                "anyOf": [
+                  {
+                    "type": "object"
+                  },
+                  {
+                    "type": "array"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              },
+              "nps_score": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "response_id",
+              "customer_id",
+              "organization_id",
+              "survey_date",
+              "answers",
+              "nps_score"
+            ]
+          }
+        },
+        "required": [
+          "survey_response"
+        ]
+      }
+    },
+    {
+      "name": "update_survey_response",
+      "description": "Modify answers, NPS score, or metadata for an existing SurveyResponseInfo entry.\n\nArgs:\n    response_id (str): The ID of the survey response to update.\n    answers (Any, optional): The new answers.\n    nps_score (float, optional): The new NPS score.\n    survey_date (str, optional): The new survey date.\n    customer_id (str, optional): The (possibly new) customer ID (must exist).\n    organization_id (str, optional): The (possibly new) org ID (must exist).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"SurveyResponse updated successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - response_id must exist.\n    - New customer_id/org_id must refer to existing entries if updated.\n    - Each SurveyResponse must be associated with a valid customer and org.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "response_id": {
+            "type": "string"
+          },
+          "answers": {},
+          "nps_score": {
+            "type": "number"
+          },
+          "survey_date": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "response_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_survey_response",
+      "description": "Remove a survey response record from the system (administrative action).\n\nArgs:\n    response_id (str): The identifier of the survey response to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Survey response <response_id> deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Survey response not found.\"\n    }\n\nConstraints:\n    - The response_id must exist in self.survey_responses.\n    - This is an administrative operation; no permission checks are modeled.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "response_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "response_id"
+        ]
+      }
+    },
+    {
+      "name": "add_customer",
+      "description": "Create a new customer record for association with organizations and survey participation.\n\nArgs:\n    customer_id (str): Unique identifier for the customer.\n    name (str): Name of the customer.\n    organization_id (str): ID of the organization with which the customer is associated.\n    email (str): Email address of the customer.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Customer <customer_id> added successfully.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": <error message>\n            }\n\nConstraints:\n    - The organization specified by organization_id must exist.\n    - The customer_id must be unique within the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "name",
+          "organization_id",
+          "email"
+        ]
+      }
+    },
+    {
+      "name": "update_customer",
+      "description": "Update customer attributes (name, email, organization_id).\n\nArgs:\n    customer_id (str): The ID of the customer to update.\n    name (str, optional): New name for the customer.\n    email (str, optional): New email address.\n    organization_id (str, optional): New organization ID (must exist).\n\nReturns:\n    dict: Success or failure message, e.g.:\n        { \"success\": True, \"message\": \"Customer updated successfully\" }\n        { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - customer_id must exist in the system.\n    - If organization_id is given, it must exist.\n    - At least one updatable attribute must be provided.\n    - Only name/email/organization_id can be updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "add_survey",
+      "description": "Add a new survey definition for an organization.\n\nArgs:\n    survey_id (str): Unique identifier for the survey.\n    title (str): Survey title.\n    question_set (list): List of survey questions.\n    active_period (str): Active period of survey (e.g., date range string).\n    associated_organization_id (str): ID of the organization to which the survey is linked.\n\nReturns:\n    dict:\n        On success: {\n            \"success\": True,\n            \"message\": \"Survey <survey_id> added successfully\"\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": \"<reason>\"\n        }\n\nConstraints:\n    - survey_id must be unique.\n    - associated_organization_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "survey_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "question_set": {
+            "type": "array",
+            "items": {}
+          },
+          "active_period": {
+            "type": "string"
+          },
+          "associated_organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "survey_id",
+          "title",
+          "question_set",
+          "active_period",
+          "associated_organization_id"
+        ]
+      }
+    },
+    {
+      "name": "update_survey",
+      "description": "Edit survey questions, active period, or associated organization.\n\nArgs:\n    survey_id (str): ID of the survey to update.\n    question_set (Optional[List[Any]]): New set of survey questions.\n    active_period (Optional[str]): New active period.\n    associated_organization_id (Optional[str]): New associated organization ID.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Survey updated successfully.\" }\n        On failure: { \"success\": False, \"error\": str }\n\nConstraints:\n    - survey_id must exist in self.surveys.\n    - If associated_organization_id is provided, it must be valid in self.organizations.\n    - At least one field must be provided to update.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "survey_id": {
+            "type": "string"
+          },
+          "question_set": {
+            "type": "array",
+            "items": {}
+          },
+          "active_period": {
+            "type": "string"
+          },
+          "associated_organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "survey_id"
+        ]
+      }
+    },
+    {
+      "name": "add_organization",
+      "description": "Adds a new organization entry to the system.\n\nArgs:\n    organization_id (str): Unique identifier for the organization.\n    name (str): Name of the organization.\n    business_un (str): Business unit of the organization.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Organization added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - organization_id must be unique (not already present).\n    - All fields should be non-empty strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "business_un": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id",
+          "name",
+          "business_un"
+        ]
+      }
+    },
+    {
+      "name": "update_organization",
+      "description": "Update attributes of an organization (name, business unit).\n\nArgs:\n    organization_id (str): ID of the organization to update.\n    name (Optional[str]): New name of the organization (if updating).\n    business_un (Optional[str]): New business unit (if updating).\n\nReturns:\n    dict:\n        - success: True and a message if updated successfully.\n        - success: False and error message if failed.\n\nConstraints:\n    - Organization must exist.\n    - At least one field to update must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "business_un": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_customer",
+      "description": "Remove a customer from the system if no associated survey responses exist.\n\nArgs:\n    customer_id (str): Unique customer identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Customer X deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<error reason>\"\n    }\n\nConstraints:\n    - Cannot delete a customer if any SurveyResponse is linked to them (referential integrity).\n    - Customer must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,549 @@
+{
+  "env_name": "URLAnalyticsShorteningPlatform",
+  "description": "A URL analytics and shortening platform manages shortened links mapped to original URLs while collecting detailed analytics on user interactions. It maintains persistent records on each link’s usage, including metadata such as timestamps, referrers, devices, and locations of users clicking the links. The platform supports operations for creating, sharing, and retrieving analytics reports, helping users monitor engagement and derive insights from their links’ performance.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "email",
+          "account_status"
+        ]
+      }
+    },
+    "links": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "link_id": {
+            "type": "string"
+          },
+          "short_url": {
+            "type": "string"
+          },
+          "original_url": {
+            "type": "string"
+          },
+          "owner_user_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "link_id",
+          "short_url",
+          "original_url",
+          "owner_user_id",
+          "created_at",
+          "is_active"
+        ]
+      }
+    },
+    "click_events": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "link_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "referrer": {
+            "type": "string"
+          },
+          "device_type": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "ip_address": {
+            "type": "string"
+          },
+          "user_agent": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "link_id",
+          "timestamp",
+          "referrer",
+          "device_type",
+          "country",
+          "ip_address",
+          "user_agent"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_username": [
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "list_user_links": [
+      "links",
+      "users"
+    ],
+    "get_link_by_short_url": [
+      "links"
+    ],
+    "get_link_by_id": [
+      "links"
+    ],
+    "check_link_ownership": [
+      "links",
+      "users"
+    ],
+    "get_link_status": [
+      "links"
+    ],
+    "list_link_click_events": [
+      "click_events",
+      "links"
+    ],
+    "count_click_events_by_country": [
+      "click_events",
+      "links"
+    ],
+    "get_link_total_clicks": [
+      "click_events",
+      "links"
+    ],
+    "list_links_by_activity_status": [
+      "links",
+      "users"
+    ],
+    "get_unique_click_events": [
+      "click_events",
+      "links"
+    ],
+    "create_shortened_link": [
+      "links",
+      "users"
+    ],
+    "deactivate_shortened_link": [
+      "links"
+    ],
+    "activate_shortened_link": [
+      "links"
+    ],
+    "register_click_event": [
+      "click_events",
+      "links"
+    ],
+    "flag_duplicate_click_event": [
+      "click_events"
+    ],
+    "delete_shortened_link": [
+      "click_events",
+      "links"
+    ],
+    "anonymize_click_events": [
+      "click_events"
+    ],
+    "transfer_link_ownership": [
+      "links",
+      "users"
+    ],
+    "remove_click_event": [
+      "click_events"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_username",
+      "description": "Look up and retrieve a user's information by their username.\n\nArgs:\n    username (str): The username to search for.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"data\": UserInfo }\n        On failure:\n            { \"success\": False, \"error\": \"User not found\" }\n\nConstraints:\n    - Usernames are assumed to be unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve full user information using the unique user identifier.\n\nArgs:\n    user_id (str): The user's unique identifier (_id).\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"data\": UserInfo }\n        - On failure: { \"success\": False, \"error\": \"User not found\" }\n\nConstraints:\n    - Returns user info only if user exists in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_user_links",
+      "description": "List all ShortenedLinks owned by the specified user.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ShortenedLinkInfo],  # all links owned by user (empty list if none)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # 'User not found'\n    }\n\nConstraints:\n    - The user_id must reference an existing user in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_link_by_short_url",
+      "description": "Retrieve metadata for a shortened link by its custom or platform-generated short_url.\n\nArgs:\n    short_url (str): The short URL string to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ShortenedLinkInfo,     # metadata for the shortened link\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If the short_url does not exist in the platform\n    }\nConstraints:\n    - Each short_url is expected to be unique within the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "short_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "short_url"
+        ]
+      }
+    },
+    {
+      "name": "get_link_by_id",
+      "description": "Fetch the details (metadata) of a ShortenedLink using its link_id.\n\nArgs:\n    link_id (str): The unique identifier of the ShortenedLink.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": ShortenedLinkInfo }\n        - On failure: { \"success\": False, \"error\": \"Link ID does not exist\" }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "link_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "link_id"
+        ]
+      }
+    },
+    {
+      "name": "check_link_ownership",
+      "description": "Verify if a given user is the owner of a particular ShortenedLink.\n\nArgs:\n    user_id (str): The ID of the user to check.\n    link_id (str): The ID of the shortened link to check.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"is_owner\": bool  # True if the user owns the link, False otherwise\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g. user or link does not exist\n    }\n\nConstraints:\n    - The user must exist in the system.\n    - The link must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "link_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "link_id"
+        ]
+      }
+    },
+    {
+      "name": "get_link_status",
+      "description": "Return the current activation status ('is_active') of the specified shortened link.\n\nArgs:\n    link_id (str): The identifier of the shortened link to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\"link_id\": str, \"is_active\": bool},\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., 'Shortened link not found'\n    }\n\nConstraints:\n    - The provided link_id must exist in the platform.\n    - No ownership/privacy check is required for status-only query.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "link_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "link_id"
+        ]
+      }
+    },
+    {
+      "name": "list_link_click_events",
+      "description": "Retrieve all ClickEvents (detailed) associated with a given ShortenedLink, \nenforcing privacy constraints (only the link owner may access).\n\nArgs:\n    link_id (str): The link whose events are to be listed.\n    requesting_user_id (str): The user performing the query (for privacy enforcement).\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"data\": List[ClickEventInfo]}\n        On failure:\n            {\"success\": False, \"error\": str}\n\nConstraints:\n    - link_id must exist in links.\n    - Only the owner of the link (owner_user_id) can access analytics.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "link_id": {
+            "type": "string"
+          },
+          "requesting_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "link_id",
+          "requesting_user_id"
+        ]
+      }
+    },
+    {
+      "name": "count_click_events_by_country",
+      "description": "Aggregate and count ClickEvents for a given ShortenedLink grouped by country.\n\nArgs:\n    link_id (str): The identifier of the ShortenedLink.\n\nReturns:\n    dict:\n        - success: True, data: Dict[str, int]\n            (country code/name -> click count) on success.\n        - success: False, error: str\n            if provided link_id does not exist.\n\nConstraints:\n    - The given link_id must exist in the system.\n    - Aggregates all ClickEvents related to the link, regardless of activity status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "link_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "link_id"
+        ]
+      }
+    },
+    {
+      "name": "get_link_total_clicks",
+      "description": "Compute the total number of ClickEvents (clicks) for a specific ShortenedLink.\n\nArgs:\n    link_id (str): The identifier for the ShortenedLink.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": int  # Total click count for this link_id\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If the link_id does not exist\n    }\n\nConstraints:\n    - The link_id must reference an existing ShortenedLink.\n    - Includes all clicks for the link (regardless of active status).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "link_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "link_id"
+        ]
+      }
+    },
+    {
+      "name": "list_links_by_activity_status",
+      "description": "Retrieve all active or inactive shortened links for a specific user.\n\nArgs:\n    user_id (str): The ID of the user whose links are requested.\n    is_active (bool): True for active links, False for inactive links.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ShortenedLinkInfo]  # (possibly empty if no matching links)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - User must exist in the system.\n    - Only links belonging to this user are considered.\n    - Only links matching the specified activity status are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "user_id",
+          "is_active"
+        ]
+      }
+    },
+    {
+      "name": "get_unique_click_events",
+      "description": "Retrieve the unique ClickEvents for a given ShortenedLink, where uniqueness is\ndetermined by (timestamp, link_id, ip_address).\n\nArgs:\n    link_id (str): The ID of the shortened link for which to deduplicate ClickEvents.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ClickEventInfo],  # List of unique click events.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # E.g., \"ShortenedLink does not exist\"\n    }\n\nConstraints:\n    - The specified link_id must reference an existing ShortenedLink.\n    - For deduplication, only one ClickEvent with a given (timestamp, link_id, ip_address) is kept.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "link_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "link_id"
+        ]
+      }
+    },
+    {
+      "name": "create_shortened_link",
+      "description": "Register a new ShortenedLink for an owner user, mapped to an original URL.\n\nArgs:\n    owner_user_id (str): User ID of the link owner (must exist).\n    original_url (str): Destination URL to shorten.\n    short_url (str): The desired short URL identifier (must be unique).\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Shortened link created\",\n                \"link_id\": <generated_link_id>,\n                \"short_url\": <short_url>\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"<reason>\"\n            }\n\nConstraints:\n    - owner_user_id must reference an existing user.\n    - short_url (and link_id) must be globally unique in self.links.\n    - Each ShortenedLink is associated with one owner user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner_user_id": {
+            "type": "string"
+          },
+          "original_url": {
+            "type": "string"
+          },
+          "short_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "owner_user_id",
+          "original_url",
+          "short_url"
+        ]
+      }
+    },
+    {
+      "name": "deactivate_shortened_link",
+      "description": "Set a ShortenedLink's status to inactive (is_active=False).\n\nArgs:\n    link_id (str): The unique identifier of the shortened link.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"ShortenedLink '<link_id>' has been deactivated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"ShortenedLink not found.\" | \"ShortenedLink is already inactive.\"\n    }\n\nConstraints:\n    - The link_id must exist.\n    - If already inactive, return an error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "link_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "link_id"
+        ]
+      }
+    },
+    {
+      "name": "activate_shortened_link",
+      "description": "Set a ShortenedLink's status to active (is_active=True).\n\nArgs:\n    link_id (str): The ID of the ShortenedLink to activate.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Shortened link <link_id> has been activated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure.\n    }\n\nConstraints:\n    - link_id must correspond to an existing ShortenedLink.\n    - Operation is idempotent: activating an already-active link is still a success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "link_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "link_id"
+        ]
+      }
+    },
+    {
+      "name": "register_click_event",
+      "description": "Register a new ClickEvent if the link is active, valid, and no duplicate event exists.\n\nArgs:\n    event_id (str): Unique identifier for the ClickEvent.\n    link_id (str): The shortened link identifier this event is for.\n    timestamp (str): The timestamp of the click (ISO8601 or compatible).\n    referrer (str): The referrer URL or identifier.\n    device_type (str): The type of device (e.g., 'mobile', 'desktop').\n    country (str): The country where the click was generated.\n    ip_address (str): The IP address of the click source.\n    user_agent (str): The browser or app user-agent string.\n\nReturns:\n    dict: On success,\n        { \"success\": True, \"message\": \"ClickEvent registered\" }\n        On failure,\n        { \"success\": False, \"error\": \"reason for failure\" }\n\nConstraints:\n    - link_id must exist.\n    - Link must be active (is_active == True).\n    - event_id must be unique (not used).\n    - Deduplication: no existing ClickEvent with same (timestamp, link_id, ip_address)\n    - ClickEvent must reference a valid ShortenedLink.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "link_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "referrer": {
+            "type": "string"
+          },
+          "device_type": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "ip_address": {
+            "type": "string"
+          },
+          "user_agent": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "link_id",
+          "timestamp",
+          "referrer",
+          "device_type",
+          "country",
+          "ip_address",
+          "user_agent"
+        ]
+      }
+    },
+    {
+      "name": "flag_duplicate_click_event",
+      "description": "Mark or log ClickEvents identified as duplicates for future analytics accuracy or review.\n\nArgs:\n    event_id (str, optional): If provided, only scans for and flags duplicates matching this ClickEvent.\n        If None, scans the whole click event set for duplicates system-wide.\n\nReturns:\n    dict: \n    {\n        \"success\": True,\n        \"message\": \"<X click event(s) flagged as duplicate>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Duplicates are defined as events with identical (link_id, timestamp, ip_address)\n    - At least two events in such a group are required for flagging\n    - \"is_duplicate\": True is set in ClickEventInfo for flagged events",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "delete_shortened_link",
+      "description": "Remove a ShortenedLink and all its associated analytics data.\nOnly the owner of the link may perform this operation.\n\nArgs:\n    link_id (str): The unique identifier for the ShortenedLink to delete.\n    request_user_id (str): The user requesting the deletion. Must be the link owner.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"ShortenedLink and all associated analytics removed.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - Only the owner of the link may delete it.\n    - All ClickEvents associated with the link must be deleted as well.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "link_id": {
+            "type": "string"
+          },
+          "request_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "link_id",
+          "request_user_id"
+        ]
+      }
+    },
+    {
+      "name": "anonymize_click_events",
+      "description": "Remove or mask sensitive data (such as IP address and user agent) from all ClickEvents for privacy.\n\nAnonymized fields:\n    - ip_address: Masked as 'ANONYMIZED'\n    - user_agent: Masked as 'ANONYMIZED'\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Description of the operation performed\n    }\n\nConstraints:\n    - Must only mask intended fields; do not delete ClickEvents or alter primary keys.\n    - Can be invoked multiple times safely (idempotent).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "transfer_link_ownership",
+      "description": "Change the owner of the specified ShortenedLink to a different user.\n\nArgs:\n    link_id (str): The ID of the shortened link whose owner is being changed.\n    new_owner_user_id (str): The ID of the new owner user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # A message describing the ownership transfer.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if link/user does not exist or is already owned by the target user.\n    }\n\nConstraints:\n    - The link must exist in the system.\n    - The new user must exist in the system.\n    - Each ShortenedLink must have a valid owner.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "link_id": {
+            "type": "string"
+          },
+          "new_owner_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "link_id",
+          "new_owner_user_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_click_event",
+      "description": "Delete a specific ClickEvent record (admin or via privacy request).\n\nArgs:\n    event_id (str): The unique ID of the ClickEvent to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"ClickEvent <event_id> has been removed.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"ClickEvent not found.\"\n    }\n\nConstraints:\n    - The event_id must exist in click_events.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    }
+  ]
+}

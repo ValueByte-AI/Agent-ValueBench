@@ -1,0 +1,458 @@
+{
+  "env_name": "FinancialWatchlistManagementSystem",
+  "description": "A financial trading platform's watchlist management system allows users to create and manage multiple lists of financial instruments they wish to monitor. Each watchlist can be augmented with attributes such as notification preferences or automated callback hooks for alerting or custom actions. The system supports operations like retrieving lists, updating callback assignments, and ensuring data integrity and uniqueness of configuration settings.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "account_sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "email",
+          "account_sta"
+        ]
+      }
+    },
+    "watchlists": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "watchlist_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "notification_preferences": {
+            "type": "string"
+          },
+          "callback_hook": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "watchlist_id",
+          "user_id",
+          "name",
+          "notification_preferences",
+          "callback_hook"
+        ]
+      }
+    },
+    "watchlist_instruments": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "financial_instruments": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "instrument_id": {
+            "type": "string"
+          },
+          "symbol": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "mark": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "instrument_id",
+          "symbol",
+          "name",
+          "type",
+          "mark"
+        ]
+      }
+    },
+    "authenticated_user_id": {
+      "type": "string"
+    }
+  },
+  "tool_state_dependencies": {
+    "get_authenticated_user": [
+      "authenticated_user_id",
+      "users"
+    ],
+    "list_user_watchlists": [
+      "authenticated_user_id",
+      "watchlists"
+    ],
+    "get_watchlist_by_id": [
+      "authenticated_user_id",
+      "watchlists"
+    ],
+    "get_watchlist_by_name": [
+      "authenticated_user_id",
+      "watchlists"
+    ],
+    "get_watchlist_callbacks": [
+      "authenticated_user_id",
+      "users",
+      "watchlists"
+    ],
+    "check_callback_uniqueness": [
+      "authenticated_user_id",
+      "users",
+      "watchlists"
+    ],
+    "get_watchlist_notification_preferences": [
+      "authenticated_user_id",
+      "users",
+      "watchlists"
+    ],
+    "list_watchlist_instruments": [
+      "authenticated_user_id",
+      "financial_instruments",
+      "watchlist_instruments",
+      "watchlists"
+    ],
+    "get_financial_instrument_by_id": [
+      "financial_instruments"
+    ],
+    "update_watchlist_callback_hook": [
+      "authenticated_user_id",
+      "watchlists"
+    ],
+    "update_watchlist_notification_preferences": [
+      "authenticated_user_id",
+      "watchlists"
+    ],
+    "create_new_watchlist": [
+      "authenticated_user_id",
+      "users",
+      "watchlist_instruments",
+      "watchlists"
+    ],
+    "delete_watchlist": [
+      "authenticated_user_id",
+      "watchlist_instruments",
+      "watchlists"
+    ],
+    "add_instrument_to_watchlist": [
+      "authenticated_user_id",
+      "financial_instruments",
+      "watchlist_instruments",
+      "watchlists"
+    ],
+    "remove_instrument_from_watchlist": [
+      "authenticated_user_id",
+      "watchlist_instruments",
+      "watchlists"
+    ],
+    "set_authenticated_user": [
+      "users",
+      "authenticated_user_id"
+    ],
+    "bulk_update_callback_hooks": [
+      "authenticated_user_id",
+      "watchlists"
+    ],
+    "rename_watchlist": [
+      "authenticated_user_id",
+      "watchlists"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_authenticated_user",
+      "description": "Retrieve information about the currently authenticated user.\n\nArgs:\n    None (uses self.authenticated_user_id)\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": UserInfo  # User information if authenticated\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": str  # Reason (not authenticated or user not found)\n        }\nConstraints:\n    - Only works if there is a currently authenticated user.\n    - User must exist in self.users.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_user_watchlists",
+      "description": "Retrieve all watchlists belonging to the currently authenticated user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[WatchlistInfo],  # All user watchlists; empty list if none exist\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., not authenticated\n    }\n\nConstraints:\n    - Only the authenticated user's watchlists are returned.\n    - Authentication required.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_watchlist_by_id",
+      "description": "Fetch full details for a given watchlist_id (ownership and authentication enforced).\n\nArgs:\n    watchlist_id (str): The unique ID of the watchlist.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": WatchlistInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # reason for failure\n    }\n\nConstraints:\n    - Only authenticated users can access their own watchlists.\n    - Watchlist must exist for the provided ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "watchlist_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "watchlist_id"
+        ]
+      }
+    },
+    {
+      "name": "get_watchlist_by_name",
+      "description": "Fetches the authenticated user's watchlist metadata by its name.\n\nArgs:\n    watchlist_name (str): Name of the watchlist to retrieve (must belong to the authenticated user).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": WatchlistInfo  # The watchlist's metadata\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Explanation (not authenticated, not found, etc)\n    }\n\nConstraints:\n    - Only authenticated users can fetch their own watchlists.\n    - Name lookup is case-sensitive and must be unique per user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "watchlist_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "watchlist_name"
+        ]
+      }
+    },
+    {
+      "name": "get_watchlist_callbacks",
+      "description": "List the callback_hook values of all watchlists for the authenticated user.\n\nReturns:\n    dict: \n        On success:\n            { \"success\": True, \"data\": List[str] }\n            # a list of callback_hook values (may be empty if no watchlists)\n        On failure:\n            { \"success\": False, \"error\": str }\n            # e.g., \"User not authenticated\"\n\nConstraints:\n    - Only the authenticated user's own watchlists are queried.\n    - If the user has no watchlists, the data list is empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "check_callback_uniqueness",
+      "description": "Check if callback_hooks are unique across all watchlists of the authenticated user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"unique\": True           # If no duplicates\n        }\n    }\n    or\n    {\n        \"success\": True,\n        \"data\": {\n            \"unique\": False,\n            \"duplicates\": [str, ...] # List of duplicated callback_hook values\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g. user not authenticated\n    }\n\nConstraints:\n    - There must be an authenticated user.\n    - Only that user's watchlists are checked.\n    - All callback_hook values, including empty or None, are considered for uniqueness.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_watchlist_notification_preferences",
+      "description": "Retrieve the notification_preferences for each watchlist belonging to the currently authenticated user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[{\"watchlist_id\": str, \"name\": str, \"notification_preferences\": str}]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Only for authenticated user (self.authenticated_user_id must be set).\n    - Only returns user's own watchlists.\n    - If user has no watchlists, returns empty list on success.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_watchlist_instruments",
+      "description": "List all instruments (with their info) contained in a specified watchlist.\n\nArgs:\n    watchlist_id (str): The ID of the watchlist whose instruments are to be listed.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": [FinancialInstrumentInfo, ...]  # Instruments in the watchlist (may be empty)\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason for failure (e.g., not authenticated, not found, no permission)\n            }\n\nConstraints:\n    - Only the authenticated user can access their own watchlists.\n    - Instruments that are no longer valid in the platform will be skipped.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "watchlist_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "watchlist_id"
+        ]
+      }
+    },
+    {
+      "name": "get_financial_instrument_by_id",
+      "description": "Retrieve details of a financial instrument by its instrument_id.\n\nArgs:\n    instrument_id (str): The unique ID of the financial instrument.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": FinancialInstrumentInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If no instrument exists with the given ID\n    }\n\nConstraints:\n    - instrument_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "instrument_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "instrument_id"
+        ]
+      }
+    },
+    {
+      "name": "update_watchlist_callback_hook",
+      "description": "Update the callback_hook for a specific watchlist.\n\nArgs:\n    watchlist_id (str): The unique identifier for the target watchlist.\n    new_callback_hook (str): The new callback_hook value to be set.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Callback hook updated successfully.\" }\n        On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - User must be authenticated and must own the watchlist.\n    - callback_hook must be unique per user.\n    - callback_hook must conform to system-supported format (here: non-empty string, possibly further validation).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "watchlist_id": {
+            "type": "string"
+          },
+          "new_callback_hook": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "watchlist_id",
+          "new_callback_hook"
+        ]
+      }
+    },
+    {
+      "name": "update_watchlist_notification_preferences",
+      "description": "Change the notification_preferences for a watchlist.\n\nArgs:\n    watchlist_id (str): The identifier for the watchlist to update.\n    notification_preferences (str): The new notification preferences value.\n                                   Must conform to supported format (here: non-empty string as a placeholder).\n\nReturns:\n    dict: On success:\n             {\n                 \"success\": True,\n                 \"message\": \"Notification preferences updated.\"\n             }\n          On failure:\n             {\n                 \"success\": False,\n                 \"error\": <reason>\n             }\n\nConstraints:\n    - Only authenticated users can modify their own watchlists.\n    - notification_preferences must pass format validation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "watchlist_id": {
+            "type": "string"
+          },
+          "notification_preferences": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "watchlist_id",
+          "notification_preferences"
+        ]
+      }
+    },
+    {
+      "name": "create_new_watchlist",
+      "description": "Add a new watchlist for the authenticated user (enforcing unique name and unique callback_hook per user).\n\nArgs:\n    name (str): Desired name of the watchlist (must be unique for this user)\n    notification_preferences (str): Preferences for notifications (must be non-empty)\n    callback_hook (str): Callback hook identifier/URL (must be unique for this user and non-empty)\n\nReturns:\n    dict:\n        Success: {\n            \"success\": True,\n            \"message\": \"Watchlist '<name>' created successfully.\",\n            \"watchlist_id\": <id>\n        }\n        Failure: {\n            \"success\": False,\n            \"error\": <reason>\n        }\nConstraints:\n    - Only authenticated users can create watchlists.\n    - Watchlist name and callback_hook must each be unique per user.\n    - notification_preferences and callback_hook must be non-empty strings (further format checks can be added).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "notification_preferences": {
+            "type": "string"
+          },
+          "callback_hook": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "notification_preferences",
+          "callback_hook"
+        ]
+      }
+    },
+    {
+      "name": "delete_watchlist",
+      "description": "Remove a watchlist belonging to the authenticated user.\n\nArgs:\n    watchlist_id (str): The ID of the watchlist to be deleted.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Watchlist deleted successfully.\" }\n        On failure: { \"success\": False, \"error\": <error reason> }\n\nConstraints:\n    - Only the authenticated user may delete their own watchlists.\n    - Removes associated instrument links as well.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "watchlist_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "watchlist_id"
+        ]
+      }
+    },
+    {
+      "name": "add_instrument_to_watchlist",
+      "description": "Add a financial instrument to the specified watchlist.\n\nArgs:\n    watchlist_id (str): The ID of the watchlist.\n    instrument_id (str): The ID of the financial instrument to add.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Instrument added to watchlist.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of failure reason\n    }\n\nConstraints:\n    - Only authenticated users can modify their own watchlists.\n    - Both watchlist and instrument must exist.\n    - An instrument can only be added once to each watchlist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "watchlist_id": {
+            "type": "string"
+          },
+          "instrument_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "watchlist_id",
+          "instrument_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_instrument_from_watchlist",
+      "description": "Remove a financial instrument from one of the authenticated user's watchlists.\n\nArgs:\n    watchlist_id (str): The unique ID of the watchlist to update.\n    instrument_id (str): The unique ID of the instrument to remove.\n\nReturns:\n    dict: \n      - On success: { \"success\": True, \"message\": \"Instrument <instrument_id> removed from watchlist <watchlist_id>\" }\n      - On failure: { \"success\": False, \"error\": str }\n\nConstraints:\n    - Only the authenticated user can modify their own watchlists.\n    - Instrument must actually be present in the watchlist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "watchlist_id": {
+            "type": "string"
+          },
+          "instrument_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "watchlist_id",
+          "instrument_id"
+        ]
+      }
+    },
+    {
+      "name": "set_authenticated_user",
+      "description": "Authenticate a user in the system, setting them as the current context for\nsubsequent user-specific operations.\n\nArgs:\n    user_id (str): The ID of the user to authenticate as.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"User set as authenticated\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"User not found\"\n            }\n\nConstraints:\n    - Only existing users can be set as authenticated.\n    - The authenticated user determines access/authorization for all operations.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "bulk_update_callback_hooks",
+      "description": "Batch update callback_hooks for multiple watchlists to guarantee per-user uniqueness.\n\nArgs:\n    updates (Dict[str, str]): Mapping from watchlist_id to new callback_hook value.\n\nReturns:\n    dict:\n        success: True and success message, or False and error description.\n\nConstraints:\n    - Authenticated user only allowed to modify their own watchlists.\n    - All callback_hooks for a user must be unique after update (including not-updated watchlists).\n    - Each callback_hook must conform to the system-supported format.\n    - The operation is all-or-nothing: no update is applied if any error detected.\n\nEdge cases:\n    - If updates dict is empty, return success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "rename_watchlist",
+      "description": "Change the name of a user's watchlist, ensuring the new name is unique per user.\n\nArgs:\n    watchlist_id (str): The ID of the watchlist to rename.\n    new_name (str): The new unique name for the watchlist.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # success confirmation\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Only authenticated users can modify their own watchlists.\n    - The new name must be unique among the user's watchlists.\n    - The new name must not be empty or just whitespace.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "watchlist_id": {
+            "type": "string"
+          },
+          "new_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "watchlist_id",
+          "new_name"
+        ]
+      }
+    }
+  ]
+}

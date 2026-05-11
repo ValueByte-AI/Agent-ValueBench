@@ -1,0 +1,452 @@
+{
+  "env_name": "JavaProjectSourceTree",
+  "description": "A Java project source tree organizes source files according to package hierarchies, mapping each package to a corresponding directory path and each class to a file within that hierarchy. It maintains the overall structure of directories and files, supports operations such as searching, compiling, and refactoring, and is foundational to building and maintaining Java applications. This environment facilitates efficient navigation and management of Java codebases.",
+  "initial_parameter_schema": {
+    "directories": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "parent_directory": {
+            "type": "string"
+          },
+          "subdirectories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "path",
+          "parent_directory",
+          "subdirectories",
+          "files"
+        ]
+      }
+    },
+    "files": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "parent_directory": {
+            "type": "string"
+          },
+          "extension": {
+            "type": "string"
+          },
+          "associated_class": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "path",
+          "parent_directory",
+          "extension",
+          "associated_class"
+        ]
+      }
+    },
+    "java_classes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "fully_qualified_name": {
+            "type": "string"
+          },
+          "package_name": {
+            "type": "string"
+          },
+          "class_name": {
+            "type": "string"
+          },
+          "file_path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fully_qualified_name",
+          "package_name",
+          "class_name",
+          "file_path"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_java_class_info": [
+      "java_classes"
+    ],
+    "get_file_info": [
+      "files"
+    ],
+    "get_directory_info": [
+      "directories"
+    ],
+    "list_java_classes_in_package": [
+      "java_classes"
+    ],
+    "list_files_in_directory": [
+      "directories",
+      "files"
+    ],
+    "get_classes_in_file": [
+      "files",
+      "java_classes"
+    ],
+    "get_directory_for_package": [
+      "directories"
+    ],
+    "get_package_for_directory": [
+      "directories"
+    ],
+    "get_fully_qualified_name_for_file": [
+      "files"
+    ],
+    "get_file_path_for_class_name": [
+      "java_classes"
+    ],
+    "create_java_class_file": [
+      "directories",
+      "files",
+      "java_classes"
+    ],
+    "rename_java_class": [
+      "directories",
+      "files",
+      "java_classes"
+    ],
+    "move_java_class_to_package": [
+      "directories",
+      "files",
+      "java_classes"
+    ],
+    "delete_java_class_file": [
+      "directories",
+      "files",
+      "java_classes"
+    ],
+    "create_directory": [
+      "directories"
+    ],
+    "move_file": [
+      "directories",
+      "files",
+      "java_classes"
+    ],
+    "rename_directory": [
+      "directories",
+      "files",
+      "java_classes"
+    ],
+    "delete_directory": [
+      "directories"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_java_class_info",
+      "description": "Retrieve all metadata for a Java class by its fully qualified name.\n\nArgs:\n    fully_qualified_name (str): The canonical name of the Java class (e.g., 'com.example.MyClass').\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": JavaClassInfo,  # All metadata about the class\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Java class not found\"\n            }\n\nConstraints:\n    - The Java class must exist in the environment.\n    - If not found, returns an error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fully_qualified_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fully_qualified_name"
+        ]
+      }
+    },
+    {
+      "name": "get_file_info",
+      "description": "Retrieve metadata for a file specified by its file path.\n\nArgs:\n    file_path (str): The absolute path of the file to retrieve metadata for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": FileInfo,  # Metadata of the file, including associated class and extension\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"File does not exist\"\n    }\n\nConstraints:\n    - The file path must exist in the source tree.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_path"
+        ]
+      }
+    },
+    {
+      "name": "get_directory_info",
+      "description": "Retrieve metadata (DirectoryInfo) for the given directory path.\n\nArgs:\n    directory_path (str): The path to the directory.\n\nReturns:\n    dict: \n        - If directory exists: { \"success\": True, \"data\": DirectoryInfo }\n        - If not found: { \"success\": False, \"error\": \"Directory does not exist\" }\n\nConstraints:\n    - directory_path must exist in the project source tree.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "directory_path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "directory_path"
+        ]
+      }
+    },
+    {
+      "name": "list_java_classes_in_package",
+      "description": "List all Java classes defined within a specified package.\n\nArgs:\n    package_name (str): The fully qualified package name (e.g., 'com.example.util').\n\nReturns:\n    dict:\n        - success (bool)\n        - data (List[JavaClassInfo]): List of JavaClassInfo for all matching classes.\n\nConstraints:\n    - No error if package is missing; if no class found, return empty list.\n    - Query only: does not mutate state.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "package_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "package_name"
+        ]
+      }
+    },
+    {
+      "name": "list_files_in_directory",
+      "description": "List all files (FileInfo) within the specified directory path.\n\nArgs:\n    directory_path (str): The directory whose files are to be listed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[FileInfo]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Directory must exist.\n    - Only include files whose 'parent_directory' matches 'directory_path'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "directory_path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "directory_path"
+        ]
+      }
+    },
+    {
+      "name": "get_classes_in_file",
+      "description": "Given a `.java` file path, retrieve the fully qualified names of classes it defines.\n\nArgs:\n    file_path (str): Path to the .java file.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str]  # List of fully qualified names of classes in the file (empty if none)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description, e.g., file not found or not a .java file\n    }\n\nConstraints:\n    - The file must exist.\n    - The file extension must be '.java'.\n    - All matching JavaClass entries corresponding to file_path are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_path"
+        ]
+      }
+    },
+    {
+      "name": "get_directory_for_package",
+      "description": "Given a Java package name, returns the corresponding directory path in the source tree,\nif it exists.\n\nArgs:\n    package_name (str): The fully qualified Java package name (e.g., \"com.example.utils\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": str  # Directory path corresponding to the package\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message, e.g., not found\n    }\n\nConstraints:\n    - The returned directory path must exist in the project directories.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "package_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "package_name"
+        ]
+      }
+    },
+    {
+      "name": "get_package_for_directory",
+      "description": "Infer the Java package name for a given directory path.\n\nArgs:\n    directory_path (str): absolute or project-relative directory path\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": str   # The inferred Java package name (\"\" for default package)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Directory must exist in the project.\n    - Package hierarchy maps nested directories to .-separated package names.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "directory_path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "directory_path"
+        ]
+      }
+    },
+    {
+      "name": "get_fully_qualified_name_for_file",
+      "description": "Given a file path, retrieve the fully qualified Java class name it defines (if any).\n\nArgs:\n    file_path (str): The absolute path of the Java source file.\n\nReturns:\n    dict:\n        - On success:\n            {\"success\": True, \"data\": str}  # fully qualified class name\n        - On failure:\n            {\"success\": False, \"error\": str}  # Reason for failure\n\nConstraints:\n    - The file must exist in the project.\n    - The file must have a '.java' extension.\n    - The file must define exactly one Java class (associated_class must be non-empty).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_path"
+        ]
+      }
+    },
+    {
+      "name": "get_file_path_for_class_name",
+      "description": "Given a fully qualified Java class name, return the file system path for its `.java` file.\n\nArgs:\n    fully_qualified_name (str): The full package and class name (e.g., 'com.example.utils.MathUtil').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": str,  # The file system path to the .java file\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g., Java class not found)\n    }\n\nConstraints:\n    - Class must exist (present in self.java_classes).\n    - Each Java class maps to one file and it must be a .java file.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fully_qualified_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fully_qualified_name"
+        ]
+      }
+    },
+    {
+      "name": "create_java_class_file",
+      "description": "Create a new Java class, its .java file, and the appropriate directory hierarchy as needed.\n\nArgs:\n    fully_qualified_name (str): The full Java class name, including package (e.g., com.example.MyClass)\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Created Java class <class> at <file_path>\",\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Must not already exist (as file or class).\n    - Creates missing package directories hierarchically.\n    - File name must be <ClassName>.java.\n    - Directory structure must map to the package name.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fully_qualified_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fully_qualified_name"
+        ]
+      }
+    },
+    {
+      "name": "rename_java_class",
+      "description": "Rename a Java class and update its file name and related mappings accordingly.\n\nArgs:\n    old_fully_qualified_name (str): The current fully qualified name (e.g., \"com.example.OldName\").\n    new_class_name (str): The new Java class name as identifier (e.g., \"NewName\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Description of the renaming operation.\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error.\n    }\n\nConstraints:\n    - The class must exist in the project.\n    - The new class name must not cause duplicate fully qualified names or file path conflicts.\n    - The file must be renamed to match the class, with .java extension.\n    - Mappings (`java_classes`, `files`, directory lists) must be updated to remain consistent.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "old_fully_qualified_name": {
+            "type": "string"
+          },
+          "new_class_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "old_fully_qualified_name",
+          "new_class_name"
+        ]
+      }
+    },
+    {
+      "name": "move_java_class_to_package",
+      "description": "Move an existing Java class to a new package, updating directory, file path, and package name.\n\nArgs:\n    fully_qualified_name (str): The fully-qualified name (e.g. com.example.OldClass) of the Java class to move.\n    new_package_name (str): The target package name (e.g. com.example.newpkg).\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Moved class <old> to package <new>.\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - JavaClass must exist.\n    - Directory structure must reflect the package structure, and must be created if missing.\n    - No existing class with the same (class name, package) tuple should exist in the target package.\n    - Update all relevant mappings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fully_qualified_name": {
+            "type": "string"
+          },
+          "new_package_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fully_qualified_name",
+          "new_package_name"
+        ]
+      }
+    },
+    {
+      "name": "delete_java_class_file",
+      "description": "Delete a `.java` file and unregister the associated Java class from the project.\n\nArgs:\n    fully_qualified_class_name (str): The fully qualified name of the Java class to delete.\n\nReturns:\n    dict:\n        - On success:\n            {\"success\": True, \"message\": \"Java class and file successfully deleted\"}\n        - On failure:\n            {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - The class must exist (be registered in self.java_classes).\n    - The file must exist, be a `.java` file, and be associated with the given class.\n    - Directory file list must be updated to remove file if all else succeeds.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fully_qualified_class_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fully_qualified_class_name"
+        ]
+      }
+    },
+    {
+      "name": "create_directory",
+      "description": "Create a new package directory in the project source tree.\n\nArgs:\n    path (str): The path of the directory to create (e.g., \"com/example/utilities\").\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Directory '<path>' created.\" }\n        - On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Directory names must not clash with existing directories.\n    - Parent directory (unless root) must exist.\n    - Updates parent directory's subdirectories list accordingly.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    },
+    {
+      "name": "move_file",
+      "description": "Move a file from one directory to another, adjusting all related metadata as necessary.\n\nArgs:\n    file_path (str): The full path to the file to move.\n    destination_directory_path (str): The full path of the directory to move the file into.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"message\": \"File moved successfully from <src> to <dst>\"}\n        On failure:\n            {\"success\": False, \"error\": str}\n\nConstraints:\n    - File and destination directory must exist.\n    - Destination directory must not already contain a file with the same name.\n    - All metadata and class info must be updated accordingly.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_path": {
+            "type": "string"
+          },
+          "destination_directory_path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_path",
+          "destination_directory_path"
+        ]
+      }
+    },
+    {
+      "name": "rename_directory",
+      "description": "Rename a directory from old_path to new_path, updating all parent and subdirectory\nreferences, file paths, and affected Java class file paths accordingly.\n\nArgs:\n    old_path (str): Current path of the directory to rename.\n    new_path (str): New path for the directory (should not exist).\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Directory renamed from <old_path> to <new_path>\" }\n        - On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - old_path must exist in directories.\n    - new_path must not exist in directories.\n    - All subdirectories, files, Java classes under old_path must have their paths updated accordingly.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "old_path": {
+            "type": "string"
+          },
+          "new_path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "old_path",
+          "new_path"
+        ]
+      }
+    },
+    {
+      "name": "delete_directory",
+      "description": "Remove an empty directory from the Java project source tree.\n\nArgs:\n    directory_path (str): The path to the directory to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": f\"Directory {directory_path} deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Directory must exist.\n    - Directory must have no files and no subdirectories (empty).\n    - Directory must be removed from its parent's subdirectories list.\n    - No orphan FileInfo or JavaClassInfo will be left because all files must be removed prior.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "directory_path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "directory_path"
+        ]
+      }
+    }
+  ]
+}

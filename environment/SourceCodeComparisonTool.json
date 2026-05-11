@@ -1,0 +1,588 @@
+{
+  "env_name": "SourceCodeComparisonTool",
+  "description": "A source code comparison tool is designed to hold versions of code files, analyze their differences, and generate human-readable reports in various formats. It maintains records of code snapshots, tracks lines changed, and supports exporting comparison results as documents for auditing or review purposes. The environment typically facilitates workflows common in development pipelines, such as file diffing, change visualization, and report archiving.",
+  "initial_parameter_schema": {
+    "code_files": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          },
+          "file_name": {
+            "type": "string"
+          },
+          "file_type": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id",
+          "file_name",
+          "file_type",
+          "content",
+          "version",
+          "timestamp"
+        ]
+      }
+    },
+    "comparison_sessions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "file1_id": {
+            "type": "string"
+          },
+          "file2_id": {
+            "type": "string"
+          },
+          "comparison_time": {
+            "type": "string"
+          },
+          "diff_result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "file1_id",
+          "file2_id",
+          "comparison_time",
+          "diff_result"
+        ]
+      }
+    },
+    "diff_results": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "diff_id": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "diff_lines": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "summary": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "diff_id",
+          "session_id",
+          "diff_lines",
+          "summary"
+        ]
+      }
+    },
+    "diff_lines": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "diff_id": {
+            "type": "string"
+          },
+          "line_number": {
+            "type": "integer"
+          },
+          "change_type": {
+            "type": "string"
+          },
+          "original_text": {
+            "type": "string"
+          },
+          "changed_text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "diff_id",
+          "line_number",
+          "change_type",
+          "original_text",
+          "changed_text"
+        ]
+      }
+    },
+    "reports": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string"
+          },
+          "file_path": {
+            "type": "string"
+          },
+          "creation_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id",
+          "session_id",
+          "format",
+          "file_path",
+          "creation_time"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_code_file_by_id": [
+      "code_files"
+    ],
+    "get_code_files_by_name_and_version": [
+      "code_files"
+    ],
+    "list_code_files": [
+      "code_files"
+    ],
+    "check_code_file_version_exists": [
+      "code_files"
+    ],
+    "get_comparison_session_by_id": [
+      "comparison_sessions"
+    ],
+    "list_comparison_sessions_for_file": [
+      "code_files",
+      "comparison_sessions"
+    ],
+    "get_diff_result_by_session_id": [
+      "comparison_sessions",
+      "diff_results"
+    ],
+    "get_diff_result_by_id": [
+      "diff_lines",
+      "diff_results"
+    ],
+    "list_diff_lines_for_diff": [
+      "diff_lines",
+      "diff_results"
+    ],
+    "get_report_by_id": [
+      "reports"
+    ],
+    "list_reports_for_session": [
+      "comparison_sessions",
+      "reports"
+    ],
+    "create_comparison_session": [
+      "code_files",
+      "comparison_sessions"
+    ],
+    "generate_diff_result": [
+      "code_files",
+      "comparison_sessions",
+      "diff_lines",
+      "diff_results"
+    ],
+    "add_diff_line": [
+      "diff_lines",
+      "diff_results"
+    ],
+    "generate_report": [
+      "comparison_sessions",
+      "diff_results",
+      "reports"
+    ],
+    "delete_report": [
+      "reports"
+    ],
+    "update_report_file_path": [
+      "reports"
+    ],
+    "remove_comparison_session": [
+      "comparison_sessions",
+      "diff_lines",
+      "diff_results",
+      "reports"
+    ],
+    "add_code_file_version": [
+      "code_files"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_code_file_by_id",
+      "description": "Retrieve details (metadata and content) for a specific code file given its file_id.\n\nArgs:\n    file_id (str): Unique identifier of the code file.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": CodeFileInfo  # All metadata and content for the file,\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Explanation if file not found\n    }\n\nConstraints:\n    - The file_id must exist in the code_files dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id"
+        ]
+      }
+    },
+    {
+      "name": "get_code_files_by_name_and_version",
+      "description": "Retrieve all code file records matching the given file_name and version.\n\nArgs:\n    file_name (str): Name of the code file to search.\n    version (str): Version string to search.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CodeFileInfo],  # List of file records matching criteria, empty if none found.\n    }\n\nConstraints:\n    - No error is returned if no match; an empty list is returned instead.\n    - Only exact matches on both file_name and version are considered.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_name",
+          "version"
+        ]
+      }
+    },
+    {
+      "name": "list_code_files",
+      "description": "List all tracked code files and their metadata.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": List[CodeFileInfo]  # all code files' metadata (empty list if none)\n        }\n\nThis operation does not take parameters and always succeeds, returning all code files tracked by the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "check_code_file_version_exists",
+      "description": "Verify that a code file with a specific file_id (or file_name) and version exists.\n\nArgs:\n    version (str): The version string to search for (required)\n    file_id (str, optional): The unique file ID (preferred)\n    file_name (str, optional): The file's name (if file_id not provided)\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"exists\": bool  # Whether at least one matching code file exists\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if input is insufficient/invalid\n    }\n\nConstraints:\n    - Either file_id or file_name must be provided (prefer file_id if both).\n    - Version must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string"
+          },
+          "file_id": {
+            "type": "string"
+          },
+          "file_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "version"
+        ]
+      }
+    },
+    {
+      "name": "get_comparison_session_by_id",
+      "description": "Retrieve metadata and details for a specific comparison session.\n\nArgs:\n    session_id (str): The ID of the comparison session to retrieve.\n\nReturns:\n    dict: \n        - If found: {\"success\": True, \"data\": ComparisonSessionInfo}\n        - If not found: {\"success\": False, \"error\": \"Comparison session not found\"}\n\nConstraints:\n    - The session_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "list_comparison_sessions_for_file",
+      "description": "List all comparison sessions involving the specified file_id either as file1 or file2.\n\nArgs:\n    file_id (str): The id of the code file.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ComparisonSessionInfo]  # May be empty if no sessions found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for the error (e.g., non-existent file_id)\n    }\n\nConstraints:\n    - The specified file_id must exist in the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id"
+        ]
+      }
+    },
+    {
+      "name": "get_diff_result_by_session_id",
+      "description": "Retrieve the diff result associated with the given comparison session.\n\nArgs:\n    session_id (str): The unique identifier for the comparison session.\n\nReturns:\n    dict: \n        On success:\n          {\n            \"success\": True,\n            \"data\": DiffResultInfo  # DiffResultInfo for the session\n          }\n        On failure:\n          {\n            \"success\": False,\n            \"error\": str  # Reason for failure\n          }\n\nConstraints:\n    - session_id must refer to an existing comparison session.\n    - The referenced diff_result (diff_id) must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "get_diff_result_by_id",
+      "description": "Retrieve details of a specific diff result, including summary and all line changes.\n\nArgs:\n    diff_id (str): The unique identifier for the diff result.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"diff_id\": str,\n            \"session_id\": str,\n            \"summary\": str,\n            \"diff_lines\": List[DiffLineInfo],  # Detailed line changes\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g., diff result not found\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "diff_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "diff_id"
+        ]
+      }
+    },
+    {
+      "name": "list_diff_lines_for_diff",
+      "description": "Retrieves all line-level changes (DiffLineInfo) for the specified diff_id.\n\nArgs:\n    diff_id (str): The unique identifier of the diff result.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DiffLineInfo], # may be empty if no lines\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str # Reason, e.g. diff id doesn't exist\n    }\n\nConstraints:\n    - The given diff_id must exist in the diff results.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "diff_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "diff_id"
+        ]
+      }
+    },
+    {
+      "name": "get_report_by_id",
+      "description": "Retrieve details and metadata for a previously generated report.\n\nArgs:\n    report_id (str): Unique identifier for the report.\n\nReturns:\n    dict:\n      - On success: {\"success\": True, \"data\": ReportInfo}\n      - On failure: {\"success\": False, \"error\": \"Report not found\"}\n\nConstraints:\n    - The specified report_id must exist in the reports registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id"
+        ]
+      }
+    },
+    {
+      "name": "list_reports_for_session",
+      "description": "List all reports generated for a specified comparison session.\n\nArgs:\n    session_id (str): The identifier for the comparison session whose reports are to be listed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ReportInfo]  # All reports for this session (may be empty if none found)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g., session_id not found)\n    }\n\nConstraints:\n    - The comparison session must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "create_comparison_session",
+      "description": "Create a new comparison session between two specified code files (by file_id and version).\n\nArgs:\n    file1_id (str): The ID of the first code file.\n    file1_version (str): The version of the first code file.\n    file2_id (str): The ID of the second code file.\n    file2_version (str): The version of the second code file.\n\nReturns:\n    dict: \n        Success: \n            {\"success\": True, \"session_id\": str, \"message\": \"Comparison session created.\"}\n        Failure (file not found or version mismatch): \n            {\"success\": False, \"error\": \"...\"}\n\nConstraints:\n    - Both files (file_id + version) must exist in code_files.\n    - Session is created with a unique session_id and empty diff_result field.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file1_id": {
+            "type": "string"
+          },
+          "file1_version": {
+            "type": "string"
+          },
+          "file2_id": {
+            "type": "string"
+          },
+          "file2_version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file1_id",
+          "file1_version",
+          "file2_id",
+          "file2_version"
+        ]
+      }
+    },
+    {
+      "name": "generate_diff_result",
+      "description": "Compute and store the line-by-line differences for a given comparison session,\nand produce a DiffResult entry and corresponding DiffLine entries.\n\nArgs:\n    session_id (str): The identifier of the comparison session.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str,      # Description of the result.\n        \"diff_id\": str,      # The generated diff result's identifier.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str         # Description of what went wrong.\n    }\n\nConstraints:\n    - The comparison session must exist.\n    - The session must reference valid and existing code files.\n    - Only one diff result per session is allowed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "add_diff_line",
+      "description": "Add a detailed diff line to an existing diff result.\n\nArgs:\n    diff_id (str): The ID of the diff result this line is part of.\n    line_number (int): The line number in question (must be >= 1).\n    change_type (str): The type of change ('added', 'removed', 'modified', etc.).\n    original_text (str): Text from the original file.\n    changed_text (str): Text from the changed file.\n\nReturns:\n    dict: \n      - On success: { \"success\": True, \"message\": \"Added diff line to diff result <diff_id>.\" }\n      - On failure: { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - diff_id must reference an existing diff result.\n    - line_number must be positive integer.\n    - diff_line_id is generated unique.\n    - New diff line is added to both diff_lines collection and the referenced diff result's diff_lines list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "diff_id": {
+            "type": "string"
+          },
+          "line_number": {
+            "type": "integer"
+          },
+          "change_type": {
+            "type": "string"
+          },
+          "original_text": {
+            "type": "string"
+          },
+          "changed_text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "diff_id",
+          "line_number",
+          "change_type",
+          "original_text",
+          "changed_text"
+        ]
+      }
+    },
+    {
+      "name": "generate_report",
+      "description": "Generate a human-readable report for a given comparison session and diff result,\nstoring report metadata.\n\nArgs:\n    session_id (str): The ID of the comparison session to report on.\n    diff_id (str): The ID of the diff result to use for the report.\n    format (str): The output report format (e.g., \"PDF\", \"HTML\").\n    file_path (str): Where to store the generated report.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Report generated and stored at <file_path>\" }\n        On failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - session_id and diff_id must exist.\n    - diff_id must reference the specified session.\n    - format must be supported.\n    - file_path must be unique (no existing report at this path) and non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "diff_id": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string"
+          },
+          "file_path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "diff_id",
+          "format",
+          "file_path"
+        ]
+      }
+    },
+    {
+      "name": "delete_report",
+      "description": "Permanently remove a previously generated report from the system.\n\nArgs:\n    report_id (str): The unique ID of the report to delete.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Report deleted successfully.\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The report ID must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id"
+        ]
+      }
+    },
+    {
+      "name": "update_report_file_path",
+      "description": "Change the file path where a report is saved.\n\nArgs:\n    report_id (str): The unique identifier for the report to update.\n    new_file_path (str): The new file path to assign to this report.\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"message\": \"Report file path updated successfully.\"}\n        - On failure: {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - The report must exist.\n    - The new file path must be a non-empty string.\n    - (Recommended) The file extension should match the report format.\n    - (Recommended) The file path should not already be used by another report.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string"
+          },
+          "new_file_path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id",
+          "new_file_path"
+        ]
+      }
+    },
+    {
+      "name": "remove_comparison_session",
+      "description": "Delete a comparison session and all associated diff results, diff lines, and reports.\n\nArgs:\n    session_id (str): The ID of the comparison session to remove.\n\nReturns:\n    dict:\n        success (bool): True if operation succeeded, False otherwise.\n        message (str): Success message on completion.\n        error (str, optional): Present if operation fails due to invalid session_id.\n\nConstraints:\n    - The session_id must exist.\n    - Cascade deletes: all diff results, associated diff lines, and reports referencing this session must be removed as well.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "add_code_file_version",
+      "description": "Adds a new code file snapshot/version to the system.\n\nArgs:\n    file_id (str): Unique identifier for this file version/snapshot.\n    file_name (str): Logical name of the code file.\n    file_type (str): Type/extension (e.g., 'py', 'cpp').\n    content (str): File contents at this version.\n    version (str): Version label/identifier.\n    timestamp (str): Creation timestamp for the snapshot.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Code file version added.\", \"file_id\": <file_id> }\n        - On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - file_id must be unique (must not already exist in system).\n    - All fields are required.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          },
+          "file_name": {
+            "type": "string"
+          },
+          "file_type": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id",
+          "file_name",
+          "file_type",
+          "content",
+          "version",
+          "timestamp"
+        ]
+      }
+    }
+  ]
+}

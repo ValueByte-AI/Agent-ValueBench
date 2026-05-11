@@ -1,0 +1,429 @@
+{
+  "env_name": "ServerMonitoringSystem",
+  "description": "A Server Monitoring System is designed to track and maintain the operational health and performance metrics of one or multiple servers. It maintains stateful records of system indicators, service statuses, and resource utilization, supporting real-time and historical analysis. Common operations include querying status, setting thresholds for alerts, and producing reports on server health for administrative and troubleshooting purposes.",
+  "initial_parameter_schema": {
+    "servers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "server_id": {
+            "type": "string"
+          },
+          "hostname": {
+            "type": "string"
+          },
+          "ip_address": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "operational_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "server_id",
+          "hostname",
+          "ip_address",
+          "location",
+          "operational_status"
+        ]
+      }
+    },
+    "performance_metrics": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "server_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "number"
+            },
+            "cpu_usage": {
+              "type": "number"
+            },
+            "memory_usage": {
+              "type": "number"
+            },
+            "disk_usage": {
+              "type": "number"
+            },
+            "network_usage": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "server_id",
+            "timestamp",
+            "cpu_usage",
+            "memory_usage",
+            "disk_usage",
+            "network_usage"
+          ]
+        }
+      }
+    },
+    "services": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          },
+          "server_id": {
+            "type": "string"
+          },
+          "service_name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_id",
+          "server_id",
+          "service_name",
+          "status"
+        ]
+      }
+    },
+    "alert_thresholds": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "server_id": {
+              "type": "string"
+            },
+            "metric_type": {
+              "type": "string"
+            },
+            "threshold_value": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "server_id",
+            "metric_type",
+            "threshold_value"
+          ]
+        }
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_server_by_hostname": [
+      "servers"
+    ],
+    "get_server_info": [
+      "servers"
+    ],
+    "get_latest_performance_metric": [
+      "performance_metrics",
+      "servers"
+    ],
+    "get_all_performance_metrics": [
+      "performance_metrics",
+      "servers"
+    ],
+    "get_services_by_server": [
+      "servers",
+      "services"
+    ],
+    "get_service_status": [
+      "services"
+    ],
+    "get_operational_status": [
+      "performance_metrics",
+      "servers",
+      "services"
+    ],
+    "get_alert_thresholds_for_server": [
+      "alert_thresholds",
+      "servers"
+    ],
+    "check_alerts_for_server": [
+      "alert_thresholds",
+      "performance_metrics",
+      "servers"
+    ],
+    "update_service_status": [
+      "services"
+    ],
+    "add_performance_metric": [
+      "performance_metrics",
+      "servers"
+    ],
+    "set_alert_threshold": [
+      "alert_thresholds",
+      "servers"
+    ],
+    "set_operational_status": [
+      "servers"
+    ],
+    "refresh_service_status": [
+      "servers",
+      "services"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_server_by_hostname",
+      "description": "Retrieve server info by hostname.\n\nArgs:\n    hostname (str): The hostname to search for.\n\nReturns:\n    dict: On success:\n            {\n                \"success\": True,\n                \"data\": ServerInfo  # Info of the matching server\n            }\n          On failure:\n            {\n                \"success\": False,\n                \"error\": \"Server with the specified hostname does not exist\"\n            }\n\nConstraints:\n    - Hostname must match exactly with an existing server.\n    - Returns the first match found (hostnames should be unique).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hostname": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "hostname"
+        ]
+      }
+    },
+    {
+      "name": "get_server_info",
+      "description": "Retrieve all static and current information about a server given its server_id.\n\nArgs:\n    server_id (str): The unique ID of the server.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ServerInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - server_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "server_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "server_id"
+        ]
+      }
+    },
+    {
+      "name": "get_latest_performance_metric",
+      "description": "Retrieve the most recent performance metric record for a server.\n\nArgs:\n    server_id (str): The unique identifier of the server.\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"data\": PerformanceMetricInfo}\n        - On failure: {\"success\": False, \"error\": str}\n\nConstraints:\n    - The server must exist.\n    - There must be at least one performance metric entry for the server.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "server_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "server_id"
+        ]
+      }
+    },
+    {
+      "name": "get_all_performance_metrics",
+      "description": "Get historical list of all performance metrics for a specified server.\n\nArgs:\n    server_id (str): Unique identifier for the target server.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PerformanceMetricInfo]   # all metrics for the server; may be empty\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str    # reason for failure (e.g., server not found)\n    }\n\nConstraints:\n    - The server_id must correspond to an existing server.\n    - Each server is expected to have at least one performance metric,\n      but if not, this returns an empty list for data.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "server_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "server_id"
+        ]
+      }
+    },
+    {
+      "name": "get_services_by_server",
+      "description": "List all services and their current status for a given server.\n\nArgs:\n    server_id (str): The unique ID of the server whose services are to be listed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ServiceInfo],  # List may be empty if no services\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., \"Server not found\"\n    }\n\nConstraints:\n    - The server_id must exist in the registered servers.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "server_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "server_id"
+        ]
+      }
+    },
+    {
+      "name": "get_service_status",
+      "description": "Get the status (e.g., up/down) of a particular service by its ID or name.\n\nArgs:\n    service_id (str, optional): Unique identifier of the service. Takes precedence if provided.\n    service_name (str, optional): Name of the service (not necessarily unique across servers).\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": <ServiceInfo>  # Full service info including status\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason for error (not found, ambiguous, etc.)\n            }\n\nConstraints:\n    - If multiple services share the name, the operation is ambiguous and fails.\n    - At least one of service_id or service_name must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          },
+          "service_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+        ]
+      }
+    },
+    {
+      "name": "get_operational_status",
+      "description": "Retrieve the computed operational status for the specified server, derived from its most recent performance metrics and service health.\n\nArgs:\n    server_id (str): The unique identifier of the server.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"server_id\": <str>,\n                    \"operational_status\": <str>,\n                    \"latest_metric\": <PerformanceMetricInfo | None>,\n                    \"service_statuses\": [<dict: {service_id, service_name, status}>, ...]\n                }\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"reason\"\n            }\n\nConstraints:\n    - The server must exist.\n    - The server must have at least one performance metric entry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "server_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "server_id"
+        ]
+      }
+    },
+    {
+      "name": "get_alert_thresholds_for_server",
+      "description": "List all alert thresholds configured for a server.\n\nArgs:\n    server_id (str): The unique identifier of the server.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AlertThresholdInfo],  # Empty list if no thresholds configured\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g., server does not exist\n    }\n\nConstraints:\n    - The server_id must correspond to an existing server.\n    - Returns all AlertThresholdInfo objects for the server, or an empty list if none.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "server_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "server_id"
+        ]
+      }
+    },
+    {
+      "name": "check_alerts_for_server",
+      "description": "Compare the most recent performance metrics with alert thresholds for a given server.\nReturns a list of active alerts (where current metric exceeds threshold).\n\nArgs:\n    server_id (str): ID of the server to check for alerts.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[dict]  # Each dict: {\n            \"metric_type\": str,\n            \"actual_value\": float,\n            \"threshold_value\": float,\n            \"timestamp\": float\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The server must exist and have at least one performance metric entry.\n    - No alert if no thresholds configured or all metrics below/equal threshold.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "server_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "server_id"
+        ]
+      }
+    },
+    {
+      "name": "update_service_status",
+      "description": "Change or edit the operational status of a service running on a server.\n\nArgs:\n    service_id (str): The unique identifier of the service to update.\n    status (str): The new status to set for the service (e.g., \"running\", \"stopped\", \"failed\", etc.).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Service status updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., service not found\n    }\n\nConstraints:\n    - The service must exist in the monitoring system.\n    - Assumes no restriction on allowed 'status' values unless otherwise specified.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_id",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "add_performance_metric",
+      "description": "Add a new performance metric record for a specified server.\n\nArgs:\n    server_id (str): The identifier of the server.\n    timestamp (float): Unix timestamp of the metric record.\n    cpu_usage (float): CPU usage percentage or value.\n    memory_usage (float): Memory usage percentage or value.\n    disk_usage (float): Disk usage percentage or value.\n    network_usage (float): Network usage metric.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Performance metric added for server <server_id>.\" }\n        On failure: { \"success\": False, \"error\": str }\n\nConstraints:\n    - The server must exist in the system.\n    - There is no check for duplicate timestamp or metric values.\n    - Does not raise exceptions; returns error dict on failure.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "server_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "cpu_usage": {
+            "type": "number"
+          },
+          "memory_usage": {
+            "type": "number"
+          },
+          "disk_usage": {
+            "type": "number"
+          },
+          "network_usage": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "server_id",
+          "timestamp",
+          "cpu_usage",
+          "memory_usage",
+          "disk_usage",
+          "network_usage"
+        ]
+      }
+    },
+    {
+      "name": "set_alert_threshold",
+      "description": "Configure or update the threshold for a server's specific performance metric.\n\nArgs:\n    server_id (str): Target server identifier.\n    metric_type (str): One of ['cpu_usage', 'memory_usage', 'disk_usage', 'network_usage'].\n    threshold_value (float): Non-negative threshold value.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": Threshold set or updated successfully.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": Error message if input or operation is invalid.\n    }\n\nConstraints:\n    - server_id must exist.\n    - metric_type must be valid.\n    - threshold_value must be non-negative.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "server_id": {
+            "type": "string"
+          },
+          "metric_type": {
+            "type": "string"
+          },
+          "threshold_value": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "server_id",
+          "metric_type",
+          "threshold_value"
+        ]
+      }
+    },
+    {
+      "name": "set_operational_status",
+      "description": "Directly updates the operational status of the given server, if allowed.\n\nArgs:\n    server_id (str): The identifier of the server.\n    operational_status (str): The new operational status to set (manual override).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Operational status updated.\" \n    } on success,\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>,\n    } on failure.\n\nConstraints:\n    - Server must exist in the environment.\n    - Operational status should be a non-empty string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "server_id": {
+            "type": "string"
+          },
+          "operational_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "server_id",
+          "operational_status"
+        ]
+      }
+    },
+    {
+      "name": "refresh_service_status",
+      "description": "Force refresh (simulate polling) of all services on a given server for up-to-date health reporting.\n\nArgs:\n    server_id (str): The ID of the server whose services should be polled/refreshed.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"message\": \"Service statuses refreshed for server <server_id>\"}\n        On failure:\n            {\"success\": False, \"error\": \"reason\"}\nConstraints:\n    - Server must exist in self.servers.\n    - The operation ensures that service statuses are current (simulated here).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "server_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "server_id"
+        ]
+      }
+    }
+  ]
+}

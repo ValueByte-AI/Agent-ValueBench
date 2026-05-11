@@ -1,0 +1,639 @@
+{
+  "env_name": "ExpenseReimbursementManagementSystem",
+  "description": "An Expense Reimbursement Management System is a business application designed to manage the submission, processing, and tracking of expense claims from employees or service providers. It maintains records of claims, their statuses, supporting documentation, and provides mechanisms for approval and payment workflows. The system supports operations such as claim submission, status inquiry, review, and updating of claims.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "department": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "role",
+          "department",
+          "contact_info"
+        ]
+      }
+    },
+    "claims": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "date_submitted": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "payment_sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id",
+          "user_id",
+          "amount",
+          "date_submitted",
+          "status",
+          "category",
+          "payment_sta"
+        ]
+      }
+    },
+    "documents": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "claim_id": {
+            "type": "string"
+          },
+          "file_type": {
+            "type": "string"
+          },
+          "file_location": {
+            "type": "string"
+          },
+          "upload_da": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "claim_id",
+          "file_type",
+          "file_location",
+          "upload_da"
+        ]
+      }
+    },
+    "approval_workflows": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "current_step": {
+            "type": "string"
+          },
+          "approver_id": {
+            "type": "string"
+          },
+          "approval_history": {
+            "type": "array"
+          }
+        },
+        "required": [
+          "claim_id",
+          "current_step",
+          "approver_id",
+          "approval_history"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_user_by_name": [
+      "users"
+    ],
+    "list_all_users": [
+      "users"
+    ],
+    "get_claim_by_id": [
+      "claims"
+    ],
+    "get_claim_status": [
+      "claims"
+    ],
+    "list_claims_by_user": [
+      "claims",
+      "users"
+    ],
+    "list_claims_by_status": [
+      "claims"
+    ],
+    "get_claim_documents": [
+      "claims",
+      "documents"
+    ],
+    "get_document_by_id": [
+      "documents"
+    ],
+    "get_approval_workflow_by_claim": [
+      "approval_workflows",
+      "claims"
+    ],
+    "list_all_claims": [
+      "claims"
+    ],
+    "get_claims_by_category": [
+      "claims"
+    ],
+    "get_claim_payment_status": [
+      "claims"
+    ],
+    "submit_claim": [
+      "approval_workflows",
+      "claims",
+      "users"
+    ],
+    "update_claim_status": [
+      "approval_workflows",
+      "claims",
+      "users"
+    ],
+    "attach_document_to_claim": [
+      "claims",
+      "documents"
+    ],
+    "advance_approval_workflow": [
+      "approval_workflows",
+      "claims"
+    ],
+    "assign_approver_to_claim": [
+      "approval_workflows",
+      "claims",
+      "users"
+    ],
+    "reject_claim": [
+      "approval_workflows",
+      "claims",
+      "users"
+    ],
+    "mark_claim_as_paid": [
+      "claims"
+    ],
+    "delete_claim": [
+      "approval_workflows",
+      "claims",
+      "documents",
+      "users"
+    ],
+    "remove_document_from_claim": [
+      "claims",
+      "documents"
+    ],
+    "update_claim_amount": [
+      "claims",
+      "users"
+    ],
+    "edit_claim_details": [
+      "claims"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user information by user _id.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo  # User's information as a dictionary.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if user not found or invalid input.\n    }\n\nConstraints:\n    - The user with the specified _id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_name",
+      "description": "Retrieve information for all users with the specified name.\n\nArgs:\n    name (str): The name to search for (exact match).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[UserInfo]  # List of user info dicts, possibly empty\n    }\n\nConstraints:\n    - Multiple users with the same name may exist.\n    - Empty result list is valid if no user matches.\n    - No error or authorization handling for querying by name.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "list_all_users",
+      "description": "Retrieve a list of all users registered in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[UserInfo]  # All user info objects. May be empty if no users.\n    }\nConstraints:\n    - No authorization is required for this query.\n    - No error is raised if there are no users; data=[] in that case.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_claim_by_id",
+      "description": "Retrieve detailed information for a claim by claim_id.\n\nArgs:\n    claim_id (str): The unique identifier of the claim.\n\nReturns:\n    dict:\n        - On success:\n            {\"success\": True, \"data\": ClaimInfo }\n        - On failure:\n            {\"success\": False, \"error\": \"Claim not found\" }\n\nConstraints:\n    - The claim_id must exist in the claims database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id"
+        ]
+      }
+    },
+    {
+      "name": "get_claim_status",
+      "description": "Retrieve the current status of a claim by its claim_id.\n\nArgs:\n    claim_id (str): The unique identifier of the claim.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"claim_id\": str,\n            \"status\": str\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g., claim not found)\n    }\n\nConstraints:\n    - The claim must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id"
+        ]
+      }
+    },
+    {
+      "name": "list_claims_by_user",
+      "description": "List all claims submitted by a specific user.\n\nArgs:\n    user_id (str): The unique ID ('_id') of the user whose claims are to be listed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ClaimInfo],  # All claims submitted by this user (may be empty).\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # E.g. \"User does not exist\"\n    }\n\nConstraints:\n    - The user must exist in the system.\n    - Returns all claims where claim['user_id'] == user_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_claims_by_status",
+      "description": "Retrieve all claims whose status matches the given status string.\n\nArgs:\n    status (str): The claim status to filter for (e.g., \"approved\", \"submitted\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ClaimInfo],  # List of claims with matching status (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description if input is missing or invalid\n    }\n\nConstraints:\n    - Returns all claims whose 'status' equals the given value. \n    - Returns an empty list if no claims match.\n    - Fails only if the given status is not a string or is missing.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "get_claim_documents",
+      "description": "List all supporting documents attached to a given claim.\n\nArgs:\n    claim_id (str): The unique identifier for the claim.\n\nReturns:\n    dict: \n        - On success: {\n             \"success\": True,\n             \"data\": List[DocumentInfo]  # List may be empty if no documents attached\n          }\n        - On failure (claim not found): {\n             \"success\": False,\n             \"error\": \"Claim does not exist\"\n          }\n\nConstraints:\n    - The specified claim must exist.\n    - Only documents with a matching claim_id are included.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id"
+        ]
+      }
+    },
+    {
+      "name": "get_document_by_id",
+      "description": "Retrieve information for a specific document by its document_id.\n\nArgs:\n    document_id (str): The ID of the document to retrieve.\n\nReturns:\n    dict:\n        - On success: {\n            \"success\": True,\n            \"data\": DocumentInfo\n          }\n        - On failure (not found): {\n            \"success\": False,\n            \"error\": \"Document not found\"\n          }\n\nConstraints:\n    - The document_id must exist in the system for a successful return.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id"
+        ]
+      }
+    },
+    {
+      "name": "get_approval_workflow_by_claim",
+      "description": "Retrieve the approval workflow (current step, approver, history) for a given claim.\n\nArgs:\n    claim_id (str): The claim's unique identifier.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": ApprovalWorkflowInfo  # The approval workflow info for the claim\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason for the failure\n            }\nConstraints:\n    - claim_id must correspond to an existing claim.\n    - There must be an approval workflow associated with the claim.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_claims",
+      "description": "Retrieve all claims present in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ClaimInfo],  # List of all claims (can be empty)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_claims_by_category",
+      "description": "Retrieve all claims filtered by the provided category.\n\nArgs:\n    category (str): The claim category to filter by (e.g., \"travel\", \"meals\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ClaimInfo],  # All claims where claim['category'] matches the given category\n    } \n    or \n    {\n        \"success\": False,\n        \"error\": str  # If input is invalid\n    }\n\nConstraints:\n    - category must be a non-empty string.\n    - Matching is case-insensitive for user friendliness.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category"
+        ]
+      }
+    },
+    {
+      "name": "get_claim_payment_status",
+      "description": "Retrieve the payment status for a given claim.\n\nArgs:\n    claim_id (str): The unique identifier for the claim.\n\nReturns:\n    dict:\n        - If found: { \"success\": True, \"data\": <payment_status (str)> }\n        - If not found: { \"success\": False, \"error\": \"Claim not found\" }\n        - If claim found but missing payment status: { \"success\": False, \"error\": \"Payment status not available for this claim\" }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id"
+        ]
+      }
+    },
+    {
+      "name": "submit_claim",
+      "description": "Create and submit a new reimbursement claim, associated with a user.\n\nArgs:\n    user_id (str): ID of the user submitting the claim. Must exist.\n    amount (float): Amount claimed (must be positive).\n    category (str): The category/type of the claim.\n    date_submitted (str, optional): ISO date string for submission (default: current date).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Claim submitted successfully.\",\n        \"claim_id\": str  # The new claim's ID\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Claim must be associated with an existing user.\n    - Status is initialized as \"submitted\".\n    - Payment status is initialized as \"unpaid\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "category": {
+            "type": "string"
+          },
+          "date_submitted": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "amount",
+          "category"
+        ]
+      }
+    },
+    {
+      "name": "update_claim_status",
+      "description": "Change the status of a claim (e.g., to approved, paid, rejected),\nonly if the user is authorized and the transition is allowed by workflow rules.\n\nArgs:\n    claim_id (str): The claim to update.\n    new_status (str): The new status to set (e.g., approved, paid, rejected).\n    user_id (str): The user attempting the status change.\n\nReturns:\n    dict: \n        On success:\n            {\"success\": True, \"message\": \"Claim status updated to <new_status>\"}\n        On failure:\n            {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - Claim must exist.\n    - User must exist and be authorized (current approver, 'manager', or 'admin').\n    - Only allowed transitions by workflow.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id",
+          "new_status",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "attach_document_to_claim",
+      "description": "Upload and associate a new supporting document with a claim.\n\nArgs:\n    claim_id (str): The ID of the claim to attach the document to.\n    document_id (str): Unique identifier for the new document.\n    file_type (str): The document's file type (e.g., 'pdf', 'jpg').\n    file_location (str): The file storage location or path.\n    upload_date (str): The upload date (ISO date string recommended).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Document attached to claim.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <error_message>\n    }\n\nConstraints:\n    - claim_id must exist in the claim registry.\n    - document_id must be unique (not already used).\n    - Document will be associated (via claim_id) to the correct claim.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "document_id": {
+            "type": "string"
+          },
+          "file_type": {
+            "type": "string"
+          },
+          "file_location": {
+            "type": "string"
+          },
+          "upload_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id",
+          "document_id",
+          "file_type",
+          "file_location",
+          "upload_date"
+        ]
+      }
+    },
+    {
+      "name": "advance_approval_workflow",
+      "description": "Advance the approval workflow for a claim to the next step in the predefined sequence.\n\nArgs:\n    claim_id (str): The unique claim identifier whose workflow to advance.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Approval workflow for claim <claim_id> advanced from <old_step> to <new_step>\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": <reason>\n            }\n\nConstraints:\n    - The claim and approval workflow must exist.\n    - Workflow can only move to the next defined step.\n    - Cannot advance workflow if at the final step.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id"
+        ]
+      }
+    },
+    {
+      "name": "assign_approver_to_claim",
+      "description": "Set or reset the approver for the specified claim's current approval workflow step.\n\nArgs:\n    claim_id (str): The claim to modify.\n    approver_id (str): The user ID of the new approver.\n    requestor_id (str): The user ID performing the operation (for authorization).\n\nReturns:\n    dict: \n        On success:\n            { \"success\": True, \"message\": \"Approver assigned to claim <claim_id>.\" }\n        On failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Claim must exist.\n    - ApprovalWorkflow for the claim must exist.\n    - Approver user must exist.\n    - Only authorized users (role == 'admin' or 'manager') may assign approvers.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "approver_id": {
+            "type": "string"
+          },
+          "requestor_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id",
+          "approver_id",
+          "requestor_id"
+        ]
+      }
+    },
+    {
+      "name": "reject_claim",
+      "description": "Change the status of a claim to \"rejected\" and log this action in the workflow.\n\nArgs:\n    claim_id (str): The unique identifier of the claim to reject.\n    user_id (str): ID of the user attempting the rejection; must be authorized.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Claim <claim_id> rejected and workflow updated.\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Only authorized users may reject claims (role is typically 'manager', 'admin', or similar).\n    - Claim must exist.\n    - Claim must not already be 'rejected' or 'paid'.\n    - Approval workflow must exist for the claim.\n    - Status/state sequence must be valid.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "mark_claim_as_paid",
+      "description": "Update a claim's status and payment status to 'paid' after reimbursement.\n\nArgs:\n    claim_id (str): The unique identifier for the claim to update.\n\nReturns:\n    dict: \n      - {\"success\": True, \"message\": \"Claim marked as paid.\"}\n      - {\"success\": False, \"error\": \"reason\"}\n\nConstraints:\n    - Claim must exist.\n    - Claim's status must allow transition to \"paid\" (commonly: status == \"approved\").\n    - If claim is already \"paid\", return an error.\n    - (Authorization should be handled externally, or only privileged users may call.)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_claim",
+      "description": "Remove a claim from the system (admin or allowed user action).\n\nArgs:\n    claim_id (str): The unique ID of the claim to delete.\n    user_id (str): The ID of the user attempting to delete the claim.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Claim deleted.\"\n    } or {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - Claim must exist.\n    - Only admin or the claim owner can delete a claim.\n    - Associated documents and approval workflow must also be removed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_document_from_claim",
+      "description": "Detach or delete a document associated with a claim.\n\nArgs:\n    document_id (str): The unique identifier of the document to be removed.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Document detached/deleted from claim.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Error description.\n            }\n\nConstraints:\n    - The specified document_id must exist in the system.\n    - The document must be associated with a claim (document.claim_id should refer to an existing claim).\n    - Document will be deleted from application's internal data storage.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id"
+        ]
+      }
+    },
+    {
+      "name": "update_claim_amount",
+      "description": "Modify the amount of a claim, only if it is in an editable state and the user is authorized.\n\nArgs:\n    claim_id (str): ID of the claim to update.\n    new_amount (float): The new amount to set (must be positive).\n    acting_user_id (str): The user who is attempting the modification.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Claim amount updated successfully.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The claim must exist.\n    - Only claim owner or admins can modify.\n    - Claim status must be 'submitted' or 'under review'.\n    - new_amount must be positive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "new_amount": {
+            "type": "number"
+          },
+          "acting_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id",
+          "new_amount",
+          "acting_user_id"
+        ]
+      }
+    },
+    {
+      "name": "edit_claim_details",
+      "description": "Change editable details (category, date_submitted, amount, etc.) of a claim\nbefore certain workflow stages (typically when status is 'submitted').\n\nArgs:\n    claim_id (str): The ID of the claim to edit.\n    user_id (str): The ID of the user attempting the edit.\n    details_to_update (dict): Dictionary of fields to update and their new values.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"message\": \"Claim details updated successfully.\"\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": \"reason for failure\"\n        }\n\nConstraints:\n    - Claim must exist.\n    - Claim may only be edited if status is 'submitted'.\n    - Only the user who created the claim may edit it (user_id == claim.user_id).\n    - Only editable fields may be changed (category, date_submitted, amount).\n    - Other fields (claim_id, user_id, status, payment_sta, etc.) cannot be edited here.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "details_to_update": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "claim_id",
+          "user_id",
+          "details_to_update"
+        ]
+      }
+    }
+  ]
+}

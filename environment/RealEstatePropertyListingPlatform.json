@@ -1,0 +1,562 @@
+{
+  "env_name": "RealEstatePropertyListingPlatform",
+  "description": "A real estate property listing platform maintains a structured database of properties available for sale or rent. Each property record includes detailed attributes like location, price, number of bedrooms, amenities, and seller/broker information. The platform supports search and filtering operations, allowing users to find properties that best match their criteria and preferences.",
+  "initial_parameter_schema": {
+    "properties": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "property_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "num_bedrooms": {
+            "type": "integer"
+          },
+          "amenities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "seller_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "property_id",
+          "status",
+          "location",
+          "price",
+          "num_bedrooms",
+          "amenities",
+          "seller_id"
+        ]
+      }
+    },
+    "amenities": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "amenity_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "amenity_id",
+          "name"
+        ]
+      }
+    },
+    "sellers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "seller_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "agency": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "seller_id",
+          "name",
+          "contact_info",
+          "agency"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "list_properties": [
+      "properties"
+    ],
+    "filter_properties": [
+      "properties"
+    ],
+    "get_property_by_id": [
+      "properties"
+    ],
+    "get_amenity_by_name": [
+      "amenities"
+    ],
+    "list_amenities": [
+      "amenities"
+    ],
+    "list_property_amenities": [
+      "amenities",
+      "properties"
+    ],
+    "get_seller_by_id": [
+      "sellers"
+    ],
+    "get_seller_by_name": [
+      "sellers"
+    ],
+    "list_properties_by_seller": [
+      "properties",
+      "sellers"
+    ],
+    "check_duplicate_property": [
+      "properties",
+      "sellers"
+    ],
+    "add_property": [
+      "amenities",
+      "properties",
+      "sellers"
+    ],
+    "update_property_details": [
+      "properties"
+    ],
+    "add_amenity_to_property": [
+      "amenities",
+      "properties"
+    ],
+    "remove_amenity_from_property": [
+      "amenities",
+      "properties"
+    ],
+    "add_amenity": [
+      "amenities"
+    ],
+    "update_amenity": [
+      "amenities"
+    ],
+    "add_seller": [
+      "sellers"
+    ],
+    "update_seller_details": [
+      "sellers"
+    ],
+    "delete_property_listing": [
+      "properties"
+    ],
+    "delete_amenity": [
+      "amenities",
+      "properties"
+    ],
+    "delete_seller": [
+      "properties",
+      "sellers"
+    ]
+  },
+  "tools": [
+    {
+      "name": "list_properties",
+      "description": "Retrieve all property records in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PropertyInfo]  # All properties, possibly empty.\n    }\nConstraints:\n    - No parameters.\n    - No error if property list is empty; return empty list in data.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "filter_properties",
+      "description": "Retrieve properties filtered by status, location, bedroom count, and price range.\n\nArgs:\n    status (str, optional): 'for sale' or 'for rent'\n    location (str, optional): Location string to match exactly.\n    min_bedrooms (int, optional): Minimum number of bedrooms.\n    max_bedrooms (int, optional): Maximum number of bedrooms.\n    min_price (float, optional): Minimum price (inclusive).\n    max_price (float, optional): Maximum price (inclusive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PropertyInfo],  # filtered results\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - If specified, min values must not exceed max values (for bedrooms and price).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "min_bedrooms": {
+            "type": "integer"
+          },
+          "max_bedrooms": {
+            "type": "integer"
+          },
+          "min_price": {
+            "type": "number"
+          },
+          "max_price": {
+            "type": "number"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "get_property_by_id",
+      "description": "Retrieve detailed information for a specific property by property_id.\n\nArgs:\n    property_id (str): Unique identifier of the property.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True,\n            \"data\": PropertyInfo\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": \"Property not found\"\n        }\n\nConstraints:\n    - Property_id must exist in the listing platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "property_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "property_id"
+        ]
+      }
+    },
+    {
+      "name": "get_amenity_by_name",
+      "description": "Look up the amenity_id and details for an amenity given its human-readable name.\n\nArgs:\n    name (str): The human-readable name of the amenity to look up.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True,\n            \"data\": AmenityInfo  # The matching amenity's info\n        }\n        On failure (not found): {\n            \"success\": False,\n            \"error\": \"Amenity not found\"\n        }\n\nNotes:\n    - Amenity name comparison is case-sensitive and exact.\n    - If there are multiple amenities with the same name, returns the first one found.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "list_amenities",
+      "description": "Retrieve the full amenity catalog with amenity_id and name pairs.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AmenityInfo],  # List of amenity records, each with amenity_id and name\n    }\n\nNotes:\n    - Returns an empty list if there are currently no amenities defined.\n    - No error possible for this simple query.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_property_amenities",
+      "description": "Retrieve all amenities (IDs and names) associated with a specific property.\n\nArgs:\n    property_id (str): The property ID to retrieve amenities for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[{\"amenity_id\": str, \"name\": str}]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason (e.g. property not found)\n    }\n\nConstraints:\n    - The property must exist.\n    - Only amenities existing in the amenity catalog are returned. Invalid/missing amenities are skipped.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "property_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "property_id"
+        ]
+      }
+    },
+    {
+      "name": "get_seller_by_id",
+      "description": "Retrieve seller or broker information by seller_id.\n\nArgs:\n    seller_id (str): The unique ID of the seller or broker.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"seller_id\": str,\n            \"name\": str,\n            \"contact_info\": str,\n            \"agency\": str\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., \"Seller not found\"\n    }\n\nConstraints:\n    - The seller/broker with the given seller_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "seller_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "seller_id"
+        ]
+      }
+    },
+    {
+      "name": "get_seller_by_name",
+      "description": "Retrieve metadata for sellers/brokers by their name.\n\nArgs:\n    name (str): The (possibly non-unique) name of the seller/broker.\n\nReturns:\n    dict:\n        - success: True and 'data' is a list of SellerBrokerInfo dicts (empty if not found).\n        - success: False and 'error' string if no seller with that name exists.\n\nNotes:\n    - Name matching is case sensitive.\n    - If multiple sellers/brokers share the same name, all are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "list_properties_by_seller",
+      "description": "List all properties associated with a given seller/broker.\n\nArgs:\n    seller_id (str): The unique ID of the seller/broker.\n\nReturns:\n    dict:\n        - {\"success\": True, \"data\": List[PropertyInfo]} if seller exists (list may be empty)\n        - {\"success\": False, \"error\": str} if seller_id is invalid\n\nConstraints:\n    - seller_id must exist in the sellers registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "seller_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "seller_id"
+        ]
+      }
+    },
+    {
+      "name": "check_duplicate_property",
+      "description": "Verify whether a property with the same location/address already exists for a seller.\n\nArgs:\n    location (str): Physical address or location of the property.\n    seller_id (str): The seller/broker's user ID.\n\nReturns:\n    dict:\n        - On success:\n            {\n              \"success\": True,\n              \"is_duplicate\": bool,\n              \"duplicate_property_ids\": List[str],  # List of matching property_ids, or empty if none\n            }\n        - On failure:\n            {\n              \"success\": False,\n              \"error\": str  # Reason for the failure, e.g. \"Seller not found\"\n            }\n\nConstraints:\n    - Only considers property listings for the exact same location under the given seller.\n    - seller_id must exist in the sellers catalog.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location": {
+            "type": "string"
+          },
+          "seller_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location",
+          "seller_id"
+        ]
+      }
+    },
+    {
+      "name": "add_property",
+      "description": "Add a new property listing, ensuring all constraints are satisfied.\n\nArgs:\n    property_id (str): Unique identifier for the property.\n    status (str): 'for sale' or 'for rent'.\n    location (str): Address or description of property location.\n    price (float): Listing price.\n    num_bedrooms (int): Number of bedrooms.\n    amenities (List[str]): List of amenity_ids.\n    seller_id (str): ID of the associated seller/broker.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Property added successfully.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure.\"\n    }\n\nConstraints:\n    - property_id must be unique.\n    - seller_id must exist.\n    - All amenities must exist in amenity catalog.\n    - Must have num_bedrooms, status, and location.\n    - No other property with the same location and seller_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "property_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "num_bedrooms": {
+            "type": "integer"
+          },
+          "amenities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "seller_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "property_id",
+          "status",
+          "location",
+          "price",
+          "num_bedrooms",
+          "amenities",
+          "seller_id"
+        ]
+      }
+    },
+    {
+      "name": "update_property_details",
+      "description": "Update the details of an existing property (status, location, price, num_bedrooms).\nOnly fields provided (non-None) are updated.\n\nArgs:\n    property_id (str): The ID of the property to update.\n    status (str, optional): New status (\"for sale\"/\"for rent\").\n    location (str, optional): New address/location.\n    price (float, optional): New price.\n    num_bedrooms (int, optional): New bedroom count.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Property details updated.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"Property not found.\" | \n                 \"Duplicate property listing for address under this seller.\" |\n                 \"Cannot set required field to empty.\"\n    }\n\nConstraints:\n    - Property must exist.\n    - No other property with the same location (excluding self) can exist under same seller.\n    - Required fields (status, location, price, num_bedrooms) cannot be set to empty/None.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "property_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "num_bedrooms": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "property_id"
+        ]
+      }
+    },
+    {
+      "name": "add_amenity_to_property",
+      "description": "Associate a catalog-listed amenity with a property.\n\nArgs:\n    property_id (str): The ID of the property to update.\n    amenity_id (str): The amenity catalog ID to add to the property.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Amenity <amenity_id> added to property <property_id>.\" }\n        - On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Both property and amenity must exist.\n    - Amenity must not already be associated with the property.\n    - Only catalog-listed amenities can be associated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "property_id": {
+            "type": "string"
+          },
+          "amenity_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "property_id",
+          "amenity_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_amenity_from_property",
+      "description": "Disassociate (remove) an amenity from a property.\n\nArgs:\n    property_id (str): ID of the property to update.\n    amenity_id (str): ID of the amenity to remove.\n\nReturns:\n    dict: \n        - If successful:\n            { \"success\": True, \"message\": \"Amenity <amenity_id> removed from property <property_id>.\" }\n        - If failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Property and amenity must both exist.\n    - Amenity must be currently associated with the property.\n    - After removal, property.amenities must only contain amenity_ids existing in the amenity catalog.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "property_id": {
+            "type": "string"
+          },
+          "amenity_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "property_id",
+          "amenity_id"
+        ]
+      }
+    },
+    {
+      "name": "add_amenity",
+      "description": "Add a new amenity type to the amenity catalog.\n\nArgs:\n    amenity_id (str): Unique identifier for the new amenity.\n    name (str): Human-readable name for the amenity.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Amenity added successfully.\" }\n        On failure:\n            { \"success\": False, \"error\": <description of the error> }\n\nConstraints:\n    - amenity_id must be unique within the catalog.\n    - Both amenity_id and name must be non-empty strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "amenity_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "amenity_id"
+        ]
+      }
+    },
+    {
+      "name": "update_amenity",
+      "description": "Update the details (e.g. name) of an amenity in the amenity catalog.\n\nArgs:\n    amenity_id (str): The unique ID of the amenity to update.\n    name (str, optional): New name of the amenity.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Updated amenity details for <amenity_id>\"\n    }\n    or {\n        \"success\": False,\n        \"error\": \"Amenity not found\" | \"No update fields provided\"\n    }\n\nConstraints:\n    - Amenity must exist in the catalog to be updated.\n    - At least one updatable field must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "amenity_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "amenity_id",
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "add_seller",
+      "description": "Add a new seller/broker entry to the platform.\n\nArgs:\n    seller_id (str): Unique identifier for the seller/broker.\n    name (str): Seller/broker's name.\n    contact_info (str): Contact information for the seller/broker.\n    agency (str): Agency or company the seller/broker belongs to.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Seller added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Seller ID already exists.\"\n    }\n\nConstraints:\n    - seller_id must be unique in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "seller_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "agency": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "seller_id"
+        ]
+      }
+    },
+    {
+      "name": "update_seller_details",
+      "description": "Update details of an existing seller/broker.\n\nArgs:\n    seller_id (str): Unique ID of seller/broker to update.\n    name (str, optional): New name of the seller/broker.\n    contact_info (str, optional): New contact information.\n    agency (str, optional): New agency name.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Seller details updated successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n- seller_id must exist in the platform.\n- At least one updatable field (name, contact_info, agency) must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "seller_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "agency": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "seller_id",
+          "name",
+          "contact_info",
+          "agency"
+        ]
+      }
+    },
+    {
+      "name": "delete_property_listing",
+      "description": "Remove a property listing from the platform.\n\nArgs:\n    property_id (str): The unique identifier for the property to delete.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True,\n            \"message\": \"Property <property_id> deleted successfully.\"\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": \"Property not found.\"\n        }\n\nConstraints:\n    - The provided property_id must exist in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "property_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "property_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_amenity",
+      "description": "Remove an amenity from the amenities catalog if it is not currently used by any property.\n\nArgs:\n    amenity_id (str): The amenity ID to be removed.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Amenity <amenity_id> deleted.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Explanation of the error\n            }\n\nConstraints:\n    - Amenity must exist in self.amenities.\n    - Amenity must not be referenced by any property in self.properties.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "amenity_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "amenity_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_seller",
+      "description": "Remove a seller/broker by seller_id. \nAlso deletes all properties associated with this seller (cascading delete).\n\nArgs:\n    seller_id (str): The ID of the seller/broker to delete.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True,\n            \"message\": str  # Seller and N properties deleted\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": str  # Reason (e.g., seller not found)\n        }\nConstraints:\n    - Seller must exist in platform.\n    - All their properties are deleted along with seller.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "seller_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "seller_id"
+        ]
+      }
+    }
+  ]
+}

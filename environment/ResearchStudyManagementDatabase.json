@@ -1,0 +1,415 @@
+{
+  "env_name": "ResearchStudyManagementDatabase",
+  "description": "A research study management database is a structured system for cataloging information about scientific studies, including identifiers, metadata, and key findings. It enables users to input, update, and retrieve fields such as study ID, methodology, sample size, and outcomes. The environment supports streamlined querying and review, facilitating research management, evidence synthesis, and systematic review workflows.",
+  "initial_parameter_schema": {
+    "studies": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "study_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "authors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "year": {
+            "type": "integer"
+          },
+          "methodology": {
+            "type": "string"
+          },
+          "sample_size": {
+            "type": "integer"
+          },
+          "outcomes": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "no": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "permission": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "role",
+          "permission"
+        ]
+      }
+    },
+    "study_update_audits": {
+      "type": "string"
+    },
+    "study_update_history": {
+      "type": "string"
+    },
+    "record_study_update_audit": {
+      "type": "string"
+    },
+    "audit_log": {
+      "type": "string"
+    },
+    "audit_logs": {
+      "type": "string"
+    }
+  },
+  "tool_state_dependencies": {
+    "get_study_by_id": [
+      "studies"
+    ],
+    "get_study_field": [
+      "studies"
+    ],
+    "list_all_studies": [
+      "studies"
+    ],
+    "search_studies": [
+      "studies"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_user_permissions": [
+      "users"
+    ],
+    "get_study_update_history": [
+      "studies",
+      "study_update_audits"
+    ],
+    "add_study": [
+      "studies"
+    ],
+    "update_study_field": [
+      "record_study_update_audit",
+      "studies",
+      "study_update_history",
+      "users"
+    ],
+    "batch_update_studies": [
+      "studies",
+      "users"
+    ],
+    "update_user_permissions": [
+      "users"
+    ],
+    "delete_study": [
+      "audit_log",
+      "studies",
+      "users"
+    ],
+    "record_study_update_audit": [
+      "audit_logs",
+      "studies",
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_study_by_id",
+      "description": "Retrieve all metadata fields for a study specified by its study_id.\n\nArgs:\n    study_id (str): Unique identifier of the study.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": StudyInfo,  # All available metadata for the study\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g. study not found\n    }\n\nConstraints:\n    - study_id must be unique and exist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "study_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "study_id"
+        ]
+      }
+    },
+    {
+      "name": "get_study_field",
+      "description": "Get the value of a specific field (e.g., methodology, sample_size) for a study.\n\nArgs:\n    study_id (str): The unique identifier of the study.\n    field_name (str): The field name to query (e.g., 'methodology', 'sample_size').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": <field_value>  # Value for the requested field, may be None if field not present\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description (study not found, invalid field name)\n    }\n\nConstraints:\n    - study_id must refer to an existing study.\n    - field_name must be a valid field for StudyInfo.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "study_id": {
+            "type": "string"
+          },
+          "field_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "study_id",
+          "field_name"
+        ]
+      }
+    },
+    {
+      "name": "list_all_studies",
+      "description": "Return metadata for all research studies in the database.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": List[StudyInfo] # metadata of all studies (empty if none exist)\n        }\nConstraints:\n    - All returned data must be current.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "search_studies",
+      "description": "Search studies by optional filters: year, author, methodology, and/or status.\n\nArgs:\n    year (int, optional): Publication year.\n    author (str, optional): Author name (study returned if author listed is among authors).\n    methodology (str, optional): Methodology string (exact match).\n    status (str, optional): Status string (exact match).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[StudyInfo],  # List of matching studies, empty if none\n    }\n\nNotes:\n    - Filters use AND logic (all provided filters must match).\n    - If no filters provided, all studies are returned.\n    - For authors, the search is case-sensitive exact substring match within the authors list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "integer"
+          },
+          "author": {
+            "type": "string"
+          },
+          "methodology": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user information by user id.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo  # user record { \"_id\", \"name\", \"role\", \"permission\" }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"User not found\"\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_permissions",
+      "description": "Return the set of permissions associated with a given user.\n\nArgs:\n    user_id (str): The unique identifier (_id) of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str]  # List of permission strings\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description (e.g., user not found)\n    }\n\nConstraints:\n    - The user must exist in the database.\n    - If the user is found but has no permissions field, treat as empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_study_update_history",
+      "description": "Retrieve the audit/provenance log (timestamps, updater) for a study.\n\nArgs:\n    study_id (str): The unique identifier of the study whose audit log is requested.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[dict],  # Each dict contains at least \"timestamp\" and \"updater\" fields. Empty list if no updates.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g. study does not exist.\n    }\n\nConstraints:\n    - Only studies that exist in the database can return an audit log.\n    - If no log exists, returns empty data list with success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "study_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "study_id"
+        ]
+      }
+    },
+    {
+      "name": "add_study",
+      "description": "Add a new study to the database, enforcing unique study_id and required fields.\n\nArgs:\n    study_id (str): Unique identifier for the study (required).\n    methodology (str): Study methodology description (required).\n    sample_size (int): Sample size (required).\n    title (str, optional): Study title.\n    authors (list[str], optional): List of author names.\n    year (int, optional): Year of publication/conduct.\n    outcomes (str, optional): Study outcomes.\n    status (str, optional): Current status of the study.\n    no (str, optional): Optional extra study number.\n\nReturns:\n    dict: {\n        \"success\": True, \"message\": \"Study added successfully.\"\n    }\n    or\n    {\n        \"success\": False, \"error\": <reason>\n    }\n\nConstraints:\n    - study_id must be unique (not already present).\n    - methodology and sample_size are required.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "study_id": {
+            "type": "string"
+          },
+          "methodology": {
+            "type": "string"
+          },
+          "sample_size": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "authors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "year": {
+            "type": "integer"
+          },
+          "outcomes": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "no": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "study_id",
+          "methodology",
+          "sample_size"
+        ]
+      }
+    },
+    {
+      "name": "update_study_field",
+      "description": "Update a specific metadata field for a study, with permission checking and audit/timestamp.\n\nArgs:\n    user_id (str): The ID of the user requesting the update.\n    study_id (str): ID of the study to update.\n    field (str): Name of the metadata field of the study to update.\n    value (Any): The new value to set.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Field updated successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Error description\"\n    }\n\nConstraints:\n    - Only users with permission (\"update_study\") can update study metadata.\n    - Required fields (\"methodology\", \"sample_size\") cannot be emptied/null.\n    - Audit/timestamp the update (calls record_study_update_audit, if exists).\n    - Only valid fields in StudyInfo can be updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "study_id": {
+            "type": "string"
+          },
+          "field": {
+            "type": "string"
+          },
+          "value": {}
+        },
+        "required": [
+          "user_id",
+          "study_id",
+          "field",
+          "value"
+        ]
+      }
+    },
+    {
+      "name": "batch_update_studies",
+      "description": "Modify a metadata field across multiple studies, enforcing permissions and tracking provenance.\n\nArgs:\n    study_ids (List[str]): List of study_id values to update.\n    field_name (str): Name of the StudyInfo field to modify.\n    new_value: The new value to assign to the field across studies.\n    user_id (str): The _id of the user performing the update (for permission and audit).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str,                # Summary of update\n        \"results\": List[dict],         # Per-study success/error report\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str                   # Description of overarching error (e.g., user/permissions)\n    }\n\nConstraints:\n    - User must exist and have 'update' permission.\n    - Only valid fields can be updated.\n    - Studies must exist.\n    - Required fields ('methodology', 'sample_size') must not be set to None/empty.\n    - Update actions must be timestamped/audited.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "study_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "field_name": {
+            "type": "string"
+          },
+          "new_value": {},
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "study_ids",
+          "field_name",
+          "new_value",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "update_user_permissions",
+      "description": "Modify a user's permission set (admin/manager-only).\n\nArgs:\n    user_id (str): The user whose permissions to change.\n    new_permissions (list of str): The new list of permissions.\n    operator_id (str): The user performing this operation (for permissions checking).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Permissions updated for user <user_id>.\",\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - Only users with role 'admin' or 'manager', or 'manage_users' in permission, can modify user permissions.\n    - Both target user and operator must exist.\n    - new_permissions must be a non-empty list of strings.\n    - Users cannot modify their own permissions unless they are admin.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "new_permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "operator_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "new_permissions",
+          "operator_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_study",
+      "description": "Remove a study from the database and record audit logging of this operation.\n\nArgs:\n    study_id (str): Unique identifier for the study to be deleted.\n    user_id (str): Unique identifier for the user performing the deletion.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Study deleted and audit logged\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str # Error description\n    }\n\nConstraints:\n    - Only users with 'delete_study' permission can perform deletion.\n    - The study must exist.\n    - Audit log is updated to record who, when, and what was deleted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "study_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "study_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "record_study_update_audit",
+      "description": "Log an audit entry whenever study metadata is changed.\n\nArgs:\n    study_id (str): The unique identifier of the updated study.\n    user_id (str): The unique identifier of the user performing the update.\n    change_details (Any): Description of what was updated (e.g., fields changed, values before/after).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Audit log entry recorded.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - study_id must exist in the database.\n    - user_id must exist in the database.\n    - change_details must be present and non-empty.\n    - Audit entry records timestamp, user, study, and change details.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "study_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "change_details": {}
+        },
+        "required": [
+          "study_id",
+          "user_id",
+          "change_details"
+        ]
+      }
+    }
+  ]
+}

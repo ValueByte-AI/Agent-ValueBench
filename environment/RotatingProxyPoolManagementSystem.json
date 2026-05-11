@@ -1,0 +1,480 @@
+{
+  "env_name": "RotatingProxyPoolManagementSystem",
+  "description": "A rotating proxy pool management system maintains a dynamic list of proxy servers used for network requests, enabling strategic rotation to improve anonymity and performance. The system tracks available proxies and facilitates operations like adding new proxies, removing outdated or unwanted ones, and automatically rotating through the list to distribute load or avoid bans. This environment is fundamental for web scraping, crawling, and automated access applications requiring consistent yet diverse network endpoints.",
+  "initial_parameter_schema": {
+    "proxies": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "proxy_id": {
+            "type": "string"
+          },
+          "ip_address": {
+            "type": "string"
+          },
+          "port": {
+            "type": "integer"
+          },
+          "protocol": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "last_used_time": {
+            "type": "number"
+          },
+          "fail_count": {
+            "type": "integer"
+          },
+          "health_score": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "proxy_id",
+          "ip_address",
+          "port",
+          "protocol",
+          "username",
+          "password",
+          "status",
+          "last_used_time",
+          "fail_count",
+          "health_score"
+        ]
+      }
+    },
+    "proxy_pools": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "pool_id": {
+            "type": "string"
+          },
+          "proxies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rotation_policy": {
+            "type": "string"
+          },
+          "current_index": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pool_id",
+          "proxies",
+          "rotation_policy",
+          "current_index"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_pool_by_id": [
+      "proxy_pools"
+    ],
+    "list_proxy_ids_in_pool": [
+      "proxy_pools"
+    ],
+    "get_proxy_info": [
+      "proxies"
+    ],
+    "get_active_proxies_in_pool": [
+      "proxies",
+      "proxy_pools"
+    ],
+    "check_proxy_status": [
+      "proxies"
+    ],
+    "get_protocol_auth_requirements": [
+      "proxies"
+    ],
+    "get_current_index_in_pool": [
+      "proxy_pools"
+    ],
+    "pool_is_empty": [
+      "proxy_pools"
+    ],
+    "get_proxy_usage_statistics": [
+      "proxies"
+    ],
+    "add_proxy_to_pool": [
+      "proxies",
+      "proxy_pools"
+    ],
+    "remove_proxy_from_pool": [
+      "proxy_pools"
+    ],
+    "delete_proxy": [
+      "proxies",
+      "proxy_pools"
+    ],
+    "update_proxy_status": [
+      "proxies"
+    ],
+    "set_rotation_index": [
+      "proxy_pools"
+    ],
+    "increment_rotation_index": [
+      "proxies",
+      "proxy_pools"
+    ],
+    "add_new_proxy": [
+      "proxies",
+      "proxy_pools"
+    ],
+    "handle_empty_pool": [
+      "proxy_pools"
+    ],
+    "update_proxy_auth_fields": [
+      "proxies"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_pool_by_id",
+      "description": "Retrieve details of a proxy pool, including its list of proxy_ids, rotation policy,\nand the current index for rotation.\n\nArgs:\n    pool_id (str): Identifier of the proxy pool.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ProxyPoolInfo  # details of the pool (proxies list, policy, index, etc.)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., \"Proxy pool does not exist\"\n    }\n\nConstraints:\n    - The specified pool_id must exist in the environment's proxy_pools.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pool_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pool_id"
+        ]
+      }
+    },
+    {
+      "name": "list_proxy_ids_in_pool",
+      "description": "List all proxy_ids currently included in a specified proxy pool.\n\nArgs:\n    pool_id (str): The unique identifier for the proxy pool.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str],  # The list of proxy_ids in the pool (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if the pool does not exist.\n    }\n\nConstraints:\n    - The pool_id must exist in the system.\n    - Returns an empty list if pool exists but contains no proxy_ids.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pool_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pool_id"
+        ]
+      }
+    },
+    {
+      "name": "get_proxy_info",
+      "description": "Retrieve full metadata for a specific proxy using its proxy_id.\n\nArgs:\n    proxy_id (str): The identifier of the proxy to query.\n\nReturns:\n    dict: \n        {\"success\": True, \"data\": ProxyInfo} if found,\n        {\"success\": False, \"error\": \"Proxy not found\"} otherwise.\n\nConstraints:\n    - proxy_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "proxy_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "proxy_id"
+        ]
+      }
+    },
+    {
+      "name": "get_active_proxies_in_pool",
+      "description": "Lists proxy_ids for proxies in the specified pool that are currently status=\"active\".\n\nArgs:\n    pool_id (str): The proxy pool's unique identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str],  # List of proxy_ids with status=\"active\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if pool does not exist\n    }\n\nConstraints:\n    - Only proxies with status == \"active\" are included.\n    - If the pool does not exist, return an error.\n    - If the pool has no proxies (empty list) or no active proxies, return empty list with success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pool_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pool_id"
+        ]
+      }
+    },
+    {
+      "name": "check_proxy_status",
+      "description": "Query the current status (active, inactive, etc.) of a specific proxy.\n\nArgs:\n    proxy_id (str): The unique identifier of the proxy.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": { \"proxy_id\": str, \"status\": str }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason the query failed (e.g., Proxy not found)\n    }\n\nConstraints:\n    - proxy_id must exist in the proxies dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "proxy_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "proxy_id"
+        ]
+      }
+    },
+    {
+      "name": "get_protocol_auth_requirements",
+      "description": "Determine if the protocols used by the given proxies require authentication (username/password).\n\nArgs:\n    proxy_ids (list of str): List of proxy IDs to check.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": Dict[str, bool],  # Mapping from proxy_id to bool (True if protocol requires authentication)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error\n    }\n\nConstraints:\n    - For unknown proxy_id, indicate error in mapping.\n    - Uses internal knowledge of protocol authentication requirements.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "proxy_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "proxy_ids"
+        ]
+      }
+    },
+    {
+      "name": "get_current_index_in_pool",
+      "description": "Inspect the current rotation index for a given proxy pool.\n\nArgs:\n    pool_id (str): The unique identifier of the target proxy pool.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": int  # The current rotation index for the pool.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., pool not found or malformed data.\n    }\n\nConstraints:\n    - The specified pool_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pool_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pool_id"
+        ]
+      }
+    },
+    {
+      "name": "pool_is_empty",
+      "description": "Check whether the specified proxy pool currently contains any proxies.\n\nArgs:\n    pool_id (str): The identifier of the proxy pool.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": bool  # True if the pool contains zero proxies, else False\n            }\n        On error (e.g., pool_id does not exist):\n            {\n                \"success\": False,\n                \"error\": str  # reason\n            }\n\nConstraints:\n    - The specified pool_id must exist in the proxy_pools.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pool_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pool_id"
+        ]
+      }
+    },
+    {
+      "name": "get_proxy_usage_statistics",
+      "description": "Retrieve usage statistics for a given proxy.\n\nArgs:\n    proxy_id (str): The unique identifier for the proxy.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"fail_count\": int,\n            \"last_used_time\": float,\n            \"health_score\": float\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g., proxy not found)\n    }\n\nConstraints:\n    - proxy_id must exist in the proxy registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "proxy_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "proxy_id"
+        ]
+      }
+    },
+    {
+      "name": "add_proxy_to_pool",
+      "description": "Add a proxy (by proxy_id) into a specified proxy pool.\nUpdates the proxy list and adjusts the rotation index if needed.\n\nArgs:\n    pool_id (str): The proxy pool to add the proxy to.\n    proxy_id (str): The ID of the proxy to add.\n\nReturns:\n    dict: \n        On success: {\"success\": True, \"message\": \"...\"}\n        On failure: {\"success\": False, \"error\": \"...\"}\n\nConstraints:\n    - pool_id must exist in the proxy_pools.\n    - proxy_id must exist in the proxies dict.\n    - proxy_id must not already be in pool's proxy list.\n    - If the pool was empty, set current_index to 0.\n    - If proxies exist already, keep current_index unchanged.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pool_id": {
+            "type": "string"
+          },
+          "proxy_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pool_id",
+          "proxy_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_proxy_from_pool",
+      "description": "Remove a given proxy from a specified proxy pool, ensuring proxy list and current_index are updated appropriately.\n\nArgs:\n    pool_id (str): Identifier of the proxy pool.\n    proxy_id (str): Identifier of the proxy to be removed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Proxy <proxy_id> removed from pool <pool_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - If the pool does not exist, return an error.\n    - If the proxy is not in the pool, return an error.\n    - Removing the proxy updates the pool's proxies list and current_index.\n    - Handles empty proxy list cases & current_index bounds.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pool_id": {
+            "type": "string"
+          },
+          "proxy_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pool_id",
+          "proxy_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_proxy",
+      "description": "Completely delete a proxy from the system, including all pools it is a member of.\n\nArgs:\n    proxy_id (str): The unique identifier of the proxy to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Proxy <proxy_id> deleted from system and all pools\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Proxy not found\"\n    }\n\nConstraints:\n    - Removing a proxy deletes it from the proxy pool's list as well.\n    - The system must handle empty pool cases gracefully.\n    - The current_index of the pool should be updated: if out-of-bounds or proxies empty, set to 0.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "proxy_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "proxy_id"
+        ]
+      }
+    },
+    {
+      "name": "update_proxy_status",
+      "description": "Change the status of a given proxy.\n\nArgs:\n    proxy_id (str): The unique identifier for the proxy whose status should be updated.\n    new_status (str): The new status to assign (e.g., 'active', 'inactive', 'failed').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Status of proxy <proxy_id> changed to <new_status>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Proxy not found\"\n    }\n\nConstraints:\n    - The proxy_id must exist in the system.\n    - No restriction on new_status value beyond being a string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "proxy_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "proxy_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "set_rotation_index",
+      "description": "Set the current_index field in a proxy pool.\n\nArgs:\n    pool_id (str): Identifier of the proxy pool to update.\n    new_index (int): The index to set as current for proxy rotation.\n\nReturns:\n    dict: On success: { \"success\": True, \"message\": \"Set current_index of pool {pool_id} to {new_index}\" }\n          On error: { \"success\": False, \"error\": str }\n\nConstraints:\n    - The specified proxy pool must exist.\n    - If the pool has proxies, new_index must be 0 <= new_index < len(proxies).\n    - If the pool's proxy list is empty, only new_index == 0 is valid.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pool_id": {
+            "type": "string"
+          },
+          "new_index": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pool_id",
+          "new_index"
+        ]
+      }
+    },
+    {
+      "name": "increment_rotation_index",
+      "description": "Advance the current rotation index to the next eligible 'active' proxy (wrap-around if needed).\n\nArgs:\n    pool_id (str): The ID of the proxy pool for rotation.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Rotation index updated to <new_index>.\",\n            }\n        On error:\n            {\n                \"success\": False,\n                \"error\": \"<reason>\"\n            }\n\nConstraints:\n    - Only proxies with status='active' can be selected for rotation.\n    - Handles empty pool and no-active-proxies gracefully, setting current_index to -1.\n    - Wraps around if at end of rotation list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pool_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pool_id"
+        ]
+      }
+    },
+    {
+      "name": "add_new_proxy",
+      "description": "Insert a new proxy with the provided details into the system. Optionally, add the proxy to a specified pool.\n\nArgs:\n    proxy_id (str): Unique identifier for the proxy.\n    ip_address (str): Proxy server IP address.\n    port (int): Proxy server port.\n    protocol (str): Proxy protocol (e.g., http, https, socks5).\n    status (str): Proxy's operational status (should be e.g., \"active\", \"inactive\", etc.).\n    last_used_time (float): Timestamp of last usage.\n    fail_count (int): Number of recent consecutive failures.\n    health_score (float): Proxy health score.\n    username (Optional[str]): Authentication username if required.\n    password (Optional[str]): Authentication password if required.\n    pool_id (Optional[str]): If provided, add this proxy to the specified pool.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Proxy added\",\n        \"proxy_id\": str,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - proxy_id must be unique.\n    - If protocol requires authentication, username and password must be provided.\n    - If pool_id is provided, it must exist.\n    - If added to a pool, pool's proxies list and current_index are updated as needed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "proxy_id": {
+            "type": "string"
+          },
+          "ip_address": {
+            "type": "string"
+          },
+          "port": {
+            "type": "integer"
+          },
+          "protocol": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "last_used_time": {
+            "type": "number"
+          },
+          "fail_count": {
+            "type": "integer"
+          },
+          "health_score": {
+            "type": "number"
+          },
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "pool_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "proxy_id",
+          "ip_address",
+          "port",
+          "protocol",
+          "status",
+          "last_used_time",
+          "fail_count",
+          "health_score"
+        ]
+      }
+    },
+    {
+      "name": "handle_empty_pool",
+      "description": "Take appropriate action if a proxy pool becomes empty:\n- Sets the pool's current_index to -1 to indicate no available proxies.\n- Does nothing if the pool is not empty.\n\nArgs:\n    pool_id (str): The identifier of the proxy pool to check and handle.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": Description of action taken for the pool.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": Error reason (e.g., proxy pool does not exist)\n    }\n\nConstraints:\n    - Pool must exist.\n    - If the pool's `proxies` list is empty, set `current_index` to -1.\n    - The system must handle empty pool cases gracefully.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pool_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pool_id"
+        ]
+      }
+    },
+    {
+      "name": "update_proxy_auth_fields",
+      "description": "Set username/password for a proxy as required by protocol.\n\nArgs:\n    proxy_id (str): The ID of the proxy to update.\n    username (Optional[str]): The username for authentication. Must be provided if protocol requires auth.\n    password (Optional[str]): The password for authentication. Must be provided if protocol requires auth.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Proxy authentication fields updated for proxy_id '<proxy_id>'\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - If protocol of proxy requires authentication, both username and password must be provided (not None or empty).\n    - If protocol does not require authentication, authentication info will be cleared.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "proxy_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "proxy_id"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,606 @@
+{
+  "env_name": "DigitalMusicLibraryManagementSystem",
+  "description": "A digital music library management system stores and organizes audio tracks, each represented with metadata such as unique IDs, titles, durations, artists, and albums. The system supports operations for querying, updating, and maintaining track information, enabling efficient management and retrieval for listeners, archivists, or platforms managing music collections. It provides structured storage, often allowing search by attributes and playback tracking.",
+  "initial_parameter_schema": {
+    "tracks": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "track_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "integer"
+          },
+          "artist_id": {
+            "type": "string"
+          },
+          "album_id": {
+            "type": "string"
+          },
+          "genre": {
+            "type": "string"
+          },
+          "release_date": {
+            "type": "string"
+          },
+          "play_count": {
+            "type": "integer"
+          },
+          "last_played_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "track_id",
+          "title",
+          "duration",
+          "artist_id",
+          "album_id",
+          "genre",
+          "release_date",
+          "play_count",
+          "last_played_at"
+        ]
+      }
+    },
+    "artists": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "artist_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artist_id",
+          "name"
+        ]
+      }
+    },
+    "albums": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "album_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "release_date": {
+            "type": "string"
+          },
+          "artist_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "album_id",
+          "title",
+          "release_date",
+          "artist_id"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_track_by_id": [
+      "tracks"
+    ],
+    "get_track_duration": [
+      "tracks"
+    ],
+    "list_all_tracks": [
+      "tracks"
+    ],
+    "search_tracks_by_title": [
+      "tracks"
+    ],
+    "search_tracks_by_artist_id": [
+      "artists",
+      "tracks"
+    ],
+    "search_tracks_by_album_id": [
+      "albums",
+      "tracks"
+    ],
+    "search_tracks_by_genre": [
+      "tracks"
+    ],
+    "get_artist_by_id": [
+      "artists"
+    ],
+    "list_all_artists": [
+      "artists"
+    ],
+    "get_album_by_id": [
+      "albums"
+    ],
+    "list_all_albums": [
+      "albums"
+    ],
+    "get_tracks_in_album": [
+      "albums",
+      "tracks"
+    ],
+    "get_tracks_by_release_date_range": [
+      "tracks"
+    ],
+    "get_playback_statistics_for_track": [
+      "tracks"
+    ],
+    "increment_track_play_count": [
+      "tracks"
+    ],
+    "add_new_track": [
+      "albums",
+      "artists",
+      "tracks"
+    ],
+    "edit_track_metadata": [
+      "albums",
+      "artists",
+      "tracks"
+    ],
+    "delete_track": [
+      "tracks"
+    ],
+    "add_new_artist": [
+      "artists"
+    ],
+    "edit_artist_metadata": [
+      "artists"
+    ],
+    "delete_artist": [
+      "albums",
+      "artists",
+      "tracks"
+    ],
+    "add_new_album": [
+      "albums",
+      "artists"
+    ],
+    "edit_album_metadata": [
+      "albums",
+      "artists"
+    ],
+    "delete_album": [
+      "albums",
+      "tracks"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_track_by_id",
+      "description": "Retrieve the complete metadata (including duration) for a given track ID.\n\nArgs:\n    track_id (str): The unique identifier of the track.\n\nReturns:\n    dict:\n        - If the track exists:\n            { \"success\": True, \"data\": TrackInfo }\n        - If the track does not exist:\n            { \"success\": False, \"error\": \"Track not found\" }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "track_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "track_id"
+        ]
+      }
+    },
+    {
+      "name": "get_track_duration",
+      "description": "Return the duration (in seconds) of the track with the given track_id.\n\nArgs:\n    track_id (str): The unique identifier of the track.\n\nReturns:\n    dict: \n        On success:\n            { \"success\": True, \"data\": int }  # duration in seconds\n        On failure:\n            { \"success\": False, \"error\": \"Track does not exist\" }\n\nConstraints:\n    - track_id must exist in the library.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "track_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "track_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_tracks",
+      "description": "Retrieve the full list of tracks in the music library.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[TrackInfo]  # All tracks in the library; empty if none exist\n        }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "search_tracks_by_title",
+      "description": "Find all tracks with a specified title (exact or partial, case-insensitive match).\n\nArgs:\n    title (str): The title or partial title to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TrackInfo]     # Tracks with title containing the search string (case-insensitive)\n    }\n    (No error output, always succeeds with possibly empty result)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      }
+    },
+    {
+      "name": "search_tracks_by_artist_id",
+      "description": "List all tracks associated with a given artist.\n\nArgs:\n    artist_id (str): Unique identifier of the artist.\n\nReturns:\n    dict:\n        - success: True and 'data' containing list of TrackInfo dicts for this artist.\n        - success: False and 'error' message if artist does not exist.\n\nConstraints:\n    - artist_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "artist_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artist_id"
+        ]
+      }
+    },
+    {
+      "name": "search_tracks_by_album_id",
+      "description": "List all tracks that belong to a given album_id.\n\nArgs:\n    album_id (str): The album identifier for which to retrieve tracks.\n\nReturns:\n    dict:\n        - On success: {\n            \"success\": True,\n            \"data\": List[TrackInfo]   # May be empty if album has no tracks\n          }\n        - On error: {\n            \"success\": False,\n            \"error\": \"Album does not exist\"\n          }\n\nConstraints:\n    - album_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "album_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "album_id"
+        ]
+      }
+    },
+    {
+      "name": "search_tracks_by_genre",
+      "description": "Retrieve all tracks within a given genre (case-insensitive match).\n\nArgs:\n    genre (str): The genre string to match (case-insensitive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TrackInfo]  # List of track info dicts for matching tracks (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for error (e.g., invalid genre)\n    }\n\nConstraints:\n    - Genre parameter must be a non-empty string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "genre": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "genre"
+        ]
+      }
+    },
+    {
+      "name": "get_artist_by_id",
+      "description": "Retrieve artist information for a given artist_id.\n\nArgs:\n    artist_id (str): Unique identifier of the artist.\n\nReturns:\n    dict:\n        On success:\n            {\n              \"success\": True,\n              \"data\": ArtistInfo  # artist information dictionary\n            }\n        On failure:\n            {\n              \"success\": False,\n              \"error\": \"Artist not found\"\n            }\nConstraints:\n    - artist_id must exist in the library.\n    - Each artist_id is unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "artist_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artist_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_artists",
+      "description": "List all artists in the digital music library system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ArtistInfo]  # (possibly empty)\n    }\n\nConstraints:\n    - No error if no artists exist (\"data\" is an empty list).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_album_by_id",
+      "description": "Retrieve metadata for the specified album.\n\nArgs:\n    album_id (str): Unique identifier of the album.\n\nReturns:\n    dict: \n        On success:\n            {\n              \"success\": True,\n              \"data\": AlbumInfo  # album's metadata\n            }\n        On failure (not found):\n            {\n              \"success\": False,\n              \"error\": \"Album not found\"\n            }\n\nConstraints:\n    - album_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "album_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "album_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_albums",
+      "description": "List all albums present in the music library.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AlbumInfo],  # All album metadata (may be empty if no albums exist)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_tracks_in_album",
+      "description": "Retrieve all tracks belonging to a specific album.\n\nArgs:\n    album_id (str): The ID of the album.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[TrackInfo]  # All tracks with the specified album_id\n            }\n        On failure (invalid album_id):\n            {\n                \"success\": False,\n                \"error\": \"Album does not exist\"\n            }\n\nConstraints:\n    - The album_id must exist in the albums dictionary.\n    - Only tracks whose album_id matches the provided album_id are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "album_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "album_id"
+        ]
+      }
+    },
+    {
+      "name": "get_tracks_by_release_date_range",
+      "description": "List tracks released within the specified release date range (inclusive).\n\nArgs:\n    start_date (str): ISO 8601 date string marking the start of the range (inclusive).\n    end_date (str): ISO 8601 date string marking the end of the range (inclusive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TrackInfo]  # All matching tracks (may be empty if no match)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of error (e.g., invalid date format, start > end)\n    }\n\nConstraints:\n    - Dates must be in valid ISO 8601 date format (YYYY-MM-DD).\n    - start_date cannot be after end_date.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "start_date",
+          "end_date"
+        ]
+      }
+    },
+    {
+      "name": "get_playback_statistics_for_track",
+      "description": "Retrieve the play count and last played time for a specific track.\n\nArgs:\n    track_id (str): The unique ID of the track.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"play_count\": int,\n                    \"last_played_at\": str  # ISO 8601 datetime\n                }\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Track not found\"\n            }\n\nConstraints:\n    - The track_id must exist in the library.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "track_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "track_id"
+        ]
+      }
+    },
+    {
+      "name": "increment_track_play_count",
+      "description": "Register a playback event for the specified track.\n\nArgs:\n    track_id (str): The unique identifier of the track.\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"message\": \"Playback registered: play_count incremented and last_played_at updated.\"\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": \"Track not found.\"\n        }\n\nConstraints:\n    - The specified track_id must exist in the system.\n    - play_count is incremented by one (only upon playback).\n    - last_played_at updated to the current timestamp in ISO 8601 format.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "track_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "track_id"
+        ]
+      }
+    },
+    {
+      "name": "add_new_track",
+      "description": "Add a new track to the library, enforcing all uniqueness and reference constraints.\n\nArgs:\n    track_id (str): Unique identifier for the track.\n    title (str): Track's title.\n    duration (int): Track's duration in seconds (must be positive).\n    artist_id (str): Valid artist ID.\n    album_id (str): Album ID (\"\" or None if no album, otherwise must exist).\n    genre (str): Genre of track.\n    release_date (str): Release date (ISO 8601).\n    play_count (int, optional): Non-negative play count (defaults to 0).\n    last_played_at (str, optional): When track was last played (ISO 8601, defaults to \"\").\n\nReturns:\n    dict:\n        success: True if track added, False otherwise.\n        message: Success description.\n        error: (on failure) Reason it failed.\n\nConstraints:\n    - track_id, artist_id, album_id must be unique in their entity sets.\n    - duration must be positive.\n    - artist_id must exist.\n    - album_id (if not empty) must exist.\n    - play_count must be non-negative.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "track_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "integer"
+          },
+          "artist_id": {
+            "type": "string"
+          },
+          "album_id": {
+            "type": "string"
+          },
+          "genre": {
+            "type": "string"
+          },
+          "release_date": {
+            "type": "string"
+          },
+          "play_count": {
+            "type": "integer"
+          },
+          "last_played_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "track_id",
+          "title",
+          "duration",
+          "artist_id",
+          "album_id",
+          "genre",
+          "release_date"
+        ]
+      }
+    },
+    {
+      "name": "edit_track_metadata",
+      "description": "Update information (such as title, genre, album, artist, duration, release_date) for a given track,\nenforcing system constraints.\n\nArgs:\n    track_id (str): Unique identifier of the track to update.\n    **updates: Fields to update. Allowed keys: 'title', 'genre', 'album_id', 'artist_id', 'release_date', 'duration'\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Track metadata updated successfully.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - track_id must exist in the library.\n    - duration must be a positive integer, if updated.\n    - artist_id and album_id must reference valid artist/album if updated.\n    - Only allowed fields can be updated; play_count and last_played_at are read-only here.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "track_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "genre": {
+            "type": "string"
+          },
+          "album_id": {
+            "type": "string"
+          },
+          "artist_id": {
+            "type": "string"
+          },
+          "release_date": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "track_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_track",
+      "description": "Remove a track from the system by its unique track_id.\n\nArgs:\n    track_id (str): The unique identifier for the track to be deleted.\n\nReturns:\n    dict: On success,\n            {\n                \"success\": True,\n                \"message\": \"Track <track_id> deleted\"\n            }\n          On failure,\n            {\n                \"success\": False,\n                \"error\": \"Track not found\"\n            }\n\nConstraints:\n    - The track_id must exist in the system for deletion.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "track_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "track_id"
+        ]
+      }
+    },
+    {
+      "name": "add_new_artist",
+      "description": "Adds a new artist to the library.\n\nArgs:\n    artist_id (str): The unique identifier for the artist (must not duplicate an existing artist).\n    name (str): The name of the artist (should be non-empty).\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Artist added successfully.\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - artist_id must be unique (not present in self.artists).\n    - artist_id and name must be non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "artist_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artist_id",
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "edit_artist_metadata",
+      "description": "Update artist metadata (currently only 'name') for a given artist.\n\nArgs:\n    artist_id (str): Unique identifier of the artist to update.\n    **kwargs: Key-value pairs of fields to update (currently only 'name' is allowed).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Description of the successful update\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error encountered\n    }\n\nConstraints:\n    - artist_id must exist in the system.\n    - Only existing fields (currently only 'name') can be updated.\n    - New name (if given) must be non-empty string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "artist_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artist_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_artist",
+      "description": "Removes an artist from the system.\n\nArgs:\n    artist_id (str): The unique ID of the artist to delete.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Artist <artist_id> deleted.\" }\n        On failure:\n            { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The specified artist_id must exist.\n    - Can only delete the artist if no tracks or albums reference this artist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "artist_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artist_id"
+        ]
+      }
+    },
+    {
+      "name": "add_new_album",
+      "description": "Add a new album to the music library with a unique album_id and a valid artist_id.\n\nArgs:\n    album_id (str): Unique identifier for the album.\n    title (str): Album title.\n    release_date (str): Album release date (ISO 8601 format recommended).\n    artist_id (str): Identifier of the artist (must exist).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Album added (album_id=<album_id>)\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"<error message>\"\n    }\n\nConstraints:\n    - album_id must be unique.\n    - artist_id must refer to an existing artist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "album_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "release_date": {
+            "type": "string"
+          },
+          "artist_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "album_id",
+          "title",
+          "release_date",
+          "artist_id"
+        ]
+      }
+    },
+    {
+      "name": "edit_album_metadata",
+      "description": "Update album metadata for the given album_id.\n\nArgs:\n    album_id (str): The unique identifier of the album to update.\n    kwargs: Album fields to update. Only 'title', 'release_date', and 'artist_id' are allowed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Album metadata updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - album_id must exist in library.\n    - Only 'title', 'release_date', and 'artist_id' fields can be updated.\n    - artist_id, if updated, must exist in artists.\n    - album_id itself cannot be changed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "album_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "release_date": {
+            "type": "string"
+          },
+          "artist_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "album_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_album",
+      "description": "Remove an album from the system.\n\nArgs:\n    album_id (str): The unique identifier of the album to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Album <album_id> deleted successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Album must exist.\n    - Any tracks referencing this album should have their album_id cleared (set to empty string).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "album_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "album_id"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,652 @@
+{
+  "env_name": "WebEmailClientEnvironment",
+  "description": "A web-based email client is a browser-accessible environment that allows users to manage and interact with their email accounts. It maintains state including messages, folders, metadata (read/unread status, flags), and supports operations like reading, composing, archiving, deleting, searching, and organizing emails. This environment provides real-time synchronization and user-specific workflows, supporting efficient handling of electronic correspondence.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "email_address": {
+            "type": "string"
+          },
+          "preference": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "email_address",
+          "preference"
+        ]
+      }
+    },
+    "messages": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "sender": {
+            "type": "string"
+          },
+          "recipients": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "subject": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "read_status": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            }
+          },
+          "flags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "folder_id": {
+            "type": "string"
+          },
+          "thread_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id",
+          "sender",
+          "recipients",
+          "subject",
+          "body",
+          "timestamp",
+          "read_status",
+          "flags",
+          "folder_id",
+          "thread_id"
+        ]
+      }
+    },
+    "folders": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "folder_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "parent_folder_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "folder_id",
+          "user_id",
+          "name",
+          "parent_folder_id"
+        ]
+      }
+    },
+    "threads": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "thread_id": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "list_of_message_id": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "thread_id",
+          "subject",
+          "list_of_message_id"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_info": [
+      "users"
+    ],
+    "list_folders": [
+      "folders",
+      "users"
+    ],
+    "get_folder_by_name": [
+      "folders"
+    ],
+    "list_messages_in_folder": [
+      "folders",
+      "messages"
+    ],
+    "list_unread_messages_in_folder": [
+      "folders",
+      "messages",
+      "users"
+    ],
+    "get_message_info": [
+      "folders",
+      "messages"
+    ],
+    "list_threads_in_folder": [
+      "folders",
+      "messages",
+      "threads"
+    ],
+    "get_thread_messages": [
+      "folders",
+      "messages",
+      "threads"
+    ],
+    "get_message_read_status": [
+      "folders",
+      "messages"
+    ],
+    "get_message_flags": [
+      "folders",
+      "messages",
+      "users"
+    ],
+    "mark_message_as_read": [
+      "folders",
+      "messages",
+      "users"
+    ],
+    "mark_message_as_unread": [
+      "folders",
+      "messages",
+      "users"
+    ],
+    "mark_all_messages_as_read_in_folder": [
+      "folders",
+      "messages",
+      "users"
+    ],
+    "move_message_to_folder": [
+      "folders",
+      "messages"
+    ],
+    "flag_message": [
+      "folders",
+      "messages",
+      "users"
+    ],
+    "unflag_message": [
+      "folders",
+      "messages",
+      "users"
+    ],
+    "delete_message": [
+      "folders",
+      "messages",
+      "users"
+    ],
+    "permanently_delete_message_from_trash": [
+      "folders",
+      "messages",
+      "threads",
+      "users"
+    ],
+    "create_folder": [
+      "folders",
+      "users"
+    ],
+    "rename_folder": [
+      "folders"
+    ],
+    "remove_folder": [
+      "folders",
+      "messages"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_info",
+      "description": "Retrieve the account details for the specified user.\n\nArgs:\n    user_id (str): The identifier of the user whose details are requested.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"User not found\"\n    }\n\nConstraints:\n    - Only existing users can be queried.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_folders",
+      "description": "List all folders belonging to the specified user, including reserved and user-defined folders.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[FolderInfo],  # List of folders owned by user_id (can be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"User does not exist\"\n    }\n\nConstraints:\n    - Only folders belonging to user_id are listed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_folder_by_name",
+      "description": "Retrieve the metadata for a folder with the specified name belonging to the given user.\n\nArgs:\n    user_id (str): The user's unique identifier.\n    folder_name (str): The display name of the folder (e.g., 'Inbox', 'Sent').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": FolderInfo  # Metadata for the folder\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Reason (e.g., folder not found)\n    }\n\nConstraints:\n    - Only folders owned by the user should be searched.\n    - Folders are unique per (user_id, folder_name).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "folder_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "folder_name"
+        ]
+      }
+    },
+    {
+      "name": "list_messages_in_folder",
+      "description": "List all messages contained in the specified folder belonging to the user.\n\nArgs:\n    user_id (str): The ID of the user making the query.\n    folder_id (str): The ID of the folder whose messages to list.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[MailMessageInfo]  # List of messages (can be empty)\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason for failure (e.g., folder does not exist, access denied)\n            }\nConstraints:\n    - Only show messages in folders belonging to this user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "folder_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "folder_id"
+        ]
+      }
+    },
+    {
+      "name": "list_unread_messages_in_folder",
+      "description": "Retrieve all unread messages (MailMessageInfo) for a user in a specified folder.\n\nArgs:\n    user_id (str): ID of the user requesting the unread messages.\n    folder_id (str): ID of the folder to search.\n\nReturns:\n    dict:\n        On success: {\n            \"success\": True,\n            \"data\": List[MailMessageInfo]  # May be empty if no unread messages.\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": str  # Reason for failure.\n        }\n\nConstraints:\n    - Only messages in folders owned by the user are accessible.\n    - Unread status is determined by 'read_status' for the given user_id.\n    - folder_id must exist and belong to user_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "folder_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "folder_id"
+        ]
+      }
+    },
+    {
+      "name": "get_message_info",
+      "description": "Fetch details (sender, subject, body, status, flags, etc.) for a specified message.\n\nArgs:\n    user_id (str): ID of the user requesting the message info.\n    message_id (str): ID of the message/email to retrieve.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": MailMessageInfo\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Reason (e.g., not found, access denied)\n    }\n\nConstraints:\n    - Only emails belonging to the user can be accessed.\n    - Message must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "message_id"
+        ]
+      }
+    },
+    {
+      "name": "list_threads_in_folder",
+      "description": "List all conversation threads present in a given folder for the specified user.\n\nArgs:\n    user_id (str): The user whose threads are to be listed.\n    folder_id (str): The folder in which to look for threads.\n\nReturns:\n    dict:\n        success: True and 'data': List[MailThreadInfo] if successful (may be empty).\n        success: False and 'error': error message if folder not found or unauthorized.\n\nConstraints:\n    - The folder must exist and belong to the user.\n    - Only threads with at least one message in the given folder are listed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "folder_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "folder_id"
+        ]
+      }
+    },
+    {
+      "name": "get_thread_messages",
+      "description": "List all messages in a given thread that are accessible to the specified user.\n\nArgs:\n    thread_id (str): The thread ID to look up.\n    user_id (str): The ID of the requesting user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MailMessageInfo],  # Only messages accessible to user (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g., thread does not exist)\n    }\n\nConstraints:\n    - Only emails belonging to the user are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "thread_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "thread_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_message_read_status",
+      "description": "Check whether a specific message is marked read or unread for the user.\n\nArgs:\n    user_id (str): The ID of the user.\n    message_id (str): The message to check.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"message_id\": str,\n                    \"user_id\": str,\n                    \"is_read\": bool\n                }\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str\n            }\n\nConstraints:\n    - Only a user can query read status for messages in folders they own.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "message_id"
+        ]
+      }
+    },
+    {
+      "name": "get_message_flags",
+      "description": "Retrieve all flags (starred, important, etc.) for a given message for the specified user.\n\nArgs:\n    user_id (str): The user's id requesting the flags.\n    message_id (str): The message id whose flags are to be retrieved.\n\nReturns:\n    dict:\n      - On success: { \"success\": True, \"data\": List[str] }\n      - On error:   { \"success\": False, \"error\": str }\n\nConstraints:\n    - Only emails/messages belonging to the user (i.e., in a folder owned by the user) can be accessed.\n    - If user or message do not exist, return an error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "message_id"
+        ]
+      }
+    },
+    {
+      "name": "mark_message_as_read",
+      "description": "Set a message’s read_status to “read” for the specified user.\n\nArgs:\n    user_id (str): The ID of the user.\n    message_id (str): The ID of the email message to be marked as read.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Message marked as read for user\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Only emails belonging to the user can be accessed and manipulated.\n    - Updates should only affect the target user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "message_id"
+        ]
+      }
+    },
+    {
+      "name": "mark_message_as_unread",
+      "description": "Set the specified message's read_status to 'unread' (False) for the given user.\n\nArgs:\n    user_id (str): The user's ID.\n    message_id (str): The message's ID.\n\nReturns:\n    dict: {\n      \"success\": True,\n      \"message\": \"Message marked as unread for user.\"\n    }\n    OR\n    dict: {\n      \"success\": False,\n      \"error\": \"Reason for failure.\"\n    }\n\nConstraints:\n    - Only emails belonging to the user can be manipulated.\n    - The user and message must exist.\n    - The message must be in a folder belonging to the user.\n    - Idempotent: If already unread for user, still returns success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "message_id"
+        ]
+      }
+    },
+    {
+      "name": "mark_all_messages_as_read_in_folder",
+      "description": "Set all unread messages in a folder as “read” for the user.\n\nArgs:\n    user_id (str): The user's unique identifier.\n    folder_id (str): The folder's unique identifier (must belong to user).\n\nReturns:\n    dict:\n        On success:\n          { \"success\": True, \"message\": \"All unread messages have been marked as read in folder <folder_name> for user <username>.\" }\n        On failure:\n          { \"success\": False, \"error\": \"<description>\" }\n\nConstraints:\n    - Only emails and folders belonging to the user can be affected.\n    - Read/unread status is set only for this user.\n    - Action is idempotent (already read messages are not changed).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "folder_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "folder_id"
+        ]
+      }
+    },
+    {
+      "name": "move_message_to_folder",
+      "description": "Move a specific email message to another folder for the user.\n\nArgs:\n    user_id (str): The ID of the user performing the operation.\n    message_id (str): The ID of the message to be moved.\n    target_folder_id (str): The ID of the destination folder.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Message moved to folder <folder_name>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Only emails belonging to the user can be accessed/manipulated.\n    - The target folder must belong to the user.\n    - Each email is assigned to exactly one folder at a time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "message_id": {
+            "type": "string"
+          },
+          "target_folder_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "message_id",
+          "target_folder_id"
+        ]
+      }
+    },
+    {
+      "name": "flag_message",
+      "description": "Add a flag (e.g., \"starred\", \"important\") to a message for the user.\n\nArgs:\n    user_id (str): The user ID for whom the flag applies.\n    message_id (str): The ID of the message to be flagged.\n    flag (str): The string flag to add.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Confirmation message\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - Only emails belonging to the user (i.e., message is in a folder owned by user) can be flagged.\n    - The flags list for this user on the message is created if not present.\n    - If the flag is already present, the operation is idempotent and still returns success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "message_id": {
+            "type": "string"
+          },
+          "flag": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "message_id",
+          "flag"
+        ]
+      }
+    },
+    {
+      "name": "unflag_message",
+      "description": "Remove a specific flag from a message for a user.\n\nArgs:\n    user_id (str): ID of the user performing the operation.\n    message_id (str): ID of the message whose flag is to be removed.\n    flag (str): The flag to remove (e.g., 'starred').\n\nReturns:\n    dict:\n        Success: {\n            \"success\": True,\n            \"message\": \"Flag '<flag>' removed from message '<message_id>' for user '<user_id>'.\"\n        }\n        Failure: {\n            \"success\": False,\n            \"error\": \"<reason>\"\n        }\n\nConstraints:\n    - Only emails belonging to the user can be accessed/manipulated.\n    - If the flag does not exist for the user on this message, return an error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "message_id": {
+            "type": "string"
+          },
+          "flag": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "message_id",
+          "flag"
+        ]
+      }
+    },
+    {
+      "name": "delete_message",
+      "description": "Moves the given message to the user's \"Trash\" folder.\nOnly user's own messages can be manipulated.\nCannot permanently delete from reserved folders;\nthis just moves to Trash.\n\nArgs:\n    user_id (str): The id of the requesting user.\n    message_id (str): The id of the message to move to Trash.\n\nReturns:\n    dict: { \"success\": True, \"message\": <description> } on success,\n          { \"success\": False, \"error\": <reason> } on failure.\n\nConstraints:\n    - Only user’s own messages can be manipulated.\n    - Each email is assigned to exactly one folder at a time.\n    - Cannot permanently delete from non-Trash reserved folders.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "message_id"
+        ]
+      }
+    },
+    {
+      "name": "permanently_delete_message_from_trash",
+      "description": "Permanently remove a message from the Trash folder for a specific user.\n\nArgs:\n    user_id (str): The user's unique identifier.\n    message_id (str): The message's unique identifier.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Message permanently deleted from trash.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"<reason>\"\n            }\n\nConstraints:\n- Only messages belonging to the user (i.e., in a folder owned by the user) can be deleted.\n- Message must be currently in the Trash folder for the user.\n- Removing a message is permanent (irreversible).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "message_id"
+        ]
+      }
+    },
+    {
+      "name": "create_folder",
+      "description": "Create a new user-defined folder for the specified user.\n\nArgs:\n    user_id (str): The ID of the user creating the folder.\n    name (str): The name of the folder to create.\n    parent_folder_id (str, optional): ID of parent folder for nesting. Can be empty for root-level.\n\nReturns:\n    dict: {\"success\": True, \"message\": \"Folder '<name>' created with id <folder_id>\"}\n          or {\"success\": False, \"error\": <error_reason>}\n\nConstraints:\n    - Only allows user-specific folder creation.\n    - Reserved folder names (Inbox, Sent, Trash, Archive) cannot be used.\n    - Folder names must be unique for each user (case-insensitive).\n    - If parent_folder_id is not empty, it must exist and belong to the user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "parent_folder_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "rename_folder",
+      "description": "Rename a user-created folder. Reserved folders (Inbox, Sent, Archive, Trash) cannot be renamed.\n\nArgs:\n    user_id (str): The user requesting the rename.\n    folder_id (str): The id of the folder to rename.\n    new_name (str): The new name for the folder.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Folder renamed successfully.\" }\n        - On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Only folders owned by the user may be renamed.\n    - Reserved folders cannot be renamed.\n    - The new name must not duplicate another folder in the same parent folder for the user.\n    - The new name must be non-empty and not only whitespace.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "folder_id": {
+            "type": "string"
+          },
+          "new_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "folder_id",
+          "new_name"
+        ]
+      }
+    },
+    {
+      "name": "remove_folder",
+      "description": "Delete a user-created folder for the given user.\nReserved folders (\"Inbox\", \"Sent\", \"Trash\", \"Archive\") cannot be deleted.\nThe folder must be empty (contain no messages) before deletion.\n\nArgs:\n    user_id (str): The user performing the operation.\n    folder_id (str): The identifier of the folder to delete.\n\nReturns:\n    dict:\n        - success (bool)\n        - message (str) on success or error (str) on failure.\n\nConstraints:\n    - Only folders owned by the user can be removed.\n    - Reserved folders (\"Inbox\", \"Sent\", \"Trash\", \"Archive\") cannot be removed.\n    - Folder must be empty (no messages assigned to it).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "folder_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "folder_id"
+        ]
+      }
+    }
+  ]
+}

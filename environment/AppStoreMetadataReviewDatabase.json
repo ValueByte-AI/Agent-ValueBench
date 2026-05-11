@@ -1,0 +1,543 @@
+{
+  "env_name": "AppStoreMetadataReviewDatabase",
+  "description": "The Apple App Store metadata and review database is a structured system that aggregates, stores, and indexes information about iOS apps, including their unique identifiers, user reviews, country-specific content, and recommendation relationships. It facilitates retrieval, filtering, and sorting of app reviews, as well as exploration of metadata such as similar or related applications for discovery purposes. This environment underpins both developer-facing APIs and user-facing storefronts for app browsing, analytics, and reputation management.",
+  "initial_parameter_schema": {
+    "apps": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "developer_id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "icon_url": {
+            "type": "string"
+          },
+          "release_date": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "countries_available": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "reviews": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "type": "string"
+          },
+          "app_id": {
+            "type": "string"
+          },
+          "author_id": {
+            "type": "string"
+          },
+          "stars": {
+            "type": "integer"
+          },
+          "content": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "helpfulness_score": {
+            "type": "number"
+          },
+          "country": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id",
+          "app_id",
+          "author_id",
+          "stars",
+          "content",
+          "timestamp",
+          "helpfulness_score",
+          "country",
+          "language",
+          "status"
+        ]
+      }
+    },
+    "similar_app_relationships": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "source_app_id": {
+            "type": "string"
+          },
+          "target_app_id": {
+            "type": "string"
+          },
+          "similarity_score": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "source_app_id",
+          "target_app_id",
+          "similarity_score"
+        ]
+      }
+    },
+    "developers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "developer_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "organization": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "developer_id",
+          "name",
+          "organization",
+          "contact_info"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_app_by_id": [
+      "apps"
+    ],
+    "get_reviews_by_app_id": [
+      "apps",
+      "reviews"
+    ],
+    "get_reviews_by_app_and_country": [
+      "apps",
+      "reviews"
+    ],
+    "get_reviews_by_app_country_sorted_helpfulness": [
+      "apps",
+      "reviews"
+    ],
+    "get_review_by_id": [
+      "reviews"
+    ],
+    "get_app_similar_apps": [
+      "apps",
+      "similar_app_relationships"
+    ],
+    "get_developer_by_id": [
+      "developers"
+    ],
+    "list_apps_by_developer": [
+      "apps",
+      "developers"
+    ],
+    "get_review_helpfulness_score": [
+      "reviews"
+    ],
+    "list_available_countries_for_app": [
+      "apps"
+    ],
+    "hide_review": [
+      "reviews"
+    ],
+    "unhide_review": [
+      "reviews"
+    ],
+    "add_review": [
+      "apps",
+      "reviews"
+    ],
+    "update_review_helpfulness_score": [
+      "reviews"
+    ],
+    "add_similar_app_relationship": [
+      "apps",
+      "similar_app_relationships"
+    ],
+    "remove_similar_app_relationship": [
+      "similar_app_relationships"
+    ],
+    "update_app_metadata": [
+      "apps"
+    ],
+    "add_app_to_country": [
+      "apps"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_app_by_id",
+      "description": "Retrieve metadata for a given app by its app_id.\n\nArgs:\n    app_id (str): The unique app identifier.\n\nReturns:\n    dict: \n        - On success: {\n              \"success\": True,\n              \"data\": AppInfo  # The metadata dict for this app\n          }\n        - On failure (app not found): {\n              \"success\": False,\n              \"error\": \"App ID not found\"\n          }\nConstraints:\n    - The given app_id must exist in the app store database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_id"
+        ]
+      }
+    },
+    {
+      "name": "get_reviews_by_app_id",
+      "description": "Retrieve all reviews associated with a specific app_id.\n\nArgs:\n    app_id (str): The unique identifier for the app.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": List[ReviewInfo]  # All reviews for the app (may be empty)\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": str  # \"App does not exist\"\n            }\n\nConstraints:\n    - The app_id must exist in the database.\n    - Returns all reviews for the app regardless of visibility status, country, or language.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_id"
+        ]
+      }
+    },
+    {
+      "name": "get_reviews_by_app_and_country",
+      "description": "Retrieve visible reviews for the given app_id, filtered by the specified country.\n\nArgs:\n    app_id (str): The unique identifier of the app whose reviews should be returned.\n    country (str): The country code to filter reviews (e.g., 'US', 'CN').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ReviewInfo]  # Only visible reviews for that app and country\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # App does not exist, etc.\n    }\n\nConstraints:\n    - App must exist.\n    - Only reviews with status 'visible' are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_id",
+          "country"
+        ]
+      }
+    },
+    {
+      "name": "get_reviews_by_app_country_sorted_helpfulness",
+      "description": "Retrieve all 'visible' reviews for a specified app_id and country,\nsorted by helpfulness_score in descending order.\n\nArgs:\n    app_id (str): The unique identifier for the app.\n    country (str): The country code to filter reviews by.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ReviewInfo],  # can be empty if no matching reviews\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # if app_id not found or other error\n    }\n\nConstraints:\n    - app_id must exist in the database.\n    - Only reviews with status \"visible\" are included.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_id",
+          "country"
+        ]
+      }
+    },
+    {
+      "name": "get_review_by_id",
+      "description": "Retrieve a specific review by its unique review_id.\n\nArgs:\n    review_id (str): Unique identifier of the review to fetch.\n\nReturns:\n    dict: \n        On success:\n            { \"success\": True, \"data\": ReviewInfo }\n        On failure:\n            { \"success\": False, \"error\": \"Review not found\" }\n\nConstraints:\n    - The review_id must exist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id"
+        ]
+      }
+    },
+    {
+      "name": "get_app_similar_apps",
+      "description": "Retrieve similar (recommended/related) apps for a given source_app_id.\n\nArgs:\n    source_app_id (str): The app_id for which to fetch similar apps.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": List[{\"app\": AppInfo, \"similarity_score\": float}]\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": str  # reason (e.g., app not found)\n            }\n\nConstraints:\n    - source_app_id must refer to an existing app.\n    - Similar app relationships should link existing apps only (but double-check target existence).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "source_app_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_app_id"
+        ]
+      }
+    },
+    {
+      "name": "get_developer_by_id",
+      "description": "Retrieve information about a developer given their developer_id.\n\nArgs:\n    developer_id (str): Unique identifier for the developer.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"data\": DeveloperInfo }\n        On failure: { \"success\": False, \"error\": \"Developer not found\" }\nConstraints:\n    - The developer_id must correspond to an existing developer in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "developer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "developer_id"
+        ]
+      }
+    },
+    {
+      "name": "list_apps_by_developer",
+      "description": "List all applications published by the given developer.\n\nArgs:\n    developer_id (str): Unique identifier for the developer.\n\nReturns:\n    dict: \n        - success: True, data: List[AppInfo] where each app's developer_id matches.\n        - success: False, error: if the developer_id does not exist.\n\nConstraints:\n    - The developer_id must exist in the developers dictionary.\n    - If the developer exists but has published no apps, data will be empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "developer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "developer_id"
+        ]
+      }
+    },
+    {
+      "name": "get_review_helpfulness_score",
+      "description": "Retrieve the helpfulness score of a specific review.\n\nArgs:\n    review_id (str): The unique ID of the review.\n\nReturns:\n    dict: {\n        'success': True,\n        'data': float  # The helpfulness score of the review\n    }\n    or\n    {\n        'success': False,\n        'error': str  # Error message, e.g., review not found\n    }\n\nConstraints:\n    - Review must exist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id"
+        ]
+      }
+    },
+    {
+      "name": "list_available_countries_for_app",
+      "description": "List all countries in which a specific app is available.\n\nArgs:\n    app_id (str): The unique identifier for the app.\n\nReturns:\n    dict:\n        - On success:\n            {\"success\": True, \"data\": List[str]}  # list of country codes or names\n        - On error:\n            {\"success\": False, \"error\": \"App not found\"}\nConstraints:\n    - The specified app_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_id"
+        ]
+      }
+    },
+    {
+      "name": "hide_review",
+      "description": "Set the status of a review to 'hidden' for visibility management.\n\nArgs:\n    review_id (str): The unique ID of the review to hide.\n\nReturns:\n    dict:\n        On success:\n            { 'success': True, 'message': 'Review <review_id> hidden.' }\n        On failure:\n            { 'success': False, 'error': 'Review not found.' }\n\nConstraints:\n    - If the review does not exist, returns an error.\n    - If the review is already hidden, treats as success (idempotent).\n    - Only modifies the 'status' field of the review.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id"
+        ]
+      }
+    },
+    {
+      "name": "unhide_review",
+      "description": "Set the status of a review with the given review_id back to \"visible\".\n\nArgs:\n    review_id (str): The ID of the review whose status is to be set to \"visible\".\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"message\": \"Review set to visible.\"\n        }\n        On error (e.g., review_id not found):\n        {\n            \"success\": False,\n            \"error\": \"Review not found\"\n        }\n\nConstraints:\n    - The review_id must exist in the database.\n    - No side effect other than updating the status field for the matched review.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id"
+        ]
+      }
+    },
+    {
+      "name": "add_review",
+      "description": "Add a new review for an app, validating existence of app, country availability, \nand uniqueness constraints.\n\nArgs:\n    review_id (str): Unique identifier for the review.\n    app_id (str): ID of the app being reviewed.\n    author_id (str): Reviewer user ID.\n    stars (int): Star rating (1-5).\n    content (str): Review text.\n    timestamp (str): Creation time (ISO format).\n    country (str): Country of the review.\n    language (str): Language of the review.\n    helpfulness_score (float, optional): Helpfulness score. Defaults to 0.0.\n    status (str, optional): Review status ('visible', etc). Defaults to 'visible'.\n\nReturns:\n    dict: Success message or error:\n        { \"success\": True, \"message\": \"Review added successfully\" }\n        or\n        { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Review must be for an existing app_id.\n    - Country must be in the app's countries_available list.\n    - review_id must be unique.\n    - stars must be from 1 to 5 (inclusive).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "type": "string"
+          },
+          "app_id": {
+            "type": "string"
+          },
+          "author_id": {
+            "type": "string"
+          },
+          "stars": {
+            "type": "integer"
+          },
+          "content": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "helpfulness_score": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id",
+          "app_id",
+          "author_id",
+          "stars",
+          "content",
+          "timestamp",
+          "country",
+          "language"
+        ]
+      }
+    },
+    {
+      "name": "update_review_helpfulness_score",
+      "description": "Update the helpfulness_score of a specified review.\n\nArgs:\n    review_id (str): The unique identifier of the review to update.\n    helpfulness_score (float): The new helpfulness score to set.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Review helpfulness_score updated.\"\n    } \n    or \n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - The review must exist.\n    - The score should be a float (generally >= 0.0).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "type": "string"
+          },
+          "helpfulness_score": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "review_id",
+          "helpfulness_score"
+        ]
+      }
+    },
+    {
+      "name": "add_similar_app_relationship",
+      "description": "Create a new similar app relationship between two valid app_ids.\n\nArgs:\n    source_app_id (str): The app recommending another app.\n    target_app_id (str): The app being recommended as similar.\n    similarity_score (float): The degree of similarity (should be between 0 and 1, but not strictly enforced).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Similar app relationship added between <source_app_id> and <target_app_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason string>\n    }\n\nConstraints:\n    - Both app ids must exist in the database.\n    - No duplicate exact (source, target) relationship is allowed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "source_app_id": {
+            "type": "string"
+          },
+          "target_app_id": {
+            "type": "string"
+          },
+          "similarity_score": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "source_app_id",
+          "target_app_id",
+          "similarity_score"
+        ]
+      }
+    },
+    {
+      "name": "remove_similar_app_relationship",
+      "description": "Remove all similarity relationships between source_app_id and target_app_id.\n\nArgs:\n    source_app_id (str): The app_id of the source app.\n    target_app_id (str): The app_id of the target app.\n\nReturns:\n    dict: \n        - {\"success\": True, \"message\": \"...\"} on success.\n        - {\"success\": False, \"error\": \"...\"} if the relationship did not exist.\n\nConstraints:\n    - If multiple such relationships are present, all are removed.\n    - Relationship must exist to be removed; otherwise, returns error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "source_app_id": {
+            "type": "string"
+          },
+          "target_app_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_app_id",
+          "target_app_id"
+        ]
+      }
+    },
+    {
+      "name": "update_app_metadata",
+      "description": "Edit the metadata of an existing app.\n\nArgs:\n    app_id (str): The ID of the app whose metadata is to be updated.\n    updated_fields (dict): A dictionary of {field: value} pairs to update in the app's metadata.\n        Allowed keys include any AppInfo fields such as description, category, icon_url, etc.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"App metadata updated successfully.\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The app must exist.\n    - Only existing AppInfo fields are updated; unknown fields are ignored.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          },
+          "updated_fields": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "app_id",
+          "updated_fields"
+        ]
+      }
+    },
+    {
+      "name": "add_app_to_country",
+      "description": "Add the specified ISO country code to the app's countries_available list.\n\nArgs:\n    app_id (str): Unique identifier for the app.\n    country_code (str): ISO country code to add to the app's availability.\n\nReturns:\n    dict:\n        - {\"success\": True, \"message\": str} on success (including if already present).\n        - {\"success\": False, \"error\": str} on failure (e.g., app_id not found).\n\nConstraints:\n    - app_id must exist in self.apps.\n    - countries_available list must contain at most one of each country code.\n\nNotes:\n    - If app is already available in the given country, operation is a no-op (idempotent).\n    - If countries_available attribute is missing, it will be created.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          },
+          "country_code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_id",
+          "country_code"
+        ]
+      }
+    }
+  ]
+}

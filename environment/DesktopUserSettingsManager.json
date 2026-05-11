@@ -1,0 +1,533 @@
+{
+  "env_name": "DesktopUserSettingsManager",
+  "description": "A desktop environment user settings/profile manager provides centralized control over personalized display configurations, accessibility options, and scheduled reminders for individual users. It maintains persistent profiles that store preferences such as color schemes, text sizes, notification schedules, and other comfort-related features. Users interact with these settings to tailor their computing experience, supporting productivity, accessibility, and well-being.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "associated_profile": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "associated_profile"
+        ]
+      }
+    },
+    "profiles": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "profile_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "profile_name": {
+            "type": "string"
+          },
+          "active_status": {
+            "type": "boolean"
+          },
+          "color_scheme": {
+            "type": "string"
+          },
+          "color_temperature": {
+            "type": "number"
+          },
+          "text_size": {
+            "type": "number"
+          },
+          "other_display_settings": {},
+          "accessibility_option": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile_id",
+          "user_id",
+          "profile_name",
+          "active_status",
+          "color_scheme",
+          "color_temperature",
+          "text_size",
+          "other_display_settings",
+          "accessibility_option"
+        ]
+      }
+    },
+    "reminders": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "reminder_id": {
+            "type": "string"
+          },
+          "profile_id": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "recurrence_interval_minutes": {
+            "type": "integer"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "next_trigger_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reminder_id",
+          "profile_id",
+          "message",
+          "recurrence_interval_minutes",
+          "enabled",
+          "next_trigger_time"
+        ]
+      }
+    },
+    "validate_color_temperature_in_range": {
+      "type": "string"
+    },
+    "validate_text_size_in_range": {
+      "type": "string"
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_username": [
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "list_profiles_for_user": [
+      "profiles",
+      "users"
+    ],
+    "get_active_profile_for_user": [
+      "profiles",
+      "users"
+    ],
+    "get_profile_by_id": [
+      "profiles"
+    ],
+    "list_reminders_for_profile": [
+      "profiles",
+      "reminders"
+    ],
+    "get_reminder_by_id": [
+      "reminders"
+    ],
+    "validate_color_temperature_in_range": [],
+    "validate_text_size_in_range": [],
+    "validate_reminder_recurrence_positive": [
+      "reminders"
+    ],
+    "create_profile": [
+      "profiles",
+      "users",
+      "validate_color_temperature_in_range",
+      "validate_text_size_in_range"
+    ],
+    "set_profile_active_status": [
+      "profiles",
+      "users"
+    ],
+    "update_profile_settings": [
+      "profiles",
+      "validate_color_temperature_in_range",
+      "validate_text_size_in_range"
+    ],
+    "create_reminder": [
+      "profiles",
+      "reminders"
+    ],
+    "update_reminder": [
+      "reminders"
+    ],
+    "delete_reminder": [
+      "reminders"
+    ],
+    "deactivate_profile": [
+      "profiles"
+    ],
+    "delete_profile": [
+      "profiles",
+      "reminders",
+      "users"
+    ],
+    "associate_profile_with_user": [
+      "profiles",
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_username",
+      "description": "Retrieve user information for the specified username.\n\nArgs:\n    username (str): The username to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo  # The user information dictionary\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g., \"User not found\"\n    }\n\nConstraints:\n    - Username must match exactly (case-sensitive).\n    - If no such user exists, return success=False.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user information given a user's unique id.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\nConstraints:\n    - user_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_profiles_for_user",
+      "description": "List all profiles (with metadata) associated with a given user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[ProfileInfo],  # List of associated ProfileInfo (may be empty)\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Description of error (e.g., user not found)\n        }\n\nConstraints:\n    - User with user_id must exist.\n    - Only profiles that actually exist in the system will be returned (ignoring any dangling ids).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_active_profile_for_user",
+      "description": "Retrieve the currently active profile for a user by user_id.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: \n        On success:\n            { \"success\": True, \"data\": ProfileInfo }  # The active profile's info.\n        On failure:\n            { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - User must exist.\n    - Per system constraints, there must be at most one active profile for any user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_profile_by_id",
+      "description": "Retrieve detailed information for a profile by its id.\n\nArgs:\n    profile_id (str): The ID of the profile to retrieve.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"data\": ProfileInfo }\n        - On failure (profile does not exist): { \"success\": False, \"error\": str }\n\nConstraints:\n    - Profile must exist in the manager.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "profile_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile_id"
+        ]
+      }
+    },
+    {
+      "name": "list_reminders_for_profile",
+      "description": "List all reminders associated with the specified profile.\n\nArgs:\n    profile_id (str): The identifier of the profile whose reminders should be listed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ReminderInfo],  # May be empty if no reminders are found.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If the profile does not exist.\n    }\n\nConstraints:\n    - The profile_id must correspond to an existing profile.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "profile_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile_id"
+        ]
+      }
+    },
+    {
+      "name": "get_reminder_by_id",
+      "description": "Retrieve information for a reminder using its unique reminder_id.\n\nArgs:\n    reminder_id (str): The ID of the reminder to retrieve.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ReminderInfo,  # Reminder metadata\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason the reminder could not be found\n    }\n\nConstraints:\n    - The reminder_id must exist in the managed reminders.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reminder_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reminder_id"
+        ]
+      }
+    },
+    {
+      "name": "validate_color_temperature_in_range",
+      "description": "Check whether the provided color_temperature is within the system-supported range.\n\nArgs:\n    color_temperature (float): The color temperature (in Kelvin) to check.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": bool,  # True if in range, else False\n    }\n    If input is not a number, result is False.\n\nConstraints:\n    - Accepts only numeric input (float/int).\n    - System-supported range is 1000.0 to 10000.0 inclusive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "color_temperature": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "color_temperature"
+        ]
+      }
+    },
+    {
+      "name": "validate_text_size_in_range",
+      "description": "Check if a given text size value falls within the system-supported range.\n\nArgs:\n    text_size (float): The text size to validate.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": True/False   # True if within range, False otherwise\n        }\n    or\n        {\n            \"success\": False,\n            \"error\": str         # Explanation of error\n        }\n\nConstraints:\n    - System-supported text size is assumed to be between 8.0 and 72.0 (inclusive).\n    - If text_size is not a float/int, operation fails.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "text_size": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "text_size"
+        ]
+      }
+    },
+    {
+      "name": "validate_reminder_recurrence_positive",
+      "description": "Confirm that a specified recurrence interval for a reminder is a positive integer.\n\nArgs:\n    reminder_id (str): The ID of the reminder to validate.\n\nReturns:\n    dict: \n        - { \"success\": True, \"data\": True } if recurrence interval is a positive integer\n        - { \"success\": True, \"data\": False } if not (zero, negative, non-integer)\n        - { \"success\": False, \"error\": \"Reminder does not exist\" } if reminder is missing\n\nConstraints:\n    - Reminder must exist.\n    - Recurrence interval must be an integer greater than 0.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reminder_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reminder_id"
+        ]
+      }
+    },
+    {
+      "name": "create_profile",
+      "description": "Create a new profile for a user with specified settings.\n\nArgs:\n    user_id (str): User to whom the profile will belong (must exist).\n    profile_name (str): Name of the profile.\n    color_scheme (str): Color scheme preference.\n    color_temperature (float): Must be within supported system range.\n    text_size (float): Must be within supported system range.\n    other_display_settings (Any): Additional display preferences/settings.\n    accessibility_option (str): Accessibility preference.\n\nReturns:\n    dict: \n      On success:\n        {\"success\": True, \"message\": \"Profile created\", \"profile\": <ProfileInfo>}\n      On error:\n        {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - user_id must exist.\n    - color_temperature in system-supported range.\n    - text_size in system-supported range.\n    - Profile will be inactive by default (active_status=False).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "profile_name": {
+            "type": "string"
+          },
+          "color_scheme": {
+            "type": "string"
+          },
+          "color_temperature": {
+            "type": "number"
+          },
+          "text_size": {
+            "type": "number"
+          },
+          "other_display_settings": {},
+          "accessibility_option": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "profile_name",
+          "color_scheme",
+          "color_temperature",
+          "text_size",
+          "other_display_settings",
+          "accessibility_option"
+        ]
+      }
+    },
+    {
+      "name": "set_profile_active_status",
+      "description": "Set a profile as active and deactivate all other profiles for the same user.\n\nArgs:\n    profile_id (str): The ID of the profile to activate.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Profile <profile_id> is now active for user <user_id>\" }\n        - On error:   { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n  - The profile must exist.\n  - The associated user must exist.\n  - Only one profile per user is active at a time (enforced by deactivating others).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "profile_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile_id"
+        ]
+      }
+    },
+    {
+      "name": "update_profile_settings",
+      "description": "Modify color temperature, text size, color scheme, or accessibility options of a profile.\n\nArgs:\n    profile_id (str): The unique id of the profile to update.\n    color_temperature (float, optional): Desired color temperature. Must be within supported range.\n    text_size (float, optional): Desired text size. Must be within supported range.\n    color_scheme (str, optional): Desired color scheme.\n    accessibility_option (str, optional): Accessibility option string.\n    other_display_settings (Any, optional): Arbitrary other display-related settings.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Profile settings updated successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\nConstraints:\n    - Profile must exist.\n    - color_temperature/text_size, if provided, must be within supported range.\n    - No update is performed if no updatable fields are provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "profile_id": {
+            "type": "string"
+          },
+          "color_temperature": {
+            "type": "number"
+          },
+          "text_size": {
+            "type": "number"
+          },
+          "color_scheme": {
+            "type": "string"
+          },
+          "accessibility_option": {
+            "type": "string"
+          },
+          "other_display_settings": {}
+        },
+        "required": [
+          "profile_id"
+        ]
+      }
+    },
+    {
+      "name": "create_reminder",
+      "description": "Add a new reminder associated with a profile.\n\nArgs:\n    profile_id (str): Profile to which the reminder will be attached.\n    message (str): The reminder message.\n    recurrence_interval_minutes (int): Frequency (positive integer, in minutes).\n    enabled (bool): Whether the reminder is enabled upon creation.\n    next_trigger_time (str, optional): The next trigger time (ISO string or timestamp). If omitted, the environment assigns a deterministic default slot. When a task does not specify a trigger time, callers should omit this field rather than invent one.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Reminder created.\",\n        \"reminder_id\": str\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Profile must exist.\n    - Recurrence interval must be positive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "profile_id": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "recurrence_interval_minutes": {
+            "type": "integer"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "next_trigger_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile_id",
+          "message",
+          "recurrence_interval_minutes",
+          "enabled"
+        ]
+      }
+    },
+    {
+      "name": "update_reminder",
+      "description": "Modify the message, recurrence interval, and/or enabled status of an existing reminder.\n\nArgs:\n    reminder_id (str): The ID of the reminder to update.\n    message (str, optional): The new reminder message (if updating).\n    recurrence_interval_minutes (int, optional): New recurrence interval in minutes (must be positive).\n    enabled (bool, optional): Enabled status of the reminder.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Reminder updated successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Reminder must exist.\n    - If updating recurrence_interval_minutes, it must be a positive integer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reminder_id": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "recurrence_interval_minutes": {
+            "type": "integer"
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "reminder_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_reminder",
+      "description": "Remove a specific reminder from the system.\n\nArgs:\n    reminder_id (str): The ID of the reminder to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Reminder <reminder_id> deleted successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reminder does not exist.\"\n    }\n\nConstraints:\n    - The reminder_id must exist in the reminders dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reminder_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reminder_id"
+        ]
+      }
+    },
+    {
+      "name": "deactivate_profile",
+      "description": "Deactivate a profile by setting its active_status to False.\n\nArgs:\n    profile_id (str): The ID of the profile to deactivate.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Profile '<profile_id>' deactivated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The profile_id must exist in self.profiles.\n    - Operation is idempotent (if already deactivated, it is still treated as success).\n    - Deactivating a profile does not activate another profile.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "profile_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_profile",
+      "description": "Remove a profile and all its associated reminders from the system.\nAlso removes the profile from the associated user's profile list.\n\nArgs:\n    profile_id (str): The ID of the profile to delete.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"message\": \"Profile and associated reminders deleted.\"\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": \"Profile not found.\"\n        }\n\nConstraints enforced:\n    - Profile must exist.\n    - All reminders associated with the profile are deleted.\n    - Profile is removed from the user's profile list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "profile_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile_id"
+        ]
+      }
+    },
+    {
+      "name": "associate_profile_with_user",
+      "description": "Link an existing profile_id to a user's associated_profile list.\n\nArgs:\n    user_id (str): The ID of the user to associate the profile with.\n    profile_id (str): The ID of the profile to link.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Profile <profile_id> associated with user <user_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message describing the failure reason.\n    }\n\nConstraints:\n    - The user must exist.\n    - The profile must exist.\n    - The profile must reference (belong to) the user.\n    - Do not add duplicates if already associated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "profile_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "profile_id"
+        ]
+      }
+    }
+  ]
+}

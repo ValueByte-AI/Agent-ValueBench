@@ -1,0 +1,454 @@
+{
+  "env_name": "SaaSNotificationPreferenceSystem",
+  "description": "A SaaS notification preference management system maintains detailed records of users, their subscriptions, and their individualized notification settings for various event types. It tracks which users are subscribed to which notification channels and allows updating preferences such as opting out of specific notifications while retaining others. The system enables dynamic management of user communication and helps tailor user experience by honoring notification preferences across the service.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "account_sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "email",
+          "account_sta"
+        ]
+      }
+    },
+    "subscriptions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "channel_type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subscription_id",
+          "user_id",
+          "channel_type",
+          "status"
+        ]
+      }
+    },
+    "event_types": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "event_type_id": {
+            "type": "string"
+          },
+          "event_type_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_type_id",
+          "event_type_name",
+          "description"
+        ]
+      }
+    },
+    "notification_preferences": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string"
+          },
+          "event_type_id": {
+            "type": "string"
+          },
+          "is_enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "subscription_id",
+          "event_type_id",
+          "is_enabled"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_user_by_email": [
+      "users"
+    ],
+    "list_user_subscriptions": [
+      "subscriptions",
+      "users"
+    ],
+    "get_subscription_by_id": [
+      "subscriptions"
+    ],
+    "check_subscription_active": [
+      "subscriptions"
+    ],
+    "list_all_event_types": [
+      "event_types"
+    ],
+    "get_event_type_by_name": [
+      "event_types"
+    ],
+    "get_event_type_by_id": [
+      "event_types"
+    ],
+    "get_notification_preference": [
+      "notification_preferences"
+    ],
+    "list_preferences_for_subscription": [
+      "notification_preferences",
+      "subscriptions"
+    ],
+    "set_notification_preference": [
+      "event_types",
+      "notification_preferences",
+      "subscriptions"
+    ],
+    "bulk_update_preferences": [
+      "event_types",
+      "notification_preferences",
+      "subscriptions"
+    ],
+    "create_notification_preference": [
+      "event_types",
+      "notification_preferences",
+      "subscriptions"
+    ],
+    "delete_notification_preference": [
+      "notification_preferences"
+    ],
+    "update_subscription_status": [
+      "subscriptions"
+    ],
+    "add_new_subscription": [
+      "subscriptions",
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve a user's information by user_id.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"User not found\",\n    }\n\nConstraints:\n    - Returns user info if the user_id exists.\n    - Returns an error if the user_id does not exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_email",
+      "description": "Retrieve a user's information given their email address.\n\nArgs:\n    email (str): The user's email address.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo,\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str,  # Reason, e.g. user not found or invalid input\n    }\n\nConstraints:\n    - Email must be non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      }
+    },
+    {
+      "name": "list_user_subscriptions",
+      "description": "List all subscriptions belonging to a specified user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": List[SubscriptionInfo]\n            }\n        - On failure (user does not exist):\n            {\n                \"success\": False,\n                \"error\": \"User does not exist\"\n            }\n\nConstraints:\n    - Only includes subscriptions of the specified user.\n    - User must exist; otherwise, error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_subscription_by_id",
+      "description": "Retrieve details of a single subscription using subscription_id.\n\nArgs:\n    subscription_id (str): The ID of the subscription to fetch.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": SubscriptionInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g., \"Subscription not found\")\n    }\n\nConstraints:\n    - Returns information for the specified subscription_id if it exists.\n    - No creation or modification performed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subscription_id"
+        ]
+      }
+    },
+    {
+      "name": "check_subscription_active",
+      "description": "Check if a particular subscription is currently active.\n\nArgs:\n    subscription_id (str): The subscription ID to check.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"data\": bool }\n            - data=True if the subscription is currently active.\n            - data=False if subscription exists but is not active.\n        On failure: { \"success\": False, \"error\": str }\n            - error contains the reason (e.g., subscription does not exist).\n\nConstraints:\n    - The subscription must exist in the system.\n    - 'Active' is defined as the subscription's status == \"active\" (case insensitive).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subscription_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_event_types",
+      "description": "Retrieve a list of all definable notification event types in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[EventTypeInfo]  # May be empty if no event types defined\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_event_type_by_name",
+      "description": "Retrieve event type details given its name.\n\nArgs:\n    event_type_name (str): Name of the event type (e.g., \"account verification\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": EventTypeInfo,  # Event type details if found.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"Event type not found\", \"Invalid event type name\", etc.\n    }\n\nConstraints:\n    - Returns the first event type with that name.\n    - Case-sensitive (unless spec says otherwise).\n    - Event type name must not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_type_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_type_name"
+        ]
+      }
+    },
+    {
+      "name": "get_event_type_by_id",
+      "description": "Retrieve the event type details for the given event_type_id.\n\nArgs:\n    event_type_id (str): The unique identifier of the event type.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": EventTypeInfo  # Event type details\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason why retrieval failed (not found)\n    }\n\nConstraints:\n    - event_type_id must exist in the event types map.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_type_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_type_id"
+        ]
+      }
+    },
+    {
+      "name": "get_notification_preference",
+      "description": "Retrieve the notification preference (is_enabled) for a specific (subscription_id, event_type_id) pair.\n\nArgs:\n    subscription_id (str): The subscription identifier.\n    event_type_id (str): The event type identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": NotificationPreferenceInfo   # {subscription_id, event_type_id, is_enabled}\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If the notification preference pair does not exist.\n    }\n\nConstraints:\n    - The (subscription_id, event_type_id) pair must exist in the notification_preferences.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string"
+          },
+          "event_type_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subscription_id",
+          "event_type_id"
+        ]
+      }
+    },
+    {
+      "name": "list_preferences_for_subscription",
+      "description": "Retrieve all notification preferences (across all event types) for a given subscription.\n\nArgs:\n    subscription_id (str): The ID of the subscription to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[NotificationPreferenceInfo],\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,  # e.g. \"Subscription does not exist\"\n    }\n\nConstraints:\n    - The subscription must exist in the system.\n    - Only preferences tied to this subscription (not others) are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subscription_id"
+        ]
+      }
+    },
+    {
+      "name": "set_notification_preference",
+      "description": "Enable or disable notifications for a specific (subscription_id, event_type_id) pair.\n\nArgs:\n    subscription_id (str): The subscription to update.\n    event_type_id (str): The event type to update.\n    is_enabled (bool): Whether notifications should be enabled.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Notification preference updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason\"\n    }\n\nConstraints:\n    - Only updates the specified notification preference, not other event types/subscriptions.\n    - The subscription must exist and be active.\n    - The event type must exist.\n    - A notification preference for this (subscription_id, event_type_id) must already exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string"
+          },
+          "event_type_id": {
+            "type": "string"
+          },
+          "is_enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "subscription_id",
+          "event_type_id",
+          "is_enabled"
+        ]
+      }
+    },
+    {
+      "name": "bulk_update_preferences",
+      "description": "Update (enable/disable) notification preferences for multiple event types in a single subscription.\n\nArgs:\n    subscription_id (str): The subscription whose preferences are being updated.\n    updates (List[Dict]): Each dict contains:\n        - event_type_id (str): ID of the event type to update.\n        - is_enabled (bool): Desired preference state.\n\nReturns:\n    dict:\n        On success:\n        {\n            \"success\": True,\n            \"message\": \"Updated n preferences for subscription <id>\"\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": <error string>\n        }\n    - If mixed (partial update): report which were changed, which failed with reasons.\n\nConstraints:\n  - Subscription must exist and be ACTIVE.\n  - Each (subscription_id, event_type_id) must already exist in notification_preferences.\n  - Disables/enables apply only to the specified subscription/event types.\n  - Invalid event types, or missing NotificationPreference entries are reported and skipped.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "event_type_id": {
+                  "type": "string"
+                },
+                "is_enabled": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "event_type_id",
+                "is_enabled"
+              ]
+            }
+          }
+        },
+        "required": [
+          "subscription_id",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "create_notification_preference",
+      "description": "Create a new notification preference for a (subscription_id, event_type_id) pair if not existing.\n\nArgs:\n    subscription_id (str): The subscription to associate the preference with.\n    event_type_id (str): The event type for the notification preference.\n    is_enabled (bool): Whether notifications are enabled for this type in this subscription.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Notification preference created for subscription_id X and event_type_id Y.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Only create if such a preference does not already exist.\n    - Subscription must exist and be 'active'.\n    - Event type must exist.\n    - Preference applies to given subscription only.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string"
+          },
+          "event_type_id": {
+            "type": "string"
+          },
+          "is_enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "subscription_id",
+          "event_type_id",
+          "is_enabled"
+        ]
+      }
+    },
+    {
+      "name": "delete_notification_preference",
+      "description": "Remove a notification preference entry for the given (subscription_id, event_type_id) pair.\n\nArgs:\n    subscription_id (str): The ID of the subscription.\n    event_type_id (str): The ID of the event type.\n\nReturns:\n    dict:\n        - On success: {\n            \"success\": True,\n            \"message\": \"Preference removed for (subscription_id, event_type_id)\"\n          }\n        - On failure: {\n            \"success\": False,\n            \"error\": \"<Reason>\"\n          }\n\nConstraints:\n    - Only affects the specified (subscription_id, event_type_id) pair.\n    - If entry does not exist, return a failure message.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string"
+          },
+          "event_type_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subscription_id",
+          "event_type_id"
+        ]
+      }
+    },
+    {
+      "name": "update_subscription_status",
+      "description": "Change the status of a subscription (e.g., activate/deactivate).\n\nArgs:\n    subscription_id (str): The unique identifier of the subscription to update.\n    new_status (str): The new status value for the subscription.\n\nReturns:\n    dict: On success: {\n        \"success\": True,\n        \"message\": \"Subscription <subscription_id> status updated to <new_status>\"\n    }\n    On error: {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The subscription_id must exist in the system.\n    - The status field is updated regardless of its prior value.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subscription_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "add_new_subscription",
+      "description": "Add a new notification subscription for a user (e.g., a new channel like push, SMS).\n\nArgs:\n    user_id (str): The user who will own the subscription.\n    channel_type (str): Notification channel type (e.g., 'email', 'SMS', 'push').\n    status (str): Status of the subscription, default is 'active'.\n    subscription_id (str, optional): Optional explicit ID; if None, a unique one is generated.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"...\", \"subscription_id\": str }\n        - On failure: { \"success\": False, \"error\": str }\n\nConstraints:\n    - User must exist.\n    - User cannot have more than one subscription with the same channel_type.\n    - subscription_id must be unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "channel_type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "subscription_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "channel_type"
+        ]
+      }
+    }
+  ]
+}

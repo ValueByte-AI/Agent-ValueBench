@@ -1,0 +1,456 @@
+{
+  "env_name": "CircleCIEnvironmentVariableManager",
+  "description": "CircleCI environment variable management enables users to set, update, and retrieve configuration variables that influence how builds and workflows are executed. Variables are maintained per project or context, ensuring flexibility and security for deployment and CI/CD operations. The system supports typical operations like adding new variables, updating values, and removing outdated variables, while maintaining associations with build jobs and related settings.",
+  "initial_parameter_schema": {
+    "scopes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "scope_id": {
+            "type": "string"
+          },
+          "scope_type": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope_id",
+          "scope_type",
+          "name",
+          "description"
+        ]
+      }
+    },
+    "variables": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "value": {
+              "type": "string"
+            },
+            "created_at": {
+              "type": "string"
+            },
+            "updated_at": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "value",
+            "created_at",
+            "updated_at"
+          ]
+        }
+      }
+    },
+    "build_jobs": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "scope_id": {
+            "type": "string"
+          },
+          "triggered_by": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "associated_variables": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "job_id",
+          "scope_id",
+          "triggered_by",
+          "status",
+          "associated_variables"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_scope_by_name": [
+      "scopes"
+    ],
+    "get_scope_by_id": [
+      "scopes"
+    ],
+    "list_scopes": [
+      "scopes"
+    ],
+    "list_variables_in_scope": [
+      "scopes",
+      "variables"
+    ],
+    "get_variable_info": [
+      "variables"
+    ],
+    "check_variable_exists": [
+      "scopes",
+      "variables"
+    ],
+    "is_variable_secret": [
+      "variables"
+    ],
+    "list_build_jobs_by_scope": [
+      "build_jobs",
+      "scopes"
+    ],
+    "list_jobs_using_variable": [
+      "build_jobs",
+      "scopes",
+      "variables"
+    ],
+    "add_variable": [
+      "scopes",
+      "variables"
+    ],
+    "update_variable_value": [
+      "scopes",
+      "variables"
+    ],
+    "remove_variable": [
+      "scopes",
+      "variables"
+    ],
+    "rename_variable": [
+      "build_jobs",
+      "scopes",
+      "variables"
+    ],
+    "set_variable_secret_flag": [
+      "scopes",
+      "variables"
+    ],
+    "bulk_update_variables": [
+      "scopes",
+      "variables"
+    ],
+    "bulk_remove_variables": [
+      "scopes",
+      "variables"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_scope_by_name",
+      "description": "Retrieve details for a scope (project or context) by its name.\n\nArgs:\n    name (str): The name of the scope.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": ScopeInfo  # Information about the matching scope\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Scope with the specified name does not exist\"\n            }\n\nConstraints:\n    - No guarantee scope names are unique; returns the first match found.\n    - Permissions are not enforced in this method.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_scope_by_id",
+      "description": "Retrieve details for a scope using its unique id.\n\nArgs:\n    scope_id (str): The unique identifier for the scope.\n\nReturns:\n    dict: \n      - If found: {\"success\": True, \"data\": ScopeInfo}\n      - If not found: {\"success\": False, \"error\": \"Scope not found\"}\n\nConstraints:\n    - Scope id must exist in the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scope_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope_id"
+        ]
+      }
+    },
+    {
+      "name": "list_scopes",
+      "description": "List all scopes (projects and contexts) currently managed.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ScopeInfo]  # All managed scopes, may be empty if none.\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_variables_in_scope",
+      "description": "Retrieve all environment variables (names and metadata) for the given scope.\n\nArgs:\n    scope_id (str): ID of the project or context whose variables are to be listed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[EnvironmentVariableInfo],  # May be empty if no variables assigned\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., \"Scope does not exist\"\n    }\n\nConstraints:\n    - The scope must exist.\n    - All variables in the scope (if any) are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scope_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope_id"
+        ]
+      }
+    },
+    {
+      "name": "get_variable_info",
+      "description": "Retrieve metadata and value for a variable by name within the specified scope.\n\nArgs:\n    scope_id (str): The unique ID of the scope (project/context).\n    variable_name (str): The name of the environment variable.\n\nReturns:\n    dict: \n      - If found (and not secret): { \"success\": True, \"data\": EnvironmentVariableInfo }\n      - If found (but secret): { \"success\": True, \"data\": <metadata with value omitted> }\n      - If not found: { \"success\": False, \"error\": str }\n\nConstraints:\n    - Variable must exist in the given scope.\n    - If the variable's 'secret' flag is set (if modeled), do not include value in result.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scope_id": {
+            "type": "string"
+          },
+          "variable_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope_id",
+          "variable_name"
+        ]
+      }
+    },
+    {
+      "name": "check_variable_exists",
+      "description": "Determine if an environment variable with the given name exists in the specified scope.\n\nArgs:\n    scope_id (str): The identifier of the scope (project/context).\n    variable_name (str): The name of the environment variable.\n\nReturns:\n    dict:\n        - If scope not found:\n            { \"success\": False, \"error\": \"Scope not found\" }\n        - Else:\n            { \"success\": True, \"data\": bool }  # True if variable exists in scope, else False\n\nConstraints:\n    - Scope must exist.\n    - Variable names are checked case-sensitively and must be unique within their scope.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scope_id": {
+            "type": "string"
+          },
+          "variable_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope_id",
+          "variable_name"
+        ]
+      }
+    },
+    {
+      "name": "is_variable_secret",
+      "description": "Check if an environment variable in a given scope is marked as 'secret'.\n\nArgs:\n    scope_id (str): The scope identifier where the variable is defined.\n    variable_name (str): The name of the variable to check.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"is_secret\": bool  # True if marked secret, False otherwise\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # error message if scope or variable not found\n    }\n\nNotes/Constraints:\n    - If 'secret' flag is not present, the variable is considered not secret (False).\n    - Returns error if scope or variable does not exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scope_id": {
+            "type": "string"
+          },
+          "variable_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope_id",
+          "variable_name"
+        ]
+      }
+    },
+    {
+      "name": "list_build_jobs_by_scope",
+      "description": "List all build jobs associated with a particular scope.\n\nArgs:\n    scope_id (str): Unique identifier of the scope (project or context).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BuildJobInfo],  # List of build jobs (possibly empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g. scope does not exist\n    }\n\nConstraints:\n    - The provided scope_id must exist in self.scopes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scope_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope_id"
+        ]
+      }
+    },
+    {
+      "name": "list_jobs_using_variable",
+      "description": "List all build jobs that reference a specific environment variable in a given scope.\n\nArgs:\n    scope_id (str): The scope ID in which the variable is defined.\n    variable_name (str): The name of the environment variable.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BuildJobInfo],  # List of build jobs referencing the variable (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g. scope or variable does not exist\n    }\n\nConstraints:\n    - The scope must exist.\n    - The variable must exist in the given scope.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scope_id": {
+            "type": "string"
+          },
+          "variable_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope_id",
+          "variable_name"
+        ]
+      }
+    },
+    {
+      "name": "add_variable",
+      "description": "Add a new environment variable to the specified scope.\n\nArgs:\n    scope_id (str): ID of the scope (project/context) to add the variable to.\n    variable_name (str): Unique name for the variable within the scope.\n    value (str): Value of the environment variable.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"message\": \"Variable '<variable_name>' added to scope '<scope_id>'.\"\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": \"Scope does not exist.\"\n            }\n            or\n            {\n                \"success\": False,\n                \"error\": \"Variable name already exists in scope.\"\n            }\n\nConstraints:\n    - Scope must exist.\n    - Variable names must be unique within the scope.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scope_id": {
+            "type": "string"
+          },
+          "variable_name": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope_id",
+          "variable_name",
+          "value"
+        ]
+      }
+    },
+    {
+      "name": "update_variable_value",
+      "description": "Change the value of an existing environment variable in a scope.\n\nArgs:\n    scope_id (str): The ID of the scope containing the variable (project or context).\n    variable_name (str): The unique variable name within the scope.\n    new_value (str): The new value to set for the variable.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Variable value updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g. scope or variable does not exist\n    }\n\nConstraints:\n    - Scope must exist.\n    - Variable must exist in specified scope.\n    - On update, the variable's 'updated_at' field must be set to current timestamp.\n    - Secret flag handling (not shown here) could restrict value updating.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scope_id": {
+            "type": "string"
+          },
+          "variable_name": {
+            "type": "string"
+          },
+          "new_value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope_id",
+          "variable_name",
+          "new_value"
+        ]
+      }
+    },
+    {
+      "name": "remove_variable",
+      "description": "Delete/detach an environment variable from the given scope.\n\nArgs:\n    scope_id (str): The ID of the scope from which the variable should be removed.\n    variable_name (str): The name of the variable to remove.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"message\": \"Variable '<name>' removed from scope '<scope_id>'.\"}\n        - On failure: {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - scope_id must exist in self.scopes.\n    - variable_name must exist within self.variables[scope_id].\n    - Removing detaches the variable from scope and affects future builds.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scope_id": {
+            "type": "string"
+          },
+          "variable_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope_id",
+          "variable_name"
+        ]
+      }
+    },
+    {
+      "name": "rename_variable",
+      "description": "Rename an environment variable within a scope, enforcing unique names per scope.\n\nArgs:\n    scope_id (str): The id of the scope (project or context)\n    old_name (str): The current variable name\n    new_name (str): The desired new variable name\n\nReturns:\n    dict: Success or error message\n\nConstraints:\n    - Scope must exist in self.scopes\n    - Variable 'old_name' must exist in self.variables[scope_id]\n    - Variable 'new_name' must not already exist in self.variables[scope_id]\n    - Variable names are unique per scope\n    - If any build job's 'associated_variables' contains old_name, update to new_name\n    - Update updated_at timestamp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scope_id": {
+            "type": "string"
+          },
+          "old_name": {
+            "type": "string"
+          },
+          "new_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope_id",
+          "old_name",
+          "new_name"
+        ]
+      }
+    },
+    {
+      "name": "set_variable_secret_flag",
+      "description": "Mark or unmark an environment variable as 'secret' within a given scope.\nIf variable does not support the 'secret' flag in its info, this key will be added.\n\nArgs:\n    scope_id (str): Scope identifier (project/context) containing the variable.\n    variable_name (str): The name of the environment variable.\n    secret (bool): True to mark as secret, False to unmark.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"message\": \"Variable 'X' in scope 'Y' marked (or unmarked) as secret.\"\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": \"reason\"\n        }\nConstraints:\n    - Variable must exist within given scope.\n    - Scope must exist.\n    - This operation adds or updates the 'secret' flag for the variable.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scope_id": {
+            "type": "string"
+          },
+          "variable_name": {
+            "type": "string"
+          },
+          "secret": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "scope_id",
+          "variable_name",
+          "secret"
+        ]
+      }
+    },
+    {
+      "name": "bulk_update_variables",
+      "description": "Update multiple variable values in a single operation for a given scope.\n\nArgs:\n    scope_id (str): The ID of the scope (project/context) in which the variables reside.\n    updates (Dict[str, str]): A mapping from variable names to their new string values.\n\nReturns:\n    dict:\n        Success:\n            {\n                \"success\": True,\n                \"message\": \"Bulk updated X variable(s).\"\n            }\n        Failure (any missing variable, etc.):\n            {\n                \"success\": False,\n                \"error\": \"Error message\"\n            }\n\nConstraints:\n    - All variable names in 'updates' must exist in the given scope.\n    - 'updated_at' is set to current UTC time for updated variables.\n    - If 'updates' is empty, succeeds with 0 updates.\n    - If scope does not exist, fails.\n    - No partial updates on error (all-or-nothing).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scope_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "scope_id",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "bulk_remove_variables",
+      "description": "Remove several environment variables at once from a given scope.\n\nArgs:\n    scope_id (str): The ID of the scope (project/context) from which to remove variables.\n    variable_names (List[str]): List of variable names (str) to remove from the scope.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Removed variables: [...]. Not found: [...].\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <str>\n    }\n\nConstraints:\n    - Scope must exist.\n    - Only removes variables present in the specified scope.\n    - Variables not present are reported under 'Not found'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scope_id": {
+            "type": "string"
+          },
+          "variable_names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "scope_id",
+          "variable_names"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,692 @@
+{
+  "env_name": "FarmManagementInformationSystem",
+  "description": "A Farm Management Information System (FMIS) provides a comprehensive platform for recording, tracking, and optimizing farm resources and operations. It typically maintains stateful records for entities such as farms, fields, crops, tasks, and inventory, supporting actions like adding new crops, allocating land, and logging planting or harvesting activities. FMIS environments are essential for agricultural enterprises seeking efficient and data-driven farm management.",
+  "initial_parameter_schema": {
+    "farms": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "farm_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "total_area": {
+            "type": "number"
+          },
+          "available_area": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "farm_id",
+          "name",
+          "location",
+          "total_area",
+          "available_area"
+        ]
+      }
+    },
+    "fields": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "field_id": {
+            "type": "string"
+          },
+          "farm_id": {
+            "type": "string"
+          },
+          "area": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string"
+          },
+          "assigned_crop_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "field_id",
+          "farm_id",
+          "area",
+          "status",
+          "assigned_crop_id"
+        ]
+      }
+    },
+    "crops": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "crop_id": {
+            "type": "string"
+          },
+          "farm_id": {
+            "type": "string"
+          },
+          "crop_type_id": {
+            "type": "string"
+          },
+          "area_allocated": {
+            "type": "number"
+          },
+          "planting_date": {
+            "type": "string"
+          },
+          "planted_quantity": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "crop_id",
+          "farm_id",
+          "crop_type_id",
+          "area_allocated",
+          "planting_date",
+          "planted_quantity",
+          "status"
+        ]
+      }
+    },
+    "crop_types": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "crop_type_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "growth_duration": {
+            "type": "number"
+          },
+          "typical_yield_per_hectare": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "crop_type_id",
+          "name",
+          "category",
+          "growth_duration",
+          "typical_yield_per_hectare"
+        ]
+      }
+    },
+    "activities": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "activity_id": {
+            "type": "string"
+          },
+          "crop_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "activity_id",
+          "crop_id",
+          "type",
+          "date",
+          "quantity",
+          "notes"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_farm_by_id": [
+      "farms"
+    ],
+    "list_farms": [
+      "farms"
+    ],
+    "get_fields_by_farm_id": [
+      "farms",
+      "fields"
+    ],
+    "get_crop_type_by_name": [
+      "crop_types"
+    ],
+    "list_crop_types": [
+      "crop_types"
+    ],
+    "get_crop_type_by_id": [
+      "crop_types"
+    ],
+    "list_crops_by_farm_id": [
+      "crops",
+      "farms"
+    ],
+    "get_crop_by_id": [
+      "crops"
+    ],
+    "get_crop_area_allocation_for_farm": [
+      "crops",
+      "farms"
+    ],
+    "get_activities_by_crop_id": [
+      "activities",
+      "crops"
+    ],
+    "get_field_by_id": [
+      "fields"
+    ],
+    "add_crop_type": [
+      "crop_types"
+    ],
+    "add_crop": [
+      "crop_types",
+      "crops",
+      "farms"
+    ],
+    "allocate_crop_area_to_farm": [
+      "farms"
+    ],
+    "update_farm_available_area": [
+      "crops",
+      "farms"
+    ],
+    "update_crop_planted_quantity": [
+      "crops"
+    ],
+    "add_activity": [
+      "activities",
+      "crops"
+    ],
+    "update_crop_status": [
+      "crops"
+    ],
+    "modify_crop": [
+      "crop_types",
+      "crops",
+      "farms"
+    ],
+    "remove_crop": [
+      "crops",
+      "farms"
+    ],
+    "update_field_assignment": [
+      "crops",
+      "fields"
+    ],
+    "delete_activity": [
+      "activities"
+    ],
+    "update_activity": [
+      "activities",
+      "crops"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_farm_by_id",
+      "description": "Retrieve complete information about a specific farm by its farm_id.\n\nArgs:\n    farm_id (str): Unique identifier of the farm.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": FarmInfo  # All fields for the specified farm\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g., \"Farm does not exist\"\n    }\n\nConstraints:\n    - The specified farm_id must exist in the FMIS.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "farm_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "farm_id"
+        ]
+      }
+    },
+    {
+      "name": "list_farms",
+      "description": "List all farms currently in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[FarmInfo],  # List of all FarmInfo dictionaries (possibly empty)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_fields_by_farm_id",
+      "description": "Retrieve all fields associated with the specified farm.\n\nArgs:\n    farm_id (str): The ID of the farm whose fields to retrieve.\n\nReturns:\n    dict:\n        success (bool): True if operation succeeds, otherwise False.\n        data (List[FieldInfo]): List of all FieldInfo for fields belonging to the farm (may be empty).\n        error (str, optional): Error description if operation fails.\n\nConstraints:\n    - The farm_id must reference an existing farm in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "farm_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "farm_id"
+        ]
+      }
+    },
+    {
+      "name": "get_crop_type_by_name",
+      "description": "Retrieve crop type info based on the crop type's name.\n\nArgs:\n    name (str): The name of the crop type to look up (case sensitive).\n\nReturns:\n    dict:\n        Success: {\n            \"success\": True,\n            \"data\": CropTypeInfo  # The crop type matching the name\n        }\n        Failure: {\n            \"success\": False,\n            \"error\": \"No crop type with the specified name found\"\n        }\n\nConstraints:\n    - Name matching is case sensitive.\n    - If multiple crop types share the same name, returns the first match found.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "list_crop_types",
+      "description": "List all defined crop types available for farming.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CropTypeInfo]  # List of all crop types, possibly empty if none defined.\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_crop_type_by_id",
+      "description": "Retrieve details of a specific CropType by its unique crop_type_id.\n\nArgs:\n    crop_type_id (str): The unique identifier for the CropType.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": CropTypeInfo  # Details of the CropType\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"CropType not found\"\n            }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "crop_type_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "crop_type_id"
+        ]
+      }
+    },
+    {
+      "name": "list_crops_by_farm_id",
+      "description": "Get all crops registered on a farm, with their area allocation and status.\n\nArgs:\n    farm_id (str): The identifier of the farm.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CropInfo],  # List of CropInfo dicts for crops on the farm\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g. invalid farm ID\n    }\n\nConstraints:\n    - The farm_id must reference an existing farm.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "farm_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "farm_id"
+        ]
+      }
+    },
+    {
+      "name": "get_crop_by_id",
+      "description": "Retrieve detailed information for a specific crop by its crop_id.\n\nArgs:\n    crop_id (str): Unique identifier of the crop.\n\nReturns:\n    dict:\n      - On success: {\"success\": True, \"data\": CropInfo}\n      - On failure: {\"success\": False, \"error\": str}",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "crop_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "crop_id"
+        ]
+      }
+    },
+    {
+      "name": "get_crop_area_allocation_for_farm",
+      "description": "Compute and list the total area allocated to crops for a given farm.\n\nArgs:\n    farm_id (str): The identifier of the farm.\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"data\": {\n                \"farm_id\": str,\n                \"total_area_allocated\": float,  # Total area allocated to crops\n                \"crop_count\": int,              # Number of crops included\n                \"details\": List[CropInfo],      # Detailed crop info\n            }\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": str  # Reason, e.g. \"Farm not found\"\n        }\n\nConstraints:\n    - The farm must exist.\n    - Will accurately sum all area_allocated entries for crops linked to this farm.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "farm_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "farm_id"
+        ]
+      }
+    },
+    {
+      "name": "get_activities_by_crop_id",
+      "description": "Retrieve all logged activities/tasks related to a specific crop.\n\nArgs:\n    crop_id (str): The ID of the crop whose activities are to be retrieved.\n\nReturns:\n    dict: If crop exists:\n             {\n               \"success\": True,\n               \"data\": List[ActivityInfo]   # May be empty if no activities found.\n             }\n          If crop does not exist:\n             {\n               \"success\": False,\n               \"error\": \"Crop does not exist\"\n             }\n\nConstraints:\n    - crop_id must reference an existing Crop.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "crop_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "crop_id"
+        ]
+      }
+    },
+    {
+      "name": "get_field_by_id",
+      "description": "Retrieve a specific field’s information by its ID.\n\nArgs:\n    field_id (str): The unique identifier of the field.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": FieldInfo  # if the field exists\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Field not found\"  # if the id does not correspond to a field\n    }\n\nConstraints:\n    - The field with given field_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "field_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "field_id"
+        ]
+      }
+    },
+    {
+      "name": "add_crop_type",
+      "description": "Create and add a new CropType to the system.\n\nArgs:\n    crop_type_id (str): Unique identifier for the new crop type.\n    name (str): Name of the crop species.\n    category (str): Crop category, e.g., 'flower', 'grain'.\n    growth_duration (float): Time required for growth (must be non-negative).\n    typical_yield_per_hectare (float): Typical yield per hectare (must be non-negative).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"CropType <crop_type_id> added.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n  - crop_type_id must be unique\n  - growth_duration and typical_yield_per_hectare must be non-negative\n  - All parameters must be provided (not empty)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "crop_type_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "growth_duration": {
+            "type": "number"
+          },
+          "typical_yield_per_hectare": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "crop_type_id",
+          "name",
+          "category",
+          "growth_duration",
+          "typical_yield_per_hectare"
+        ]
+      }
+    },
+    {
+      "name": "add_crop",
+      "description": "Add/register a new crop on a farm, specifying crop type, area allocated, and other fields.\n\nArgs:\n    crop_id (str): Unique identifier for the crop.\n    farm_id (str): ID of the farm where the crop is planted.\n    crop_type_id (str): Existing crop type identifier.\n    area_allocated (float): Area (in hectares, etc.) allocated to this crop (> 0).\n    planting_date (str): Planting date (format not enforced here).\n    planted_quantity (int): Quantity planted (must be >= 0).\n    status (str): Status of the crop (e.g., \"planted\").\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"message\": \"Crop added\",\n            \"crop_info\": <CropInfo>\n        }\n    On failure:\n        {\n            \"success\": False,\n            \"error\": <reason>\n        }\n\nConstraints:\n    - crop_id must be unique\n    - farm_id must exist\n    - crop_type_id must exist\n    - area_allocated > 0 and farm has enough available_area\n    - planted_quantity >= 0\n    - Total land allocated for crops on the farm cannot exceed total_area",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "crop_id": {
+            "type": "string"
+          },
+          "farm_id": {
+            "type": "string"
+          },
+          "crop_type_id": {
+            "type": "string"
+          },
+          "area_allocated": {
+            "type": "number"
+          },
+          "planting_date": {
+            "type": "string"
+          },
+          "planted_quantity": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "crop_id",
+          "farm_id",
+          "crop_type_id",
+          "area_allocated",
+          "planting_date",
+          "planted_quantity",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "allocate_crop_area_to_farm",
+      "description": "Subtracts the specified area from the farm's available_area to reflect\nallocation of land to crops. Enforces land use constraints.\n\nArgs:\n    farm_id (str): ID of the farm.\n    area_to_allocate (float): Area to allocate (must be > 0).\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Allocated X area to crops on farm <farm_id>.\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Farm must exist.\n    - area_to_allocate must be a positive number.\n    - area_to_allocate cannot exceed farm's available_area.\n    - Total allocated crop area on a farm must not exceed total_area (enforced by available_area logic).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "farm_id": {
+            "type": "string"
+          },
+          "area_to_allocate": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "farm_id",
+          "area_to_allocate"
+        ]
+      }
+    },
+    {
+      "name": "update_farm_available_area",
+      "description": "Directly adjust the available_area value of a specified farm.\n\nArgs:\n    farm_id (str): The identifier of the farm to update.\n    new_available_area (float): The new available area value to set.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Farm available_area updated to <value> for farm <farm_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Farm with farm_id must exist.\n    - new_available_area >= 0.\n    - new_available_area <= farm's total_area.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "farm_id": {
+            "type": "string"
+          },
+          "new_available_area": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "farm_id",
+          "new_available_area"
+        ]
+      }
+    },
+    {
+      "name": "update_crop_planted_quantity",
+      "description": "Set or increment the planted_quantity of a crop.\n\nArgs:\n    crop_id (str): The ID of the crop to update.\n    quantity (int): The quantity to set or increment (must be non-negative).\n    mode (str): 'set' to set the quantity directly, 'increment' to add to current.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Planted quantity updated for crop <crop_id>.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"<error description>\"\n    }\n\nConstraints:\n    - Crop with crop_id must exist.\n    - The result planted_quantity must be non-negative.\n    - quantity must be non-negative.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "crop_id": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "mode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "crop_id",
+          "quantity",
+          "mode"
+        ]
+      }
+    },
+    {
+      "name": "add_activity",
+      "description": "Log a new Activity/Task for a crop.\n\nArgs:\n    activity_id (str): Unique identifier for this activity.\n    crop_id (str): The target crop this activity references.\n    type (str): Activity type (e.g., planting, harvesting).\n    date (str): The date of the activity.\n    quantity (int): Quantity associated with the activity. Must be non-negative.\n    notes (str): Notes or details about the activity.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Activity successfully added.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure.\"\n    }\n\nConstraints:\n    - activity_id must be unique.\n    - crop_id must reference an existing crop.\n    - quantity must be non-negative.\n    - type should be a non-empty string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "activity_id": {
+            "type": "string"
+          },
+          "crop_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "activity_id",
+          "crop_id",
+          "type",
+          "date",
+          "quantity",
+          "notes"
+        ]
+      }
+    },
+    {
+      "name": "update_crop_status",
+      "description": "Change the lifecycle status of a crop (e.g., to planted, growing, harvested).\n\nArgs:\n    crop_id (str): Unique identifier of the crop.\n    new_status (str): The new lifecycle status to assign.\n\nReturns:\n    dict: \n      - {\"success\": True, \"message\": \"Crop status updated.\" }\n      - {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - crop_id must exist.\n    - No explicit restrictions on new_status value (assumed to allow any string).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "crop_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "crop_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "modify_crop",
+      "description": "Edit attributes of a crop such as area_allocated or crop_type_id.\nConstraints enforced:\n  - The crop must exist.\n  - crop_type_id (if changed) must reference an existing CropType.\n  - New area_allocated (if changed) must not push farm's total allocated crop area above its total_area.\n  - area_allocated must be non-negative.\n  - planted_quantity (if changed) must be non-negative.\n\nArgs:\n    crop_id (str): The crop to modify.\n    updates (dict): Dictionary of fields to update and their new values.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Crop updated successfully.\" }\n        On failure: { \"success\": False, \"error\": \"<reason>\" }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "crop_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "crop_id",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "remove_crop",
+      "description": "Remove a crop from a farm and adjust the available_area accordingly.\n\nArgs:\n    crop_id (str): The ID of the crop to remove.\n\nReturns:\n    dict:\n        - success (bool): Whether the removal succeeded.\n        - message (str): Success message if successful.\n        - error (str, optional): Error message if failed.\n\nConstraints:\n    - The crop must exist and reference a valid farm.\n    - After crop removal, the farm's available_area is increased by the crop's area_allocated,\n      but must not exceed farm's total_area.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "crop_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "crop_id"
+        ]
+      }
+    },
+    {
+      "name": "update_field_assignment",
+      "description": "Assign or update the crop assigned to a specific field.\n\nArgs:\n    field_id (str): ID of the field to update.\n    crop_id (str or None): ID of the crop to assign, or None to unassign crop from field.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Field assignment updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The field must exist.\n    - If assigning (crop_id is not None), crop must exist.\n    - If assigning, crop.farm_id must match field.farm_id.\n    - Updates the assigned_crop_id of the field.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "field_id": {
+            "type": "string"
+          },
+          "crop_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "field_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_activity",
+      "description": "Removes an activity/task from the activity log.\n\nArgs:\n    activity_id (str): The unique identifier for the activity to remove.\n\nReturns:\n    dict:\n        - On success:\n            { \"success\": True, \"message\": \"Activity <activity_id> deleted.\" }\n        - On error (if activity does not exist):\n            { \"success\": False, \"error\": \"Activity not found.\" }\n\nConstraints:\n    - The activity must exist in the system.\n    - Removing the activity only affects the activity log; crop/task relations remain valid.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "activity_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "activity_id"
+        ]
+      }
+    },
+    {
+      "name": "update_activity",
+      "description": "Edit an existing Activity's details such as quantity, notes, type, date, or crop reference.\n\nArgs:\n    activity_id (str): Unique identifier for the activity to update.\n    quantity (int, optional): New quantity for the activity (must be non-negative if given).\n    notes (str, optional): New notes to associate with the activity.\n    date (str, optional): New date for the activity.\n    type (str, optional): New activity type (e.g., planting, harvesting).\n    crop_id (str, optional): Update crop reference (must reference a valid crop).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": f\"Activity {activity_id} updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n- The activity_id must exist.\n- If quantity is given, it must be non-negative.\n- If crop_id is given, it must exist in the current crops.\n- All provided updates are performed in-place.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "activity_id": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "crop_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "activity_id"
+        ]
+      }
+    }
+  ]
+}

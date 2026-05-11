@@ -1,0 +1,358 @@
+{
+  "env_name": "VirtualPhoneNumberManagementPlatform",
+  "description": "A virtual phone number management platform maintains an inventory of phone numbers from various countries, along with their associated country codes and metadata. It allows organizations to provision, allocate, and manage these virtual numbers for purposes such as user authentication, messaging, and call routing. The platform supports querying available numbers by country and facilitates globally scalable communications solutions.",
+  "initial_parameter_schema": {
+    "phone_numbers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "string"
+          },
+          "country_code": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "allocated_to_organization_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "number",
+          "country_code",
+          "status",
+          "metadata",
+          "allocated_to_organization_id"
+        ]
+      }
+    },
+    "countries": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "country_code": {
+            "type": "string"
+          },
+          "country_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "country_code",
+          "country_name"
+        ]
+      }
+    },
+    "organizations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          },
+          "organization_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id",
+          "organization_name"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "list_countries": [
+      "countries"
+    ],
+    "get_country_by_code": [
+      "countries"
+    ],
+    "list_available_phone_numbers": [
+      "phone_numbers"
+    ],
+    "list_available_numbers_by_country": [
+      "countries",
+      "phone_numbers"
+    ],
+    "get_phone_number_info": [
+      "countries",
+      "organizations",
+      "phone_numbers"
+    ],
+    "list_organizations": [
+      "organizations"
+    ],
+    "get_organization_info": [
+      "organizations"
+    ],
+    "allocate_phone_number_to_organization": [
+      "organizations",
+      "phone_numbers"
+    ],
+    "release_phone_number": [
+      "phone_numbers"
+    ],
+    "add_phone_number": [
+      "countries",
+      "phone_numbers"
+    ],
+    "remove_phone_number": [
+      "phone_numbers"
+    ],
+    "add_country": [
+      "countries"
+    ],
+    "remove_country": [
+      "countries",
+      "phone_numbers"
+    ],
+    "add_organization": [
+      "organizations"
+    ],
+    "remove_organization": [
+      "organizations",
+      "phone_numbers"
+    ]
+  },
+  "tools": [
+    {
+      "name": "list_countries",
+      "description": "Retrieve the list of all countries with their unique country codes and names.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CountryInfo],  # Each with 'country_code' and 'country_name'.\n    }\n\nConstraints:\n    - No constraints directly relevant; if no countries exist, data=[].",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_country_by_code",
+      "description": "Retrieve the country name and metadata (country_code and country_name)\nfor a given country code.\n\nArgs:\n    country_code (str): The country code to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": CountryInfo,  # Includes country_code and country_name\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of why lookup failed\n    }\n\nConstraints:\n    - country_code must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "country_code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "country_code"
+        ]
+      }
+    },
+    {
+      "name": "list_available_phone_numbers",
+      "description": "Retrieve a list of all available phone numbers (with metadata) across all countries.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PhoneNumberInfo]  # may be an empty list if none available\n    }\n\nConstraints:\n    - Only phone numbers with status == \"available\" are included in the output.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_available_numbers_by_country",
+      "description": "Retrieve all available phone numbers for a specific country code.\n\nArgs:\n    country_code (str): The country code to filter phone numbers by.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PhoneNumberInfo]  # List of available numbers for the country (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message, e.g., country code does not exist\n    }\n\nConstraints:\n    - Only phone numbers with status=\"available\" are included.\n    - The country_code must exist in the countries registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "country_code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "country_code"
+        ]
+      }
+    },
+    {
+      "name": "get_phone_number_info",
+      "description": "Get detailed information for a specific phone number, including:\n- Full phone number metadata.\n- Associated country info (country_code, country_name).\n- If allocated, organization info (organization_id, organization_name).\n\nArgs:\n    number (str): The phone number identifier to query. The platform accepts either the inventory key or the displayed phone number string.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"phone_number\": PhoneNumberInfo,\n            \"country\": CountryInfo or None,\n            \"organization\": OrganizationInfo or None\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The phone number must exist in the inventory.\n    - Country/organization enrichment info returned as None if not found.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "number"
+        ]
+      }
+    },
+    {
+      "name": "list_organizations",
+      "description": "Retrieve all organizations registered in the platform.\n\nArgs:\n    None\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[OrganizationInfo]  # May be empty if no organizations\n            }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_organization_info",
+      "description": "Retrieve profile and identifying information for a specific organization.\n\nArgs:\n    organization_id (str): The unique identifier of the organization.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True,\n            \"data\": OrganizationInfo plus an `allocated_phone_numbers` list containing the currently assigned phone number strings for that organization.\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": str  # Error message if the organization is not found\n        }\nConstraints:\n    - The organization_id must exist in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id"
+        ]
+      }
+    },
+    {
+      "name": "allocate_phone_number_to_organization",
+      "description": "Assign an available phone number to a specified organization, updating its status and allocation field.\n\nArgs:\n    number (str): The phone number to allocate. The platform accepts either the inventory key or the displayed phone number string.\n    organization_id (str): The target organization's ID.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Phone number <number> allocated to organization <organization_id>.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Explanation of failure\n            }\n\nConstraints:\n    - The phone number must exist and have status=\"available\".\n    - The organization must exist.\n    - On allocation, update status to \"allocated\" and set allocated_to_organization_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "organization_id"
+        ]
+      }
+    },
+    {
+      "name": "release_phone_number",
+      "description": "Release an allocated phone number back to 'available' status.\n\nArgs:\n    number (str): The phone number to be released. The platform accepts either the inventory key or the displayed phone number string.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"<number> released and made available.\" }\n        On failure:\n            { \"success\": False, \"error\": \"<Reason>\" }\n\nConstraints:\n    - Only phone numbers that exist and are currently allocated may be released.\n    - Status is set to 'available', and allocated_to_organization_id is cleared.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "number"
+        ]
+      }
+    },
+    {
+      "name": "add_phone_number",
+      "description": "Add a new phone number to the platform's inventory.\n\nArgs:\n    number (str): The phone number to add (must not already exist).\n    country_code (str): Country code to associate the phone number to (must exist).\n    metadata (dict): Metadata dictionary (can be empty).\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Phone number added to inventory.\" }\n        On failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Phone number must be unique in system (number must not already exist).\n    - country_code must refer to an existing country.\n    - New phone number is added with status='available' and allocated_to_organization_id=None.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "string"
+          },
+          "country_code": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "number",
+          "country_code",
+          "metadata"
+        ]
+      }
+    },
+    {
+      "name": "remove_phone_number",
+      "description": "Permanently delete a phone number from the system.\n\nArgs:\n    number (str): The phone number to remove. The platform accepts either the inventory key or the displayed phone number string.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Phone number <number> has been removed from the system.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Phone number does not exist\"\n    }\n\nConstraints:\n    - The phone number must exist in the system for removal.\n    - Upon success, the phone number is deleted from the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "number"
+        ]
+      }
+    },
+    {
+      "name": "add_country",
+      "description": "Register a new country with a unique country_code.\n\nArgs:\n    country_code (str): Unique country code to register.\n    country_name  (str): Name of the country.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"message\": \"Country 'country_name' (code: country_code) added.\"\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": \"Country code already exists\" | \"country_code or country_name missing/invalid\"\n        }\n\nConstraints:\n    - country_code must be unique (not present in self.countries).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "country_code": {
+            "type": "string"
+          },
+          "country_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "country_code",
+          "country_name"
+        ]
+      }
+    },
+    {
+      "name": "remove_country",
+      "description": "Remove a country entry from the system, but only if no phone numbers in the system reference this country_code.\n\nArgs:\n    country_code (str): The country code to remove.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Country removed: <country_code>\" }\n        On failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - The country_code must exist.\n    - No phone number in the system can reference this country_code.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "country_code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "country_code"
+        ]
+      }
+    },
+    {
+      "name": "add_organization",
+      "description": "Register a new organization in the platform.\n\nArgs:\n    organization_id (str): Unique identifier for the organization.\n    organization_name (str): Descriptive display name for the organization.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Organization added successfully.\" }\n        - On failure: { \"success\": False, \"error\": \"reason for failure\" }\n\nConstraints:\n    - organization_id must be unique (not already in self.organizations).\n    - organization_id and organization_name must be non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          },
+          "organization_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id",
+          "organization_name"
+        ]
+      }
+    },
+    {
+      "name": "remove_organization",
+      "description": "Remove an organization from the platform, ensuring it has no allocated phone numbers.\n\nArgs:\n    organization_id (str): The unique identifier of the organization to remove.\n\nReturns:\n    dict: \n        { \"success\": True, \"message\": \"Organization <org_id> removed.\" }\n        or\n        { \"success\": False, \"error\": <error description> }\n\nConstraints:\n    - The organization must exist.\n    - The organization cannot be removed if any phone number is still allocated to it.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id"
+        ]
+      }
+    }
+  ]
+}

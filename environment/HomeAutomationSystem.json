@@ -1,0 +1,464 @@
+{
+  "env_name": "HomeAutomationSystem",
+  "description": "A home automation system is an integrated software and hardware platform that enables centralized monitoring and control of residential devices such as lighting, HVAC, security, and entertainment. It maintains real-time state for each connected device, supports user-defined scenes and automations, and allows for manual or intelligent agent-driven manipulation. These systems enhance comfort, convenience, and energy efficiency through personalized, automated routines and remote management.",
+  "initial_parameter_schema": {
+    "devices": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "state": {
+            "type": "object"
+          },
+          "location": {
+            "type": "string"
+          },
+          "last_updated": {
+            "type": "string"
+          },
+          "supported_setting": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "device_id",
+          "type",
+          "state",
+          "location",
+          "last_updated",
+          "supported_setting"
+        ]
+      }
+    },
+    "rooms": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "list_of_device_id": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "room_id",
+          "name",
+          "list_of_device_id"
+        ]
+      }
+    },
+    "scenes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "scene_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "trigger_conditions": {},
+          "device_settings": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "scene_id",
+          "name",
+          "trigger_conditions",
+          "device_settings",
+          "enabled"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "preferences": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "preferences"
+        ]
+      }
+    },
+    "get_device_allowed_ranges": {
+      "type": "string"
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_name": [
+      "users"
+    ],
+    "get_user_preferences": [
+      "users"
+    ],
+    "get_room_by_name": [
+      "rooms"
+    ],
+    "list_devices_in_room": [
+      "devices",
+      "rooms"
+    ],
+    "get_device_info": [
+      "devices"
+    ],
+    "filter_devices_by_type": [
+      "devices"
+    ],
+    "get_device_supported_settings": [
+      "devices"
+    ],
+    "get_device_state": [
+      "devices"
+    ],
+    "get_scene_by_name": [
+      "scenes"
+    ],
+    "list_scenes_for_room": [
+      "rooms",
+      "scenes"
+    ],
+    "get_device_allowed_ranges": [
+      "devices"
+    ],
+    "set_device_state": [
+      "devices",
+      "get_device_allowed_ranges"
+    ],
+    "enable_scene": [
+      "scenes"
+    ],
+    "disable_scene": [
+      "scenes"
+    ],
+    "update_scene_device_settings": [
+      "scenes"
+    ],
+    "synchronize_manual_device_state": [
+      "devices",
+      "get_device_allowed_ranges"
+    ],
+    "update_user_preferences": [
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_name",
+      "description": "Retrieve the user info and preferences for a user given their exact name.\n\nArgs:\n    name (str): The exact name of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo        # User record found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str            # \"User not found\"\n    }\n\nConstraints:\n    - User name must be an exact match.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_user_preferences",
+      "description": "Retrieve the automation and environment preferences for a specific user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": Dict[str, Any],  # User's preferences (may be empty if none set)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g., user not found)\n    }\n\nConstraints:\n    - The user must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_room_by_name",
+      "description": "Retrieve room/zone information (room_id, name, list_of_device_id) by its name.\n\nArgs:\n    room_name (str): The name of the room/zone to query (e.g., \"bedroom\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": RoomInfo,  # The matching room's info\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error if the room is not found\n    }\n\nConstraints:\n    - Names are matched exactly (case-sensitive).\n    - If multiple rooms share the same name, the first found is returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_name"
+        ]
+      }
+    },
+    {
+      "name": "list_devices_in_room",
+      "description": "List all devices assigned to a particular room or zone.\n\nArgs:\n    room_id (str): The ID of the room or zone.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DeviceInfo],  # List of device information assigned to the room\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - room_id must exist in the system.\n    - Only devices currently present in self.devices and listed in the room are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_id"
+        ]
+      }
+    },
+    {
+      "name": "get_device_info",
+      "description": "Retrieve detailed information and the current state for the device with the specified device_id.\n\nArgs:\n    device_id (str): The unique identifier for the device.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": DeviceInfo  # Dictionary with all device metadata and state.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If device not found.\n    }\n\nConstraints:\n    - The device_id must exist in the system.\n    - No hardware query is performed; this is an in-memory state fetch.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id"
+        ]
+      }
+    },
+    {
+      "name": "filter_devices_by_type",
+      "description": "Filter a device list by type.\n\nArgs:\n    device_ids (List[str]): List of device IDs to filter.\n    device_type (str): The device type to filter by (e.g., 'HVAC', 'light').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DeviceInfo],  # All matching devices' info\n    }\n\nNotes:\n    - If a device_id in device_ids does not exist, it is skipped.\n    - If no devices match, returns empty list (success).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "device_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_ids",
+          "device_type"
+        ]
+      }
+    },
+    {
+      "name": "get_device_supported_settings",
+      "description": "Query which settings or commands are supported for a given device.\n\nArgs:\n    device_id (str): The unique identifier for the target device.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"data\": List[str]}  # list of supported settings\n        - On failure: {\"success\": False, \"error\": str}      # error message, e.g., device not found\n\nConstraints:\n    - The device_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id"
+        ]
+      }
+    },
+    {
+      "name": "get_device_state",
+      "description": "Retrieve the current state (on/off, brightness, setpoint, etc.) for a device.\n\nArgs:\n    device_id (str): The unique identifier of the device.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": Dict[str, Any]  # The device's current state,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If the device does not exist\n    }\n\nConstraints:\n    - device_id must exist within the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id"
+        ]
+      }
+    },
+    {
+      "name": "get_scene_by_name",
+      "description": "Retrieve a scene/automation by its name.\n\nArgs:\n    scene_name (str): The name of the scene or automation to retrieve.\n\nReturns:\n    dict: \n        If found:\n            {\n                \"success\": True,\n                \"data\": SceneInfo  # Scene metadata and settings\n            }\n        If not found:\n            {\n                \"success\": False,\n                \"error\": \"Scene not found\"\n            }\n\nConstraints:\n    - Scene names are considered unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scene_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scene_name"
+        ]
+      }
+    },
+    {
+      "name": "list_scenes_for_room",
+      "description": "List all automations/scenes that affect devices within a given room.\n\nArgs:\n    room_id (str): The ID of the room to check.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SceneInfo],  # List of matching scenes (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If room does not exist\n    }\n\nConstraints:\n    - Only scenes that directly affect devices associated with this room are included.\n    - Considers the list_of_device_id for the room and matches with each scene's device_settings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_id"
+        ]
+      }
+    },
+    {
+      "name": "get_device_allowed_ranges",
+      "description": "Get configuration constraints/ranges for supported settings for a specific device.\n\nArgs:\n    device_id (str): The identifier for the device.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": Dict[str, Dict[str, Any]]  # e.g. { 'brightness': {'min':0, 'max':100}, ... }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g. 'Device not found'\n    }\n\nConstraints:\n    - device_id must exist in the system.\n    - Only settings from supported_setting (and that have defined ranges) are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id"
+        ]
+      }
+    },
+    {
+      "name": "set_device_state",
+      "description": "Change one or more state properties of a device, ensuring that new values\ncomply with device constraints (supported settings and value ranges).\n\nArgs:\n    device_id (str): The ID of the device to modify.\n    new_state (Dict[str, Any]): State keys and values to set; e.g., {'on': True, 'brightness': 60}\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Device state updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": Reason for failure\n    }\n\nConstraints:\n  - Device must exist.\n  - State keys must be supported by device type.\n  - Values must be within allowed ranges for each setting.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          },
+          "new_state": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "device_id",
+          "new_state"
+        ]
+      }
+    },
+    {
+      "name": "enable_scene",
+      "description": "Enable a particular scene/automation so its automatic actions become active.\n\nArgs:\n    scene_id (str): The identifier of the scene to enable.\n\nReturns:\n    dict: \n        { \"success\": True, \"message\": \"Scene <scene_id> enabled\" }\n        OR\n        { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - The scene must exist in the system.\n    - Sets scene's 'enabled' field to True.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scene_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scene_id"
+        ]
+      }
+    },
+    {
+      "name": "disable_scene",
+      "description": "Disable a particular scene/automation so it cannot be triggered.\n\nArgs:\n    scene_id (str): The unique identifier of the scene to disable.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Scene <scene_id> disabled\" }\n        - On failure: { \"success\": False, \"error\": \"Scene not found\" }\n\nConstraints:\n    - The scene must exist in the system.\n    - No effect if scene is already disabled (idempotent).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scene_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scene_id"
+        ]
+      }
+    },
+    {
+      "name": "update_scene_device_settings",
+      "description": "Update the device_settings list for a given scene, altering which device states will\nbe set when the scene is activated.\n\nArgs:\n    scene_id (str): The identifier of the scene to update.\n    device_settings (list of dict): The new list of device setting dicts for the scene.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Device settings updated for scene <scene_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The scene must exist.\n    - device_settings must be a list of dicts.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scene_id": {
+            "type": "string"
+          },
+          "device_settings": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "required": [
+          "scene_id",
+          "device_settings"
+        ]
+      }
+    },
+    {
+      "name": "synchronize_manual_device_state",
+      "description": "Synchronize a device's logical state to match a physical (manual/agent) change.\n\nArgs:\n    device_id (str): The device to synchronize.\n    updated_state (dict): The intended new state, as reported by hardware or agent override.\n\nReturns:\n    dict:\n        On success: {\"success\": True, \"message\": \"Device state synchronized.\"}\n        On failure: {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - Device must exist.\n    - State keys must be allowed for this device (see supported_setting).\n    - State values must fall within allowed ranges (assume a get_device_allowed_ranges method exists).\n    - Updates device's logical state and last_updated timestamp.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          },
+          "updated_state": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "device_id",
+          "updated_state"
+        ]
+      }
+    },
+    {
+      "name": "update_user_preferences",
+      "description": "Update the stored preferences for a given user. Only the provided keys will be updated/added.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n    preferences (dict): Dictionary of preference key/values to update.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User preferences updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The user must exist (user_id in self.users).\n    - The preferences argument must be a dict.\n    - Preferences are arbitrary key-value pairs (freeform).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "preferences": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "user_id",
+          "preferences"
+        ]
+      }
+    }
+  ]
+}

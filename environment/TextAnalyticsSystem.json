@@ -1,0 +1,646 @@
+{
+  "env_name": "TextAnalyticsSystem",
+  "description": "A text analytics system with configurable themes allows users to define, modify, and manage themes or categories used in the analysis of textual data. It maintains state regarding the set of available themes, their properties (such as weights), and applies them to incoming or stored text for classification, scoring, or summarization. These systems commonly support operations like adding, updating, or removing themes, and associating analytical results with these customizable constructs.",
+  "initial_parameter_schema": {
+    "themes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "theme_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "weight": {
+            "type": "number"
+          },
+          "description": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "active_status": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "theme_id",
+          "name",
+          "weight",
+          "description",
+          "created_by",
+          "active_status"
+        ]
+      }
+    },
+    "documents": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "date_added": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "processed_status": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "document_id",
+          "content",
+          "date_added",
+          "source",
+          "processed_status"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "preference": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "role",
+          "preference"
+        ]
+      }
+    },
+    "theme_assignments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "theme_id": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "theme_id",
+          "score",
+          "timestamp"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_theme_by_name": [
+      "themes"
+    ],
+    "list_user_themes": [
+      "themes",
+      "users"
+    ],
+    "get_theme_by_id": [
+      "themes"
+    ],
+    "list_active_themes": [
+      "themes"
+    ],
+    "get_theme_weight": [
+      "themes"
+    ],
+    "list_themes_by_status": [
+      "themes"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_user_permissions": [
+      "users"
+    ],
+    "list_documents": [
+      "documents"
+    ],
+    "get_document_by_id": [
+      "documents"
+    ],
+    "list_theme_assignments_for_document": [
+      "documents",
+      "theme_assignments"
+    ],
+    "list_documents_by_theme": [
+      "documents",
+      "theme_assignments",
+      "themes"
+    ],
+    "check_theme_edit_permission": [
+      "themes",
+      "users"
+    ],
+    "add_theme": [
+      "themes",
+      "users"
+    ],
+    "update_theme": [
+      "themes",
+      "users"
+    ],
+    "remove_theme": [
+      "themes",
+      "users"
+    ],
+    "set_theme_active_status": [
+      "themes",
+      "users"
+    ],
+    "assign_theme_to_document": [
+      "documents",
+      "theme_assignments",
+      "themes"
+    ],
+    "update_theme_assignment_score": [
+      "theme_assignments"
+    ],
+    "remove_theme_assignment": [
+      "documents",
+      "theme_assignments",
+      "themes"
+    ],
+    "add_text_document": [
+      "documents"
+    ],
+    "update_text_document": [
+      "documents"
+    ],
+    "delete_text_document": [
+      "documents",
+      "theme_assignments"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_theme_by_name",
+      "description": "Retrieve a theme by (name, created_by user/project).\n\nArgs:\n    name (str): The name of the theme.\n    created_by (str): User ID or project to scope the search.\n\nReturns:\n    dict:\n        - If found: {\"success\": True, \"data\": ThemeInfo}\n        - If not found: {\"success\": False, \"error\": \"Theme not found\"}\n        - If input invalid: {\"success\": False, \"error\": \"Missing 'name' or 'created_by' parameter.\"}\n\nConstraints:\n    - Theme names must be unique per user/project.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "created_by"
+        ]
+      }
+    },
+    {
+      "name": "list_user_themes",
+      "description": "List all themes created by a specific user.\n\nArgs:\n    user_id (str): The unique ID of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ThemeInfo],  # List of themes created by the user (could be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of failure (e.g., user does not exist)\n    }\n\nConstraints:\n    - The user must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_theme_by_id",
+      "description": "Retrieve theme information given a theme_id.\n\nArgs:\n    theme_id (str): The unique identifier of the theme.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ThemeInfo\n    } if theme_id exists,\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    } if not found.\n\nConstraints:\n    - theme_id must exist.\n    - No permission or status checks are required.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "theme_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "theme_id"
+        ]
+      }
+    },
+    {
+      "name": "list_active_themes",
+      "description": "Return all active themes available for analysis.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ThemeInfo],  # List of active themes (may be empty)\n    }\n\nNo inputs. No user/permission restrictions.\nIf there are no active themes, returns an empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_theme_weight",
+      "description": "Retrieve the weight (value between allowed bounds) for a given theme.\n\nArgs:\n    theme_id (str): The identifier of the theme to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": float  # Theme weight\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message, e.g. theme not found\n    }\n\nConstraints:\n    - Theme must exist in the system. If not, returns an error.\n    - Weight is returned regardless of other flags (e.g., active).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "theme_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "theme_id"
+        ]
+      }
+    },
+    {
+      "name": "list_themes_by_status",
+      "description": "List all themes filtered by their active_status.\n\nArgs:\n    active_status (bool): If True, list only active themes; if False, list only inactive themes.\n\nReturns:\n    dict: \n        - On success:\n            {\n                \"success\": True,\n                \"data\": List[ThemeInfo],  # List of themes with matching status (may be empty)\n            }\n        - On error:\n            {\n                \"success\": False,\n                \"error\": str  # Description of the error\n            }\n\nConstraints:\n    - active_status must be a boolean value.\n    - Returns all themes matching the requested status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "active_status": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "active_status"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Get user profile and permissions by user_id.\n\nArgs:\n    user_id (str): The unique user identifier.\n\nReturns:\n    dict: \n        - Success: {\"success\": True, \"data\": UserInfo}\n        - Failure: {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - The user must exist in the system.\n    - Role is returned as the user's permission indicator (explicit permission structure may be queried elsewhere).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_permissions",
+      "description": "Query what theme-related actions a user can perform.\n\nArgs:\n    user_id (str): The ID of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str]  # List of allowed theme-related actions for this user\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of error, e.g. user not found\n    }\n\nPermissions model (example):\n    - 'admin': can perform all theme-related operations\n    - 'editor': can add, update, remove, activate/deactivate themes they created\n    - 'viewer': can view/list themes only\n    - Unknown role: no permissions",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_documents",
+      "description": "List all text documents currently stored in the system.\n\nReturns:\n    dict: \n        - \"success\": True\n        - \"data\": List[TextDocumentInfo] (May be empty if no documents exist.)",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_document_by_id",
+      "description": "Retrieve the full content and metadata for a text document by its ID.\n\nArgs:\n    document_id (str): The ID of the document to retrieve.\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"data\": TextDocumentInfo\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": \"Document not found\"\n        }\n\nConstraints:\n    - Document must exist in the system; otherwise, failure is returned.\n    - No permission check is enforced for document retrieval.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id"
+        ]
+      }
+    },
+    {
+      "name": "list_theme_assignments_for_document",
+      "description": "List all assigned themes (with scores and assignment info) for a document.\n\nArgs:\n    document_id (str): The unique identifier of the text document.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[ThemeAssignmentInfo],  # List of all assignments (may be empty)\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": str  # If document does not exist\n        }\n\nConstraints:\n    - document_id must exist in the documents store.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id"
+        ]
+      }
+    },
+    {
+      "name": "list_documents_by_theme",
+      "description": "List all documents associated with a specific theme.\n\nArgs:\n    theme_id (str): The theme's unique identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TextDocumentInfo],\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,\n    }\n\nConstraints:\n    - The theme must exist.\n    - Only existing documents are returned (ignore assignments to missing documents).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "theme_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "theme_id"
+        ]
+      }
+    },
+    {
+      "name": "check_theme_edit_permission",
+      "description": "Verify if a user can edit or remove a specific theme.\n\nArgs:\n    user_id (str): The user's unique ID.\n    theme_id (str): The theme's unique ID.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"can_edit\": bool\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Users can only modify or remove themes they created,\n      or if they have required permission (e.g., are admin).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "theme_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "theme_id"
+        ]
+      }
+    },
+    {
+      "name": "add_theme",
+      "description": "Create and register a new theme with uniqueness and weight validation.\n\nArgs:\n    name (str): Name of the theme (must be unique per user).\n    weight (float): Weight for the theme, in [0.0, 1.0].\n    description (str): Text description for the theme.\n    created_by (str): User ID of the creator.\n    active_status (bool): Whether the theme is active.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Theme added.\",\n        \"theme_id\": <theme_id>\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<error reason>\"\n    }\n\nConstraints:\n    - Theme name unique per user (created_by).\n    - Weight in [0.0, 1.0].\n    - User must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "weight": {
+            "type": "number"
+          },
+          "description": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "active_status": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "weight",
+          "description",
+          "created_by",
+          "active_status"
+        ]
+      }
+    },
+    {
+      "name": "update_theme",
+      "description": "Modify theme properties (name, weight, description, active_status), if permitted.\n\nArgs:\n    theme_id (str): The ID of the theme to update.\n    user_id (str): The ID of the user attempting the update.\n    name (str, optional): New theme name.\n    weight (float, optional): New weight (must be 0.0 to 1.0).\n    description (str, optional): New theme description.\n    active_status (bool, optional): New activation status.\n\nReturns:\n    dict: On success,\n        { \"success\": True, \"message\": \"Theme updated successfully.\" }\n    On failure,\n        { \"success\": False, \"error\": str }\n\nConstraints:\n    - User must be the theme creator or an admin with permission to edit.\n    - Theme name must remain unique within the original creator's theme scope.\n    - Weight must be between 0.0 and 1.0.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "theme_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "weight": {
+            "type": "number"
+          },
+          "description": {
+            "type": "string"
+          },
+          "active_status": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "theme_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_theme",
+      "description": "Remove (deactivate) a theme if the requesting user has permission.\n\nArgs:\n    theme_id (str): The ID of the theme to remove.\n    user_id (str): The ID of the user requesting the removal.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Theme deactivated\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Only the theme creator or a user with admin role may remove a theme.\n    - If successful, sets the theme's active_status to False (deactivation).\n    - If theme does not exist, or user does not exist, or no permission, fail.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "theme_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "theme_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "set_theme_active_status",
+      "description": "Activate or deactivate a theme for future use.\n\nArgs:\n    theme_id (str): The ID of the theme to modify.\n    active_status (bool): Desired status (True to activate, False to deactivate).\n    user_id (str): ID of the user requesting the status change.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str\n    }\n    or {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The theme must exist in the system.\n    - Only the theme creator, or a user with appropriate permissions (\"admin\" role), can change its activation status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "theme_id": {
+            "type": "string"
+          },
+          "active_status": {
+            "type": "boolean"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "theme_id",
+          "active_status",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "assign_theme_to_document",
+      "description": "Assign a theme to a document (with score and timestamp).\n\nArgs:\n    document_id (str): ID of the document to assign.\n    theme_id (str): ID of the theme to assign.\n    score (float): Score for this assignment.\n    timestamp (str): Timestamp of the assignment (ISO string or similar).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Theme assigned to document successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Theme must exist and be active.\n    - Document must exist.\n    - No explicit restriction on duplicate assignments or score range.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "theme_id": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "theme_id",
+          "score",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "update_theme_assignment_score",
+      "description": "Update the score for an existing theme assignment (document_id, theme_id).\n\nArgs:\n    document_id (str): ID of the text document.\n    theme_id (str): ID of the theme.\n    new_score (float): The new score to set for this assignment.\n    timestamp (str): The timestamp for the update (e.g., ISO 8601 string).\n\nReturns:\n    dict:\n        On Success:\n            {\"success\": True, \"message\": \"Theme assignment score updated successfully.\"}\n        On Failure:\n            {\"success\": False, \"error\": \"Theme assignment not found.\"}\n\nConstraints:\n    - Assignment (document_id, theme_id) must exist in self.theme_assignments.\n    - No new assignment is created if not found.\n    - No permission checks are enforced here.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "theme_id": {
+            "type": "string"
+          },
+          "new_score": {
+            "type": "number"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "theme_id",
+          "new_score",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "remove_theme_assignment",
+      "description": "Remove the assignment of a theme from a document.\n\nArgs:\n    document_id (str): The ID of the document to remove the assignment from.\n    theme_id    (str): The ID of the theme to unassign from the document.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Theme assignment removed.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - The document and theme must both exist.\n    - There must exist at least one assignment to remove.\n    - All assignments matching (document_id, theme_id) are removed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "theme_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "theme_id"
+        ]
+      }
+    },
+    {
+      "name": "add_text_document",
+      "description": "Add a new text document to the system.\n\nArgs:\n    document_id (str): Unique identifier for the document.\n    content (str): Main text content of the document.\n    date_added (str): Timestamp when the document is added (ISO 8601 string preferred).\n    source (str): Origin/source for the document.\n    processed_status (bool, optional): Whether the document is processed. Defaults to False.\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"message\": \"Document added successfully.\"\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": \"<reason>\"\n        }\n\nConstraints:\n    - document_id must be unique across all documents.\n    - content and document_id are required (non-empty).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "date_added": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "processed_status": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "document_id",
+          "content",
+          "date_added",
+          "source"
+        ]
+      }
+    },
+    {
+      "name": "update_text_document",
+      "description": "Modify content or metadata of an existing document.\n\nArgs:\n    document_id (str): The identifier of the document to be updated.\n    content (str, optional): New content for the text document.\n    source (str, optional): New source value.\n    processed_status (bool, optional): New processed status.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Text document updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Document with specified ID must exist.\n    - Only valid fields (content, source, processed_status) are updatable.\n    - If no fields are provided for update, operation fails.\n    - processed_status, if provided, must be boolean.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "processed_status": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "document_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_text_document",
+      "description": "Remove a text document from the system (hard delete).\nAlso removes any theme assignments associated with the document.\n\nArgs:\n    document_id (str): The unique identifier of the text document to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Document deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Document not found.\"\n    }\n\nConstraints:\n    - Removes the document from the documents store.\n    - Removes all theme assignments referencing this document.\n    - If the document does not exist, fails gracefully.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id"
+        ]
+      }
+    }
+  ]
+}

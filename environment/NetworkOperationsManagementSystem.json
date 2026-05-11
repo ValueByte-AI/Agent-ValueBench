@@ -1,0 +1,408 @@
+{
+  "env_name": "NetworkOperationsManagementSystem",
+  "description": "A Network Operations Management System oversees and tracks the state of IT systems, network devices, and connectivity resources. It maintains inventories of managed devices, records real-time status and performance metrics, and enables administrators to query system health and access lists of managed endpoints like Wi-Fi access points. This environment is fundamental to organizational IT operations, ensuring system availability and effective resource management.",
+  "initial_parameter_schema": {
+    "devices": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "performance_metrics": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "last_checked_tim": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "device_id",
+          "name",
+          "type",
+          "status",
+          "location",
+          "performance_metrics",
+          "last_checked_tim"
+        ]
+      }
+    },
+    "device_types": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "type_id": {
+            "type": "string"
+          },
+          "type_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type_id",
+          "type_name",
+          "description"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_device_by_id": [
+      "devices"
+    ],
+    "get_device_status": [
+      "devices"
+    ],
+    "list_devices_by_type": [
+      "device_types",
+      "devices"
+    ],
+    "list_all_devices": [
+      "devices"
+    ],
+    "get_device_performance_metrics": [
+      "devices"
+    ],
+    "list_all_device_types": [
+      "device_types"
+    ],
+    "get_device_type_details": [
+      "device_types"
+    ],
+    "check_performance_metrics_freshness": [
+      "devices"
+    ],
+    "validate_device_type_association": [
+      "device_types",
+      "devices"
+    ],
+    "add_device": [
+      "device_types",
+      "devices"
+    ],
+    "update_device_status": [
+      "devices"
+    ],
+    "update_device_performance_metrics": [
+      "devices"
+    ],
+    "remove_device": [
+      "devices"
+    ],
+    "add_device_type": [
+      "device_types"
+    ],
+    "update_device_type": [
+      "device_types",
+      "devices"
+    ],
+    "reconcile_device_types": [
+      "device_types",
+      "devices"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_device_by_id",
+      "description": "Retrieve detailed information about a specific device using its device_id.\n\nArgs:\n    device_id (str): The unique identifier of the device to query.\n\nReturns:\n    dict:\n        - If found:\n            { \"success\": True, \"data\": DeviceInfo }\n        - If not found:\n            { \"success\": False, \"error\": \"Device not found\" }\n\nConstraints:\n    - device_id must exist in self.devices.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id"
+        ]
+      }
+    },
+    {
+      "name": "get_device_status",
+      "description": "Retrieve the current operational status of a device (online/offline/unknown/etc).\n\nArgs:\n    device_id (str): The unique identifier of the device.\n\nReturns:\n    dict: \n      - On success: {\n            \"success\": True,\n            \"data\": { \"device_id\": str, \"status\": str }\n        }\n      - On error: {\n            \"success\": False,\n            \"error\": \"Device not found\"\n        }\nConstraints:\n    - The device_id must exist in the system devices registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id"
+        ]
+      }
+    },
+    {
+      "name": "list_devices_by_type",
+      "description": "Retrieve a list of all devices matching a specific type ID.\n\nArgs:\n    type_id (str): The unique identifier for the device type (should match DeviceTypeInfo.type_id).\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[DeviceInfo]   # All devices with device['type'] == type_id.\n        }\n    or\n        {\n            \"success\": False,\n            \"error\": str  # Description of error; e.g. type_id does not exist.\n        }\n\nConstraints:\n    - type_id must exist in self.device_types.\n    - Returns all devices whose 'type' field matches given type_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "type_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_devices",
+      "description": "Retrieve a full list of all managed devices.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DeviceInfo]  # List of all devices (may be empty if none managed)\n    }\n\nConstraints:\n    - No constraints; this operation returns all registered devices.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_device_performance_metrics",
+      "description": "Retrieve the performance metrics of a given device, optionally checking for freshness.\n\nArgs:\n    device_id (str): Unique ID of the device whose metrics to retrieve.\n    max_age_seconds (float, optional): If set, require that the metrics are at most this many seconds old.\n    current_time (float, optional): Current UNIX timestamp (used for age calculation; if not given, no age check will be performed).\n\nReturns:\n    dict:  \n        - On success: { \"success\": True, \"data\": <performance_metrics dict> }\n        - On device not found: { \"success\": False, \"error\": \"Device not found\" }\n        - On stale data (if max_age_seconds specified): { \"success\": False, \"error\": \"Metrics data is too old\" }\nConstraints:\n    - Device must exist.\n    - If max_age_seconds is given, last_checked_tim must not be older than max_age_seconds.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          },
+          "max_age_seconds": {
+            "type": "number"
+          },
+          "current_time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "device_id",
+          "max_age_seconds",
+          "current_time"
+        ]
+      }
+    },
+    {
+      "name": "list_all_device_types",
+      "description": "Retrieve all standardized device categories/types (DeviceTypeInfo) in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DeviceTypeInfo],  # May be empty if no types present\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_device_type_details",
+      "description": "Retrieve the details/description of a specific device type.\n\nArgs:\n    type_id (str): Identifier for the device type.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": DeviceTypeInfo,  # On success, the matching DeviceType information.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If device type not found.\n    }\n\nConstraints:\n    - type_id must exist in self.device_types.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "type_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type_id"
+        ]
+      }
+    },
+    {
+      "name": "check_performance_metrics_freshness",
+      "description": "Check whether a device’s performance metrics are up to date (within a freshness threshold).\n\nArgs:\n    device_id (str): Unique identifier of the device to check.\n    freshness_threshold_sec (float): Maximum allowable staleness (in seconds) for metrics to be considered fresh.\n\nReturns:\n    dict:\n        {\n          \"success\": True,\n          \"data\": {\n              \"fresh\": bool,  # True if metrics are fresh, else False\n              \"last_checked_tim\": float,  # Timestamp of the last metrics check\n              \"current_time\": float,  # The value of time.time() used in calculation\n              \"age_seconds\": float,  # How old the metrics are (seconds)\n          }\n        }\n        OR\n        { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Device must exist (device_id present in self.devices).\n    - freshness_threshold_sec should be non-negative (else, always reports as not fresh).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          },
+          "freshness_threshold_sec": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "device_id",
+          "freshness_threshold_sec"
+        ]
+      }
+    },
+    {
+      "name": "validate_device_type_association",
+      "description": "Verify that the specified device's 'type' references a valid DeviceType.\n\nArgs:\n    device_id (str): The ID of the device to validate.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"device_id\": str,\n            \"type\": str,\n            \"type_valid\": bool,\n            \"type_name\": Optional[str],  # Name of type if valid\n        }\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Device must exist in self.devices.\n    - Device's 'type' must match an entry in self.device_types[type_id].",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id"
+        ]
+      }
+    },
+    {
+      "name": "add_device",
+      "description": "Add a new device into the environment inventory.\n\nArgs:\n    device_id (str): Unique identifier for the device.\n    name (str): Device name.\n    type (str): type_id corresponding to a valid DeviceType.\n    status (str): Device operational status (e.g., online, offline).\n    location (str): Device location descriptor.\n    performance_metrics (Dict[str, float]): Metrics such as CPU, memory, etc.\n    last_checked_tim (float): Timestamp of last health/status check.\n\nReturns:\n    dict: \n        { \"success\": True, \"message\": \"Device added successfully.\" }\n        or\n        { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - device_id must be unique.\n    - type must be a valid type_id in self.device_types.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "performance_metrics": {
+            "type": "object"
+          },
+          "last_checked_tim": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "device_id",
+          "name",
+          "type",
+          "status",
+          "location",
+          "performance_metrics",
+          "last_checked_tim"
+        ]
+      }
+    },
+    {
+      "name": "update_device_status",
+      "description": "Update the operational status of a specified device and refresh its last_checked_tim.\n\nArgs:\n    device_id (str): Unique identifier of the device to update.\n    status (str): New operational status (e.g., \"online\", \"offline\", \"unknown\").\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"message\": \"Device status updated for <device_id>.\"\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": \"reason\"\n        }\n\nConstraints:\n    - Device must exist in self.devices.\n    - Updates the 'status' and 'last_checked_tim' fields.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "update_device_performance_metrics",
+      "description": "Update the performance metrics and last_checked_tim for the specified device.\n\nArgs:\n    device_id (str): Unique identifier for the device to update.\n    performance_metrics (Dict[str, float]): Dictionary of metric name to value.\n    last_checked_tim (float): UNIX timestamp indicating when metrics were last checked.\n\nReturns:\n    dict: \n        If successful:\n            {\"success\": True, \"message\": \"Performance metrics updated for device <device_id>.\"}\n        If error:\n            {\"success\": False, \"error\": \"Device not found\"} \n\nConstraints:\n    - The device with device_id must exist in the system.\n    - Updates both 'performance_metrics' and 'last_checked_tim'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          },
+          "performance_metrics": {
+            "type": "object"
+          },
+          "last_checked_tim": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "device_id",
+          "performance_metrics",
+          "last_checked_tim"
+        ]
+      }
+    },
+    {
+      "name": "remove_device",
+      "description": "Remove a device from the system by device_id.\n\nArgs:\n    device_id (str): Unique identifier of the device to be removed.\n\nReturns:\n    dict:\n        Success: { \"success\": True, \"message\": \"Device <id> removed from the system.\" }\n        Failure: { \"success\": False, \"error\": \"Device not found.\" }\n\nConstraints:\n    - The device must already exist in the system (self.devices).\n    - The device will be deleted from the state if found.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id"
+        ]
+      }
+    },
+    {
+      "name": "add_device_type",
+      "description": "Add a new DeviceType to the system.\n\nArgs:\n    type_id (str): Unique identifier for the device type/category.\n    type_name (str): Readable name of the device type.\n    description (str): Description of the device type.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Device type '<type_id>' added.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"<reason>\"\n            }\n\nConstraints:\n    - type_id must be unique in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "type_id": {
+            "type": "string"
+          },
+          "type_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type_id",
+          "type_name",
+          "description"
+        ]
+      }
+    },
+    {
+      "name": "update_device_type",
+      "description": "Change the type of an existing device, after validation.\n\nArgs:\n    device_id (str): Unique identifier of the device to modify.\n    new_type_id (str): DeviceType (type_id) to assign to the device.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"message\": \"Device type updated successfully\"\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": \"Reason for failure\"\n        }\n\nConstraints:\n    - device_id must exist.\n    - new_type_id must refer to an existing DeviceType.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          },
+          "new_type_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id",
+          "new_type_id"
+        ]
+      }
+    },
+    {
+      "name": "reconcile_device_types",
+      "description": "Scan all devices and fix or flag devices that do not have a valid type association.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"flagged_devices\": List[str],  # device_ids with invalid type association (not auto-fixed)\n        \"fixed_devices\": List[dict],   # Each dict: {\"device_id\": str, \"old_type\": str, \"new_type\": str} for fixed devices\n        \"message\": str                 # Human-readable summary\n    }\n\nConstraints:\n    - Each device's 'type' must match a type_id in self.device_types.\n    - Devices with invalid type associations are flagged.\n    - Devices whose type can be fixed (e.g., set to a fallback type) are fixed and recorded.\n    - No exception is raised.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,384 @@
+{
+  "env_name": "ExpenseTrackingSystem",
+  "description": "An expense tracking system records and organizes financial outlays, allowing users to classify expenses (e.g., office, personal), associate them with dates, and retrieve categorized reports. It maintains state about each transaction including amount, description, category, and timestamp. Such systems support typical operations like data entry, filtering, listing, and summarizing, providing essential tools for budgeting and financial review.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "account_status"
+        ]
+      }
+    },
+    "categories": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          },
+          "category_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id",
+          "category_name"
+        ]
+      }
+    },
+    "expenses": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "expense_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "description": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "expense_id",
+          "user_id",
+          "amount",
+          "description",
+          "category",
+          "date"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "list_expenses_by_category_and_date": [
+      "categories",
+      "expenses"
+    ],
+    "list_categories": [
+      "categories"
+    ],
+    "get_user_info": [
+      "users"
+    ],
+    "get_expense_by_id": [
+      "expenses"
+    ],
+    "summarize_expenses_by_category_and_date": [
+      "categories",
+      "expenses"
+    ],
+    "list_all_expenses_for_user": [
+      "expenses",
+      "users"
+    ],
+    "add_expense": [
+      "categories",
+      "expenses",
+      "users"
+    ],
+    "update_expense": [
+      "categories",
+      "expenses"
+    ],
+    "delete_expense": [
+      "expenses"
+    ],
+    "add_category": [
+      "categories"
+    ],
+    "update_category": [
+      "categories"
+    ],
+    "delete_category": [
+      "categories",
+      "expenses"
+    ]
+  },
+  "tools": [
+    {
+      "name": "list_expenses_by_category_and_date",
+      "description": "List all expenses filtered by specified category (or categories) and by an exact date or a date range.\n\nArgs:\n    categories (Union[List[str], str]): Category ID(s) to filter by. Can be a single category_id or a list of category_ids.\n    start_date (str, optional): ISO date string representing interval lower-bound (inclusive). Default None.\n    end_date (str, optional): ISO date string representing interval upper-bound (inclusive). Default None.\n    date (str, optional): ISO date string for matching exact date (overrides range if provided). Default None.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[ExpenseInfo]\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str\n            }\n\nConstraints:\n    - All category IDs given must exist in the system.\n    - If category/filter is empty or invalid, error.\n    - Filtering is inclusive; date comparisons are string-based (ISO 8601 format assumed).\n\nNotes:\n    - If both `date` and [start_date/end_date] are provided, `date` takes precedence.\n    - If only categories are provided, all expenses in those categories are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "categories": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "categories"
+        ]
+      }
+    },
+    {
+      "name": "list_categories",
+      "description": "Retrieve all defined expense categories.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CategoryInfo]  # List of categories, each with category_id and category_name\n    }\n\n    If no categories have been defined, the list will be empty but returned as a success.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_user_info",
+      "description": "Retrieve user information by user_id (unique) or by username (may not be unique).\n\nArgs:\n    user_id (str, optional): The unique user ID.\n    username (str, optional): The username (i.e., name field).\n\nReturns:\n    dict: On success: {\"success\": True, \"data\": UserInfo}\n          On failure: {\"success\": False, \"error\": str}\n\nConstraints:\n    - At least one of user_id or username must be provided (non-empty).\n    - If both provided, priority is given to user_id.\n    - If username is not unique, the first found user is returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [],
+        "anyOf": [
+          {
+            "required": [
+              "user_id"
+            ]
+          },
+          {
+            "required": [
+              "username"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_expense_by_id",
+      "description": "Retrieve all details for a specific expense entry by its ID.\n\nArgs:\n    expense_id (str): Unique identifier for the expense.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": ExpenseInfo  # complete details for the expense\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Expense not found\"\n            }\n\nConstraints:\n    - Expense must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "expense_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "expense_id"
+        ]
+      }
+    },
+    {
+      "name": "summarize_expenses_by_category_and_date",
+      "description": "Produce a financial summary (total amount) for expenses in specified categories\nwithin a date range (inclusive).\n\nArgs:\n    category_ids (List[str]): List of category IDs to include.\n    start_date (str): ISO 8601 string, inclusive lower bound for date filtering.\n    end_date (str): ISO 8601 string, inclusive upper bound for date filtering.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"total_amount\": float  # sum of 'amount' across matching expenses\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # error message\n    }\n\nConstraints:\n    - All provided category_ids must exist.\n    - start_date and end_date must be valid and start_date <= end_date.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_ids",
+          "start_date",
+          "end_date"
+        ]
+      }
+    },
+    {
+      "name": "list_all_expenses_for_user",
+      "description": "List all expenses recorded by the specified user.\n\nArgs:\n    user_id (str): The identifier of the user whose expenses are to be listed.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": List[ExpenseInfo]\n            }\n        - On failure (user not found):\n            {\n                \"success\": False,\n                \"error\": \"User does not exist\"\n            }\n\nConstraints:\n    - user_id must exist in the users.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "add_expense",
+      "description": "Create a new expense entry with validation.\n\nArgs:\n    expense_id (str): Unique identifier for this expense.\n    user_id (str): The user's ID (must exist).\n    amount (float): Amount spent (must be positive).\n    description (str): Description of the expense.\n    category (str): Category ID for this expense (must exist).\n    date (str): Timestamp (ISO 8601 string preferred).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Expense added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure.\"\n    }\n\nConstraints:\n    - The user_id must exist.\n    - The category must exist.\n    - Amount must be positive.\n    - Date must be a valid timestamp string (ISO 8601).\n    - expense_id must be unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "expense_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "description": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "expense_id",
+          "user_id",
+          "amount",
+          "description",
+          "category",
+          "date"
+        ]
+      }
+    },
+    {
+      "name": "update_expense",
+      "description": "Modify details of an existing expense.\nOnly updates provided fields. All constraints are enforced.\n\nArgs:\n    expense_id (str): Identifier of the expense to update.\n    amount (float, optional): New amount (>0).\n    category (str, optional): New category_id (must exist in categories).\n    description (str, optional): New description.\n    date (str, optional): New date (should be a valid timestamp string, e.g. ISO 8601).\n\nReturns:\n    dict: \n        On success:\n            {\"success\": True, \"message\": \"Expense updated successfully\"}\n        On failure:\n            {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - Only provided fields are updated.\n    - Expense must exist.\n    - Amount must be positive if given.\n    - Category must exist if given.\n    - Date must be a valid timestamp string if given (basic ISO 8601 check).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "expense_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "category": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "expense_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_expense",
+      "description": "Remove a specific expense from the system.\n\nArgs:\n    expense_id (str): The unique identifier of the expense to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Expense deleted successfully.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"Expense not found.\"\n    }\n\nConstraints:\n    - The expense to be deleted must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "expense_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "expense_id"
+        ]
+      }
+    },
+    {
+      "name": "add_category",
+      "description": "Adds a new category to the list of valid expense categories.\n\nArgs:\n    category_id (str): Unique identifier for the new category.\n    category_name (str): Human-readable name for the category.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Category added successfully.\" }\n        On failure:\n            { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - category_id must be unique.\n    - category_name should not duplicate an existing name (for clarity).\n    - category_id and category_name must not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          },
+          "category_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id",
+          "category_name"
+        ]
+      }
+    },
+    {
+      "name": "update_category",
+      "description": "Rename or otherwise modify an existing expense category.\n\nArgs:\n    category_id (str): The ID of the category to modify.\n    category_name (str): The new name for the category.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True,\n            \"message\": \"Category updated successfully\"\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": <description>\n        }\nConstraints:\n    - category_id must exist in self.categories.\n    - category_name must be a non-empty string.\n    - Only category_name can be modified; category_id stays unchanged.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          },
+          "category_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id",
+          "category_name"
+        ]
+      }
+    },
+    {
+      "name": "delete_category",
+      "description": "Remove a category from the system, and delete all expenses associated with it.\n\nArgs:\n    category_id (str): The ID of the category to be deleted.\n\nReturns:\n    dict: \n        - On success: {\n              \"success\": True,\n              \"message\": \"Category deleted. <N> associated expenses removed.\"\n          }\n        - On failure: {\n              \"success\": False,\n              \"error\": str  # description of error (e.g., category not found)\n          }\n\nConstraints:\n    - The category must exist.\n    - All expenses associated with this category will be deleted as well.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,573 @@
+{
+  "env_name": "BusinessReputationReviewPlatform",
+  "description": "A business reputation and review management platform is a system that aggregates, evaluates, and displays ratings, trust scores, and profile information for businesses and their units. It tracks customer feedback, computes reputation metrics, and maintains web links and contact details for listed entities. Such platforms facilitate informed decisions for consumers and provide businesses with insight into their public perception.",
+  "initial_parameter_schema": {
+    "businesses": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "business_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "industry": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "business_id",
+          "name",
+          "industry",
+          "contact_info"
+        ]
+      }
+    },
+    "business_units": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string"
+          },
+          "business_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "web_link": {
+            "type": "string"
+          },
+          "trust_score": {
+            "type": "number"
+          },
+          "star_rating": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "unit_id",
+          "business_id",
+          "name",
+          "address",
+          "web_link"
+        ]
+      }
+    },
+    "reviews": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "type": "string"
+          },
+          "unit_id": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "number"
+          },
+          "review_text": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id",
+          "unit_id",
+          "customer_id",
+          "rating",
+          "review_text",
+          "timestamp"
+        ]
+      }
+    },
+    "customers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "profile_info": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "recompute_reputation_metrics_for_unit": {
+      "type": "string"
+    }
+  },
+  "tool_state_dependencies": {
+    "get_business_unit_by_id": [
+      "business_units"
+    ],
+    "get_business_unit_by_name": [
+      "business_units"
+    ],
+    "get_business_units_by_business": [
+      "business_units",
+      "businesses"
+    ],
+    "get_trust_score_and_rating_for_unit": [
+      "business_units"
+    ],
+    "get_web_link_for_unit": [
+      "business_units"
+    ],
+    "get_reviews_for_unit": [
+      "business_units",
+      "reviews"
+    ],
+    "get_review_by_id": [
+      "reviews"
+    ],
+    "get_business_by_id": [
+      "businesses"
+    ],
+    "get_customer_by_id": [
+      "customers"
+    ],
+    "list_all_businesses": [
+      "businesses"
+    ],
+    "list_all_business_units": [
+      "business_units"
+    ],
+    "recompute_reputation_metrics_for_unit": [
+      "business_units",
+      "reviews"
+    ],
+    "add_review": [
+      "business_units",
+      "customers",
+      "recompute_reputation_metrics_for_unit",
+      "reviews"
+    ],
+    "update_review": [
+      "recompute_reputation_metrics_for_unit",
+      "reviews"
+    ],
+    "remove_review": [
+      "business_units",
+      "reviews"
+    ],
+    "add_business_unit": [
+      "business_units",
+      "businesses"
+    ],
+    "update_business_unit_web_link": [
+      "business_units"
+    ],
+    "add_business": [
+      "businesses"
+    ],
+    "link_business_unit_to_business": [
+      "business_units",
+      "businesses"
+    ],
+    "unlink_business_unit_from_business": [
+      "business_units"
+    ],
+    "remove_business_unit": [
+      "business_units",
+      "reviews"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_business_unit_by_id",
+      "description": "Retrieve the full metadata/details for a business unit given its unique unit ID.\n\nArgs:\n    unit_id (str): Unique identifier of the business unit.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": BusinessUnitInfo  # All info fields for the business unit\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Business unit not found\"\n            }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "unit_id"
+        ]
+      }
+    },
+    {
+      "name": "get_business_unit_by_name",
+      "description": "Find a business unit by its name and return its info (trust score, star rating, web link, etc.).\n\nArgs:\n    name (str): The name of the business unit to search for (case-sensitive).\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": BusinessUnitInfo }\n        - On failure: { \"success\": False, \"error\": \"Business unit not found\" }\n\nNotes:\n    - If multiple business units have the same name, returns the first match encountered.\n    - Comparison is case-sensitive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_business_units_by_business",
+      "description": "List all business units belonging to a given business by business_id.\n\nArgs:\n    business_id (str): Identifier of the parent business.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BusinessUnitInfo],  # may be empty if no units found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # error description, e.g., if business_id is invalid\n    }\n\nConstraints:\n    - The specified business_id must exist in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "business_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "business_id"
+        ]
+      }
+    },
+    {
+      "name": "get_trust_score_and_rating_for_unit",
+      "description": "Retrieve the trust score and star rating for a specific business unit.\n\nArgs:\n    unit_id (str): The unique identifier of the business unit.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"trust_score\": float,\n                    \"star_rating\": float\n                }\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # \"Business unit not found\"\n            }\nConstraints:\n    - unit_id must exist in the platform.\n    - Returns only trust_score and star_rating fields.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "unit_id"
+        ]
+      }
+    },
+    {
+      "name": "get_web_link_for_unit",
+      "description": "Retrieve the web link (URL) for the specified business unit.\n\nArgs:\n    unit_id (str): The unique identifier of the business unit.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": str }  # the web link (URL)\n        - On failure: { \"success\": False, \"error\": str }  # error message\n\nConstraints:\n    - The business unit with the given unit_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "unit_id"
+        ]
+      }
+    },
+    {
+      "name": "get_reviews_for_unit",
+      "description": "List all reviews associated with a specific business unit.\n\nArgs:\n    unit_id (str): The unique identifier of the business unit.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ReviewInfo]  # list of matching reviews (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., 'Business unit does not exist'\n    }\n\nConstraints:\n    - The specified business unit (unit_id) must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "unit_id"
+        ]
+      }
+    },
+    {
+      "name": "get_review_by_id",
+      "description": "Fetch details of a single review by its review_id.\n\nArgs:\n    review_id (str): The unique identifier of the review.\n\nReturns:\n    dict: \n        On success:\n            {\"success\": True, \"data\": ReviewInfo}\n        On failure:\n            {\"success\": False, \"error\": \"Review not found\"}\nConstraints:\n    - The review_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id"
+        ]
+      }
+    },
+    {
+      "name": "get_business_by_id",
+      "description": "Retrieve business details (name, industry, contact) by business_id.\n\nArgs:\n    business_id (str): The identifier of the business.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": BusinessInfo\n            }\n        If not found:\n            {\n                \"success\": False,\n                \"error\": \"Business not found\"\n            }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "business_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "business_id"
+        ]
+      }
+    },
+    {
+      "name": "get_customer_by_id",
+      "description": "Retrieve information about a customer given their customer_id.\n\nArgs:\n    customer_id (str): The unique identifier of the customer.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": CustomerInfo }\n        - On failure: { \"success\": False, \"error\": \"Customer not found\" }\n\nConstraints:\n    - customer_id must be present in self.customers.\n    - CustomerInfo's 'name' field may be omitted for anonymity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_businesses",
+      "description": "List all registered businesses on the platform.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BusinessInfo]  # List of business info dictionaries. May be empty if no businesses registered.\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_all_business_units",
+      "description": "List all business units currently on the platform.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BusinessUnitInfo],  # All business units (may be empty)\n    }\nConstraints:\n    - No constraints; this is a simple read.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "recompute_reputation_metrics_for_unit",
+      "description": "Recalculate the trust score and star rating for the specified business unit\nfrom all currently associated reviews. Updates the fields in the business unit.\n\nArgs:\n    unit_id (str): The unique identifier for the business unit.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Reputation metrics recomputed for business unit <unit_id>.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Business unit not found.\"\n            }\n\nConstraints:\n    - Fails if the specified business unit does not exist.\n    - Sets trust_score and star_rating to 0.0 if there are no reviews.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "unit_id"
+        ]
+      }
+    },
+    {
+      "name": "add_review",
+      "description": "Add a new review for a business unit.\n\nArgs:\n    review_id (str): Desired unique review ID.\n    unit_id (str): ID of the business unit being reviewed.\n    customer_id (str): Customer ID of the reviewer.\n    rating (float): Star rating (typically 1-5 float).\n    review_text (str): Text/body of the review.\n    timestamp (str): Timestamp of review (ISO8601 or similar).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Review added\"\n    } on success, or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    } on failure.\n\nConstraints:\n    - Each (unit_id, customer_id) may have only one review.\n    - review_id must not already exist.\n    - unit_id must exist.\n    - customer_id must exist.\n    - Optional: only verified customers may review (if verification is implemented).\n    - Triggers recomputation of reputation metrics for the unit after addition.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "type": "string"
+          },
+          "unit_id": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "number"
+          },
+          "review_text": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id",
+          "unit_id",
+          "customer_id",
+          "rating",
+          "review_text",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "update_review",
+      "description": "Update an existing review's rating and/or review text.\n\nArgs:\n    review_id (str): The unique identifier of the review to be updated.\n    rating (Optional[float]): The new rating score (if updating).\n    review_text (Optional[str]): The new review text (if updating).\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Review updated successfully.\" }\n        On error:   { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - At least one of rating or review_text must be provided.\n    - If rating is provided, it must be a float.\n    - After update, must recompute reputation metrics for the associated business unit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "number"
+          },
+          "review_text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_review",
+      "description": "Delete a review by its review_id and trigger a reputation metric update for the unit.\n\nArgs:\n    review_id (str): The unique identifier for the review to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Confirmation of deletion and metric update,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Review must exist.\n    - Reputation metrics for the associated business unit are recomputed after review removal.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id"
+        ]
+      }
+    },
+    {
+      "name": "add_business_unit",
+      "description": "Register a new business unit under a parent business.\n\nArgs:\n    unit_id (str): Unique identifier for the new business unit.\n    business_id (str): Parent business identifier (must exist).\n    name (str): Name of the business unit.\n    address (str): Address of the unit.\n    web_link (str): Unique web link for the business unit.\n    trust_score (float, optional): Initial trust score (default 0.0).\n    star_rating (float, optional): Initial star rating (default 0.0).\n\nReturns:\n    dict: \n        On success:\n            { \"success\": True, \"message\": \"Business unit <unit_id> added under business <business_id>\" }\n        On failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Parent business must exist.\n    - web_link must be globally unique among units and well-formed.\n    - unit_id must not already exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string"
+          },
+          "business_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "web_link": {
+            "type": "string"
+          },
+          "trust_score": {
+            "type": "number"
+          },
+          "star_rating": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "unit_id",
+          "business_id",
+          "name",
+          "address",
+          "web_link",
+          "trust_score",
+          "star_rating"
+        ]
+      }
+    },
+    {
+      "name": "update_business_unit_web_link",
+      "description": "Change the web link of a business unit, ensuring the new link is unique and well-formed.\n\nArgs:\n    unit_id (str): Identifier of the business unit to update.\n    new_web_link (str): The new web link (must be unique and valid URL).\n\nReturns:\n    dict: {\n        'success': True,\n        'message': 'Web link updated for business unit <unit_id>'\n    }\n    or\n    {\n        'success': False,\n        'error': <error message>\n    }\n\nConstraints:\n    - unit_id must exist in the system.\n    - new_web_link must not be used by any other business unit.\n    - new_web_link must be a well-formed URL (begins with 'http://' or 'https://', contains a '.').",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string"
+          },
+          "new_web_link": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "unit_id",
+          "new_web_link"
+        ]
+      }
+    },
+    {
+      "name": "add_business",
+      "description": "Add/register a new business entity on the platform.\n\nArgs:\n    business_id (str): Unique identifier for the business.\n    name (str): Business name.\n    industry (str): Business industry.\n    contact_info (str): Contact details (address, phone, email, etc.).\n\nReturns:\n    dict: On success:\n              { \"success\": True, \"message\": \"Business <name> added with id <business_id>.\" }\n          On failure (e.g., duplicate ID):\n              { \"success\": False, \"error\": \"Business with this ID already exists.\" }\nConstraints:\n    - The business_id must be unique (not already in self.businesses).\n    - All arguments are required (no missing values).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "business_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "industry": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "business_id",
+          "name",
+          "industry",
+          "contact_info"
+        ]
+      }
+    },
+    {
+      "name": "link_business_unit_to_business",
+      "description": "Set or update the parent business for a business unit.\nEnforces that only one parent is allowed per unit.\n\nArgs:\n    unit_id (str): ID of the business unit to update.\n    business_id (str): ID of the business to link as parent.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Business unit <unit_id> is now linked to business <business_id>.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n- business_id must reference an existing business in the platform.\n- unit_id must reference an existing business unit in the platform.\n- Each business unit can have only one parent business (this link will overwrite any previous association).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string"
+          },
+          "business_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "unit_id",
+          "business_id"
+        ]
+      }
+    },
+    {
+      "name": "unlink_business_unit_from_business",
+      "description": "Remove the association between a business unit and its parent business.\n\nArgs:\n    unit_id (str): The unique identifier of the business unit to unlink.\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"message\": \"Business unit <unit_id> successfully unlinked from business <business_id>.\"}\n        - On failure: {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - The business unit must exist.\n    - The business unit must currently be linked to a business.\n    - This will clear the business_id from the business unit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "unit_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_business_unit",
+      "description": "Removes the specified business unit and all its associated reviews from the platform.\n\nArgs:\n    unit_id (str): The unique ID of the business unit to be removed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Business unit <unit_id> and its reviews removed.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - All reviews associated with this unit must be deleted.\n    - If the unit does not exist, operation fails.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "unit_id"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,474 @@
+{
+  "env_name": "AccountBreachMonitoringSystem",
+  "description": "An account breach monitoring system tracks user accounts and correlates them with reported security breaches from various sources. It maintains a database of known breaches, impacted accounts, incident timestamps, and notification states. Such systems support searching for exposures, alerting users, and providing summary reports to help individuals stay informed about their account security.",
+  "initial_parameter_schema": {
+    "accounts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "account_name": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "account_name",
+          "user_id"
+        ]
+      }
+    },
+    "breaches": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "breach_id": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "breach_timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "breach_id",
+          "source",
+          "description",
+          "breach_timestamp"
+        ]
+      }
+    },
+    "account_breaches": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "account_id": {
+              "type": "string"
+            },
+            "breach_id": {
+              "type": "string"
+            },
+            "detected_timestamp": {
+              "type": "string"
+            },
+            "notification_status": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "account_id",
+            "breach_id",
+            "detected_timestamp",
+            "notification_status"
+          ]
+        }
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "contact_info"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_account_by_name": [
+      "accounts"
+    ],
+    "get_account_by_id": [
+      "accounts"
+    ],
+    "list_accounts_by_user": [
+      "accounts",
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_user_contact_info": [
+      "users"
+    ],
+    "list_account_breaches": [
+      "account_breaches",
+      "accounts"
+    ],
+    "get_breach_by_id": [
+      "breaches"
+    ],
+    "list_breaches_for_account": [
+      "account_breaches",
+      "accounts",
+      "breaches"
+    ],
+    "filter_recent_breaches": [
+      "breaches"
+    ],
+    "get_notification_status": [
+      "account_breaches",
+      "accounts"
+    ],
+    "list_accounts": [
+      "accounts"
+    ],
+    "update_notification_status": [
+      "account_breaches",
+      "accounts"
+    ],
+    "add_account_breach": [
+      "account_breaches",
+      "accounts",
+      "breaches"
+    ],
+    "add_account": [
+      "account_breaches",
+      "accounts",
+      "users"
+    ],
+    "add_breach": [
+      "breaches"
+    ],
+    "add_user": [
+      "users"
+    ],
+    "remove_account_breach": [
+      "account_breaches",
+      "accounts"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_account_by_name",
+      "description": "Retrieve account information using an account_name.\n\nArgs:\n    account_name (str): The name of the account to search for.\n\nReturns:\n    dict:\n        - If found: {\"success\": True, \"data\": AccountInfo}\n        - If not found: {\"success\": False, \"error\": \"Account not found\"}\n\nConstraints:\n    - Accounts are uniquely identifiable (typically via account_id).\n    - Returns the first match for the given account_name.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_name"
+        ]
+      }
+    },
+    {
+      "name": "get_account_by_id",
+      "description": "Retrieve detailed account information using account_id.\n\nArgs:\n    account_id (str): The unique identifier for the account.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": AccountInfo  # Account details dictionary\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Explanation if the account does not exist\n        }\nConstraints:\n    - The account with the given account_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      }
+    },
+    {
+      "name": "list_accounts_by_user",
+      "description": "Get all accounts belonging to a specific user.\n\nArgs:\n    user_id (str): The user identifier for which to retrieve accounts.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AccountInfo]  # List of accounts for the user, may be empty\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g. \"User does not exist\"\n    }\n\nConstraints:\n    - user_id must exist in the system (self.users).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user information (user_id and contact_info) by user_id.\n\nArgs:\n    user_id (str): Unique identifier for the user.\n\nReturns:\n    dict: \n        - {\"success\": True, \"data\": UserInfo} if user exists.\n        - {\"success\": False, \"error\": \"User not found\"} if user_id not present.\n\nConstraints:\n    - User must exist in self.users.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_contact_info",
+      "description": "Retrieve the contact information for a user given their user_id.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": str  # Contact info for the user\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if user is not found\n    }\n\nConstraints:\n    - The user must exist (identified uniquely by user_id).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_account_breaches",
+      "description": "Retrieve all breach records (AccountBreachInfo) for the specified account_id.\n\nArgs:\n    account_id (str): The unique identifier of the account.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": List[AccountBreachInfo]  # May be empty if no breaches\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Reason, e.g. \"Account does not exist\"\n        }\n\nConstraints:\n    - account_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      }
+    },
+    {
+      "name": "get_breach_by_id",
+      "description": "Retrieve details (metadata) of a breach by its unique breach_id.\n\nArgs:\n    breach_id (str): The breach identifier to look up.\n\nReturns:\n    dict:\n        - If found:\n            {\n                \"success\": True,\n                \"data\": BreachInfo  # The breach metadata\n            }\n        - If not found:\n            {\n                \"success\": False,\n                \"error\": \"Breach not found\"\n            }\n\nConstraints:\n    - breach_id must exist in the breaches database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "breach_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "breach_id"
+        ]
+      }
+    },
+    {
+      "name": "list_breaches_for_account",
+      "description": "Get all BreachInfo objects impacting the given account_id.\n\nArgs:\n    account_id (str): The ID of the account whose impacting breaches are to be listed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BreachInfo],  # List of BreachInfo dicts impacting this account\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If account does not exist\n    }\n\nConstraints:\n    - The account_id must exist in the system.\n    - Only returns breaches actually recorded by AccountBreach relation.\n    - If a breach referenced by AccountBreachInfo is missing, it is skipped.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      }
+    },
+    {
+      "name": "filter_recent_breaches",
+      "description": "Filter a list of breaches to only those considered \"recent\" per system policy.\n\nArgs:\n    breach_ids (List[str]): List of breach IDs to check.\n    cutoff_timestamp (str, optional): ISO format timestamp representing minimum \"recent\" time.\n        If None, defaults to 30 days before the most recent candidate breach timestamp in the provided breach_ids.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BreachInfo],  # List of recent breaches' info\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error\n    }\n\nConstraints:\n    - Only include breaches whose breach_timestamp >= cutoff_timestamp.\n    - Timestamps may be compared using standard ISO 8601 strings, including a trailing 'Z'.\n    - If breach_ids not found, skip them.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "breach_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "cutoff_timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "breach_ids"
+        ]
+      }
+    },
+    {
+      "name": "get_notification_status",
+      "description": "Retrieve the notification_status for a specific account_id and breach_id.\n\nArgs:\n    account_id (str): The monitored account's unique ID.\n    breach_id (str): The unique ID of the breach event.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": str  # notification_status, e.g. \"notified\", \"pending\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Account with account_id must exist.\n    - There must be a mapping for (account_id, breach_id) in account_breaches.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "breach_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "breach_id"
+        ]
+      }
+    },
+    {
+      "name": "list_accounts",
+      "description": "List all accounts being monitored by the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AccountInfo]  # A list of all accounts (can be empty)\n    }\n\nConstraints:\n    - None specific to listing; always succeeds.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "update_notification_status",
+      "description": "Update the notification_status value for a given account-breach pair.\n\nArgs:\n    account_id (str): The ID of the account.\n    breach_id (str): The ID of the breach.\n    notification_status (str): The new notification status value.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Notification status updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The account and breach must both exist.\n    - The account must be associated with the given breach.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "breach_id": {
+            "type": "string"
+          },
+          "notification_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "breach_id",
+          "notification_status"
+        ]
+      }
+    },
+    {
+      "name": "add_account_breach",
+      "description": "Add a new breach association for an account.\n\nArgs:\n    account_id (str): The id of the account to associate.\n    breach_id (str): The id of the breach to associate.\n    detected_timestamp (str): When the impact was detected (string/timestamp).\n    notification_status (str): Notification status for this account-breach pair.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"... successfully added ...\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - account_id must exist in the system.\n    - breach_id must exist in the system.\n    - Should not create duplicate AccountBreach for the same (account_id, breach_id).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "breach_id": {
+            "type": "string"
+          },
+          "detected_timestamp": {
+            "type": "string"
+          },
+          "notification_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "breach_id",
+          "detected_timestamp",
+          "notification_status"
+        ]
+      }
+    },
+    {
+      "name": "add_account",
+      "description": "Add a new account to the system.\n\nArgs:\n    account_id (str): Unique identifier for the account.\n    account_name (str): The account name (e.g., email address).\n    user_id (str): The user to whom this account belongs; must exist in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Account added successfully.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": reason string\n    }\n\nConstraints:\n    - account_id must be unique.\n    - user_id must exist in the system.\n    - All arguments must be non-empty strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "account_name": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "account_name",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "add_breach",
+      "description": "Add a new security breach record.\n\nArgs:\n    breach_id (str): Unique identifier for the breach.\n    source (str): Source/system from which the breach originated.\n    description (str): Description of what the breach involves.\n    breach_timestamp (str): ISO or string-encoded time when the breach occurred.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"message\": \"Breach record added successfully.\"}\n        On failure:\n            {\"success\": False, \"error\": \"...\"}\n\nConstraints:\n    - breach_id must be unique; if it exists, must not overwrite existing breach.\n    - All fields are required and must not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "breach_id": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "breach_timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "breach_id",
+          "source",
+          "description",
+          "breach_timestamp"
+        ]
+      }
+    },
+    {
+      "name": "add_user",
+      "description": "Register a new user in the account breach monitoring system.\n\nArgs:\n    user_id (str): Unique identifier for the user.\n    contact_info (str): User's contact information (email, phone, etc.).\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"message\": \"User added successfully.\"}\n        - On failure: {\"success\": False, \"error\": \"User ID already exists.\"} or other error description.\n\nConstraints:\n    - user_id must be unique within the system.\n    - contact_info must not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "contact_info"
+        ]
+      }
+    },
+    {
+      "name": "remove_account_breach",
+      "description": "Remove an existing breach association from an account.\n\nArgs:\n    account_id (str): The ID of the account.\n    breach_id (str): The ID of the breach to remove for this account.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Breach removed from account.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"No such breach association for account.\"  # Or account not found\n    }\n\nConstraints:\n    - The account must exist.\n    - The breach association (account_id + breach_id) must exist.\n    - Removing the mapping does not affect other data.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "breach_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "breach_id"
+        ]
+      }
+    }
+  ]
+}

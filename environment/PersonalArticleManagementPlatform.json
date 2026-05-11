@@ -1,0 +1,437 @@
+{
+  "env_name": "PersonalArticleManagementPlatform",
+  "description": "A personal article management platform aggregates articles from various sources, enabling users to read, search, filter, and organize content by metadata such as publication date and keywords. It maintains user-specific state, including read history and bookmarks or starred articles, supporting actions like marking articles for later reference. Typical operations include article search, personalized categorization, and tracking user preferences.",
+  "initial_parameter_schema": {
+    "articles": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "article_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "authors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "publication_date": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "keywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "article_id",
+          "title",
+          "authors",
+          "publication_date",
+          "content",
+          "keywords",
+          "source"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "preference": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "preference"
+        ]
+      }
+    },
+    "user_read_history": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "_id": {
+              "type": "string"
+            },
+            "article_id": {
+              "type": "string"
+            },
+            "read_timestamp": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "_id",
+            "article_id",
+            "read_timestamp"
+          ]
+        }
+      }
+    },
+    "user_starred_articles": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "_id": {
+              "type": "string"
+            },
+            "article_id": {
+              "type": "string"
+            },
+            "starred_timestamp": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "_id",
+            "article_id",
+            "starred_timestamp"
+          ]
+        }
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_username": [
+      "users"
+    ],
+    "get_articles_by_keywords_and_date": [
+      "articles"
+    ],
+    "get_user_read_history": [
+      "user_read_history",
+      "users"
+    ],
+    "has_user_read_article": [
+      "articles",
+      "user_read_history",
+      "users"
+    ],
+    "get_user_starred_articles": [
+      "articles",
+      "user_starred_articles",
+      "users"
+    ],
+    "has_user_starred_article": [
+      "articles",
+      "user_starred_articles",
+      "users"
+    ],
+    "get_article_by_id": [
+      "articles"
+    ],
+    "star_article_for_user": [
+      "articles",
+      "user_starred_articles",
+      "users"
+    ],
+    "unstar_article_for_user": [
+      "articles",
+      "user_starred_articles",
+      "users"
+    ],
+    "add_article_to_user_read_history": [
+      "articles",
+      "user_read_history",
+      "users"
+    ],
+    "remove_article_from_user_read_history": [
+      "user_read_history",
+      "users"
+    ],
+    "update_user_preferences": [
+      "users"
+    ],
+    "bulk_star_articles_for_user": [
+      "articles",
+      "user_starred_articles",
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_username",
+      "description": "Retrieve user information by username.\n\nArgs:\n    username (str): The username to look up.\n\nReturns:\n    dict: \n        - { \"success\": True, \"data\": UserInfo } if user is found\n        - { \"success\": False, \"error\": \"User not found\" } if no such user\n\nConstraints:\n    - Username is assumed to be unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "get_articles_by_keywords_and_date",
+      "description": "Search for articles filtered by provided keyword list (at least one match), and a publication date range (inclusive).\n\nArgs:\n    keywords (List[str]): List of keywords to match (OR).\n    start_date (str): Start date in ISO format 'YYYY-MM-DD' (inclusive).\n    end_date (str): End date in ISO format 'YYYY-MM-DD' (inclusive).\n\nReturns:\n    dict:\n        - success: True, data: List[ArticleInfo] for matching articles\n        - success: False, error: description of error\n\nNotes:\n    - If keywords is empty, search only by date.\n    - If dates are invalid or start_date > end_date, returns error.\n    - If no matches, returns an empty data list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "keywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "keywords",
+          "start_date",
+          "end_date"
+        ]
+      }
+    },
+    {
+      "name": "get_user_read_history",
+      "description": "Retrieve the list of articles a user has read, with timestamps.\n\nArgs:\n    user_id (str): The user's unique identifier (_id).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[UserReadHistoryInfo]  # List of read articles (may be empty)\n    }\n    or {\n        \"success\": False,\n        \"error\": str  # e.g., user does not exist\n    }\n\nConstraints:\n    - The user must exist in the platform.\n    - Always returns a list (may be empty if user has not read any articles).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "has_user_read_article",
+      "description": "Check whether a specific user has read a specific article.\n\nArgs:\n    user_id (str): The user's unique identifier.\n    article_id (str): The article's unique identifier.\n\nReturns:\n    dict: On success:\n            { \"success\": True, \"data\": True/False }\n          On error:\n            { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - User must exist.\n    - Article must exist.\n    - (user_id, article_id) is unique in user read history.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "article_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "article_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_starred_articles",
+      "description": "Retrieve the list of articles a user has starred/bookmarked.\n\nArgs:\n    user_id (str): The unique ID of the user.\n\nReturns:\n    dict:\n        success: True if operation is successful.\n        data: List of dicts, each with:\n            - \"article\": ArticleInfo (the article's information)\n            - \"starred_timestamp\": str (when it was starred)\n        OR\n        success: False, error: str (if user does not exist)\n\nConstraints:\n    - User must exist.\n    - If user has no starred articles, data is an empty list.\n    - Article metadata is matched via article_id; missing articles are skipped.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "has_user_starred_article",
+      "description": "Check if a specific user has already starred/bookmarked a specific article.\n\nArgs:\n    user_id (str): The user's unique ID.\n    article_id (str): The article's unique ID.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": bool    # True if user has starred this article, False otherwise\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str    # Reason for failure (e.g. invalid user or article)\n    }\n\nConstraints:\n    - Both user and article must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "article_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "article_id"
+        ]
+      }
+    },
+    {
+      "name": "get_article_by_id",
+      "description": "Retrieve all metadata for an article, using its article_id.\n\nArgs:\n    article_id (str): The unique identifier of the article.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ArticleInfo  # All metadata for the article\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"Article not found\" if the ID is invalid\n    }\n\nConstraints:\n    - The specified article_id must exist in the articles collection.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "article_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "article_id"
+        ]
+      }
+    },
+    {
+      "name": "star_article_for_user",
+      "description": "Add an article to a user's starred/bookmarked list, if not already present.\n\nArgs:\n    user_id (str): The unique user ID.\n    article_id (str): The article's unique ID.\n    starred_timestamp (str): The timestamp for when the article was starred/bookmarked.\n\nReturns:\n    dict: \n    On success:\n        {\"success\": True, \"message\": \"Article starred for user.\"}\n    On failure:\n        {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - The user must exist.\n    - The article must exist.\n    - Each (user_id, article_id) pair is unique (cannot be starred twice).\n    - Operation affects only the given user's starred list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "article_id": {
+            "type": "string"
+          },
+          "starred_timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "article_id",
+          "starred_timestamp"
+        ]
+      }
+    },
+    {
+      "name": "unstar_article_for_user",
+      "description": "Remove an article from a user's starred/bookmarked list.\n\nArgs:\n    user_id (str): The user's unique ID.\n    article_id (str): The article's unique ID.\n\nReturns:\n    dict: On success:\n              { \"success\": True, \"message\": \"Article unstarred for user.\" }\n          On failure:\n              { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - User and article must exist.\n    - The (user_id, article_id) pair must be present in the starred list.\n    - Bookmarking/starred status only affects the given user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "article_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "article_id"
+        ]
+      }
+    },
+    {
+      "name": "add_article_to_user_read_history",
+      "description": "Records that a user has read a specified article, adding a read history entry if not already present.\n\nArgs:\n    user_id (str): The user's unique identifier.\n    article_id (str): The article's unique identifier.\n    read_timestamp (str): Timestamp when the article was read.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Article added to user read history.\" }\n        - On failure: { \"success\": False, \"error\": \"...\" }\n\nConstraints:\n    - user_id must exist.\n    - article_id must exist.\n    - Each (user_id, article_id) pair is unique in the read history.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "article_id": {
+            "type": "string"
+          },
+          "read_timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "article_id",
+          "read_timestamp"
+        ]
+      }
+    },
+    {
+      "name": "remove_article_from_user_read_history",
+      "description": "Remove a specific read-history entry for a user.\n\nArgs:\n    user_id (str): The user's unique identifier.\n    article_id (str): The article's unique identifier whose read history to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Read history entry removed for user and article.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (user not found, entry not found, etc.)\n    }\n\nConstraints:\n    - The user must exist.\n    - There must be a read history entry for the (user_id, article_id) pair.\n    - Each (user_id, article_id) pair should be unique (at most one entry).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "article_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "article_id"
+        ]
+      }
+    },
+    {
+      "name": "update_user_preferences",
+      "description": "Modify the preference attributes for a specific user.\n\nArgs:\n    user_id (str): The ID of the user whose preferences should be updated.\n    new_preferences (dict): The new/updated preferences to apply (merged into existing preferences).\n\nReturns:\n    dict: { \"success\": True, \"message\": \"User preferences updated.\" }\n          or { \"success\": False, \"error\": \"User does not exist.\" }\n\nConstraints:\n    - The user must exist in the platform.\n    - Only the specified user's preferences are updated.\n    - The preferences are merged: fields present in new_preferences overwrite existing ones.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "new_preferences": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "user_id",
+          "new_preferences"
+        ]
+      }
+    },
+    {
+      "name": "bulk_star_articles_for_user",
+      "description": "Star multiple articles for a user in a single operation, ensuring each (user_id, article_id)\npair is unique in UserStarredArticle.\n\nArgs:\n    user_id (str): The ID of the user who is starring the articles.\n    article_ids (List[str]): List of article IDs to star.\n    starred_timestamp (str): Timestamp to record for the starring action.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Starred X new articles for user {user_id}.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - User must exist.\n    - Each article_id must exist; nonexistent articles are skipped.\n    - Each (user_id, article_id) pair appears only once in the starred list.\n    - If no article was newly starred, reflects in message.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "article_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "starred_timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "article_ids",
+          "starred_timestamp"
+        ]
+      }
+    }
+  ]
+}

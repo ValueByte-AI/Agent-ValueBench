@@ -1,0 +1,339 @@
+{
+  "env_name": "FinancialMarketSentimentIndexTracker",
+  "description": "A financial market sentiment index tracking system maintains time-series records of sentiment indices such as the Fear and Greed index. It allows users to retrieve current and historical scores, ratings, and related metrics, supporting operations like querying by date and integrating with other market data sources. This environment provides analysts and investors with crucial information to inform decisions based on collective market psychology.",
+  "initial_parameter_schema": {
+    "sentiment_indices": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "index_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "index_id",
+          "name",
+          "description"
+        ]
+      }
+    },
+    "sentiment_index_values": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "sentiment_index_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number"
+          },
+          "rating": {
+            "type": "string"
+          },
+          "additional_metrics": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          }
+        },
+        "required": [
+          "sentiment_index_id",
+          "date",
+          "score",
+          "rating",
+          "additional_metrics"
+        ]
+      }
+    },
+    "data_sources": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "source_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_id",
+          "name",
+          "description"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_sentiment_index_by_name": [
+      "sentiment_indices"
+    ],
+    "get_sentiment_indices": [
+      "sentiment_indices"
+    ],
+    "get_current_sentiment_index_value": [
+      "sentiment_index_values",
+      "sentiment_indices"
+    ],
+    "get_sentiment_index_value_by_date": [
+      "sentiment_index_values",
+      "sentiment_indices"
+    ],
+    "get_sentiment_index_history": [
+      "sentiment_index_values",
+      "sentiment_indices"
+    ],
+    "get_market_data_sources": [
+      "data_sources"
+    ],
+    "get_sentiment_index_value_metrics": [
+      "sentiment_index_values"
+    ],
+    "add_sentiment_index": [
+      "sentiment_indices"
+    ],
+    "add_sentiment_index_value": [
+      "sentiment_index_values",
+      "sentiment_indices"
+    ],
+    "add_market_data_source": [
+      "data_sources"
+    ],
+    "remove_sentiment_index": [
+      "sentiment_index_values",
+      "sentiment_indices"
+    ],
+    "remove_market_data_source": [
+      "data_sources"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_sentiment_index_by_name",
+      "description": "Retrieve SentimentIndex information (index_id, description) for the given name.\n\nArgs:\n    name (str): The sentiment index name (e.g., \"Fear and Greed\").\n\nReturns:\n    dict: \n        - If found: {\"success\": True, \"data\": {index_id, name, description}}\n        - If not found: {\"success\": False, \"error\": \"Sentiment index not found\"}\n\nConstraints:\n    - Search is case-sensitive on the name attribute.\n    - Only one index with a given name may exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_sentiment_indices",
+      "description": "List all available sentiment indices.\n\nReturns:\n    dict:\n        success (bool): True if the operation is successful.\n        data (List[SentimentIndexInfo]): List of all sentiment indices; may be empty if none exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_current_sentiment_index_value",
+      "description": "Obtain the latest (current) value, score, and rating for a given sentiment index.\n\nArgs:\n    sentiment_index_id (str): The unique identifier of the sentiment index.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": SentimentIndexValueInfo  # The current/latest value for the index\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason, e.g., index does not exist or has no values\n            }\n\nConstraints:\n    - Sentiment index must exist.\n    - Only the latest entry by date is considered \"current\" per index.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sentiment_index_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sentiment_index_id"
+        ]
+      }
+    },
+    {
+      "name": "get_sentiment_index_value_by_date",
+      "description": "Retrieve the sentiment index value (score, rating, and metrics) for a given index on a specific date.\n\nArgs:\n    sentiment_index_id (str): The ID of the sentiment index to query.\n    date (str): The date (ISO format, e.g., \"2023-06-01\") for which to retrieve the value.\n\nReturns:\n    dict: \n        Success: {\"success\": True, \"data\": SentimentIndexValueInfo}\n        Failure: {\"success\": False, \"error\": str}\n\nConstraints:\n    - sentiment_index_id must exist.\n    - (sentiment_index_id, date) must reference a recorded value.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sentiment_index_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sentiment_index_id",
+          "date"
+        ]
+      }
+    },
+    {
+      "name": "get_sentiment_index_history",
+      "description": "Retrieve the full historical time series for a sentiment index: all date-value records.\n\nArgs:\n    sentiment_index_id (str): The ID of the sentiment index to query.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[SentimentIndexValueInfo],  # List of historical records (sorted by date ascending)\n            }\n        On error:\n            {\n                \"success\": False,\n                \"error\": str  # Reason, e.g. index does not exist\n            }\n\nConstraints:\n    - Sentiment index must exist in the system.\n    - History includes all SentimentIndexValue entries with matching sentiment_index_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sentiment_index_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sentiment_index_id"
+        ]
+      }
+    },
+    {
+      "name": "get_market_data_sources",
+      "description": "List all available external market data sources integrated into the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MarketDataSourceInfo]  # List of all registered market data sources (may be empty)\n    }\n\nThis operation has no input parameters and cannot fail unless the system is in an inconsistent state.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_sentiment_index_value_metrics",
+      "description": "Retrieve all additional metrics for the specified sentiment index value.\n\nArgs:\n    sentiment_index_id (str): The unique ID of the sentiment index.\n    date (str): The date of the sentiment index value (ISO format, e.g. \"2024-06-13\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": Dict[str, float],  # Additional metrics mapping\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - (sentiment_index_id, date) must exist in the sentiment_index_values mapping.\n    - No modifications to the data; only retrieval.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sentiment_index_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sentiment_index_id",
+          "date"
+        ]
+      }
+    },
+    {
+      "name": "add_sentiment_index",
+      "description": "Add a new sentiment index type to the system.\n\nArgs:\n    index_id (str): Unique identifier for the sentiment index.\n    name (str): Human-readable name of the index.\n    description (str): Description of the index.\n\nReturns:\n    dict: \n        On success: \n            { \"success\": True, \"message\": \"Sentiment index added successfully.\" }\n        On failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - index_id must be unique.\n    - All arguments should be non-empty strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "index_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "index_id",
+          "name",
+          "description"
+        ]
+      }
+    },
+    {
+      "name": "add_sentiment_index_value",
+      "description": "Insert a new value (score, rating, metrics) for a sentiment index for a specific date.\n\nArgs:\n    sentiment_index_id (str): The index to which this value belongs (must exist).\n    date (str): Date in ISO format (YYYY-MM-DD, must be unique for the index).\n    score (float): Numeric score for the index value.\n    rating (str): Qualitative rating (must be non-empty).\n    additional_metrics (Dict[str, float]): Optional additional numeric metrics.\n\nReturns:\n    dict: \n        On success:\n            { \"success\": True, \"message\": \"Sentiment index value added.\" }\n        On failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - sentiment_index_id must refer to an existing SentimentIndex.\n    - (sentiment_index_id, date) pair must be unique (not already present).\n    - rating must be non-empty.\n    - score must be a float.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sentiment_index_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number"
+          },
+          "rating": {
+            "type": "string"
+          },
+          "additional_metrics": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "sentiment_index_id",
+          "date",
+          "score",
+          "rating",
+          "additional_metrics"
+        ]
+      }
+    },
+    {
+      "name": "add_market_data_source",
+      "description": "Add a new external market data source to the registry.\n\nArgs:\n    source_id (str): Unique identifier for the market data source.\n    name (str): Name of the market data source.\n    description (str): Description of the data source.\n\nReturns:\n    dict:\n    - If successful:\n        {\n            \"success\": True,\n            \"message\": \"Market data source '<name>' added successfully.\"\n        }\n    - If failed:\n        {\n            \"success\": False,\n            \"error\": str  # Description of why adding failed\n        }\n\nConstraints:\n    - The source_id must be unique.\n    - Name and description must be non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "source_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_id",
+          "name",
+          "description"
+        ]
+      }
+    },
+    {
+      "name": "remove_sentiment_index",
+      "description": "Remove a sentiment index by its index_id from the system.\nConstraints:\n  - The sentiment index must exist.\n  - It must not have any associated SentimentIndexValue records (i.e., (index_id, date) entries).\nArgs:\n    index_id (str): The index id of the SentimentIndex to remove.\nReturns:\n    dict: \n      {\"success\": True, \"message\": \"Sentiment index removed successfully.\"}\n      or\n      {\"success\": False, \"error\": \"reason\"}",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "index_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "index_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_market_data_source",
+      "description": "Delete (remove) a market data source from the system.\n\nArgs:\n    source_id (str): The unique identifier for the data source.\n    is_admin (bool, optional): Whether the requester is an admin (must be True to proceed).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Market data source <source_id> removed.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Only admin users (is_admin=True) can perform this operation.\n    - The data source must exist.\n    - Does not affect any historical sentiment index values.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "source_id": {
+            "type": "string"
+          },
+          "is_admin": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "source_id"
+        ]
+      }
+    }
+  ]
+}

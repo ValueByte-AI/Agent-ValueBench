@@ -1,0 +1,526 @@
+{
+  "env_name": "FitnessChallengeManagementSystem",
+  "description": "A fitness challenge management system is a digital platform that organizes, tracks, and manages various fitness challenges for user communities. It stores information about available challenges, user registrations, and challenge-specific data such as objectives, timelines, and progress metrics. The system supports typical operations including challenge creation, user enrollment, challenge detail retrieval, and status updates.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "email",
+          "account_status"
+        ]
+      }
+    },
+    "challenges": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "challenge_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "objectives": {
+            "type": "string"
+          },
+          "timeline_start": {
+            "type": "string"
+          },
+          "timeline_end": {
+            "type": "string"
+          },
+          "progress_metrics": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "challenge_id",
+          "name",
+          "description",
+          "objectives",
+          "timeline_start",
+          "timeline_end",
+          "progress_metrics",
+          "status"
+        ]
+      }
+    },
+    "enrollments": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "enrollment_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "challenge_id": {
+            "type": "string"
+          },
+          "enrollment_date": {
+            "type": "string"
+          },
+          "progress": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "enrollment_id",
+          "user_id",
+          "challenge_id",
+          "enrollment_date",
+          "progress",
+          "status"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_user_by_name": [
+      "users"
+    ],
+    "get_enrollments_by_user_id": [
+      "enrollments",
+      "users"
+    ],
+    "get_active_enrollments_by_user_id": [
+      "enrollments",
+      "users"
+    ],
+    "get_challenge_by_id": [
+      "challenges"
+    ],
+    "get_challenge_details_for_user": [
+      "challenges",
+      "enrollments",
+      "users"
+    ],
+    "get_enrollment_status": [
+      "challenges",
+      "enrollments",
+      "users"
+    ],
+    "get_enrollment_progress": [
+      "enrollments"
+    ],
+    "list_all_challenges": [
+      "challenges"
+    ],
+    "enroll_user_in_challenge": [
+      "challenges",
+      "enrollments",
+      "users"
+    ],
+    "update_enrollment_progress": [
+      "enrollments"
+    ],
+    "update_enrollment_status": [
+      "enrollments"
+    ],
+    "create_challenge": [
+      "challenges"
+    ],
+    "update_challenge_status": [
+      "challenges"
+    ],
+    "edit_challenge_info": [
+      "challenges"
+    ],
+    "cancel_enrollment": [
+      "enrollments"
+    ],
+    "create_user": [
+      "users"
+    ],
+    "update_user_info": [
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve full user information given a user ID.\n\nArgs:\n    user_id (str): Unique user identifier.\n\nReturns:\n    dict:\n        - On success: {'success': True, 'data': UserInfo}\n        - If user not found: {'success': False, 'error': 'User not found'}",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_name",
+      "description": "Retrieve full user information given the user's name.\n\nArgs:\n    name (str): The name of the user to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[UserInfo]  # All users whose 'name' matches exactly (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\nConstraints:\n    - Name matching is case-sensitive and exact.\n    - Name may not be unique; all matching users are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_enrollments_by_user_id",
+      "description": "List all challenge enrollments (EnrollmentInfo) for a specific user.\n\nArgs:\n    user_id (str): Unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[EnrollmentInfo]  # List of all enrollments for the user (empty if none)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Explanation if user does not exist\n    }\n\nConstraints:\n    - The user must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_active_enrollments_by_user_id",
+      "description": "List all active (not completed or cancelled) challenge enrollments for a user.\n\nArgs:\n    user_id (str): The ID of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[EnrollmentInfo],  # All the user's active enrollments (may be empty).\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If the user does not exist.\n    }\n\nConstraints:\n    - Only returns enrollments with status not in ('completed', 'canceled').\n    - Returns empty list if user has no such enrollments.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_challenge_by_id",
+      "description": "Retrieve details for a specific challenge by challenge_id.\n\nArgs:\n    challenge_id (str): The unique identifier of the challenge.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ChallengeInfo  # The challenge information.\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g., challenge not found\n    }\n\nConstraints:\n    - The challenge with the given ID must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "challenge_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "challenge_id"
+        ]
+      }
+    },
+    {
+      "name": "get_challenge_details_for_user",
+      "description": "Retrieve challenge details (objectives, timelines, description, status, etc.)\nfor all challenges in which the specified user is currently enrolled.\n\nArgs:\n    user_id (str): The identifier of the user.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[ChallengeInfo],  # List of challenge info dicts. May be empty if no current enrollments.\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": str  # e.g. \"User does not exist\"\n        }\n\nConstraints:\n    - Only challenges where the user has an 'active' enrollment are considered.\n    - If the user does not exist, returns error.\n    - Omits challenges that cannot be found in the system for integrity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_enrollment_status",
+      "description": "Query the enrollment status (e.g., 'active', 'canceled') of a user in a specific challenge.\n\nArgs:\n    user_id (str): ID of the user.\n    challenge_id (str): ID of the challenge.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": {\"status\": <status_str>}\n            }\n        On error:\n            {\n                \"success\": False,\n                \"error\": <reason>\n            }\n\nConstraints:\n    - The user and challenge must exist.\n    - There must be an enrollment for that user/challenge pair.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "challenge_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "challenge_id"
+        ]
+      }
+    },
+    {
+      "name": "get_enrollment_progress",
+      "description": "Retrieve the progress metrics for a user's enrollment in a specific challenge.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n    challenge_id (str): The unique identifier for the challenge.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"data\": str } # The progress value.\n        - On failure: { \"success\": False, \"error\": str } # Reason, e.g. not enrolled.\n\nConstraints:\n    - Only one enrollment per user per challenge is allowed at a time.\n    - Both user_id and challenge_id must correspond to an existing enrollment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "challenge_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "challenge_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_challenges",
+      "description": "List all fitness challenges in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ChallengeInfo]  # List of all challenges in the system (may be empty)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "enroll_user_in_challenge",
+      "description": "Enroll a user in a challenge if not currently enrolled. Respect the \nconstraint that a user cannot be enrolled more than once at a time per challenge.\n\nArgs:\n    user_id (str): The id of the user to enroll.\n    challenge_id (str): The id of the challenge to enroll in.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User enrolled in challenge successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Error message.\"\n    }\n\nConstraints:\n    - User must exist.\n    - Challenge must exist.\n    - User must not already be enrolled in the challenge (active, upcoming, or in-progress).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "challenge_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "challenge_id"
+        ]
+      }
+    },
+    {
+      "name": "update_enrollment_progress",
+      "description": "Update the progress field of a user's enrollment in a specific challenge.\n\nArgs:\n    enrollment_id (str): The unique id of the enrollment to update.\n    new_progress (str): The progress value to set (format is system-dependent).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Enrollment progress updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The enrollment_id must exist.\n    - The enrollment status must not be 'canceled' (and possibly not 'completed').",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "enrollment_id": {
+            "type": "string"
+          },
+          "new_progress": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "enrollment_id",
+          "new_progress"
+        ]
+      }
+    },
+    {
+      "name": "update_enrollment_status",
+      "description": "Update the status of a user's challenge enrollment.\n\nArgs:\n    enrollment_id (str): Unique identifier of the enrollment to update.\n    new_status (str): The new status for the enrollment. Expected values include\n        'active', 'completed', 'canceled', etc.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Enrollment status updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure.\"\n    }\n\nConstraints:\n    - Enrollment must exist.\n    - Only valid statuses are accepted: ['active', 'completed', 'canceled', 'upcoming'].",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "enrollment_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "enrollment_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "create_challenge",
+      "description": "Create a new fitness challenge with the specified info.\n\nArgs:\n    challenge_id (str): Unique ID for the challenge.\n    name (str): Challenge name.\n    description (str): Challenge description.\n    objectives (str): Objectives of the challenge.\n    timeline_start (str): Start date/time (ISO format).\n    timeline_end (str): End date/time (ISO format).\n    progress_metrics (str): Info about how progress is tracked.\n    status (str): Initial status, must be 'upcoming', 'active', 'completed', or 'canceled'.\n\nReturns:\n    dict: {\"success\": True, \"message\": ...} or {\"success\": False, \"error\": ...}\n\nConstraints:\n    - challenge_id must be unique.\n    - status must be one of the allowed values.\n    - All required fields must be non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "challenge_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "objectives": {
+            "type": "string"
+          },
+          "timeline_start": {
+            "type": "string"
+          },
+          "timeline_end": {
+            "type": "string"
+          },
+          "progress_metrics": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "challenge_id",
+          "name",
+          "description",
+          "objectives",
+          "timeline_start",
+          "timeline_end",
+          "progress_metrics",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "update_challenge_status",
+      "description": "Modify the status of a challenge (e.g., set to \"active\", \"completed\", or \"canceled\").\n\nArgs:\n    challenge_id (str): Unique identifier of the challenge to update.\n    new_status   (str): New status (\"upcoming\", \"active\", \"completed\", \"canceled\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Challenge status updated to <new_status>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Challenge must exist.\n    - new_status must be one of allowed status values.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "challenge_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "challenge_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "edit_challenge_info",
+      "description": "Edit details (objectives, timeline, description, etc.) of an existing challenge.\n\nArgs:\n    challenge_id (str): The unique identifier of the challenge to edit.\n    name (str, optional): New name for the challenge.\n    description (str, optional): New description.\n    objectives (str, optional): New objectives.\n    timeline_start (str, optional): New timeline start.\n    timeline_end (str, optional): New timeline end.\n    progress_metrics (str, optional): New progress metrics.\n    status (str, optional): New status for the challenge.\n\nReturns:\n    dict: On success: {\"success\": True, \"message\": \"Challenge info updated.\"}\n          On failure: {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - The challenge with the provided challenge_id must exist.\n    - Only valid fields can be updated; unknown fields are ignored.\n    - If no valid fields are provided, no update occurs.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "challenge_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "objectives": {
+            "type": "string"
+          },
+          "timeline_start": {
+            "type": "string"
+          },
+          "timeline_end": {
+            "type": "string"
+          },
+          "progress_metrics": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "challenge_id"
+        ]
+      }
+    },
+    {
+      "name": "cancel_enrollment",
+      "description": "Cancel a user's enrollment in a challenge.\n\nArgs:\n    enrollment_id (str): The unique identifier of the enrollment to cancel.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Enrollment canceled successfully.\" }\n        On failure: { \"success\": False, \"error\": str }\n\nConstraints:\n    - The enrollment must exist.\n    - The enrollment must not already be canceled.\n    - On canceling, sets the enrollment's status to 'canceled'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "enrollment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "enrollment_id"
+        ]
+      }
+    },
+    {
+      "name": "create_user",
+      "description": "Register a new user in the system.\n\nArgs:\n    _id (str): Unique identifier for the user.\n    name (str): User's full name.\n    email (str): User's email address.\n    account_status (str, optional): Account status, defaults to 'active'.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User <name> registered.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - _id must be unique among users.\n    - name and email must not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "email"
+        ]
+      }
+    },
+    {
+      "name": "update_user_info",
+      "description": "Update specified user information (e.g., email, account_status, name).\n\nArgs:\n    user_id (str): The ID of the user to update.\n    updates (dict): Dictionary of fields to update. Allowed keys: 'name', 'email', 'account_status'.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User information updated successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - User must exist.\n    - '_id' cannot be changed.\n    - Only recognized fields ('name', 'email', 'account_status') can be modified.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "user_id",
+          "updates"
+        ]
+      }
+    }
+  ]
+}

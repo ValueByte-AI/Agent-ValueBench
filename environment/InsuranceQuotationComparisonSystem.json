@@ -1,0 +1,500 @@
+{
+  "env_name": "InsuranceQuotationComparisonSystem",
+  "description": "An Insurance Quotation and Comparison System is a domain-specific platform designed to allow users to retrieve, store, and evaluate insurance policies from various providers. It maintains structured information about different plans, their features, pricing, and user selections. The environment supports operations such as plan search, comparison, selection, and quotation generation, helping users make informed decisions about their insurance coverage.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "selected_plan_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "comparison_history": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "selected_plan_ids",
+          "comparison_history"
+        ]
+      }
+    },
+    "insurance_plans": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          },
+          "provider_id": {
+            "type": "string"
+          },
+          "plan_name": {
+            "type": "string"
+          },
+          "features": {},
+          "coverage_details": {},
+          "premium_amount": {
+            "type": "number"
+          },
+          "term_length": {
+            "type": "integer"
+          },
+          "eligibility_criteria": {}
+        },
+        "required": [
+          "plan_id",
+          "provider_id",
+          "plan_name",
+          "features",
+          "coverage_details",
+          "premium_amount",
+          "term_length",
+          "eligibility_criteria"
+        ]
+      }
+    },
+    "providers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "provider_id": {
+            "type": "string"
+          },
+          "provider_name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "provider_id",
+          "provider_name",
+          "contact_info",
+          "rating"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_id": [
+      "users"
+    ],
+    "list_all_users": [
+      "users"
+    ],
+    "get_selected_plan_ids_for_user": [
+      "users"
+    ],
+    "get_comparison_history_for_user": [
+      "users"
+    ],
+    "get_insurance_plan_by_id": [
+      "insurance_plans"
+    ],
+    "get_multiple_insurance_plans_by_ids": [
+      "insurance_plans",
+      "providers"
+    ],
+    "check_plan_availability": [
+      "insurance_plans"
+    ],
+    "get_provider_by_id": [
+      "providers"
+    ],
+    "get_providers_for_plans": [
+      "insurance_plans",
+      "providers"
+    ],
+    "validate_plan_provider_association": [
+      "insurance_plans",
+      "providers"
+    ],
+    "add_to_selected_plan_ids": [
+      "insurance_plans",
+      "providers",
+      "users"
+    ],
+    "remove_from_selected_plan_ids": [
+      "users"
+    ],
+    "store_comparison_in_history": [
+      "insurance_plans",
+      "users"
+    ],
+    "create_new_user": [
+      "users"
+    ],
+    "add_new_insurance_plan": [
+      "insurance_plans",
+      "providers"
+    ],
+    "discontinue_insurance_plan": [
+      "insurance_plans"
+    ],
+    "update_provider_info": [
+      "providers"
+    ],
+    "add_new_provider": [
+      "providers"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user details, including selected plans and comparison history, by user ID.\n\nArgs:\n    user_id (str): The unique ID of the user.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True,\n            \"data\": UserInfo\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": \"User not found\"\n        }\n\nConstraints:\n    - The user must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_users",
+      "description": "Retrieve a list of all users in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[UserInfo]  # List of all users' information (may be empty)\n    }\n\nConstraints:\n    - None; this operation simply lists all users present in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_selected_plan_ids_for_user",
+      "description": "Retrieve the list of currently selected insurance plan IDs for a given user.\n\nArgs:\n    user_id (str): The user's unique identifier (_id)\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str]     # The list of selected insurance plan IDs (possibly empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str          # Error description if user not found\n    }\n\nConstraints:\n    - The user_id must exist in the system.\n    - Returns an empty list if the user has no selected plans.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_comparison_history_for_user",
+      "description": "Retrieve the full comparison history for a given user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"data\": List[List[str]] }\n            \"data\" is a list of each user's past plan comparison, where each element is a list of plan_ids.\n        - On failure: { \"success\": False, \"error\": str }\n            The error describes why the operation failed (e.g., user not found).\n\nConstraints:\n    - The user must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_insurance_plan_by_id",
+      "description": "Retrieve all details for a particular insurance plan by its plan_id.\n\nArgs:\n    plan_id (str): The unique identifier of the insurance plan.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": InsurancePlanInfo  # All information about the plan\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason, e.g., \"Insurance plan not found\"\n            }\n\nConstraints:\n    - The plan_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id"
+        ]
+      }
+    },
+    {
+      "name": "get_multiple_insurance_plans_by_ids",
+      "description": "Retrieve full details for multiple insurance plans by a list of plan_ids.\n\nArgs:\n    plan_ids (List[str]): List of plan_id strings to retrieve.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[InsurancePlanInfo]  # Only plans that exist, have valid provider, and are available.\n    }\n\nConstraints:\n    - Only return plans that exist in the system and are associated with a valid provider.\n    - Discontinued plans are assumed not to be present in self.insurance_plans.\n    - If no plan_ids are found, return an empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "plan_ids"
+        ]
+      }
+    },
+    {
+      "name": "check_plan_availability",
+      "description": "Check if a given insurance plan exists and is currently available (not discontinued).\n\nArgs:\n    plan_id (str): The unique identifier of the insurance plan.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": bool  # True if plan exists and is available, otherwise False\n        }\n    No error is produced; operation is always successful.\n\nConstraints:\n    - A plan is available if:\n        - It exists in self.insurance_plans\n        - It is not marked as discontinued (expects 'is_discontinued' on the plan info; if missing, plan is considered available)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id"
+        ]
+      }
+    },
+    {
+      "name": "get_provider_by_id",
+      "description": "Retrieve provider information for a given provider_id.\n\nArgs:\n    provider_id (str): The unique identifier of the provider.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": ProviderInfo\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Provider not found\"\n            }\nConstraints:\n    - The provider_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "provider_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_id"
+        ]
+      }
+    },
+    {
+      "name": "get_providers_for_plans",
+      "description": "Retrieve provider information for a group of plans.\n\nArgs:\n    plan_ids (List[str]): List of insurance plan IDs to retrieve provider info for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ProviderInfo],  # Unique providers offering the plans,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # if input is not a list\n    }\n\nConstraints:\n    - Only plans that exist and whose providers exist are considered.\n    - Each provider appears at most once in the result.\n    - If no plans or valid providers found, returns empty list for \"data\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "plan_ids"
+        ]
+      }
+    },
+    {
+      "name": "validate_plan_provider_association",
+      "description": "Verify that the provider_id associated with the specified insurance plan exists\nin the system's list of providers.\n\nArgs:\n    plan_id (str): The ID of the insurance plan to validate.\n\nReturns:\n    dict: \n        - If the plan does not exist: {\"success\": False, \"error\": \"Plan does not exist\" }\n        - If the plan exists, and provider is found: {\"success\": True, \"data\": True }\n        - If the plan exists, but provider does not exist: {\"success\": True, \"data\": False }\n\nConstraints:\n    - Each insurance plan must be associated with a valid provider.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id"
+        ]
+      }
+    },
+    {
+      "name": "add_to_selected_plan_ids",
+      "description": "Add an insurance plan to a user's selected_plan_ids list.\n\nArgs:\n    user_id (str): User identifier.\n    plan_id (str): Insurance plan identifier.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Plan added to user's selected plans.\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - User must exist.\n    - Plan must exist in the system and be available.\n    - Plan must be associated with a valid provider.\n    - Plan must not already be selected by the user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "plan_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "plan_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_from_selected_plan_ids",
+      "description": "Remove an insurance plan from a user's selected_plan_ids.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n    plan_id (str): The unique identifier of the insurance plan to be removed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Plan <plan_id> removed from user <user_id>'s selections.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - User must exist.\n    - plan_id must be in the user's selected_plan_ids.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "plan_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "plan_id"
+        ]
+      }
+    },
+    {
+      "name": "store_comparison_in_history",
+      "description": "Save a set of compared plan IDs as a new entry in the user’s comparison_history.\n\nArgs:\n    user_id (str): The unique ID of the user making the comparison.\n    plan_ids (List[str]): List of insurance plan IDs being compared.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Comparison stored in history.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <error reason string>\n    }\n\nConstraints & checks:\n    - User must exist.\n    - All plan_ids must be in user's selected_plan_ids.\n    - All plan_ids must exist in self.insurance_plans (available).\n    - Plan IDs should be a non-empty list and all unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "plan_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "user_id",
+          "plan_ids"
+        ]
+      }
+    },
+    {
+      "name": "create_new_user",
+      "description": "Add a new user to the system.\n\nArgs:\n    _id (str): Unique identifier for the user.\n    name (str): Name of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User <_id> created successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of error, e.g. duplicate _id\n    }\n\nConstraints:\n    - The _id must be unique in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "add_new_insurance_plan",
+      "description": "Add a new insurance plan to the system.\n\nArgs:\n    plan_id (str): Unique identifier for the new insurance plan.\n    provider_id (str): Provider's unique identifier. Must exist in providers.\n    plan_name (str): Human-readable plan name.\n    features (Any): Features or characteristics of the plan.\n    coverage_details (Any): Description/details of coverage.\n    premium_amount (float): Premium amount for the plan.\n    term_length (int): Term length in months/years (as defined by the system).\n    eligibility_criteria (Any): Eligibility criteria for the plan.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Insurance plan <plan_id> added.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - plan_id must be unique.\n    - provider_id must reference a valid provider.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          },
+          "provider_id": {
+            "type": "string"
+          },
+          "plan_name": {
+            "type": "string"
+          },
+          "features": {},
+          "coverage_details": {},
+          "premium_amount": {
+            "type": "number"
+          },
+          "term_length": {
+            "type": "integer"
+          },
+          "eligibility_criteria": {}
+        },
+        "required": [
+          "plan_id",
+          "provider_id",
+          "plan_name",
+          "features",
+          "coverage_details",
+          "premium_amount",
+          "term_length",
+          "eligibility_criteria"
+        ]
+      }
+    },
+    {
+      "name": "discontinue_insurance_plan",
+      "description": "Mark an insurance plan as discontinued/unavailable in the system.\n\nArgs:\n    plan_id (str): The unique identifier of the insurance plan to discontinue.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Plan <plan_id> marked as discontinued.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"Insurance plan does not exist.\"\n    }\n\nConstraints:\n    - The insurance plan must exist in the system.\n    - If the plan is already discontinued, this is treated as a no-op.\n    - The function adds or updates an 'is_discontinued' flag in the plan info.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id"
+        ]
+      }
+    },
+    {
+      "name": "update_provider_info",
+      "description": "Update an existing provider's information in the system.\n\nArgs:\n    provider_id (str): The unique ID of the provider to update.\n    provider_name (str, optional): New name for the provider.\n    contact_info (str, optional): New contact information.\n    rating (float, optional): New provider rating.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Provider info updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<description of problem>\"\n    }\n\nConstraints:\n    - The provider must exist in the system.\n    - At least one field to update must be provided.\n    - If rating is provided, it must be a float (or can be cast to float).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "provider_id": {
+            "type": "string"
+          },
+          "provider_name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "provider_id"
+        ]
+      }
+    },
+    {
+      "name": "add_new_provider",
+      "description": "Add a new provider to the system.\n\nArgs:\n    provider_id (str): Unique identifier for the provider.\n    provider_name (str): Name of the provider.\n    contact_info (str): Provider's contact information.\n    rating (float): Provider's rating.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Provider added successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - provider_id must be unique (not already in the system).\n    - All fields must be supplied and of appropriate type.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "provider_id": {
+            "type": "string"
+          },
+          "provider_name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "provider_id",
+          "provider_name",
+          "contact_info",
+          "rating"
+        ]
+      }
+    }
+  ]
+}

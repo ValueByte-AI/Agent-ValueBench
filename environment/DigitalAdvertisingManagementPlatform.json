@@ -1,0 +1,608 @@
+{
+  "env_name": "DigitalAdvertisingManagementPlatform",
+  "description": "A digital advertising management platform maintains records of advertisers, agent profiles, campaigns, and recommendation logic. The system tracks stateful relationships between advertisers and their advisors or agents, enabling targeted operations such as matching, recommendation, and reporting. It is designed to support marketing teams by automating and optimizing agent selection and campaign management tasks for advertisers.",
+  "initial_parameter_schema": {
+    "advertisers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "advertiser_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "industry": {
+            "type": "string"
+          },
+          "profile_data": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "advertiser_id",
+          "name",
+          "industry",
+          "profile_data"
+        ]
+      }
+    },
+    "agents": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "agent_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "expertise": {
+            "type": "string"
+          },
+          "availability": {
+            "type": "boolean"
+          },
+          "assigned_advertiser_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id",
+          "name",
+          "expertise",
+          "availability",
+          "assigned_advertiser_id"
+        ]
+      }
+    },
+    "campaigns": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "campaign_id": {
+            "type": "string"
+          },
+          "advertiser_id": {
+            "type": "string"
+          },
+          "objective": {
+            "type": "string"
+          },
+          "budget": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "campaign_id",
+          "advertiser_id",
+          "objective",
+          "budget",
+          "status"
+        ]
+      }
+    },
+    "recommendations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "advertiser_id": {
+            "type": "string"
+          },
+          "recommended_agent_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "recommendation_reasoning": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "advertiser_id",
+          "recommended_agent_ids",
+          "timestamp",
+          "recommendation_reasoning"
+        ]
+      }
+    },
+    "recommendation_history": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "advertiser_id": {
+              "type": "string"
+            },
+            "recommended_agent_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "recommendation_reasoning": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "advertiser_id",
+            "recommended_agent_ids",
+            "timestamp",
+            "recommendation_reasoning"
+          ]
+        }
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_advertiser_by_id": [
+      "advertisers"
+    ],
+    "list_advertisers": [
+      "advertisers"
+    ],
+    "get_agent_by_id": [
+      "agents"
+    ],
+    "list_agents": [
+      "agents"
+    ],
+    "get_agents_by_expertise": [
+      "agents"
+    ],
+    "get_available_agents": [
+      "agents"
+    ],
+    "get_assigned_agents_for_advertiser": [
+      "advertisers",
+      "agents"
+    ],
+    "get_advertiser_campaigns": [
+      "advertisers",
+      "campaigns"
+    ],
+    "get_campaign_by_id": [
+      "campaigns"
+    ],
+    "get_recommendation_by_advertiser": [
+      "advertisers",
+      "recommendations"
+    ],
+    "get_recommendation_history": [
+      "advertisers",
+      "recommendation_history"
+    ],
+    "check_agent_availability": [
+      "agents"
+    ],
+    "check_agent_assignment_limit": [
+      "agents"
+    ],
+    "check_advertiser_agent_exclusivity": [
+      "advertisers",
+      "agents"
+    ],
+    "match_agents_for_advertiser": [
+      "advertisers",
+      "agents"
+    ],
+    "assign_agent_to_advertiser": [
+      "advertisers",
+      "agents"
+    ],
+    "unassign_agent_from_advertiser": [
+      "advertisers",
+      "agents"
+    ],
+    "update_agent_availability": [
+      "agents"
+    ],
+    "create_recommendation_for_advertiser": [
+      "advertisers",
+      "agents",
+      "recommendations"
+    ],
+    "update_recommendation_reasoning": [
+      "recommendations"
+    ],
+    "remove_recommendation_for_advertiser": [
+      "advertisers",
+      "recommendations"
+    ],
+    "update_campaign_status": [
+      "campaigns"
+    ],
+    "add_campaign_for_advertiser": [
+      "advertisers",
+      "campaigns"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_advertiser_by_id",
+      "description": "Retrieve advertiser details using advertiser_id.\n\nArgs:\n    advertiser_id (str): The unique identifier for the advertiser.\n\nReturns:\n    dict:\n        If advertiser exists:\n            {\n                \"success\": True,\n                \"data\": AdvertiserInfo\n            }\n        If advertiser does not exist:\n            {\n                \"success\": False,\n                \"error\": \"Advertiser not found\"\n            }\n\nConstraints:\n    - The advertiser_id must exist in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "advertiser_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "advertiser_id"
+        ]
+      }
+    },
+    {
+      "name": "list_advertisers",
+      "description": "Return a list of all advertisers in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AdvertiserInfo]  # possibly empty list if no advertisers\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of problem fetching advertisers\n    }\n\nConstraints:\n    - No input required.\n    - Always returns all advertisers in the system.\n    - Result list may be empty but that is not an error.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_agent_by_id",
+      "description": "Retrieve agent details for a given agent_id.\n\nArgs:\n    agent_id (str): The unique identifier of the agent.\n\nReturns:\n    dict: \n        - If agent exists: { \"success\": True, \"data\": AgentInfo }\n        - If agent does not exist: { \"success\": False, \"error\": \"Agent not found\" }\nConstraints:\n    - agent_id must exist in self.agents.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agent_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id"
+        ]
+      }
+    },
+    {
+      "name": "list_agents",
+      "description": "Return a list of all agents, each with their expertise, availability, and current assignment(s).\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": List[AgentInfo],  # all agents in system (possibly empty)\n        }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_agents_by_expertise",
+      "description": "Retrieve all agents whose expertise matches the specified area.\n\nArgs:\n    expertise (str): The expertise area to filter agents by.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AgentInfo]  # List of agent info dicts that match the expertise\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Error description if input invalid\n    }\n\nConstraints:\n    - 'expertise' parameter must be a non-empty string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "expertise": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "expertise"
+        ]
+      }
+    },
+    {
+      "name": "get_available_agents",
+      "description": "List all agents that are currently marked as available.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AgentInfo],  # List of agent records with availability == True (may be empty if none)\n    }\n\nConstraints:\n    - Only agents with availability == True are included.\n    - No parameters needed; this is a full-platform query.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_assigned_agents_for_advertiser",
+      "description": "Retrieve all agents currently assigned to the specified advertiser.\n\nArgs:\n    advertiser_id (str): The ID of the advertiser.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AgentInfo],  # List of agents assigned to advertiser (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g. advertiser does not exist\n    }\n\nConstraints:\n    - advertiser_id must exist in the system.\n    - Returns all agents where assigned_advertiser_id == advertiser_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "advertiser_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "advertiser_id"
+        ]
+      }
+    },
+    {
+      "name": "get_advertiser_campaigns",
+      "description": "List all campaigns associated with a given advertiser.\n\nArgs:\n    advertiser_id (str): The unique identifier for the advertiser.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CampaignInfo]  # May be empty if no campaigns\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason why operation could not be performed\n    }\n\nConstraints:\n    - advertiser_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "advertiser_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "advertiser_id"
+        ]
+      }
+    },
+    {
+      "name": "get_campaign_by_id",
+      "description": "Retrieve campaign details for a specific campaign_id.\n\nArgs:\n    campaign_id (str): The unique identifier of the campaign.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"data\": CampaignInfo}\n        On failure (not found):\n            {\"success\": False, \"error\": \"Campaign not found\"}\n\nConstraints:\n    - campaign_id must exist in the platform's campaign records.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "campaign_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "campaign_id"
+        ]
+      }
+    },
+    {
+      "name": "get_recommendation_by_advertiser",
+      "description": "Retrieve the current or most recent agent recommendations for the given advertiser.\n\nArgs:\n    advertiser_id (str): The ID of the advertiser.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": RecommendationInfo\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - Advertiser must exist.\n    - Recommendation must exist for this advertiser.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "advertiser_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "advertiser_id"
+        ]
+      }
+    },
+    {
+      "name": "get_recommendation_history",
+      "description": "Retrieve the historical record of agent recommendations for a given advertiser.\n\nArgs:\n    advertiser_id (str): The ID of the advertiser whose recommendation history is requested.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RecommendationInfo]  # List of historical recommendations (can be empty)\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # e.g., \"Advertiser does not exist\"\n    }\n\nConstraints:\n    - The advertiser_id must exist in the platform.\n    - If no history is found for the advertiser, return an empty list (success).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "advertiser_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "advertiser_id"
+        ]
+      }
+    },
+    {
+      "name": "check_agent_availability",
+      "description": "Query whether an agent's availability is True and return the number of current assignments.\n\nArgs:\n    agent_id (str): The unique ID of the agent to check.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"availability\": bool,\n            \"assignment_count\": int   # 0 if not assigned, 1 if assigned (per current schema)\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if agent does not exist\n    }\n\nConstraints:\n    - If agent is not assigned ('assigned_advertiser_id' is empty string or None), assignment_count is 0.\n    - If agent is assigned, assignment_count is 1 (per class attribute definition).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agent_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id"
+        ]
+      }
+    },
+    {
+      "name": "check_agent_assignment_limit",
+      "description": "Check if an agent has reached their assignment limit.\n\nArgs:\n    agent_id (str): The ID of the agent to check.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"limit_reached\": bool,    # True if agent is at assignment limit\n        \"current_assignments\": int,  # Number of advertisers currently assigned\n        \"max_assignments\": int       # Maximum allowed assignments (here, 1)\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Reason agent not checked (not found)\n    }\nConstraints:\n    - Each agent can only be assigned to one advertiser at a time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agent_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id"
+        ]
+      }
+    },
+    {
+      "name": "check_advertiser_agent_exclusivity",
+      "description": "Check if exclusivity or preference constraints apply between a given advertiser and agent.\n\nArgs:\n    advertiser_id (str): The ID of the advertiser.\n    agent_id (str): The ID of the agent.\n\nReturns:\n    dict:\n        - success (bool)\n        - data (dict: {'is_exclusive': bool, 'details': str}) if check performed successfully\n        - error (str) if check failed\n\nConstraints:\n    - Both advertiser and agent must exist.\n    - Agent assignment is exclusive: if agent is already assigned to another advertiser, exclusivity applies.\n    - No custom preference/exclusivity logic is encoded unless additional data structures are later added.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "advertiser_id": {
+            "type": "string"
+          },
+          "agent_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "advertiser_id",
+          "agent_id"
+        ]
+      }
+    },
+    {
+      "name": "match_agents_for_advertiser",
+      "description": "Query which available agents are suitable for an advertiser, based on expertise, availability, and constraints.\n\nArgs:\n    advertiser_id (str): The ID of the advertiser for whom to match agents.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AgentInfo],  # All agents suitable for this advertiser\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for error (e.g., advertiser does not exist)\n    }\n\nConstraints:\n    - Only agents with availability == True are considered.\n    - Agent's expertise must match advertiser's industry.\n    - Agent must not currently be assigned to another advertiser (if so, skip).\n    - Any exclusivity constraints must be respected (with current model: only one assignment).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "advertiser_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "advertiser_id"
+        ]
+      }
+    },
+    {
+      "name": "assign_agent_to_advertiser",
+      "description": "Assigns an available agent to an advertiser, respecting assignment limits and exclusivity/preference constraints.\n\nArgs:\n    agent_id (str): The agent's identifier.\n    advertiser_id (str): The advertiser's identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Agent <id> assigned to advertiser <id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <description>\n    }\n\nConstraints:\n    - Agent must exist.\n    - Advertiser must exist.\n    - Agent must be available (availability=True).\n    - Agent can only be assigned to one advertiser at a time (if assigned_advertiser_id not empty/None).\n    - Must respect exclusivity (no conflicting assignment).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agent_id": {
+            "type": "string"
+          },
+          "advertiser_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id",
+          "advertiser_id"
+        ]
+      }
+    },
+    {
+      "name": "unassign_agent_from_advertiser",
+      "description": "Remove an agent’s assignment from a given advertiser.\n\nArgs:\n    agent_id (str): The ID of the agent to unassign.\n    advertiser_id (str): The ID of the advertiser to remove the assignment from.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Agent <id> unassigned from advertiser <id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Agent and advertiser must both exist.\n    - Agent must be assigned to the specified advertiser.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agent_id": {
+            "type": "string"
+          },
+          "advertiser_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id",
+          "advertiser_id"
+        ]
+      }
+    },
+    {
+      "name": "update_agent_availability",
+      "description": "Change an agent's availability status.\n\nArgs:\n    agent_id (str): The unique identifier for the agent.\n    availability (bool): The desired availability status (True for available, False for unavailable).\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Agent availability updated.\" }\n        On failure: { \"success\": False, \"error\": \"Agent not found.\" }\n\nConstraints:\n    - The agent must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agent_id": {
+            "type": "string"
+          },
+          "availability": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "agent_id",
+          "availability"
+        ]
+      }
+    },
+    {
+      "name": "create_recommendation_for_advertiser",
+      "description": "Generate and store a new agent recommendation for a given advertiser based on current matching logic.\n\nArgs:\n    advertiser_id (str): The advertiser's unique identifier.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Recommendation created for advertiser <id>\" }\n        On failure:\n            { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Advertiser must exist.\n    - Only agents with availability=True are considered.\n    - Agent's expertise should match the advertiser's industry.\n    - Assignment/exclusivity rules are respected (for now: single assignment with assigned_advertiser_id).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "advertiser_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "advertiser_id"
+        ]
+      }
+    },
+    {
+      "name": "update_recommendation_reasoning",
+      "description": "Edit or append reasoning to a recommendation record for a given advertiser.\n\nArgs:\n    advertiser_id (str): The advertiser whose recommendation to update.\n    reasoning (str): The text to set or append.\n    mode (str): \"replace\" (default: overwrite), \"append\" (add to existing reasoning).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Description of successful update\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description\n    }\n\nConstraints:\n    - advertiser_id must exist in recommendations.\n    - mode must be \"replace\" or \"append\".\n    - reasoning must be a non-empty string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "advertiser_id": {
+            "type": "string"
+          },
+          "reasoning": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "advertiser_id",
+          "reasoning"
+        ]
+      }
+    },
+    {
+      "name": "remove_recommendation_for_advertiser",
+      "description": "Delete/remove the current recommendation record for the specified advertiser.\n\nArgs:\n    advertiser_id (str): The ID of the advertiser.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Recommendation for advertiser <id> removed.\" }\n        On failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - The advertiser_id must exist in self.advertisers.\n    - There must be a recommendation present for the advertiser to remove.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "advertiser_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "advertiser_id"
+        ]
+      }
+    },
+    {
+      "name": "update_campaign_status",
+      "description": "Change the status of a campaign (e.g., 'active', 'paused', 'completed').\n\nArgs:\n    campaign_id (str): The ID of the campaign to update.\n    new_status (str): The new status to assign to the campaign.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Campaign status updated to '<new_status>'.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Campaign not found.\"\n    }\n\nConstraints:\n    - Campaign must exist.\n    - Status can be any string (no validation enforced here).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "campaign_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "campaign_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "add_campaign_for_advertiser",
+      "description": "Create and link a new campaign to an advertiser.\n\nArgs:\n    campaign_id (str): Unique ID for the new campaign.\n    advertiser_id (str): ID of the advertiser to link the campaign to.\n    objective (str): The objective/goal of the campaign.\n    budget (float): The budget allocated for the campaign. Must be non-negative.\n    status (str): The current status of the campaign.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Campaign <id> added for advertiser <id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - campaign_id must be unique.\n    - advertiser_id must exist.\n    - budget must be non-negative.\n    - status/objective must be non-empty strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "campaign_id": {
+            "type": "string"
+          },
+          "advertiser_id": {
+            "type": "string"
+          },
+          "objective": {
+            "type": "string"
+          },
+          "budget": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "campaign_id",
+          "advertiser_id",
+          "objective",
+          "budget",
+          "status"
+        ]
+      }
+    }
+  ]
+}

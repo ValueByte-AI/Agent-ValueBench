@@ -1,0 +1,564 @@
+{
+  "env_name": "CloudResourceManagementPlatform",
+  "description": "A Cloud Resource Management Platform enables users to provision, configure, and manage virtualized computing resources—such as databases, web servers, instance types, regions, and security policies—in a cloud infrastructure. It maintains persistent state about deployed resources, their configurations, interdependencies, and network access controls, supporting life-cycle operations like creation, modification, and decommissioning. This environment underpins scalable deployment of services for enterprises, startups, and developers alike.",
+  "initial_parameter_schema": {
+    "resources": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string"
+          },
+          "resource_type": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          },
+          "instance_type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "configuration": {
+            "type": "object"
+          },
+          "assigned_security_group": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_id",
+          "resource_type",
+          "region",
+          "instance_type",
+          "status",
+          "configuration",
+          "assigned_security_group"
+        ]
+      }
+    },
+    "security_groups": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "security_group_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "associated_resources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "security_group_id",
+          "name",
+          "rules",
+          "associated_resources"
+        ]
+      }
+    },
+    "deployments": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "deployment_id": {
+            "type": "string"
+          },
+          "resources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "deployment_time": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deployment_id",
+          "resources",
+          "deployment_time",
+          "status"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "associated_deployments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "permissions",
+          "associated_deployments"
+        ]
+      }
+    },
+    "allowed_instance_types": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "supported_regions": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      ]
+    }
+  },
+  "tool_state_dependencies": {
+    "list_supported_regions": [
+      "supported_regions"
+    ],
+    "list_allowed_instance_types": [
+      "allowed_instance_types"
+    ],
+    "get_security_group_by_name": [
+      "security_groups"
+    ],
+    "list_security_groups": [
+      "security_groups"
+    ],
+    "get_security_group_rules": [
+      "security_groups"
+    ],
+    "get_resource_info": [
+      "resources"
+    ],
+    "list_resources_by_type_and_region": [
+      "resources"
+    ],
+    "get_resource_status": [
+      "resources"
+    ],
+    "list_deployments": [
+      "deployments"
+    ],
+    "get_deployment_info": [
+      "deployments",
+      "resources"
+    ],
+    "get_user_permissions": [
+      "users"
+    ],
+    "create_security_group": [
+      "security_groups"
+    ],
+    "update_security_group_rules": [
+      "security_groups"
+    ],
+    "provision_resource": [
+      "allowed_instance_types",
+      "resources",
+      "security_groups",
+      "supported_regions"
+    ],
+    "assign_security_group_to_resource": [
+      "resources",
+      "security_groups"
+    ],
+    "create_deployment": [
+      "deployments",
+      "resources"
+    ],
+    "update_resource_status": [
+      "resources"
+    ],
+    "update_resource_configuration": [
+      "resources"
+    ],
+    "decommission_resource": [
+      "resources",
+      "security_groups"
+    ]
+  },
+  "tools": [
+    {
+      "name": "list_supported_regions",
+      "description": "Retrieve the set of regions where resources may be provisioned.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str]  # List of supported region strings (may be empty if not configured)\n    }\n\nConstraints:\n    - Only defined/canonical regions should be returned (not computed from resources).\n    - This method does not error but returns an empty list if not configured.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_allowed_instance_types",
+      "description": "Retrieve the list of allowed instance types for a specified resource type\n(e.g., database, web server).\n\nArgs:\n    resource_type (str): The type of resource to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str]  # Valid instance types for the resource_type\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # If resource_type is invalid\n    }\nConstraints:\n    - Only allowed/defined resource_types are accepted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_type"
+        ]
+      }
+    },
+    {
+      "name": "get_security_group_by_name",
+      "description": "Find and return a security group's information by its name.\n\nArgs:\n    name (str): The name of the security group to look up.\n\nReturns:\n    dict:\n        - success (bool): Whether the lookup succeeded.\n        - data (SecurityGroupInfo): The security group's information, if found.\n        - error (str): Error message if not found.\n\nConstraints:\n    - If multiple security groups have the same name, returns the first one found.\n    - Returns failure if no security group with the given name exists.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "list_security_groups",
+      "description": "List all security groups defined in the environment.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SecurityGroupInfo]  # All security group info objects, may be empty if none exist.\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_security_group_rules",
+      "description": "Retrieve the network/access policy rules for a given security group.\n\nArgs:\n    security_group_id (str): The unique ID of the security group to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[Dict[str, Any]],  # List of rule dictionaries; may be empty if no rules\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g., security group does not exist)\n    }\n\nConstraints:\n    - The specified security group must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "security_group_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "security_group_id"
+        ]
+      }
+    },
+    {
+      "name": "get_resource_info",
+      "description": "Retrieve all details of a resource with the specified resource_id.\n\nArgs:\n    resource_id (str): The unique identifier for the resource.\n\nReturns:\n    dict: \n        If resource exists:\n            { \"success\": True, \"data\": ResourceInfo }\n        If resource does not exist:\n            { \"success\": False, \"error\": \"Resource not found\" }\nConstraints:\n    - The resource must exist in the platform for retrieval.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_id"
+        ]
+      }
+    },
+    {
+      "name": "list_resources_by_type_and_region",
+      "description": "List all resources of a specific type within a given region.\n\nArgs:\n    resource_type (str): The type of resource to filter by.\n    region (str): The region in which to filter resources.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": List[ResourceInfo],  # List (possibly empty) of matching resources' info,\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Description of the error.\n        }\n\nConstraints:\n    - No failure if zero matches found. Returns an empty list in that case.\n    - No permissions checks are performed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_type": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_type",
+          "region"
+        ]
+      }
+    },
+    {
+      "name": "get_resource_status",
+      "description": "Retrieve the operational status (e.g., running, terminated, pending) of the specified resource.\n\nArgs:\n    resource_id (str): The unique identifier of the resource.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": str  # Status string such as \"running\", \"terminated\", or \"pending\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Error message indicating reason for failure.\n            }\n\nConstraints:\n    - The resource must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_id"
+        ]
+      }
+    },
+    {
+      "name": "list_deployments",
+      "description": "List all deployment objects in the platform.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DeploymentInfo],  # list of all deployments, may be empty\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_deployment_info",
+      "description": "Retrieve details and the associated resource information for a specific deployment.\n\nArgs:\n    deployment_id (str): The unique identifier for the deployment.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"deployment_id\": str,\n            \"deployment_time\": str,\n            \"status\": str,\n            \"resources\": List[ResourceInfo],  # List of resource info dicts\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The deployment_id must exist in the platform.\n    - Missing resources in deployment's list are not included in result.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "deployment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deployment_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_permissions",
+      "description": "Retrieve the list of permissions associated with a specified user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str],  # List of the user's permissions\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,  # Error message if the user does not exist\n    }\n\nConstraints:\n    - user_id must exist in the platform's records.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "create_security_group",
+      "description": "Create a new security group with the specified name and rules if one does not already exist.\n\nArgs:\n    name (str): The human-readable name for the security group (must be unique).\n    rules (List[Dict[str, Any]]): The list of network/access policy rules to associate with this group.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Security group '<name>' created with ID <security_group_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error\n    }\n\nConstraints:\n    - Security group name must be unique.\n    - Rules must comply with organizational/network policies (basic compliance check here).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": [
+          "name",
+          "rules"
+        ]
+      }
+    },
+    {
+      "name": "update_security_group_rules",
+      "description": "Modify or extend rules for an existing security group.\n\nArgs:\n    security_group_id (str): ID of the security group whose rules should be updated.\n    new_rules (List[Dict[str, Any]]): The new list of rules to set (will replace current rules).\n\nReturns:\n    dict: \n        On success: \n            { \"success\": True, \"message\": \"Security group rules updated for <security_group_id>\" }\n        On failure:\n            { \"success\": False, \"error\": \"Security group does not exist\" }\n            { \"success\": False, \"error\": \"One or more rules violate organizational policies\" }\n\nConstraints:\n    - Security group must exist.\n    - All new rules must comply with organizational/network policies (mocked check).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "security_group_id": {
+            "type": "string"
+          },
+          "new_rules": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": [
+          "security_group_id",
+          "new_rules"
+        ]
+      }
+    },
+    {
+      "name": "provision_resource",
+      "description": "Instantiate (create) a new resource (e.g., database, web server) in the platform.\n\nArgs:\n    resource_type (str): Type of resource to provision (e.g., \"web_server\").\n    region (str): Cloud region for provisioning.\n    instance_type (str): Sizing of resource (e.g. \"small\", \"medium\", \"large\").\n    configuration (dict): Resource-specific configuration settings.\n    assigned_security_group (str): Security group ID to assign to the new resource.\n\nReturns:\n    dict:\n      - If successful: {\"success\": True, \"message\": \"Resource <resource_id> provisioned.\"}\n      - If failure: {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - Region must be in supported regions.\n    - Instance type must be allowed for the given resource type.\n    - Security group must exist.\n    - Resource ID is generated and must be unique.\n    - Resource status is set to \"pending\" on creation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_type": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          },
+          "instance_type": {
+            "type": "string"
+          },
+          "configuration": {
+            "type": "object"
+          },
+          "assigned_security_group": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_type",
+          "region",
+          "instance_type",
+          "configuration",
+          "assigned_security_group"
+        ]
+      }
+    },
+    {
+      "name": "assign_security_group_to_resource",
+      "description": "Attach a valid existing security group to a resource.\n\nArgs:\n    resource_id (str): The ID of the target resource.\n    security_group_id (str): The ID of the security group to assign.\n\nReturns:\n    dict: \n        - On success: {\n            \"success\": True,\n            \"message\": \"Security group <security_group_id> assigned to resource <resource_id>\"\n          }\n        - On failure: {\n            \"success\": False,\n            \"error\": \"<description>\"\n          }\n\nConstraints:\n    - The resource must exist.\n    - The security group must exist (cannot be non-existent or deleted).\n    - Updates both the resource and security group objects for consistent linkage.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string"
+          },
+          "security_group_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_id",
+          "security_group_id"
+        ]
+      }
+    },
+    {
+      "name": "create_deployment",
+      "description": "Creates a new deployment object linking a set of resources for lifecycle tracking.\nArgs:\n    deployment_id (str): Unique identifier for the deployment.\n    resource_ids (List[str]): List of existing resource IDs to include in the deployment.\n    deployment_time (str): Timestamp for deployment creation (ISO string or similar).\n    status (str): Initial status for the deployment.\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"message\": \"Deployment <deployment_id> created with resources: <ids>\"\n        }\n    On error:\n        {\n            \"success\": False,\n            \"error\": \"<reason>\"\n        }\nConstraints:\n    - All resource_ids must exist in self.resources.\n    - deployment_id must be unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "deployment_id": {
+            "type": "string"
+          },
+          "resource_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "deployment_time": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deployment_id",
+          "resource_ids",
+          "deployment_time",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "update_resource_status",
+      "description": "Change the operational status of a resource (e.g., move to running, terminated).\n\nArgs:\n    resource_id (str): The unique identifier of the resource.\n    new_status (str): The new status for the resource. Allowed values: 'running', 'terminated', 'pending'.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Resource <resource_id> status updated to <new_status>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<error message>\"\n    }\n\nConstraints:\n    - Resource must exist.\n    - new_status must be one of ['running', 'terminated', 'pending'].\n    - Resource status must always reflect real provisioning state.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "update_resource_configuration",
+      "description": "Change or set configuration parameters for an existing resource.\n\nArgs:\n    resource_id (str): The ID of the resource to update.\n    new_configuration (Dict[str, Any]): Configuration values to set/merge onto existing config.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Configuration updated for resource <resource_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Resource must exist.\n    - Resource must not be in 'terminated' status.\n    - new_configuration must be a dict.\n    - Performs an update/merge onto existing configuration dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string"
+          },
+          "new_configuration": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "resource_id",
+          "new_configuration"
+        ]
+      }
+    },
+    {
+      "name": "decommission_resource",
+      "description": "Mark the specified resource as terminated and remove all associations,\nreflecting de-provisioning from the system.\n\nArgs:\n    resource_id (str): Unique identifier of the resource to decommission.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Resource <id> successfully decommissioned\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <error message>\n    }\n\nConstraints:\n    - Resource must exist.\n    - Status will be set to 'terminated' (if not already).\n    - Resource will be removed from all SecurityGroup.associated_resources lists.\n    - No deletion from deployments to preserve history.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_id"
+        ]
+      }
+    }
+  ]
+}

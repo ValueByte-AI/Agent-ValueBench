@@ -1,0 +1,467 @@
+{
+  "env_name": "DomainNameRegistrationDatabase",
+  "description": "A Domain Name Registration Database is a centralized system that stores information about registered internet domain names, including their names, owners, registration dates, and status. It supports querying, search, and administrative operations to facilitate domain management and reporting. Such a database is essential for maintaining the integrity of the domain name system and supporting various analytics and compliance tasks.",
+  "initial_parameter_schema": {
+    "domains": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "domain_name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "registration_date": {
+            "type": "string"
+          },
+          "expiration_date": {
+            "type": "string"
+          },
+          "owner_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain_name",
+          "status",
+          "registration_date",
+          "expiration_date",
+          "owner_id"
+        ]
+      }
+    },
+    "owners": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "owner_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "organization": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "owner_id",
+          "name",
+          "contact_info",
+          "organization"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_domain_by_name": [
+      "domains"
+    ],
+    "list_all_domains": [
+      "domains"
+    ],
+    "list_registered_domains": [
+      "domains"
+    ],
+    "search_domains_by_substring": [
+      "domains"
+    ],
+    "count_registered_domains_by_substring": [
+      "domains"
+    ],
+    "get_domains_by_owner_id": [
+      "domains",
+      "owners"
+    ],
+    "get_owner_by_id": [
+      "owners"
+    ],
+    "search_owners_by_name": [
+      "owners"
+    ],
+    "list_domains_expiring_before": [
+      "domains"
+    ],
+    "get_domain_status": [
+      "domains"
+    ],
+    "get_domain_registration_dates": [
+      "domains"
+    ],
+    "add_domain": [
+      "domains",
+      "owners"
+    ],
+    "update_domain_status": [
+      "domains"
+    ],
+    "update_domain_expiration": [
+      "domains"
+    ],
+    "transfer_domain_ownership": [
+      "domains",
+      "owners"
+    ],
+    "delete_domain": [
+      "domains"
+    ],
+    "add_owner": [
+      "owners"
+    ],
+    "update_owner_info": [
+      "owners"
+    ],
+    "validate_domain_name_characters": [],
+    "renew_domain": [
+      "domains"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_domain_by_name",
+      "description": "Retrieve all administrative info for a given domain name.\n\nArgs:\n    domain_name (str): The domain name to look up.\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"data\": DomainNameInfo}\n        - On failure: {\"success\": False, \"error\": \"Domain not found\"}\n\nConstraints:\n    - The domain_name must exist in the system (case-insensitive lookup NOT required).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain_name"
+        ]
+      }
+    },
+    {
+      "name": "list_all_domains",
+      "description": "List all domain names and their metadata in the registration database, regardless of domain status.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DomainNameInfo]  # List of domain info (may be empty)\n    }\nConstraints:\n    - No filtering; domains of any status are included.\n    - If there are no domains, the data list will be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_registered_domains",
+      "description": "List all domains currently registered (status == \"registered\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DomainNameInfo]  # List of active (registered) domains; empty if none\n    }\n\nConstraints:\n    - Only domains with status = \"registered\" are included.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "search_domains_by_substring",
+      "description": "Retrieve domains whose names contain a given substring (case-insensitive).\n\nArgs:\n    substring (str): The substring to match within domain names.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": List[DomainNameInfo],  # All domains containing the substring\n            }\n        If no domains match, returns an empty data list.\n\nConstraints:\n    - Search is case-insensitive.\n    - All domains, regardless of status, are considered.\n    - No error is returned for empty substrings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "substring": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "substring"
+        ]
+      }
+    },
+    {
+      "name": "count_registered_domains_by_substring",
+      "description": "Count the number of domains whose names contain the given substring and are currently registered.\n\nArgs:\n    substring (str): The substring to search for within domain names. Case-insensitive match.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": int  # count of matching registered domains\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - Only domains with status == \"registered\" are considered.\n    - Substring matching is case-insensitive.\n    - If substring is empty, returns the count of all registered domains.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "substring": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "substring"
+        ]
+      }
+    },
+    {
+      "name": "get_domains_by_owner_id",
+      "description": "Retrieve all domain registrations associated with the given owner_id.\n\nArgs:\n    owner_id (str): The unique identifier of the owner.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DomainNameInfo],  # List of all domain name records for this owner (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g. \"Owner not found\"\n    }\n\nConstraints:\n    - The owner_id must exist in the database.\n    - No filtering on 'status'; all domains for that owner are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "owner_id"
+        ]
+      }
+    },
+    {
+      "name": "get_owner_by_id",
+      "description": "Retrieve all information about an owner using their owner_id.\n\nArgs:\n    owner_id (str): The unique identifier of the owner.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": OwnerInfo  # Full info for the owner,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # E.g., \"Owner not found\"\n    }\n\nConstraints:\n    - owner_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "owner_id"
+        ]
+      }
+    },
+    {
+      "name": "search_owners_by_name",
+      "description": "Retrieve all owners whose names contain the specified substring (case-insensitive).\n\nArgs:\n    name_substring (str): The substring to search for in owner names.\n\nReturns:\n    dict: \n        {\"success\": True, \"data\": List[OwnerInfo]}\n        or\n        {\"success\": False, \"error\": str}\n\nConstraints:\n    - Substring must not be empty.\n    - Search is case-insensitive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name_substring": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name_substring"
+        ]
+      }
+    },
+    {
+      "name": "list_domains_expiring_before",
+      "description": "List domains that are expiring before the given date, optionally filtering by status.\n\nArgs:\n    date (str): The cutoff date (ISO format: \"YYYY-MM-DD\").\n    status (Optional[str]): If provided, only domains with this status will be returned.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DomainNameInfo],  # List of domain info objects\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Description of error, e.g. invalid date format\n    }\n\nConstraints:\n    - Dates are assumed to be in \"YYYY-MM-DD\" format.\n    - If the date format is invalid, returns a failure.\n    - If status is provided, only include domains with that status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "date"
+        ]
+      }
+    },
+    {
+      "name": "get_domain_status",
+      "description": "Retrieve the registration status of the specified domain.\n\nArgs:\n    domain_name (str): The fully qualified domain name to look up.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": { \"status\": <status_str> }\n            }\n        - On failure (domain not found):\n            {\n                \"success\": False,\n                \"error\": \"Domain not found\"\n            }\n\nConstraints:\n    - The domain_name must exist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain_name"
+        ]
+      }
+    },
+    {
+      "name": "get_domain_registration_dates",
+      "description": "Retrieve the registration and expiration dates for a given domain name.\n\nArgs:\n    domain_name (str): The domain name to retrieve dates for.\n\nReturns:\n    dict:\n        - On success: {\n            \"success\": True,\n            \"data\": {\n                \"registration_date\": str,\n                \"expiration_date\": str\n            }\n        }\n        - On failure: {\n            \"success\": False,\n            \"error\": str  # Reason, e.g. domain does not exist\n        }\n\nConstraints:\n    - The domain_name must exist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain_name"
+        ]
+      }
+    },
+    {
+      "name": "add_domain",
+      "description": "Register a new domain after validating:\n  - Uniqueness of domain_name.\n  - Existence of owner_id.\n  - domain_name only uses permitted DNS characters.\n\nArgs:\n    domain_name (str): The domain to register.\n    registration_date (str): Registration date (ISO8601 or YYYY-MM-DD).\n    expiration_date (str): Expiration date (ISO8601 or YYYY-MM-DD).\n    owner_id (str): The owner's unique ID (must exist in system).\n    status (str): Status of the domain, default 'registered'.\n\nReturns:\n    dict: \n      - On success: { \"success\": True, \"message\": \"Domain <domain_name> registered successfully.\" }\n      - On error: { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - domain_name must be unique.\n    - domain_name must follow DNS permitted characters.\n    - owner_id must exist and be associated with an owner.\n    - All fields are mandatory.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain_name": {
+            "type": "string"
+          },
+          "registration_date": {
+            "type": "string"
+          },
+          "expiration_date": {
+            "type": "string"
+          },
+          "owner_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain_name",
+          "registration_date",
+          "expiration_date",
+          "owner_id"
+        ]
+      }
+    },
+    {
+      "name": "update_domain_status",
+      "description": "Change the status of a domain (e.g., registered, expired, on-hold).\n\nArgs:\n    domain_name (str): The unique domain name to update.\n    new_status (str): The new status to set.\n\nReturns:\n    dict:\n        On Success:\n            { \"success\": True, \"message\": \"Domain status updated to '<new_status>' for '<domain_name>'.\" }\n        On Failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - The domain_name must exist in the system.\n    - No restriction on status value per current rules.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain_name": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain_name",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "update_domain_expiration",
+      "description": "Modify the expiration date of a domain.\n\nArgs:\n    domain_name (str): The domain whose expiration date is to be updated.\n    new_expiration_date (str): The new expiration date (expected as string).\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Expiration date updated for <domain_name>\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The domain_name must exist in the database.\n    - The new_expiration_date should be a non-empty string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain_name": {
+            "type": "string"
+          },
+          "new_expiration_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain_name",
+          "new_expiration_date"
+        ]
+      }
+    },
+    {
+      "name": "transfer_domain_ownership",
+      "description": "Assigns the specified domain to a new owner.\n\nArgs:\n    domain_name (str): The domain to transfer.\n    new_owner_id (str): The owner_id of the new owner.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Domain ownership transferred to <new_owner_id> for <domain_name>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<error reason>\"\n    }\n\nConstraints:\n    - domain_name must exist.\n    - new_owner_id must exist.\n    - The transfer should not be performed if the domain is already owned by new_owner_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain_name": {
+            "type": "string"
+          },
+          "new_owner_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain_name",
+          "new_owner_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_domain",
+      "description": "Remove a domain from the system.\n\nArgs:\n    domain_name (str): The fully-qualified domain name to be deleted.\n\nReturns:\n    dict: \n        If success: {\"success\": True, \"message\": \"Domain <domain_name> deleted.\"}\n        If fail: {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - Domain must exist in the system.\n    - Domain can only be deleted if status is NOT \"registered\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain_name"
+        ]
+      }
+    },
+    {
+      "name": "add_owner",
+      "description": "Add a new owner record to the database.\n\nArgs:\n    owner_id (str): Unique owner identifier.\n    name (str): Name of the owner.\n    contact_info (str): Owner's contact information.\n    organization (str): Owner's organization.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Owner added successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description, e.g. owner_id already exists\n    }\n\nConstraints:\n    - owner_id must be unique in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "organization": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "owner_id",
+          "name",
+          "contact_info",
+          "organization"
+        ]
+      }
+    },
+    {
+      "name": "update_owner_info",
+      "description": "Update the contact information and/or organization of a domain owner.\n\nArgs:\n    owner_id (str): Unique identifier for the owner to be updated.\n    contact_info (str, optional): New contact info (email, phone, etc.).\n    organization (str, optional): New organization name.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Owner info updated successfully.\" }\n        - On failure: { \"success\": False, \"error\": <error message> }\n\nConstraints:\n    - The owner must exist (owner_id in self.owners).\n    - At least one attribute (contact_info, organization) must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner_id": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "organization": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "owner_id"
+        ]
+      }
+    },
+    {
+      "name": "validate_domain_name_characters",
+      "description": "Check if a domain name contains only DNS-permitted characters.\n\nArgs:\n    domain_name (str): The domain name to validate.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Domain name is valid.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Description of the validation failure.\"\n    }\n\nConstraints (according to DNS rules):\n    - Only a-z, A-Z, 0-9, hyphen '-', and dot '.' permitted.\n    - Each label (parts between dots) must not start or end with hyphen and be 1-63 chars.\n    - Total length must not exceed 253 chars.\n    - Empty string, trailing dots, or consecutive dots are invalid.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain_name"
+        ]
+      }
+    },
+    {
+      "name": "renew_domain",
+      "description": "Extend the expiration date of the specified domain and update status if applicable.\n\nArgs:\n    domain_name (str): The domain name to renew.\n    new_expiration_date (str): The new expiration date (format: \"YYYY-MM-DD\").\n\nReturns:\n    dict:\n        success: True/False\n        message: Success description (on success)\n        error: Failure reason (on failure)\n\nConstraints:\n    - domain_name must exist in the database.\n    - domain_name must contain only permitted DNS characters.\n    - new_expiration_date should extend the previous expiration.\n    - If the domain was expired and renewal brings it 'active', status should be set to 'registered'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain_name": {
+            "type": "string"
+          },
+          "new_expiration_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain_name",
+          "new_expiration_date"
+        ]
+      }
+    }
+  ]
+}

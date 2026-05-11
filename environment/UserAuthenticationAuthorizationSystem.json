@@ -1,0 +1,556 @@
+{
+  "env_name": "UserAuthenticationAuthorizationSystem",
+  "description": "A user authentication and authorization system manages digital identities, account credentials, and access controls for applications or services. It maintains stateful records of users, security attributes, login events, and supports operations such as password resets, OTP generation, and multi-factor authentication. These systems are essential for safeguarding user accounts and enforcing security policies across platforms.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "hashed_password": {
+            "type": "string"
+          },
+          "phone_number": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          },
+          "mfa_enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "hashed_password",
+          "phone_number",
+          "email",
+          "account_status",
+          "mfa_enabled"
+        ]
+      }
+    },
+    "otps": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "otp_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "template_name": {
+            "type": "string"
+          },
+          "contact_method": {
+            "type": "string"
+          },
+          "expiration_time": {
+            "type": "number"
+          },
+          "is_used": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "otp_id",
+          "user_id",
+          "code",
+          "template_name",
+          "contact_method",
+          "expiration_time",
+          "is_used"
+        ]
+      }
+    },
+    "security_templates": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "template_name": {
+            "type": "string"
+          },
+          "template_content": {
+            "type": "string"
+          },
+          "expiry_duration": {
+            "type": "number"
+          },
+          "delivery_method": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "template_name",
+          "template_content",
+          "expiry_duration",
+          "delivery_method"
+        ]
+      }
+    },
+    "login_events": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "successful": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "event_id",
+          "user_id",
+          "timestamp",
+          "event_type",
+          "successful"
+        ]
+      }
+    },
+    "current_time": {
+      "type": "number"
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_phone": [
+      "users"
+    ],
+    "get_user_by_username": [
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "list_verified_contact_methods": [
+      "users"
+    ],
+    "get_security_template": [
+      "security_templates"
+    ],
+    "list_active_security_templates": [
+      "security_templates"
+    ],
+    "list_user_otps": [
+      "otps",
+      "users"
+    ],
+    "get_otp_by_id": [
+      "otps"
+    ],
+    "list_user_active_otps": [
+      "otps",
+      "users",
+      "current_time"
+    ],
+    "count_user_otp_requests_in_timeframe": [
+      "otps",
+      "security_templates",
+      "users"
+    ],
+    "list_login_events_for_user": [
+      "login_events",
+      "users"
+    ],
+    "get_user_account_status": [
+      "users"
+    ],
+    "generate_otp": [
+      "otps",
+      "security_templates",
+      "users",
+      "current_time"
+    ],
+    "mark_otp_as_used": [
+      "otps"
+    ],
+    "expire_otp": [
+      "otps",
+      "current_time"
+    ],
+    "log_login_event": [
+      "login_events",
+      "users"
+    ],
+    "enable_user_mfa": [
+      "users"
+    ],
+    "disable_user_mfa": [
+      "users"
+    ],
+    "update_user_contact_method": [
+      "users"
+    ],
+    "revoke_otp": [
+      "otps"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_phone",
+      "description": "Retrieve user information by phone number.\n\nArgs:\n    phone_number (str): The phone number associated with the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo  # Details of the found user\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g., user not found\n    }\n\nConstraints:\n    - Only returns one user (if multiple found, returns the first match).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "phone_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "phone_number"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_username",
+      "description": "Retrieve user information given a username.\n\nArgs:\n    username (str): Username to search for.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True,\n            \"data\": UserInfo  # All user info for found user\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": \"User not found\"\n        }\n\nConstraints:\n    - Returns info for the first user with exact username match.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user details by unique user ID.\n\nArgs:\n    user_id (str): The unique identifier (_id) of the user.\n\nReturns:\n    dict:\n        - If found:\n            {\"success\": True, \"data\": UserInfo}\n        - If not found:\n            {\"success\": False, \"error\": \"User not found\"}\nConstraints:\n    - The user ID must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_verified_contact_methods",
+      "description": "List all verified contact methods (phone_number, email) for a given user.\n\nArgs:\n    user_id (str): The unique ID of the user.\n\nReturns:\n    dict: \n        { \"success\": True, \"data\": { \"phone_number\": str|None, \"email\": str|None } }\n        or\n        { \"success\": False, \"error\": \"User not found\" }\nConstraints:\n    - Only returns contact methods set (non-empty). No verification flags in schema;\n      so treats non-empty entries as 'verified'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_security_template",
+      "description": "Retrieve information for a specific SecurityTemplate by its template name.\n\nArgs:\n    template_name (str): The name of the SecurityTemplate to retrieve.\n\nReturns:\n    dict:\n        Success: { \"success\": True, \"data\": SecurityTemplateInfo }\n        Failure: { \"success\": False, \"error\": \"Security template not found\" }\n\nConstraints:\n    - The template_name must exist in the system's security_templates.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "template_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "template_name"
+        ]
+      }
+    },
+    {
+      "name": "list_active_security_templates",
+      "description": "List all active SecurityTemplates available in the system.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": List[SecurityTemplateInfo]  # All security templates (may be empty list)\n        }\n\nNotes:\n    - \"Active\" status is not stored; all templates in self.security_templates are considered active by design.\n    - Returns an empty list if no templates exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_user_otps",
+      "description": "Retrieve all OTPs associated with the given user.\n\nArgs:\n    user_id (str): The user's unique identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[OTPInfo],   # All OTPs for this user (empty list if none)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"User not found\"\n    }\n\nConstraints:\n    - user_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_otp_by_id",
+      "description": "Retrieve the details of a specific OTP by its ID.\n\nArgs:\n    otp_id (str): The unique identifier of the OTP to fetch.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": OTPInfo  # OTP details if found,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., \"OTP not found\"\n    }\n\nConstraints:\n    - The otp_id must exist in the OTP records.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "otp_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "otp_id"
+        ]
+      }
+    },
+    {
+      "name": "list_user_active_otps",
+      "description": "Retrieve all unexpired and unused OTPs for the specified user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[OTPInfo]  # Active OTPs for the user (may be empty)\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason for failure, e.g., user does not exist\n            }\n\nConstraints:\n    - Only OTPs where (expiration_time > current_time and is_used == False) should be listed.\n    - current_time comes from the environment state.\n    - user_id must refer to a valid user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "count_user_otp_requests_in_timeframe",
+      "description": "Count the number of OTPs generated by a user within a specified time window.\nThe count is used for rate limiting OTP requests.\n\nArgs:\n    user_id (str): The target user's ID.\n    start_time (float): The start of the time window (inclusive), as a Unix timestamp.\n    end_time (float): The end of the time window (inclusive), as a Unix timestamp.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": int  # Number of OTPs matching the criteria\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - user_id must exist\n    - Only OTPs with computed creation_time in [start_time, end_time] are counted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "user_id",
+          "start_time",
+          "end_time"
+        ]
+      }
+    },
+    {
+      "name": "list_login_events_for_user",
+      "description": "Retrieve all login and OTP usage events for the specified user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[LoginEventInfo]  # all event dicts for the user; empty if none found\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # e.g. \"User does not exist\"\n        }\n\nConstraints:\n    - user_id must exist in the users dictionary.\n    - No filtering for event type; returns all LoginEvent types for the user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_account_status",
+      "description": "Query the account status (e.g., 'active', 'suspended') for the user with the provided user_id.\n\nArgs:\n    user_id (str): The unique identifier of the user (_id field).\n\nReturns:\n    dict:\n        - If user exists:\n            {\"success\": True, \"data\": {\"user_id\": str, \"account_status\": str}}\n        - If user not found:\n            {\"success\": False, \"error\": \"User not found\"}\n\nConstraints:\n    - The user must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "generate_otp",
+      "description": "Create and store a new OTP for a user with a provided SecurityTemplate and contact method.\n\nArgs:\n    user_id (str): The ID of the user for whom to generate the OTP.\n    template_name (str): The name of the SecurityTemplate to use.\n    contact_method (str): Either the verified contact field name ('phone_number' or 'email') or the concrete verified phone/email value to use for OTP delivery.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"OTP generated\",\n        \"otp_id\": str,   # The generated OTP's unique identifier\n        \"code\": str      # The actual OTP code\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - user_id must exist;\n    - contact_method must resolve to one of the user's verified contact methods;\n    - template_name must exist;\n    - OTP must be unique per user;\n    - is_used is set to False and expiration_time is computed from environment current_time plus the template expiry duration.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "template_name": {
+            "type": "string"
+          },
+          "contact_method": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "template_name",
+          "contact_method"
+        ]
+      }
+    },
+    {
+      "name": "mark_otp_as_used",
+      "description": "Mark the OTP specified by otp_id as used (sets is_used = True).\n\nArgs:\n    otp_id (str): The unique identifier for the OTP.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"OTP marked as used.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"OTP not found.\" or \"OTP is already marked as used.\"\n    }\n\nConstraints:\n    - OTP must exist in the system.\n    - OTP must not already be marked as used.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "otp_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "otp_id"
+        ]
+      }
+    },
+    {
+      "name": "expire_otp",
+      "description": "Force-expire an OTP by setting its expiration_time to the past, regardless of current value.\n\nArgs:\n    otp_id (str): The unique identifier of the OTP to expire.\n\nReturns:\n    dict: \n        { \"success\": True, \"message\": \"OTP <otp_id> has been force-expired.\" }\n        or\n        { \"success\": False, \"error\": \"OTP not found.\" }\n\nConstraints/Notes:\n    - If the OTP is already expired or is_used is True, the operation is still treated as success (\"idempotent\").\n    - Does not delete the OTP, just force-expires it relative to the environment current_time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "otp_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "otp_id"
+        ]
+      }
+    },
+    {
+      "name": "log_login_event",
+      "description": "Add a new LoginEvent (login or OTP use) to the system.\n\nArgs:\n    event_id (str): Unique identifier for the login event.\n    user_id (str): User ID associated with this event (must exist).\n    timestamp (float): Unix epoch timestamp for event.\n    event_type (str): Nature of event (e.g., 'login', 'otp_use').\n    successful (bool): Whether the event was successful.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Login event logged\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - event_id must be unique.\n    - user_id must exist in users.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "successful": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "event_id",
+          "user_id",
+          "timestamp",
+          "event_type",
+          "successful"
+        ]
+      }
+    },
+    {
+      "name": "enable_user_mfa",
+      "description": "Enable multi-factor authentication (MFA) for a given user.\n\nArgs:\n    user_id (str): The unique identifier (_id) for the user.\n\nReturns:\n    dict: \n        { \"success\": True, \"message\": \"MFA enabled for user <user_id>\" }\n        or\n        { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - User must exist.\n    - Should not enable MFA for users with non-active status.\n    - If MFA is already enabled, returns success message (idempotent).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "disable_user_mfa",
+      "description": "Disable multi-factor authentication (MFA) for a user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"MFA disabled for user <user_id or username>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of error, e.g. user not found\n    }\n\nConstraints:\n    - The user must exist in the system.\n    - Operation is idempotent (no error if already disabled).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "update_user_contact_method",
+      "description": "Update or verify a user's contact method (phone_number or email).\n\nArgs:\n    user_id (str): ID of the user to be updated.\n    contact_method (str): Which contact method ('phone_number' or 'email').\n    value (str, optional): New value for the contact method.\n    verified (bool, optional): If provided, will set the \"<contact_method>_verified\" flag.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Contact method updated/verifed successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - User must exist.\n    - Contact method must be one of: 'phone_number', 'email'.\n    - If setting verified status, contact method value must be present.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "contact_method": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "verified": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "user_id",
+          "contact_method"
+        ]
+      }
+    },
+    {
+      "name": "revoke_otp",
+      "description": "Invalidate (revoke) an unexpired, unused OTP before its normal expiration.\n\nArgs:\n    otp_id (str): The OTP's unique identifier to revoke.\n    current_time (float): The current Unix timestamp (used for expiration check).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"OTP revoked.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": reason\n    }\n\nConstraints:\n    - OTP must exist.\n    - OTP must not be expired (expiration_time > current_time).\n    - OTP must not be already used.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "otp_id": {
+            "type": "string"
+          },
+          "current_time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "otp_id",
+          "current_time"
+        ]
+      }
+    }
+  ]
+}

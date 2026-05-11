@@ -1,0 +1,458 @@
+{
+  "env_name": "EventVenueManagementSystem",
+  "description": "An event venue management system stores and organizes information about multiple venues, including their unique IDs, locations, capacities, amenities, and availability. Users can query, update, or retrieve venue details, facilitating efficient venue selection and booking for events and gatherings. This system supports operations ranging from search and reservation to reporting and venue administration.",
+  "initial_parameter_schema": {
+    "venues": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "venue_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "capacity": {
+            "type": "integer"
+          },
+          "amenities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "availability_status": {
+            "type": "string"
+          },
+          "booking_schedule": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "required": [
+          "venue_id",
+          "name",
+          "location",
+          "capacity",
+          "amenities",
+          "availability_status",
+          "booking_schedule"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_venue_by_id": [
+      "venues"
+    ],
+    "get_venues_by_ids": [
+      "venues"
+    ],
+    "list_all_venues": [
+      "venues"
+    ],
+    "search_venues_by_location": [
+      "venues"
+    ],
+    "filter_venues_by_status": [
+      "venues"
+    ],
+    "filter_venues_by_capacity": [
+      "venues"
+    ],
+    "filter_venues_by_amenities": [
+      "venues"
+    ],
+    "get_venue_booking_schedule": [
+      "venues"
+    ],
+    "check_venue_availability": [
+      "venues"
+    ],
+    "get_venue_status": [
+      "venues"
+    ],
+    "update_venue_info": [
+      "venues"
+    ],
+    "set_venue_status": [
+      "venues"
+    ],
+    "update_venue_amenities": [
+      "venues"
+    ],
+    "update_venue_capacity": [
+      "venues"
+    ],
+    "add_venue_booking": [
+      "venues"
+    ],
+    "remove_venue_booking": [
+      "venues"
+    ],
+    "add_new_venue": [
+      "venues"
+    ],
+    "delete_venue": [
+      "venues"
+    ],
+    "correct_booking_schedule": [
+      "venues"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_venue_by_id",
+      "description": "Retrieve full VenueInfo for the venue with the given unique venue_id.\n\nArgs:\n    venue_id (str): The unique identifier of the venue.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": VenueInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Venue not found\"\n    }\nConstraints:\n    - venue_id must be unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "venue_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "venue_id"
+        ]
+      }
+    },
+    {
+      "name": "get_venues_by_ids",
+      "description": "Retrieve venue details for multiple venues given a list of venue_ids.\n\nArgs:\n    venue_ids (List[str]): List of venue_id strings to look up.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": List[VenueInfo],         # Venue details for found ids (order as input minus not_found)\n            \"not_found\": List[str],          # Venue_ids that do not exist\n        }\nConstraints:\n    - Only venues present in the system are returned.\n    - Nonexistent ids are reported in \"not_found\".\n    - If no ids are found, data is empty and not_found includes all input ids.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "venue_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "venue_ids"
+        ]
+      }
+    },
+    {
+      "name": "list_all_venues",
+      "description": "List all venues registered in the system.\n\nArgs:\n    None\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[VenueInfo],  # List of all venues (can be empty)\n        }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "search_venues_by_location",
+      "description": "Retrieve all venues in the specified location with active status.\n\nArgs:\n    location (str): The target location to search venues for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[VenueInfo]  # List of matching venues (may be empty)\n    }\nConstraints:\n    - Only venues with 'active' availability_status are included in the results.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location"
+        ]
+      }
+    },
+    {
+      "name": "filter_venues_by_status",
+      "description": "List all venues by a given availability_status.\n\nArgs:\n    status (str): The required availability status (e.g., 'active', 'inactive', 'booked').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[VenueInfo],    # list of venues with this status\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nNotes:\n    - Returns empty list if no venues match the given status.\n    - Accepts any string as status; no strict validation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "filter_venues_by_capacity",
+      "description": "List venues whose capacity matches or exceeds a minimum required capacity.\nOnly venues with 'active' availability_status are included.\n\nArgs:\n    min_capacity (int): The minimum required capacity (must be non-negative integer).\n\nReturns:\n    dict:\n        - success (bool): True if operation performed successfully.\n        - data (List[VenueInfo]): List of venue information dicts matching criteria.\n        - error (str): If invalid input, error message.\nConstraints:\n    - Only venues with 'active' status can be listed.\n    - min_capacity must be a non-negative integer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "min_capacity": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "min_capacity"
+        ]
+      }
+    },
+    {
+      "name": "filter_venues_by_amenities",
+      "description": "List venues (VenueInfo) whose amenities contain all amenities in required_amenities\nand that have 'active' availability_status.\n\nArgs:\n    required_amenities (list[str]): List of amenities that must be present for a venue to match.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[VenueInfo],  # venues that match (may be empty if no matches)\n    }\n\nConstraints:\n    - Only venues with 'active' status are included.\n    - Each venue's amenities must include all of required_amenities (set inclusion).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "required_amenities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "required_amenities"
+        ]
+      }
+    },
+    {
+      "name": "get_venue_booking_schedule",
+      "description": "Retrieve the complete booking schedule for a specified venue.\n\nArgs:\n    venue_id (str): The unique identifier for the venue.\n\nReturns:\n    dict:\n        - success (bool): True if retrieval is successful.\n        - data (List[Dict]): The venue's booking schedule if found.\n        - error (str): Explanation if retrieval fails.\n\nConstraints:\n    - The specified venue_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "venue_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "venue_id"
+        ]
+      }
+    },
+    {
+      "name": "check_venue_availability",
+      "description": "Check if a venue is available (i.e., not booked) during the given date/time range.\n\nArgs:\n    venue_id (str): The unique identifier of the venue.\n    start_time (datetime): Start of the requested availability window.\n    end_time (datetime): End of the requested availability window.\n\nReturns:\n    dict:\n        - On success:\n            { \"success\": True, \"available\": bool }\n        - On failure:\n            { \"success\": False, \"error\": str }\n\nConstraints:\n    - Venue must exist in the system.\n    - Venue must have 'active' status.\n    - Booking ranges must not overlap with the requested range.\n    - start_time must precede end_time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "venue_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "end_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          }
+        },
+        "required": [
+          "venue_id",
+          "start_time",
+          "end_time"
+        ]
+      }
+    },
+    {
+      "name": "get_venue_status",
+      "description": "Return the current availability_status of a venue.\n\nArgs:\n    venue_id (str): The unique identifier of the venue.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": str  # The venue's current availability_status (e.g., 'active', 'inactive', 'booked')\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"Venue not found\" if venue_id doesn't exist\n    }\n\nConstraints:\n    - The venue_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "venue_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "venue_id"
+        ]
+      }
+    },
+    {
+      "name": "update_venue_info",
+      "description": "Update the capacity, location, and/or amenities for an existing venue.\n\nArgs:\n    venue_id (str): The ID of the venue to update.\n    capacity (int, optional): New capacity value. Must be a positive integer if provided.\n    location (str, optional): New location string.\n    amenities (list, optional): New amenities list. Must be a list of strings if provided.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Update message\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Error reason\n    }\n\nConstraints:\n    - venue_id must exist.\n    - capacity and amenities must have correct types/values if provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "venue_id": {
+            "type": "string"
+          },
+          "capacity": {
+            "type": "integer"
+          },
+          "location": {
+            "type": "string"
+          },
+          "amenities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "venue_id"
+        ]
+      }
+    },
+    {
+      "name": "set_venue_status",
+      "description": "Change the availability_status for a venue to 'active', 'inactive', or 'booked'.\n\nArgs:\n    venue_id (str): The unique ID of the venue to update.\n    new_status (str): The new status string ('active', 'inactive', 'booked').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Venue status updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The venue must exist.\n    - Only valid statuses are accepted ('active', 'inactive', 'booked').\n    - Booking consistency checks are NOT enforced (as not specified for this operation).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "venue_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "venue_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "update_venue_amenities",
+      "description": "Add or remove amenities for a specific venue.\n\nArgs:\n    venue_id (str): The ID of the venue to update.\n    add_amenities (list, optional): Amenities to add to the venue. Default: None.\n    remove_amenities (list, optional): Amenities to remove from the venue. Default: None.\n\nReturns:\n    dict:\n        On success: {\"success\": True, \"message\": str}\n        On failure: {\"success\": False, \"error\": str}\n\nConstraints:\n    - Only updates amenities for an existing venue.\n    - Amenities list must not contain duplicates.\n    - Removing amenity not present is ignored.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "venue_id": {
+            "type": "string"
+          },
+          "add_amenities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "remove_amenities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "venue_id"
+        ]
+      }
+    },
+    {
+      "name": "update_venue_capacity",
+      "description": "Modify the capacity value for a venue.\n\nArgs:\n    venue_id (str): The unique identifier for the venue.\n    new_capacity (int): The new capacity value to be set. Must be a positive integer.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Capacity for venue <venue_id> updated to <new_capacity>.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Description of error\"\n            }\n\nConstraints:\n    - Venue (venue_id) must exist.\n    - new_capacity must be a positive integer (> 0).\n    - Venue capacity must always be accurate and up to date.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "venue_id": {
+            "type": "string"
+          },
+          "new_capacity": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "venue_id",
+          "new_capacity"
+        ]
+      }
+    },
+    {
+      "name": "add_venue_booking",
+      "description": "Add a new booking to a venue’s booking_schedule, ensuring no double-booking and status consistency.\n\nArgs:\n    venue_id (str): The unique ID of the venue to be booked.\n    booking_details (dict): A dictionary containing booking information. Must include\n        'start_time' and 'end_time' as comparable values (ideally ISO format strings or timestamps).\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Booking added to venue <venue_id>.\" }\n        - On failure: { \"success\": False, \"error\": <reason str> }\n\nConstraints:\n    - Venue must exist and status be 'active'.\n    - No overlap with existing bookings (double-booking not allowed).\n    - booking_details must include 'start_time' and 'end_time', and they must be valid & non-overlapping.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "venue_id": {
+            "type": "string"
+          },
+          "booking_details": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "venue_id",
+          "booking_details"
+        ]
+      }
+    },
+    {
+      "name": "remove_venue_booking",
+      "description": "Remove a booking entry from a venue’s schedule and update status if necessary.\n\nArgs:\n    venue_id (str): Unique identifier of the venue.\n    booking_id (str): Unique identifier of the booking entry to remove.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Booking removed from venue schedule.\" }\n        - On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Venue must exist.\n    - Booking must exist in venue's booking_schedule.\n    - After removal, ensure availability_status is consistent with the booking_schedule.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "venue_id": {
+            "type": "string"
+          },
+          "booking_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "venue_id",
+          "booking_id"
+        ]
+      }
+    },
+    {
+      "name": "add_new_venue",
+      "description": "Add a new venue to the management system, ensuring that the venue_id is unique.\n\nArgs:\n    venue_info (dict): A dictionary with all required fields to define VenueInfo:\n        - venue_id (str)\n        - name (str)\n        - location (str)\n        - capacity (int)\n        - amenities (List[str])\n        - availability_status (str)  # Should be a valid status, e.g. 'active', 'inactive'\n        - booking_schedule (List[Dict[str, Any]])  # Usually an empty list for new venues\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Venue <venue_id> added.\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - venue_id must be unique (must not already exist)\n    - capacity must be a positive integer\n    - amenities must be a list\n    - availability_status should be a valid status (accept 'active', 'inactive', 'booked')\n    - booking_schedule should be a list (usually empty when registering)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "venue_info": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "venue_info"
+        ]
+      }
+    },
+    {
+      "name": "delete_venue",
+      "description": "Remove a venue from the system by its unique venue_id.\n\nArgs:\n    venue_id (str): The unique identifier of the venue to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Venue <venue_id> has been deleted\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Venue not found\"\n    }\n\nConstraints:\n    - venue_id must exist in the system.\n    - Any admin-only restriction is presumed enforced elsewhere.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "venue_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "venue_id"
+        ]
+      }
+    },
+    {
+      "name": "correct_booking_schedule",
+      "description": "Update or fix inconsistencies in a venue's booking_schedule to match its availability_status.\n\nArgs:\n    venue_id (str): The unique identifier of the venue to process.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Booking schedule for venue <venue_id> corrected to match availability_status.\" }\n        - On failure: { \"success\": False, \"error\": \"Venue not found.\" }\n\nConstraints:\n    - If availability_status is 'active' or 'inactive', booking_schedule should be empty.\n    - If status is 'booked', booking_schedule must have at least one booking.\n    - If status is not recognized, leave as is and succeed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "venue_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "venue_id"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,575 @@
+{
+  "env_name": "ProfessionalTimeTrackingReportingSystem",
+  "description": "A professional time tracking and reporting system is designed to record, organize, and analyze time-related data for multiple organizations such as agencies and companies. It maintains stateful information about entities (organizations, projects, users), tracked time entries, and supports complex queries for generating detailed reports. The platform typically offers export options in various formats for data interoperability and business analytics.",
+  "initial_parameter_schema": {
+    "organizations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          },
+          "organization_type": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id",
+          "organization_type",
+          "name"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "email",
+          "organization_id",
+          "role"
+        ]
+      }
+    },
+    "projects": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "name",
+          "organization_id"
+        ]
+      }
+    },
+    "time_entries": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "time_entry_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "number"
+          },
+          "description": {
+            "type": "string"
+          },
+          "day": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "time_entry_id",
+          "user_id",
+          "project_id",
+          "organization_id",
+          "start_time",
+          "end_time",
+          "duration",
+          "description",
+          "day"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_organization_by_id": [
+      "organizations"
+    ],
+    "list_organizations_by_type": [
+      "organizations"
+    ],
+    "get_projects_by_organization": [
+      "organizations",
+      "projects"
+    ],
+    "get_users_by_organization": [
+      "organizations",
+      "users"
+    ],
+    "get_time_entries_by_organization": [
+      "organizations",
+      "time_entries"
+    ],
+    "get_time_entries_by_project": [
+      "projects",
+      "time_entries"
+    ],
+    "get_time_entries_by_user": [
+      "time_entries",
+      "users"
+    ],
+    "filter_time_entries": [
+      "time_entries"
+    ],
+    "aggregate_time_by_user": [
+      "organizations",
+      "projects",
+      "time_entries",
+      "users"
+    ],
+    "aggregate_time_by_project": [
+      "organizations",
+      "projects",
+      "time_entries"
+    ],
+    "export_report": [
+      "organizations",
+      "projects",
+      "time_entries",
+      "users"
+    ],
+    "add_time_entry": [
+      "organizations",
+      "projects",
+      "time_entries",
+      "users"
+    ],
+    "update_time_entry": [
+      "organizations",
+      "projects",
+      "time_entries",
+      "users"
+    ],
+    "add_user": [
+      "organizations",
+      "users"
+    ],
+    "add_project": [
+      "organizations",
+      "projects"
+    ],
+    "remove_time_entry": [
+      "time_entries"
+    ],
+    "remove_project": [
+      "projects",
+      "time_entries"
+    ],
+    "remove_user": [
+      "time_entries",
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_organization_by_id",
+      "description": "Retrieve organization details given its organization_id.\n\nArgs:\n    organization_id (str): The unique ID of the organization to retrieve.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": OrganizationInfo  # Organization info for the ID\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g. organization not found\n    }\n\nConstraints:\n    - The organization_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id"
+        ]
+      }
+    },
+    {
+      "name": "list_organizations_by_type",
+      "description": "Retrieve all organizations filtered by organization_type (e.g., \"agency\", \"company\").\n\nArgs:\n    organization_type (str): The type of organization to filter for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[OrganizationInfo], # The organizations matching the given type (may be empty)\n    }\n\nNotes:\n    - If no organizations match the type, returns an empty list.\n    - organization_type is case-sensitive for filtering (as per stored).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_type"
+        ]
+      }
+    },
+    {
+      "name": "get_projects_by_organization",
+      "description": "List all projects that belong to the given organization.\n\nArgs:\n    organization_id (str): The ID of the organization to search for.\n\nReturns:\n    dict:\n        - success: True and data (list of ProjectInfo) on success.\n        - success: False and error message if organization does not exist.\n\nConstraints:\n    - The specified organization_id must exist in the system.\n    - Each project belongs to a single organization.\n\nEdge Cases:\n    - If organization exists but has no projects, returns success with empty data list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id"
+        ]
+      }
+    },
+    {
+      "name": "get_users_by_organization",
+      "description": "List all users that belong to a given organization.\n\nArgs:\n    organization_id (str): The ID of the target organization.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": List[UserInfo] }\n          (Returns all users matching the given organization_id; empty list if none.)\n        - On failure: { \"success\": False, \"error\": str }\n          (Error if the organization does not exist.)\n\nConstraints:\n    - Organization must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id"
+        ]
+      }
+    },
+    {
+      "name": "get_time_entries_by_organization",
+      "description": "Retrieve all time entries associated with a given organization.\n\nArgs:\n    organization_id (str): The unique identifier for the organization.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TimeEntryInfo]  # List of time entries for the organization (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of error, e.g., organization does not exist\n    }\n\nConstraints:\n    - The organization must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id"
+        ]
+      }
+    },
+    {
+      "name": "get_time_entries_by_project",
+      "description": "Retrieve all time entries associated with the specified project.\n\nArgs:\n    project_id (str): The unique identifier of the project.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TimeEntryInfo],  # List of time entries, possibly empty\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g. \"Project does not exist\"\n    }\n\nConstraints:\n    - The project must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id"
+        ]
+      }
+    },
+    {
+      "name": "get_time_entries_by_user",
+      "description": "Retrieve all time entries recorded by a specific user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TimeEntryInfo]  # List of all time entries for the user\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message, e.g., user not found\n    }\n\nConstraints:\n    - user_id must exist in the users dictionary.\n    - Returns all matching entries; result may be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "filter_time_entries",
+      "description": "Retrieve time entries filtered by arbitrary combinations of organization, project, user, and/or date range.\n\nArgs:\n    organization_id (str, optional): Only include entries with this organization_id.\n    project_id (str, optional): Only include entries with this project_id.\n    user_id (str, optional): Only include entries with this user_id.\n    start_date (str, optional): ‘YYYY-MM-DD’ - only include entries with day >= this date.\n    end_date (str, optional): ‘YYYY-MM-DD’ - only include entries with day <= this date.\n\nReturns:\n    dict: \n        On success:\n            { \"success\": True, \"data\": [TimeEntryInfo, ...] }\n        On failure:\n            { \"success\": False, \"error\": <reason> }\n\nNotes/Constraints:\n    - If no filters are provided, returns all time entries.\n    - If start_date or end_date are present, must be parseable as YYYY-MM-DD.\n    - Does not error on non-existent org/project/user IDs; just filters by value.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "aggregate_time_by_user",
+      "description": "Aggregate and summarize total recorded time per user, filtered by organization, project, or user.\n\nArgs:\n    organization_id (str, optional): The organization to filter by.\n    project_id (str, optional): The project to filter by.\n    user_id (str, optional): The user to filter by.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": [\n            {\n                \"user_id\": str,\n                \"user_name\": str,\n                \"total_duration\": float\n            }\n            ...\n        ]\n    }\n    or {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - If a filter ID is provided, it must exist in the system.\n    - If no entries match, returns an empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "aggregate_time_by_project",
+      "description": "Aggregate and summarize total recorded time per project within a given organization.\n\nArgs:\n    organization_id (str): The ID of the organization by which to aggregate projects and time entries.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[{\n            \"project_id\": str,\n            \"project_name\": str,\n            \"total_duration\": float\n        }]\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Only includes projects belonging to the organization.\n    - Only sums durations of time entries belonging to each project (and the organization).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id"
+        ]
+      }
+    },
+    {
+      "name": "export_report",
+      "description": "Export a filtered time report to the specified format (CSV or JSON).\nFilter keys can include: organization_id, organization_type, user_id, project_id.\n\nArgs:\n    filters (dict): Filtering criteria for time entries (e.g., organization_id, user_id, project_id).\n    format (str): Export format, must be 'CSV' or 'JSON' (case-insensitive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": <str: export content>,\n        \"format\": <\"CSV\"|\"JSON\">\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <str>\n    }\n\nConstraints:\n    - Only supports CSV and JSON.\n    - Returns empty export if no entries found.\n    - Filters with unknown values (e.g., org/project/user IDs not present) yield empty results.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filters": {
+            "type": "object"
+          },
+          "format": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "filters",
+          "format"
+        ]
+      }
+    },
+    {
+      "name": "add_time_entry",
+      "description": "Add a new time entry to the system, ensuring all associations and integrity constraints.\n\nArgs:\n    time_entry_id (str): Unique ID for the new time entry.\n    user_id (str): ID of the user recording this time.\n    project_id (str): Associated project ID.\n    organization_id (str): Associated organization ID.\n    start_time (str): Start time (ISO string or platform standard).\n    end_time (str): End time (ISO string or platform standard).\n    duration (float): Duration in hours (or platform standard).\n    description (str): Description of work/time.\n    day (str): Date for the time entry.\n\nReturns:\n    dict: Success or failure message.\n\nConstraints:\n    - time_entry_id must be unique (not already in self.time_entries).\n    - user_id, project_id, organization_id must exist in their respective stores.\n    - The user and project must both belong to the given organization.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "time_entry_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "number"
+          },
+          "description": {
+            "type": "string"
+          },
+          "day": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "time_entry_id"
+        ]
+      }
+    },
+    {
+      "name": "update_time_entry",
+      "description": "Update properties of an existing time entry. Only provided arguments will be updated.\n\nArgs:\n    time_entry_id (str): The ID of the time entry to update.\n    user_id (str, optional): New user ID.\n    project_id (str, optional): New project ID.\n    organization_id (str, optional): New organization ID.\n    start_time (str, optional): New start time.\n    end_time (str, optional): New end time.\n    duration (float, optional): New duration in hours.\n    description (str, optional): New description.\n    day (str, optional): New date.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Time entry updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - time_entry_id must exist.\n    - If user_id/project_id/organization_id are provided, they must exist.\n    - The user and project must both belong to the (possibly updated) organization.\n    - All associations must remain valid according to the constraints.\n    - At least one updatable field must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "time_entry_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "number"
+          },
+          "description": {
+            "type": "string"
+          },
+          "day": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "time_entry_id",
+          "user_id",
+          "project_id",
+          "organization_id",
+          "start_time",
+          "end_time",
+          "duration",
+          "description",
+          "day"
+        ]
+      }
+    },
+    {
+      "name": "add_user",
+      "description": "Add a new user to an organization.\n\nArgs:\n    user_id (str): Unique user identifier.\n    name (str): User's name.\n    email (str): User's email (must be unique).\n    organization_id (str): The organization to which the user will belong.\n    role (str): The user's role.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"User added\", \"user_id\": <user_id> }\n        On failure:\n            { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - organization_id must exist in the system.\n    - user_id must be unique.\n    - email must be unique.\n    - Users belong to a single organization.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "email",
+          "organization_id",
+          "role"
+        ]
+      }
+    },
+    {
+      "name": "add_project",
+      "description": "Add a new project to an organization.\n\nArgs:\n    project_id (str): Unique identifier for the new project.\n    name (str): Name of the project.\n    organization_id (str): Identifier of the organization to which this project belongs.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"message\": \"Project added successfully.\"\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason (e.g. organization does not exist, project_id exists)\n            }\n\nConstraints:\n    - organization_id must exist in the system.\n    - project_id must be unique.\n    - Projects must belong to a single organization.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "name",
+          "organization_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_time_entry",
+      "description": "Delete a time entry from the system.\n\nArgs:\n    time_entry_id (str): Unique identifier of the time entry to be deleted.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Time entry <id> removed.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Time entry not found.\"\n    }\n\nConstraints:\n    - The time entry must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "time_entry_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "time_entry_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_project",
+      "description": "Delete a project (by project_id) from the system.\n\nArgs:\n    project_id (str): The unique identifier of the project to delete.\n\nReturns:\n    dict: On success:\n        { \"success\": True, \"message\": \"Project <project_id> deleted.\" }\n    On failure:\n        { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Project must exist in the system.\n    - All time entries associated with this project must be deleted or reassigned first;\n      otherwise, deletion is blocked to prevent orphaned time entries.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_user",
+      "description": "Remove a user from the system by user_id.\n\nArgs:\n    user_id (str): The unique identifier of the user to remove.\n\nReturns:\n    dict:\n        - On success:\n            {\"success\": True, \"message\": \"User <user_id> removed.\"}\n        - On failure (user not found / has associated time entries):\n            {\"success\": False, \"error\": \"...\"}\n\nConstraints:\n    - User must exist.\n    - User cannot be removed if there are time entries associated with them,\n      to preserve referential integrity (as each time entry must be associated with a valid user).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    }
+  ]
+}

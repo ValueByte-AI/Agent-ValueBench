@@ -1,0 +1,676 @@
+{
+  "env_name": "OnlineQuizManagementSystem",
+  "description": "An online quiz management system stores, categorizes, and dispenses quiz content, including questions, answers, and metadata such as subjects and difficulty levels. It organizes quizzes for users to attempt, tracks correct answers, and allows querying via both user interfaces and APIs for integration with other applications or services. The system maintains state about available questions, their attributes, user performance, and supports filtering or retrieving questions based on various criteria.",
+  "initial_parameter_schema": {
+    "questions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "question_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "difficulty": {
+            "type": "string"
+          },
+          "question_type": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "question_id",
+          "content",
+          "subject",
+          "difficulty",
+          "question_type",
+          "active"
+        ]
+      }
+    },
+    "answers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "answer_id": {
+            "type": "string"
+          },
+          "question_id": {
+            "type": "string"
+          },
+          "answer_text": {
+            "type": "string"
+          },
+          "is_correct": {
+            "type": "boolean"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "answer_id",
+          "question_id",
+          "answer_text",
+          "is_correct",
+          "active"
+        ]
+      }
+    },
+    "quizzes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "quiz_id": {
+            "type": "string"
+          },
+          "quiz_title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "difficulty": {
+            "type": "string"
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "quiz_id",
+          "quiz_title",
+          "description",
+          "subject",
+          "difficulty",
+          "questions"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "email"
+        ]
+      }
+    },
+    "attempts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "attempt_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "quiz_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number"
+          },
+          "responses": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "required": [
+          "attempt_id",
+          "user_id",
+          "quiz_id",
+          "timestamp",
+          "score",
+          "responses"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_questions_by_subject_and_difficulty": [
+      "questions"
+    ],
+    "get_active_question_by_id": [
+      "questions"
+    ],
+    "get_answers_by_question_id": [
+      "answers",
+      "questions"
+    ],
+    "get_correct_answers_by_question_id": [
+      "answers",
+      "questions"
+    ],
+    "list_quizzes": [
+      "quizzes"
+    ],
+    "get_quiz_by_id": [
+      "questions",
+      "quizzes"
+    ],
+    "get_questions_in_quiz": [
+      "questions",
+      "quizzes"
+    ],
+    "get_attempts_by_user_id": [
+      "attempts",
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_attempt_detail": [
+      "attempts"
+    ],
+    "activate_question": [
+      "questions"
+    ],
+    "deactivate_question": [
+      "questions"
+    ],
+    "activate_answer": [
+      "answers"
+    ],
+    "deactivate_answer": [
+      "answers"
+    ],
+    "add_question": [
+      "questions"
+    ],
+    "add_answer": [
+      "answers",
+      "questions"
+    ],
+    "update_question_content": [
+      "questions"
+    ],
+    "update_answer_text": [
+      "answers"
+    ],
+    "create_quiz": [
+      "questions",
+      "quizzes"
+    ],
+    "add_question_to_quiz": [
+      "questions",
+      "quizzes"
+    ],
+    "record_quiz_attempt": [
+      "attempts",
+      "quizzes",
+      "users"
+    ],
+    "update_quiz_attempt_score": [
+      "attempts"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_questions_by_subject_and_difficulty",
+      "description": "Retrieve all active questions filtered by subject and difficulty.\n\nArgs:\n    subject (str): The subject to filter questions by.\n    difficulty (str): The difficulty level to filter questions by.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[QuestionInfo]\n    }\n    List is empty if no matching questions found.\n\nConstraints:\n    - Only questions with active == True are included.\n    - Match subject and difficulty exactly (case-sensitive).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string"
+          },
+          "difficulty": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject",
+          "difficulty"
+        ]
+      }
+    },
+    {
+      "name": "get_active_question_by_id",
+      "description": "Retrieve an active question by its question_id.\n\nArgs:\n    question_id (str): The ID of the question to retrieve.\n\nReturns:\n    dict: On success,\n        {\n            \"success\": True,\n            \"data\": QuestionInfo\n        }\n        On failure,\n        {\n            \"success\": False,\n            \"error\": \"Question not found or inactive\"\n        }\n\nConstraints:\n    - Only return the question if it is marked as 'active'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "question_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id"
+        ]
+      }
+    },
+    {
+      "name": "get_answers_by_question_id",
+      "description": "Retrieve all active answers for a given question.\n\nArgs:\n    question_id (str): The unique identifier of the question.\n\nReturns:\n    dict: \n      - If successful: {\"success\": True, \"data\": List[AnswerInfo] }\n        (list may be empty if no active answers)\n      - If unsuccessful: {\"success\": False, \"error\": str}\n\nConstraints:\n    - Only answers with 'active' == True are returned.\n    - The referenced question must exist and be active.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "question_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id"
+        ]
+      }
+    },
+    {
+      "name": "get_correct_answers_by_question_id",
+      "description": "Retrieve all active and correct answers for the specified question.\n\nArgs:\n    question_id (str): Unique identifier of the question.\n\nReturns:\n    dict:\n        - On success: {\n            \"success\": True,\n            \"data\": List[AnswerInfo],  # active & correct answers for the question\n          }\n        - On failure (invalid question_id): {\n            \"success\": False,\n            \"error\": \"Question not found\"\n          }\n\nConstraints:\n    - Only answers where is_correct == True and active == True are returned.\n    - If the question_id does not exist in the database, return an error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "question_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id"
+        ]
+      }
+    },
+    {
+      "name": "list_quizzes",
+      "description": "List all quizzes currently in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[QuizInfo]  # List of all quizzes (can be empty if no quizzes exist)\n    }\n\nNotes:\n    - This method returns all quizzes regardless of contents.\n    - No error is returned if no quizzes exist; data will simply be an empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_quiz_by_id",
+      "description": "Retrieve all metadata and active questions for a specific quiz.\n\nArgs:\n    quiz_id (str): Unique identifier of the quiz.\n\nReturns:\n    dict:\n        - success: True, data: {\n            \"quiz\": QuizInfo,\n            \"questions\": List[QuestionInfo]  # Only active questions,\n        }\n        - success: False, error: error description\n\nConstraints:\n    - Only questions marked as 'active' are included.\n    - If the quiz does not exist, return error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "quiz_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "quiz_id"
+        ]
+      }
+    },
+    {
+      "name": "get_questions_in_quiz",
+      "description": "Retrieve all active questions belonging to a given quiz.\n\nArgs:\n    quiz_id (str): The ID of the quiz.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[QuestionInfo]  # List of active questions in the quiz (may be empty).\n        }\n        Or, on error:\n        {\n            \"success\": False,\n            \"error\": str  # 'Quiz not found'\n        }\n\nConstraints:\n    - Only active questions (question['active'] == True) are returned.\n    - If quiz does not exist, return error.\n    - If quiz's question list includes question IDs not present in the questions dict, skip them.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "quiz_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "quiz_id"
+        ]
+      }
+    },
+    {
+      "name": "get_attempts_by_user_id",
+      "description": "List all quiz attempts for a specific user.\n\nArgs:\n    user_id (str): The user's unique identifier.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": List[AttemptInfo],  # May be empty if the user has no attempts\n            }\n        - On error:\n            {\n                \"success\": False,\n                \"error\": \"User does not exist\"\n            }\n\nConstraints:\n    - user_id must exist in self.users.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user information by user ID.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo  # User information dictionary\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"User not found\"\n    }\n\nConstraints:\n    - The user ID must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_attempt_detail",
+      "description": "Retrieve detailed information for a specific attempt, including score, responses, user, and quiz info.\n\nArgs:\n    attempt_id (str): The unique identifier for the attempt.\n\nReturns:\n    dict: \n        - On success: \n            { \"success\": True, \"data\": AttemptInfo }\n        - On failure: \n            { \"success\": False, \"error\": \"Attempt does not exist\" }\n\nConstraints:\n    - The attempt_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "attempt_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "attempt_id"
+        ]
+      }
+    },
+    {
+      "name": "activate_question",
+      "description": "Sets the 'active' status of a question to True.\n\nArgs:\n    question_id (str): The ID of the question to activate.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Question <question_id> marked as active.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of why it failed.\n    }\n\nConstraints:\n    - The question must exist in the system.\n    - Idempotent: If already active, still returns success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "question_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id"
+        ]
+      }
+    },
+    {
+      "name": "deactivate_question",
+      "description": "Set a question's 'active' status to False.\n\nArgs:\n    question_id (str): The unique identifier of the question to deactivate.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Question <question_id> deactivated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Question not found.\"\n    }\n\nConstraints:\n    - Only questions that exist may be deactivated.\n    - Setting 'active' to False is idempotent; if already False, remains False.\n    - Does not cascade deactivation to answers or quizzes (handled separately).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "question_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id"
+        ]
+      }
+    },
+    {
+      "name": "activate_answer",
+      "description": "Set an answer's 'active' status to True.\n\nArgs:\n    answer_id (str): The unique ID of the answer to activate.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Answer <id> activated\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"Answer not found\"\n    }\nConstraints:\n    - The answer must exist in the system.\n    - The operation is idempotent (activating an already active answer is a success).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "answer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "answer_id"
+        ]
+      }
+    },
+    {
+      "name": "deactivate_answer",
+      "description": "Set an answer's 'active' status to False.\n\nArgs:\n    answer_id (str): The unique identifier of the answer to deactivate.\n\nReturns:\n    dict: Success/failure and message.\n        On success: { \"success\": True, \"message\": \"Answer <id> deactivated.\" }\n        On failure: { \"success\": False, \"error\": \"reason for failure\" }\n\nConstraints:\n    - Only set 'active' to False if this would not violate: \n      \"Each question must have at least one correct and active answer.\"\n    - If answer_id not present, return error.\n    - If already inactive, treat as successful operation but note in message.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "answer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "answer_id"
+        ]
+      }
+    },
+    {
+      "name": "add_question",
+      "description": "Add a new question to the system.\n\nArgs:\n    question_id (str): Unique identifier for the question.\n    content (str): The question text.\n    subject (str): Subject category (e.g., \"math\", \"history\").\n    difficulty (str): Difficulty level (\"easy\", \"medium\", \"hard\", etc.).\n    question_type (str): The type of the question (\"multiple-choice\", \"true/false\", etc.).\n    active (bool): Whether the question is currently active/visible (default: True).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Question added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason for failure\"\n    }\n\nConstraints:\n    - question_id must be unique (no existing question with same id).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "question_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "difficulty": {
+            "type": "string"
+          },
+          "question_type": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "question_id",
+          "content",
+          "subject",
+          "difficulty",
+          "question_type"
+        ]
+      }
+    },
+    {
+      "name": "add_answer",
+      "description": "Add a new answer option to a question.\n\nArgs:\n    answer_id (str): Unique ID for the new answer.\n    question_id (str): The ID of the question this answer is for.\n    answer_text (str): The answer option text.\n    is_correct (bool): Whether this answer is correct.\n    active (bool): Whether this answer is active (default True).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Answer added to question <question_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - answer_id must be unique.\n    - question_id must exist and be active.\n    - answer_text must not be empty.\n    - is_correct should be bool.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "answer_id": {
+            "type": "string"
+          },
+          "question_id": {
+            "type": "string"
+          },
+          "answer_text": {
+            "type": "string"
+          },
+          "is_correct": {
+            "type": "boolean"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "answer_id",
+          "question_id",
+          "answer_text",
+          "is_correct"
+        ]
+      }
+    },
+    {
+      "name": "update_question_content",
+      "description": "Modify the content or metadata (subject, difficulty, question_type) of a specific question.\n\nArgs:\n    question_id (str): The ID of the question to update.\n    content (Optional[str]): New content for the question.\n    subject (Optional[str]): New subject/category for the question.\n    difficulty (Optional[str]): New difficulty level for the question.\n    question_type (Optional[str]): New question type (e.g., 'multiple-choice', etc.).\n\nReturns:\n    dict: \n        Success: { \"success\": True, \"message\": \"Question <id> updated.\" }\n        Failure: { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - Question must exist.\n    - At least one updatable field (other than question_id) must be provided.\n    - Only updates provided (non-None) fields.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "question_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "difficulty": {
+            "type": "string"
+          },
+          "question_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id"
+        ]
+      }
+    },
+    {
+      "name": "update_answer_text",
+      "description": "Modify the text and/or correctness of an answer.\n\nArgs:\n    answer_id (str): The ID of the answer to update.\n    answer_text (Optional[str]): If provided, the new answer text.\n    is_correct (Optional[bool]): If provided, the new correctness flag.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Answer updated successfully\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The answer must exist.\n    - If is_correct is updated to False, the parent question must still have at least one correct AND active answer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "answer_id": {
+            "type": "string"
+          },
+          "answer_text": {
+            "type": "string"
+          },
+          "is_correct": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "answer_id"
+        ]
+      }
+    },
+    {
+      "name": "create_quiz",
+      "description": "Create a new quiz with a group of specified question_ids.\n\nArgs:\n    quiz_id (str): Unique identifier for the new quiz.\n    quiz_title (str): Human-readable quiz name.\n    description (str): Description of the quiz.\n    subject (str): Subject/category for the quiz.\n    difficulty (str): Difficulty label of the quiz.\n    questions (List[str]): List of question_ids to be included in the quiz.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Quiz <quiz_id> created successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - quiz_id must be unique.\n    - Every question_id must exist and be active.\n    - questions list must not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "quiz_id": {
+            "type": "string"
+          },
+          "quiz_title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "difficulty": {
+            "type": "string"
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "quiz_id",
+          "quiz_title",
+          "description",
+          "subject",
+          "difficulty",
+          "questions"
+        ]
+      }
+    },
+    {
+      "name": "add_question_to_quiz",
+      "description": "Add an existing active question to a quiz.\n\nArgs:\n    quiz_id (str): The quiz to add the question to.\n    question_id (str): The question to add.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Question <question_id> added to quiz <quiz_id>\"\n    }\n    or {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Only active questions may be added to quizzes.\n    - A quiz and question with the given ids must exist.\n    - Do not add duplicate questions to the same quiz.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "quiz_id": {
+            "type": "string"
+          },
+          "question_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "quiz_id",
+          "question_id"
+        ]
+      }
+    },
+    {
+      "name": "record_quiz_attempt",
+      "description": "Save a new user attempt for a quiz with responses and score.\n\nArgs:\n    user_id (str): ID of the user attempting the quiz (must exist).\n    quiz_id (str): ID of the quiz being attempted (must exist).\n    timestamp (str): Timestamp of the attempt.\n    score (float): Score achieved in the attempt.\n    responses (list): List of {\"question_id\": ..., \"answer_id\": ...}\n                      Each question_id must be in the quiz.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Quiz attempt recorded\",\n        \"attempt_id\": str\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - user_id must exist\n    - quiz_id must exist\n    - responses must be non-empty and question_ids must be in quiz's questions",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "quiz_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number"
+          },
+          "responses": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "required": [
+          "user_id",
+          "quiz_id",
+          "timestamp",
+          "score",
+          "responses"
+        ]
+      }
+    },
+    {
+      "name": "update_quiz_attempt_score",
+      "description": "Update the score of a user's quiz attempt.\n\nArgs:\n    attempt_id (str): The unique identifier of the attempt to update.\n    new_score (float): The new score to assign to this attempt. Must be non-negative.\n\nReturns:\n    dict: Success or error message:\n        - { \"success\": True, \"message\": \"Score updated successfully.\" }\n        - { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Attempt with attempt_id must exist.\n    - new_score must be non-negative.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "attempt_id": {
+            "type": "string"
+          },
+          "new_score": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "attempt_id",
+          "new_score"
+        ]
+      }
+    }
+  ]
+}

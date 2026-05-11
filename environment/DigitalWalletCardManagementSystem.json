@@ -1,0 +1,586 @@
+{
+  "env_name": "DigitalWalletCardManagementSystem",
+  "description": "A digital wallet card management system maintains virtual or physical payment cards linked to user accounts. It tracks properties such as card numbers, expiration dates, spending limits, transaction logs, and user-configurable controls. The system supports operations like modifying spending limits, activating or deactivating cards, and retrieving card status, thus enabling secure and user-friendly payment management.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "contact_info",
+          "account_status"
+        ]
+      }
+    },
+    "cards": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "card_number": {
+            "type": "string"
+          },
+          "card_type": {
+            "type": "string"
+          },
+          "expiration_date": {
+            "type": "string"
+          },
+          "spending_limit": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string"
+          },
+          "controls": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "card_id": {
+                  "type": "string"
+                },
+                "control_type": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "card_id",
+                "control_type",
+                "value"
+              ]
+            }
+          }
+        },
+        "required": [
+          "card_id",
+          "user_id",
+          "card_number",
+          "card_type",
+          "expiration_date",
+          "spending_limit",
+          "status",
+          "controls"
+        ]
+      }
+    },
+    "controls": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "card_id": {
+              "type": "string"
+            },
+            "control_type": {
+              "type": "string"
+            },
+            "value": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "card_id",
+            "control_type",
+            "value"
+          ]
+        }
+      }
+    },
+    "transactions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "card_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "merchant": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "card_id",
+          "timestamp",
+          "amount",
+          "merchant",
+          "status"
+        ]
+      }
+    },
+    "get_system_spending_limit_bounds": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "min_limit": {
+              "type": "number"
+            },
+            "max_limit": {
+              "type": "number"
+            },
+            "min": {
+              "type": "number"
+            },
+            "max": {
+              "type": "number"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_name": [
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "list_user_cards": [
+      "cards",
+      "users"
+    ],
+    "get_card_by_id": [
+      "cards"
+    ],
+    "get_card_by_name_for_user": [
+      "cards",
+      "users"
+    ],
+    "get_card_status": [
+      "cards"
+    ],
+    "get_card_spending_limit": [
+      "cards"
+    ],
+    "get_card_controls": [
+      "cards",
+      "controls"
+    ],
+    "check_user_owns_card": [
+      "cards",
+      "users"
+    ],
+    "get_system_spending_limit_bounds": [],
+    "list_card_transactions": [
+      "cards",
+      "transactions"
+    ],
+    "get_transaction_by_id": [
+      "transactions"
+    ],
+    "set_card_spending_limit": [
+      "cards",
+      "get_system_spending_limit_bounds",
+      "users"
+    ],
+    "activate_card": [
+      "cards"
+    ],
+    "deactivate_card": [
+      "cards"
+    ],
+    "modify_card_control": [
+      "cards",
+      "controls",
+      "users"
+    ],
+    "add_card_control": [
+      "cards",
+      "controls",
+      "users"
+    ],
+    "remove_card_control": [
+      "cards",
+      "controls"
+    ],
+    "update_card_expiration": [
+      "cards"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_name",
+      "description": "Retrieve user information by user name.\n\nArgs:\n    name (str): The user's name to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[UserAccountInfo]  # List of matching user info dicts\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # 'User not found' if name does not match any user\n    }\n\nNotes:\n    - If multiple users share the same name, all are returned.\n    - Name comparison is case sensitive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user account details by user_id.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserAccountInfo,  # On success, the user account information\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"User not found\" if user_id does not exist\n    }\n\nConstraints:\n    - No special permission required.\n    - Returns error if user_id is not present in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_user_cards",
+      "description": "List all payment cards associated with the given user.\n\nArgs:\n    user_id (str): The unique ID of the user whose cards are to be listed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PaymentCardInfo],  # possibly empty if no cards\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # if user does not exist\n    }\n\nConstraints:\n    - The provided user_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_card_by_id",
+      "description": "Retrieve the full details (PaymentCardInfo) of a card using its card_id.\n\nArgs:\n    card_id (str): The unique identifier for the card.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": PaymentCardInfo  # All fields describing the payment card\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g., card not found\n    }\n\nConstraints:\n    - Card must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id"
+        ]
+      }
+    },
+    {
+      "name": "get_card_by_name_for_user",
+      "description": "Retrieve a user's card by a friendly name or tag (e.g., \"Uber Eats card\"), if supported.\n\nArgs:\n    user_id (str): The unique ID of the user.\n    friendly_name (str): The friendly name or tag to search for.\n\nReturns:\n    dict: \n      - On success: { \"success\": True, \"data\": PaymentCardInfo }\n      - On failure: { \"success\": False, \"error\": str }\n\nNotes:\n    - The system does not support an explicit \"card name\" field. The implementation tries to match:\n        1. The card's `card_type` (case-insensitive).\n        2. Any CardControl with control_type \"name\" and value matching the friendly_name.\n    - Returns the first match found.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "friendly_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "friendly_name"
+        ]
+      }
+    },
+    {
+      "name": "get_card_status",
+      "description": "Retrieve the status (active/inactive), expiration date, and main attributes of a card.\n\nArgs:\n    card_id (str): The unique identifier of the card to query.\n\nReturns:\n    dict:\n        - On success: {\n            \"success\": True,\n            \"data\": {\n                \"card_id\": ...,\n                \"status\": ...,\n                \"expiration_date\": ...,\n                \"card_type\": ...,\n                \"card_number\": ...,\n                \"user_id\": ...,\n                \"spending_limit\": ...,\n            }\n          }\n        - On failure: {\n            \"success\": False,\n            \"error\": <error message>\n          }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id"
+        ]
+      }
+    },
+    {
+      "name": "get_card_spending_limit",
+      "description": "Retrieve the current spending limit of a card.\n\nArgs:\n    card_id (str): The unique identifier of the payment card.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"data\": { \"card_id\": str, \"spending_limit\": float } }\n        - On failure: { \"success\": False, \"error\": str }\nConstraints:\n    - The specified card_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id"
+        ]
+      }
+    },
+    {
+      "name": "get_card_controls",
+      "description": "List all control settings (CardControlInfo) for a specific card.\n\nArgs:\n    card_id (str): The unique identifier for the card.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CardControlInfo]  # List of controls for the card; empty if no controls\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., card not found\n    }\n\nConstraints:\n    - The card_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id"
+        ]
+      }
+    },
+    {
+      "name": "check_user_owns_card",
+      "description": "Verify if a certain card belongs to (is owned by) a given user.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n    card_id (str): The unique identifier for the card.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": bool  # True if card belongs to user, else False\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Reason for failure\n        }\nConstraints:\n    - User and card must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "card_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "card_id"
+        ]
+      }
+    },
+    {
+      "name": "get_system_spending_limit_bounds",
+      "description": "Retrieve the system-configured minimum and maximum allowable spending limits.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"min_limit\": float,\n            \"max_limit\": float\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Must return the system-wide spending limit bounds if set.\n    - If not set, returns sensible defaults (min: 0.0, max: 10000.0).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_card_transactions",
+      "description": "List all transaction records for a given card.\n\nArgs:\n    card_id (str): The unique identifier of the card whose transactions should be listed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TransactionInfo],  # List of transaction log entries for the card (can be empty if no transactions)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message (e.g. card does not exist)\n    }\n\nConstraints:\n    - The card must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id"
+        ]
+      }
+    },
+    {
+      "name": "get_transaction_by_id",
+      "description": "Retrieve details about a specific transaction by its unique ID.\n\nArgs:\n    transaction_id (str): The unique identifier for the transaction.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": TransactionInfo   # Transaction details as a dictionary\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str              # Error message if not found\n    }\n\nConstraints:\n    - The transaction must exist in the system.\n    - No permission/auth check required to query.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id"
+        ]
+      }
+    },
+    {
+      "name": "set_card_spending_limit",
+      "description": "Update the spending limit of a card, after validating all business constraints.\n\nArgs:\n    card_id (str): The ID of the card to update.\n    new_limit (float): The new spending limit to set.\n    user_id (str): The ID of the user attempting to set the limit.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True,\n            \"message\": \"Spending limit updated successfully.\"\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": <reason>\n        }\n\nConstraints:\n    - Card must exist.\n    - User must exist.\n    - Only the user who owns the card may modify its spending limit.\n    - Card must be active.\n    - New limit must be a non-negative number and within system-configured bounds.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          },
+          "new_limit": {
+            "type": "number"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "new_limit",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "activate_card",
+      "description": "Set the status of a specific card to \"active\".\n\nArgs:\n    card_id (str): The unique identifier of the card to activate.\n    user_id (str): The user attempting the activation (for permission checking).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Card activated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason for failure>\"\n    }\n\nConstraints:\n  - Card must exist.\n  - Only the owning user can activate the card.\n  - Card should not already be active.\n  - Card should not be expired (expiration_date in the past).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "deactivate_card",
+      "description": "Deactivate the specified card by setting its status to 'inactive'.\n\nArgs:\n    card_id (str): The card identifier to deactivate.\n    user_id (str): The currently authenticated user attempting the operation.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Card <card_id> deactivated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <error description>\n    }\n\nConstraints:\n    - Only the user who owns the card can deactivate it.\n    - If the card is already inactive, the operation is idempotent (still returns success).\n    - Card must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "modify_card_control",
+      "description": "Adjust a specific control setting (e.g., merchant restriction or online payment permission)\nfor a payment card.\n\nArgs:\n    user_id (str): The ID of the user requesting the modification.\n    card_id (str): The payment card's ID.\n    control_type (str): The specific type of control to change.\n    new_value (str): The new value to set for this control.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Control updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure.\"\n    }\n\nConstraints:\n    - Only the user who owns the card may modify its controls.\n    - Card and user must exist.\n    - The specified control_type must already exist for the card.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "card_id": {
+            "type": "string"
+          },
+          "control_type": {
+            "type": "string"
+          },
+          "new_value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "card_id",
+          "control_type",
+          "new_value"
+        ]
+      }
+    },
+    {
+      "name": "add_card_control",
+      "description": "Add a new control type/value to a card.\n\nArgs:\n    user_id (str): The user attempting to add the control.\n    card_id (str): The card to which the control is being added.\n    control_type (str): Type of the control (e.g., \"merchant_block_list\").\n    value (str): Value for the control (e.g., \"block_merchant_foo\").\n\nReturns:\n    dict:\n        - On success: {\n            \"success\": True,\n            \"message\": \"Control added to card.\"\n          }\n        - On failure: {\n            \"success\": False,\n            \"error\": \"<reason>\"\n          }\n\nConstraints:\n    - User must exist and own the card.\n    - Card must exist.\n    - Control (type/value) must not already exist for card.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "card_id": {
+            "type": "string"
+          },
+          "control_type": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "card_id",
+          "control_type",
+          "value"
+        ]
+      }
+    },
+    {
+      "name": "remove_card_control",
+      "description": "Remove a specific control (by type) from a card.\n\nArgs:\n    user_id (str): The user requesting the operation. Must own the card.\n    card_id (str): The card from which to remove the control.\n    control_type (str): The control_type to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Control removed from card.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure.\"\n    }\n\nConstraints:\n    - Only the card owner may modify card controls.\n    - Fails if card does not exist, or not owned by user, or control not present.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "card_id": {
+            "type": "string"
+          },
+          "control_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "card_id",
+          "control_type"
+        ]
+      }
+    },
+    {
+      "name": "update_card_expiration",
+      "description": "Change the expiration date of a card (typically an admin/issuer operation).\n\nArgs:\n    card_id (str): The ID of the card to update.\n    new_expiration_date (str): The new expiration date to set (expected format: 'YYYY-MM' or similar).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Expiration date updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\nConstraints:\n    - The card with the given card_id must exist in the system.\n    - This operation may be administrator/issuer-restricted; access control should be handled externally.\n    - No exceptions are raised; errors are indicated in the returned dict.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          },
+          "new_expiration_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "new_expiration_date"
+        ]
+      }
+    }
+  ]
+}

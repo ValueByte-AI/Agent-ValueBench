@@ -1,0 +1,745 @@
+{
+  "env_name": "MusicChartTrackingDatabase",
+  "description": "A music chart tracking database systematically records the placement of songs on various music charts over time and across different countries or regions. It maintains state about weekly rankings, song metadata, artist information, and regional distinctions, supporting queries for historical performance and comparative analysis. Organizations use this environment to analyze trends, prepare reports, and publish rankings for public and industry consumption.",
+  "initial_parameter_schema": {
+    "songs": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "song_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "release_date": {
+            "type": "string"
+          },
+          "artist_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "genre": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "song_id",
+          "title",
+          "release_date",
+          "artist_ids",
+          "genre"
+        ]
+      }
+    },
+    "artists": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "artist_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "country_of_origin": {
+            "type": "string"
+          },
+          "active_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artist_id",
+          "name",
+          "country_of_origin",
+          "active_date"
+        ]
+      }
+    },
+    "charts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "chart_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          },
+          "chart_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "chart_id",
+          "name",
+          "region",
+          "chart_type"
+        ]
+      }
+    },
+    "chart_entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "chart_id": {
+            "type": "string"
+          },
+          "song_id": {
+            "type": "string"
+          },
+          "week_start_date": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "chart_id",
+          "song_id",
+          "week_start_date",
+          "position"
+        ]
+      }
+    },
+    "regions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "region_code": {
+            "type": "string"
+          },
+          "region_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "region_code",
+          "region_name"
+        ]
+      }
+    },
+    "weeks": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "week_start_date": {
+            "type": "string"
+          },
+          "week_end_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "week_start_date",
+          "week_end_date"
+        ]
+      }
+    },
+    "is_chart_entry_finalized": {
+      "type": [
+        "string",
+        "boolean"
+      ]
+    }
+  },
+  "tool_state_dependencies": {
+    "get_chart_by_name_and_region": [
+      "charts",
+      "regions"
+    ],
+    "get_charts_by_region": [
+      "charts",
+      "regions"
+    ],
+    "get_region_by_name": [
+      "regions"
+    ],
+    "get_weeks_by_start_dates": [
+      "weeks"
+    ],
+    "get_chart_entries_for_chart_and_week": [
+      "chart_entries",
+      "charts",
+      "weeks"
+    ],
+    "get_song_info": [
+      "songs"
+    ],
+    "get_artist_info": [
+      "artists"
+    ],
+    "get_chart_entry": [
+      "chart_entries"
+    ],
+    "list_songs_on_chart_for_week": [
+      "chart_entries",
+      "charts",
+      "songs",
+      "weeks"
+    ],
+    "is_chart_entry_finalized": [
+      "charts",
+      "weeks"
+    ],
+    "get_all_weeks": [
+      "weeks"
+    ],
+    "get_charts_by_type": [
+      "charts"
+    ],
+    "add_chart_entry": [
+      "chart_entries",
+      "charts",
+      "is_chart_entry_finalized",
+      "songs",
+      "weeks"
+    ],
+    "remove_chart_entry": [
+      "chart_entries"
+    ],
+    "update_chart_entry_position": [
+      "chart_entries",
+      "charts",
+      "songs",
+      "weeks"
+    ],
+    "finalize_chart_entries_for_week": [
+      "chart_entries",
+      "charts",
+      "weeks"
+    ],
+    "add_song": [
+      "artists",
+      "songs"
+    ],
+    "remove_song": [
+      "chart_entries",
+      "songs"
+    ],
+    "add_artist": [
+      "artists",
+      "regions"
+    ],
+    "add_chart": [
+      "charts",
+      "regions"
+    ],
+    "add_region": [
+      "regions"
+    ],
+    "add_week": [
+      "weeks"
+    ],
+    "update_song_metadata": [
+      "artists",
+      "songs"
+    ],
+    "update_artist_metadata": [
+      "artists"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_chart_by_name_and_region",
+      "description": "Retrieve chart(s) having the specified name in the given region code.\n\nArgs:\n    name (str): Name of the chart.\n    region_code (str): ISO code of the region.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ChartInfo]  # All charts matching (possibly empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # error message if region is invalid\n    }\n\nConstraints:\n    - region_code must exist in self.regions (i.e., be a valid region).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "region_code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "region_code"
+        ]
+      }
+    },
+    {
+      "name": "get_charts_by_region",
+      "description": "List all chart definitions (ChartInfo) associated with a specified region.\n\nArgs:\n    region_code (str): ISO region code to filter charts by.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ChartInfo]  # List of charts for this region (may be empty if none found)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g. \"Region not found\"\n    }\n\nConstraints:\n    - region_code must exist in self.regions.\n    - Returns all charts linked to region_code; empty list if region valid but has no charts.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region_code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "region_code"
+        ]
+      }
+    },
+    {
+      "name": "get_region_by_name",
+      "description": "Retrieves the region_code associated with a given human-readable region name.\n\nArgs:\n    region_name (str): The region name to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": str    # region_code of matching region\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str   # Reason, e.g. region not found\n    }\n\nConstraints:\n    - region_name must exist in the regions dictionary values.\n    - Returns the first matching region_code if multiple found (duplicate names are unlikely).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "region_name"
+        ]
+      }
+    },
+    {
+      "name": "get_weeks_by_start_dates",
+      "description": "Retrieve week objects for a list of week_start_dates.\n\nArgs:\n    week_start_dates (list of str): List of week_start_date strings to fetch info for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[WeekInfo],  # List of existing week info objects (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error reason (\"Input must be a list of week_start_dates\")\n    }\n\nConstraints:\n    - Returns only weeks that exist in the database.\n    - Accepts empty lists and returns empty result.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "week_start_dates": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "week_start_dates"
+        ]
+      }
+    },
+    {
+      "name": "get_chart_entries_for_chart_and_week",
+      "description": "Retrieves all chart entries for the specified chart_id and week_start_date.\n\nArgs:\n    chart_id (str): The ID of the chart.\n    week_start_date (str): The start date of the week (YYYY-MM-DD format).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ChartEntryInfo]  # May be empty if no entries exist\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g., chart or week does not exist)\n    }\n\nConstraints:\n    - chart_id must exist in the database.\n    - week_start_date must be a known, valid week.\n    - Only include entries that match both.\n    - Only finalized data is included (assumed all data is finalized unless provisional handling is implemented).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "chart_id": {
+            "type": "string"
+          },
+          "week_start_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "chart_id",
+          "week_start_date"
+        ]
+      }
+    },
+    {
+      "name": "get_song_info",
+      "description": "Retrieve metadata for a song given its song_id.\n\nArgs:\n    song_id (str): The unique identifier for the song.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": SongInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason (e.g. song_id not found)\n    }\n\nConstraints:\n    - song_id must exist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "song_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "song_id"
+        ]
+      }
+    },
+    {
+      "name": "get_artist_info",
+      "description": "Retrieve metadata (name, country_of_origin, active_date) about a given artist_id.\n\nArgs:\n    artist_id (str): The unique identifier for the artist.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ArtistInfo  # All metadata about the artist\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if artist_id is not found\n    }\n\nConstraints:\n    - artist_id must exist in the environment's artists dict.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "artist_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artist_id"
+        ]
+      }
+    },
+    {
+      "name": "get_chart_entry",
+      "description": "Retrieve a specific chart entry uniquely identified by chart_id, song_id, and week_start_date.\n\nArgs:\n    chart_id (str): The unique identifier of the chart.\n    song_id (str): The unique identifier of the song.\n    week_start_date (str): The start date of the chart week (YYYY-MM-DD).\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": ChartEntryInfo\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": \"No chart entry found for the specified parameters.\"\n            }\n\nConstraints:\n    - Returns the matching chart entry whether or not that chart/week has already been finalized.\n    - Result uniquely determined by the tuple (chart_id, song_id, week_start_date).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "chart_id": {
+            "type": "string"
+          },
+          "song_id": {
+            "type": "string"
+          },
+          "week_start_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "chart_id",
+          "song_id",
+          "week_start_date"
+        ]
+      }
+    },
+    {
+      "name": "list_songs_on_chart_for_week",
+      "description": "List all songs and their positions for a given chart and week.\n\nArgs:\n    chart_id (str): The ID of the chart.\n    week_start_date (str): The starting date of the week (YYYY-MM-DD).\n\nReturns:\n    dict:\n        - On success: {\n            \"success\": True,\n            \"data\": List[dict],  # Each dict: {\"song_id\", \"title\", \"position\"}\n        }\n        - On error: {\n            \"success\": False,\n            \"error\": <reason>\n        }\n\nConstraints:\n    - ChartEntry must reference valid song, chart, and week in the system.\n    - If chart_id or week_start_date not found, report error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "chart_id": {
+            "type": "string"
+          },
+          "week_start_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "chart_id",
+          "week_start_date"
+        ]
+      }
+    },
+    {
+      "name": "is_chart_entry_finalized",
+      "description": "Check if the chart data for a specified chart and week is finalized (historically accurate).\n\nArgs:\n    chart_id (str): The unique ID for the chart.\n    week_start_date (str): The start date of the week to check, in string format.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": bool  # True if finalized, False if not finalized\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g., chart or week not found)\n    }\n\nConstraints:\n    - The chart_id and week_start_date must both be valid and present in self.charts and self.weeks.\n    - Finalization is tracked per chart/week pair, so finalizing one chart for a week does not automatically finalize all other charts in that week.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "chart_id": {
+            "type": "string"
+          },
+          "week_start_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "chart_id",
+          "week_start_date"
+        ]
+      }
+    },
+    {
+      "name": "get_all_weeks",
+      "description": "Retrieve all week periods from the database.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[WeekInfo]  # List of all weeks' information (may be empty)\n    }\n\nNotes:\n    - No parameters: retrieves all weeks as-is. Does not sort or filter.\n    - If needed, sorting/filtering parameters could be added later.\n    - Returns empty list if no weeks are found.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_charts_by_type",
+      "description": "List all charts that match a specified chart_type.\n\nArgs:\n    chart_type (str): The chart type (e.g., \"Songs\", \"Albums\", etc.) to filter charts by.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ChartInfo]  # List of charts matching the chart_type (may be empty)\n    }\n\nNotes:\n    - Returns an empty list if no charts have the specified chart_type.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "chart_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "chart_type"
+        ]
+      }
+    },
+    {
+      "name": "add_chart_entry",
+      "description": "Insert a new chart entry for a specific chart_id, song_id, and week_start_date with the given position.\n\nArgs:\n    chart_id (str): ID of the chart\n    song_id (str): ID of the song\n    week_start_date (str): Start date of the week for entry (must exist and must not already be finalized for this chart)\n    position (int): Desired ranking position (must be unique within chart/week)\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Chart entry added for song <song_id> to chart <chart_id> at position <position> for week <week_start_date>\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": <Error description>\n            }\n\nConstraints enforced:\n    - chart_id, song_id, week_start_date must all be valid and exist.\n    - The specified chart/week must still be editable; finalized chart/week pairs reject new entries.\n    - Only one entry for (chart_id, song_id, week_start_date)\n    - Only one entry per position within (chart_id, week_start_date)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "chart_id": {
+            "type": "string"
+          },
+          "song_id": {
+            "type": "string"
+          },
+          "week_start_date": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "chart_id",
+          "song_id",
+          "week_start_date",
+          "position"
+        ]
+      }
+    },
+    {
+      "name": "remove_chart_entry",
+      "description": "Delete an existing chart entry from the system.\n\nArgs:\n    chart_id (str): The ID of the chart.\n    song_id (str): The ID of the song.\n    week_start_date (str): The start date of the chart week.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Chart entry removed successfully.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - ChartEntry must exist (matching all three fields).\n    - The specified chart/week must not already be finalized.\n    - No effect if linked Song, Chart, or Week missing after deletion.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "chart_id": {
+            "type": "string"
+          },
+          "song_id": {
+            "type": "string"
+          },
+          "week_start_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "chart_id",
+          "song_id",
+          "week_start_date"
+        ]
+      }
+    },
+    {
+      "name": "update_chart_entry_position",
+      "description": "Change the chart position (ranking) of a specific song on a chart for a specific week.\n\nArgs:\n    chart_id (str): The chart identifier.\n    song_id (str): The song identifier.\n    week_start_date (str): The start date of the week (e.g., '2023-03-13').\n    new_position (int): The new ranking position to assign.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Chart entry position updated.\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Entry (chart_id, song_id, week_start_date) must exist.\n    - The specified chart/week must not already be finalized.\n    - New position must not already be taken within (chart_id, week_start_date).\n    - Positions must be unique within each chart and week.\n    - Each song can appear at most once on each chart/week.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "chart_id": {
+            "type": "string"
+          },
+          "song_id": {
+            "type": "string"
+          },
+          "week_start_date": {
+            "type": "string"
+          },
+          "new_position": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "chart_id",
+          "song_id",
+          "week_start_date",
+          "new_position"
+        ]
+      }
+    },
+    {
+      "name": "finalize_chart_entries_for_week",
+      "description": "Mark all chart entries for a specific chart and week as finalized.\n\nArgs:\n    chart_id (str): The ID of the chart.\n    week_start_date (str): The start date string of the week.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Chart entries for chart <chart_id> in week <week_start_date> finalized.\",\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\",\n    }\n\nConstraints:\n    - chart_id must refer to an existing chart.\n    - week_start_date must refer to an existing week.\n    - Finalization applies to that chart/week pair only.\n    - After finalization, add/remove/update operations for that chart/week are no longer allowed.\n    - Any matched ChartEntryInfo are flagged as finalized.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "chart_id": {
+            "type": "string"
+          },
+          "week_start_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "chart_id",
+          "week_start_date"
+        ]
+      }
+    },
+    {
+      "name": "add_song",
+      "description": "Insert a new song and its metadata into the system.\n\nArgs:\n    song_id (str): Unique identifier for the song.\n    title (str): Song title.\n    release_date (str): The song's release date (string format).\n    artist_ids (List[str]): List of associated artist IDs (must all exist).\n    genre (str): Genre of the song.\n\nReturns:\n    dict: \n        {\"success\": True, \"message\": \"<song_id> added successfully\"} on success, OR\n        {\"success\": False, \"error\": \"<reason>\"} on failure.\n\nConstraints:\n    - song_id must be unique.\n    - All artist_ids must exist in the artists database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "song_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "release_date": {
+            "type": "string"
+          },
+          "artist_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "genre": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "song_id",
+          "title",
+          "release_date",
+          "artist_ids",
+          "genre"
+        ]
+      }
+    },
+    {
+      "name": "remove_song",
+      "description": "Delete a song by song_id and all related ChartEntry records.\n\nArgs:\n    song_id (str): Unique identifier of the song to remove.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Deleted song <song_id> and <N> related chart entries.\" }\n        - On error: { \"success\": False, \"error\": \"Song does not exist\" }\n\nConstraints:\n    - Song must exist to be removed.\n    - All ChartEntry records referencing the song should also be removed for referential integrity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "song_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "song_id"
+        ]
+      }
+    },
+    {
+      "name": "add_artist",
+      "description": "Insert a new artist into the database.\n\nArgs:\n    artist_id (str): Unique identifier for the artist (must not already exist).\n    name (str): Name of the artist.\n    country_of_origin (str): ISO region code where the artist originates (must exist in regions).\n    active_date (str): Activity date or range for the artist.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Artist <artist_id> added.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - artist_id must be unique.\n    - country_of_origin must be a valid region_code (present in self.regions).\n    - All arguments are required (not empty).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "artist_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "country_of_origin": {
+            "type": "string"
+          },
+          "active_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artist_id",
+          "name",
+          "country_of_origin",
+          "active_date"
+        ]
+      }
+    },
+    {
+      "name": "add_chart",
+      "description": "Add a new chart definition to the system.\n\nArgs:\n    name (str): Name of the chart.\n    region (str): Valid ISO region code for the chart (must exist in self.regions).\n    chart_type (str): The chart type (e.g., \"singles\", \"albums\").\n\nReturns:\n    dict: \n        - On success:\n            { \"success\": True, \"message\": \"Chart <chart_id> added successfully\" }\n        - On failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Region code must exist in self.regions.\n    - Chart ID must be unique (no duplicate charts for same name, region, and type).\n    - Charts are associated with only one region at a time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          },
+          "chart_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "region",
+          "chart_type"
+        ]
+      }
+    },
+    {
+      "name": "add_region",
+      "description": "Add a new region to the system.\n\nArgs:\n    region_code (str): The ISO country/region code for the region (must be unique and non-empty).\n    region_name (str): The human-readable name for the region (must be non-empty).\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Region <code> added successfully.\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Region code must be unique (not already present in self.regions).\n    - Both region_code and region_name must be non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region_code": {
+            "type": "string"
+          },
+          "region_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "region_code",
+          "region_name"
+        ]
+      }
+    },
+    {
+      "name": "add_week",
+      "description": "Add a new week record to the system.\n\nArgs:\n    week_start_date (str): The ISO-formatted start date for the week (unique).\n    week_end_date (str): The ISO-formatted end date for the week.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"message\": \"Week <start> - <end> added successfully.\"\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": \"reason\"\n        }\n\nConstraints:\n    - week_start_date must be unique (not already present in self.weeks).\n    - week_start_date and week_end_date must not be empty.\n    - Optionally, week_start_date should not be after week_end_date.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "week_start_date": {
+            "type": "string"
+          },
+          "week_end_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "week_start_date",
+          "week_end_date"
+        ]
+      }
+    },
+    {
+      "name": "update_song_metadata",
+      "description": "Edit metadata of an existing song.\n\nArgs:\n    song_id (str): The unique ID of the song to update.\n    title (str, optional): New song title.\n    artist_ids (List[str], optional): New list of artist IDs (all must exist).\n    genre (str, optional): New genre string.\n    release_date (str, optional): New release date string.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Song metadata updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The song must exist.\n    - If artist_ids is provided, all must correspond to an existing artist.\n    - At least one field to update must be provided.\n    - Only valid SongInfo fields are updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "song_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "artist_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "genre": {
+            "type": "string"
+          },
+          "release_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "song_id"
+        ]
+      }
+    },
+    {
+      "name": "update_artist_metadata",
+      "description": "Edit metadata fields (name, country_of_origin, active_date) of an existing artist.\n\nArgs:\n    artist_id (str): Unique identifier of the artist to update.\n    name (str, optional): New name for the artist.\n    country_of_origin (str, optional): New country of origin.\n    active_date (str, optional): New active date or period.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Artist metadata updated successfully.\"\n    } \n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The artist with the given artist_id must exist.\n    - At least one valid field must be provided for update.\n    - Cannot update artist_id itself.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "artist_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "country_of_origin": {
+            "type": "string"
+          },
+          "active_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artist_id"
+        ]
+      }
+    }
+  ]
+}

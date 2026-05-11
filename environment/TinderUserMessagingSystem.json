@@ -1,0 +1,496 @@
+{
+  "env_name": "TinderUserMessagingSystem",
+  "description": "Tinder manages a database of user profiles, each with attributes such as name, nationality, photos, and interests. The environment supports searching and matching users, as well as direct messaging between accounts. State is maintained with profile records, match connections, message histories, and operational controls for privacy and user actions.",
+  "initial_parameter_schema": {
+    "user_profiles": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "nationality": {
+            "type": "string"
+          },
+          "photos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "interests": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "profile_status": {
+            "type": "string"
+          },
+          "privacy_setting": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "nationality",
+          "photos",
+          "interests",
+          "profile_status",
+          "privacy_setting"
+        ]
+      }
+    },
+    "matches": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          },
+          "user_id_1": {
+            "type": "string"
+          },
+          "user_id_2": {
+            "type": "string"
+          },
+          "match_timestamp": {
+            "type": "string"
+          },
+          "match_sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id",
+          "user_id_1",
+          "user_id_2",
+          "match_timestamp",
+          "match_sta"
+        ]
+      }
+    },
+    "messages": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "sender_id": {
+            "type": "string"
+          },
+          "receiver_id": {
+            "type": "string"
+          },
+          "match_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "read_sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id",
+          "sender_id",
+          "receiver_id",
+          "match_id",
+          "timestamp",
+          "content",
+          "read_sta"
+        ]
+      }
+    },
+    "current_user_id": {
+      "type": "string"
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_profile_by_name": [
+      "current_user_id",
+      "user_profiles"
+    ],
+    "get_current_user_profile": [
+      "current_user_id",
+      "user_profiles"
+    ],
+    "list_visible_user_profiles": [
+      "current_user_id",
+      "user_profiles"
+    ],
+    "search_user_profiles_by_nationality": [
+      "current_user_id",
+      "user_profiles"
+    ],
+    "get_user_privacy_setting": [
+      "user_profiles"
+    ],
+    "get_user_profile_by_id": [
+      "current_user_id",
+      "user_profiles"
+    ],
+    "list_matches_of_current_user": [
+      "current_user_id",
+      "matches"
+    ],
+    "find_match_between_users": [
+      "current_user_id",
+      "matches",
+      "user_profiles"
+    ],
+    "get_match_info_by_id": [
+      "matches"
+    ],
+    "list_messages_for_match": [
+      "current_user_id",
+      "matches",
+      "messages"
+    ],
+    "get_latest_message_in_match": [
+      "current_user_id",
+      "matches",
+      "messages"
+    ],
+    "get_message_info_by_id": [
+      "current_user_id",
+      "messages"
+    ],
+    "authenticate_as_user": [
+      "user_profiles",
+      "current_user_id"
+    ],
+    "send_match_request": [
+      "current_user_id",
+      "matches",
+      "user_profiles"
+    ],
+    "accept_match_request": [
+      "current_user_id",
+      "matches"
+    ],
+    "send_message_to_match": [
+      "current_user_id",
+      "matches",
+      "messages",
+      "user_profiles"
+    ],
+    "mark_message_as_read": [
+      "current_user_id",
+      "messages"
+    ],
+    "update_profile_privacy_setting": [
+      "current_user_id",
+      "user_profiles"
+    ],
+    "update_profile_attributes": [
+      "current_user_id",
+      "user_profiles"
+    ],
+    "unmatch_user": [
+      "current_user_id",
+      "matches",
+      "user_profiles"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_profile_by_name",
+      "description": "Retrieve a user's profile details using their display name.\n\nArgs:\n    name (str): The display name (case sensitive) to search for.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"data\": UserProfileInfo }\n        On failure:\n            { \"success\": False, \"error\": str }\n\nConstraints:\n    - Only authenticated users (self.current_user_id) may perform this operation.\n    - Privacy settings of the found profile may restrict visibility.\n    - If multiple profiles match the name, the first one found is returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_current_user_profile",
+      "description": "Retrieve the user profile info of the currently authenticated user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserProfileInfo  # User's own profile info\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., if not authenticated\n    }\n\nConstraints:\n    - Only permitted if a user is authenticated via their UserProfile.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_visible_user_profiles",
+      "description": "List all user profiles visible to the currently authenticated user,\ntaking into account each profile's privacy_setting.\n\nReturns:\n    dict: Success -- {\n        \"success\": True,\n        \"data\": List[UserProfileInfo]  # Profiles visible to the current user (excluding self)\n    }\n    Or error -- {\n        \"success\": False,\n        \"error\": str  # Error message (e.g., not authenticated)\n    }\n\nConstraints:\n    - Must be called by an authenticated user.\n    - Privacy settings govern profile visibility.\n    - User's own profile is not included in the returned list.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "search_user_profiles_by_nationality",
+      "description": "Return user profiles whose nationality matches the specified value, \nsubject to privacy restrictions (excluding profiles with 'private' privacy_setting).\nThe currently authenticated user must be set and is excluded from results.\n\nArgs:\n    nationality (str): Nationality string to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[UserProfileInfo],   # May be empty if no results.\n    }\n    or \n    {\n        \"success\": False,\n        \"error\": str,   # error reason\n    }\n\nConstraints:\n    - User must be authenticated (`current_user_id` set).\n    - Profiles with 'private' privacy_setting are excluded from results.\n    - Own profile (current user) is excluded from results.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "nationality": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "nationality"
+        ]
+      }
+    },
+    {
+      "name": "get_user_privacy_setting",
+      "description": "Query the privacy setting of a specific user profile.\n\nArgs:\n    user_id (str): The user ID whose privacy setting will be fetched.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"data\": privacy_setting}\n        - On failure: {\"success\": False, \"error\": reason}\n\nConstraints:\n    - The user_id must exist in the user_profiles.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_profile_by_id",
+      "description": "Retrieve a user profile given its user_id.\n\nArgs:\n    user_id (str): The unique user ID whose profile is to be fetched.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"data\": UserProfileInfo }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - If user profile does not exist, return failure.\n    - If profile privacy_setting is \"private\", only allow access if current_user_id matches user_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_matches_of_current_user",
+      "description": "List all match connections (MatchInfo) that include the currently authenticated user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MatchInfo]   # List of the user's match connections, may be empty\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of failure (e.g., not authenticated)\n    }\n\nConstraints:\n    - Operation may only be performed as an authenticated user.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "find_match_between_users",
+      "description": "Retrieve the match record (MatchInfo) between the currently authenticated user and the specified other user.\n\nArgs:\n    other_user_id (str): The _id of the other user to check for a match with.\n\nReturns:\n    dict: \n    - If a match is found: { \"success\": True, \"data\": MatchInfo }\n    - If no match: { \"success\": True, \"data\": None }\n    - If authentication or user error: { \"success\": False, \"error\": str }\n\nConstraints:\n    - Must be performed as an authenticated user.\n    - Both user profiles must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "other_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "other_user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_match_info_by_id",
+      "description": "Retrieve the details of a match using the provided match_id.\n\nArgs:\n    match_id (str): The unique identifier for the match.\n\nReturns:\n    dict: \n        - { \"success\": True, \"data\": MatchInfo } if the match is found.\n        - { \"success\": False, \"error\": \"Match not found\" } if not.\n\nConstraints:\n    - No authentication or privacy check is needed; this is a direct query by match_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id"
+        ]
+      }
+    },
+    {
+      "name": "list_messages_for_match",
+      "description": "Retrieve all messages sent and received in a specific match, for the currently authenticated user.\n\nArgs:\n    match_id (str): The match ID to retrieve the message history.\n\nReturns:\n    dict: \n        On success:\n        {\n            \"success\": True,\n            \"data\": List[MessageInfo],   # All messages for this match, possibly empty if none exist\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": str   # Error description\n        }\n\nConstraints:\n    - User must be authenticated (self.current_user_id is not None).\n    - The match must exist.\n    - The current user must be either user_id_1 or user_id_2 in the match (a participant).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id"
+        ]
+      }
+    },
+    {
+      "name": "get_latest_message_in_match",
+      "description": "Retrieve the most recent message (MessageInfo) in a conversation (match).\n\nArgs:\n    match_id (str): The identifier of the match/conversation.\n\nReturns:\n    dict: \n        - On success, if messages exist: \n            { \"success\": True, \"data\": <MessageInfo> }\n        - On success, if no messages exist:\n            { \"success\": True, \"data\": None }\n        - On failure:\n            { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The match must exist.\n    - The current user must be authenticated and be a participant in the match.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id"
+        ]
+      }
+    },
+    {
+      "name": "get_message_info_by_id",
+      "description": "Retrieve a specific message's details using its message_id. Only the sender or receiver may view the message.\n\nArgs:\n    message_id (str): Unique identifier for the message.\n\nReturns:\n    dict:\n        Success: { \"success\": True, \"data\": MessageInfo }\n        Failure: { \"success\": False, \"error\": str }\n\nConstraints:\n    - The requester must be authenticated (self.current_user_id not None).\n    - Only sender or receiver of the message can retrieve info.\n    - Fails if the message does not exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id"
+        ]
+      }
+    },
+    {
+      "name": "authenticate_as_user",
+      "description": "Set the currently authenticated user by user name.\n\nArgs:\n    name (str): The name of the user to authenticate as. Matching is case-sensitive and must be unique.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Authenticated as <user name> (<user id>)\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The name must exactly match an existing user profile.\n    - If multiple users exist with the same name, authentication fails due to ambiguity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "send_match_request",
+      "description": "Initiate a match request from the currently authenticated user to another user (target_user_id).\nReturns:\n    dict: Success or failure message.\n    - On success: {\"success\": True, \"message\": \"...\"}\n    - On failure: {\"success\": False, \"error\": \"...\"}\nConstraints:\n    - Must be authenticated.\n    - Target user must exist and not be same as self.\n    - Cannot request if match or pending match already exists between users.\n    - Target's privacy_setting may restrict requests (e.g., \"private\" blocks).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_user_id"
+        ]
+      }
+    },
+    {
+      "name": "accept_match_request",
+      "description": "Accept/reply to a pending match request, establishing a mutual match.\n\nArgs:\n    match_id (str): The unique identifier of the pending match request.\n\nReturns:\n    dict:\n      On success: {\"success\": True, \"message\": \"Match request accepted; mutual match established.\"}\n      On failure: {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - The user must be authenticated.\n    - Match must exist and involve the authenticated user.\n    - Match must not already be established (i.e., must be pending).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id"
+        ]
+      }
+    },
+    {
+      "name": "send_message_to_match",
+      "description": "Send a direct message from the authenticated user to their matched user, if permitted.\n\nArgs:\n    match_id (str): The ID of the match context (must be active, must include current user).\n    content (str): The textual message to send.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Message sent successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n- User must be authenticated (self.current_user_id not None).\n- Match must exist, be active, and include current user.\n- Messaging must not be blocked by privacy settings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id",
+          "content"
+        ]
+      }
+    },
+    {
+      "name": "mark_message_as_read",
+      "description": "Mark the specified message as read by updating its read_sta attribute.\n\nArgs:\n    message_id (str): The ID of the message to mark as read.\n\nReturns:\n    dict:\n        - success: True/False\n        - message (if success): Success message.\n        - error (if failure): Error description.\n\nConstraints:\n    - Must be performed by the authenticated user.\n    - Only the receiver of the message can mark it as read.\n    - The message must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id"
+        ]
+      }
+    },
+    {
+      "name": "update_profile_privacy_setting",
+      "description": "Change the privacy_setting of the currently authenticated user's profile.\n\nArgs:\n    new_privacy_setting (str): The new privacy setting to apply for the profile.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Privacy setting updated for user <id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g. not authenticated, user not found)\n    }\n\nConstraints:\n    - Users can only operate via their authenticated UserProfile.\n    - Only the authenticated user's own profile can be updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "new_privacy_setting": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "new_privacy_setting"
+        ]
+      }
+    },
+    {
+      "name": "update_profile_attributes",
+      "description": "Modify attributes (name, interests, nationality, etc.) of the currently authenticated user's profile.\n\nArgs:\n    updates (Dict[str, object]): Dictionary of profile attributes to update with their new values.\n\nReturns:\n    dict: \n        - Success: { \"success\": True, \"message\": \"User profile updated successfully\" }\n        - Failure: { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - Only the currently authenticated user can update their profile.\n    - Cannot update profile '_id'.\n    - Fields not in UserProfileInfo or not allowed to be changed are ignored.\n    - Fails if there are no valid update fields.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "unmatch_user",
+      "description": "Remove or deactivate an existing match between the current user and another user.\n\nArgs:\n    other_user_id (str): The user ID of the other user with whom to unmatch.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Unmatched user successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <description>\n    }\n\nConstraints:\n    - User must be authenticated (self.current_user_id is set).\n    - Only the two users in an active match can unmatch.\n    - If match does not exist, or is already inactive, operation fails.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "other_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "other_user_id"
+        ]
+      }
+    }
+  ]
+}

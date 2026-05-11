@@ -1,0 +1,444 @@
+{
+  "env_name": "WorkflowManagementSystem",
+  "description": "A Workflow Management System tracks and orchestrates the execution of tasks, managing their states, dependencies, and outcomes. The environment records metadata such as task IDs, statuses, and evaluation results, and supports operations for querying, updating, and monitoring tasks throughout their lifecycle. These systems are broadly used in enterprise, research, and automation contexts where complex, multi-step processes must be managed reliably.",
+  "initial_parameter_schema": {
+    "tasks": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "evaluation_result": {},
+          "creation_time": {
+            "type": "string"
+          },
+          "update_time": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "task_id",
+          "status",
+          "evaluation_result",
+          "creation_time",
+          "update_time",
+          "owner",
+          "metadata"
+        ]
+      }
+    },
+    "task_dependencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "parent_task_id": {
+            "type": "string"
+          },
+          "child_task_id": {
+            "type": "string"
+          },
+          "dependency_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "parent_task_id",
+          "child_task_id",
+          "dependency_type"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_task_by_id": [
+      "tasks"
+    ],
+    "get_evaluation_result": [
+      "tasks"
+    ],
+    "get_multiple_evaluation_results": [
+      "tasks"
+    ],
+    "list_all_tasks": [
+      "tasks"
+    ],
+    "filter_tasks_by_status": [
+      "tasks"
+    ],
+    "filter_tasks_by_owner": [
+      "tasks"
+    ],
+    "get_task_dependencies": [
+      "task_dependencies",
+      "tasks"
+    ],
+    "get_all_downstream_tasks": [
+      "task_dependencies",
+      "tasks"
+    ],
+    "check_task_exists": [
+      "tasks"
+    ],
+    "detect_dependency_cycles": [
+      "task_dependencies",
+      "tasks"
+    ],
+    "create_task": [
+      "tasks"
+    ],
+    "update_task_status": [
+      "tasks"
+    ],
+    "set_evaluation_result": [
+      "tasks"
+    ],
+    "delete_task": [
+      "task_dependencies",
+      "tasks"
+    ],
+    "add_task_dependency": [
+      "task_dependencies",
+      "tasks"
+    ],
+    "remove_task_dependency": [
+      "task_dependencies",
+      "tasks"
+    ],
+    "update_task_metadata": [
+      "tasks"
+    ],
+    "bulk_update_task_status": [
+      "tasks"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_task_by_id",
+      "description": "Retrieve the full metadata for a specific task by task_id.\n\nArgs:\n    task_id (str): The unique identifier of the task.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": TaskInfo,  # Metadata for the task\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"Task not found\" if the task does not exist\n    }\n\nConstraints:\n    - Each task_id must be unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id"
+        ]
+      }
+    },
+    {
+      "name": "get_evaluation_result",
+      "description": "Get the evaluation result for a task (if present).\n\nArgs:\n    task_id (str): The unique identifier for the task.\n\nReturns:\n    dict: \n        On success (result available):\n            { \"success\": True, \"data\": <evaluation_result> }\n        On failure (task not found or result not present):\n            { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Task must exist.\n    - Evaluation results are available for terminal tasks that already carry one (for example, completed or failed tasks).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id"
+        ]
+      }
+    },
+    {
+      "name": "get_multiple_evaluation_results",
+      "description": "Retrieve evaluation results for multiple tasks by their IDs.\n\nArgs:\n    task_ids (List[str]): List of task IDs.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[dict],  # Each dict: { \"task_id\": ..., \"evaluation_result\": ... } or { \"task_id\": ..., \"error\": ... }\n    }\n\nNotes/Constraints:\n    - If a task_id does not exist, output { \"task_id\": <id>, \"error\": \"Task not found\" }.\n    - If the evaluation result is not available (absent or task not terminal), output { \"task_id\": <id>, \"error\": \"No evaluation result available\" }.\n    - Only return the evaluation_result if the corresponding field is present and the task status is terminal (\"completed\" or \"failed\").",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "task_ids"
+        ]
+      }
+    },
+    {
+      "name": "list_all_tasks",
+      "description": "Retrieve all tasks present in the workflow management system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TaskInfo],  # List (possibly empty) of all TaskInfo objects\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "filter_tasks_by_status",
+      "description": "List all tasks matching a particular status (e.g., pending, running, completed, failed).\n\nArgs:\n    status (str): The target status to filter on.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": list of TaskInfo (may be empty if no match)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g., status not recognized)\n    }\n\nConstraints:\n    - Status must be one of the allowed lifecycle values.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "filter_tasks_by_owner",
+      "description": "Get all tasks belonging to a specific owner.\n\nArgs:\n    owner (str): The owner/user whose tasks to retrieve.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TaskInfo]  # All tasks owned by the specified owner. Empty list if none found.\n    }\n\nConstraints:\n    - Returns all tasks where the TaskInfo.owner matches the given owner exactly.\n    - Returns empty list if no tasks for given owner are present.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "owner"
+        ]
+      }
+    },
+    {
+      "name": "get_task_dependencies",
+      "description": "Retrieve direct dependencies (parents and/or children) for a given task.\n\nArgs:\n    task_id (str): The task ID to query dependencies for.\n\nReturns:\n    dict:\n        Success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"parents\": List[TaskDependencyInfo],   # Where task_id is child (dependencies it has)\n                    \"children\": List[TaskDependencyInfo]   # Where task_id is parent (dependencies it provides)\n                }\n            }\n        Failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason for failure (e.g., task not found)\n            }\n\nConstraints:\n    - task_id must exist in the system, else return error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id"
+        ]
+      }
+    },
+    {
+      "name": "get_all_downstream_tasks",
+      "description": "Recursively retrieve all tasks (as TaskInfo) that are downstream\n(dependent on) the specified task.\n\nArgs:\n    task_id (str): The source/parent task ID.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[TaskInfo]  # List of all unique downstream task infos\n            }\n        On failure (invalid task ID):\n            {\n                \"success\": False,\n                \"error\": str\n            }\n\nConstraints:\n    - task_id must exist in self.tasks.\n    - No cycles are permitted in dependencies (per environment guarantees).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id"
+        ]
+      }
+    },
+    {
+      "name": "check_task_exists",
+      "description": "Check whether a given task_id exists in the workflow system.\n\nArgs:\n    task_id (str): The ID of the task to check.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": bool  # True if task_id exists, False otherwise\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str\n        }\nConstraints:\n    - task_id must be a non-empty string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id"
+        ]
+      }
+    },
+    {
+      "name": "detect_dependency_cycles",
+      "description": "Check if the current task dependency graph contains any cycles.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": bool  # True if a cycle is detected, False otherwise\n    }\nNotes:\n    - This checks the acyclicity of the current dependencies (integrity check).\n    - Will return False for empty or acyclic graphs.\n    - No constraints are violated by this operation itself; it's for checking.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "create_task",
+      "description": "Add a new task with a unique task_id and initial metadata.\n\nArgs:\n    task_id (str): Unique identifier for the task.\n    owner (str): The owner of the task.\n    status (str, optional): Initial status value (default 'pending'). Must be a valid status.\n    metadata (Dict[str, Any], optional): Arbitrary metadata for the task.\n    creation_time (str, optional): Creation time in ISO format. If omitted, uses now.\n    update_time (str, optional): Update time in ISO format. If omitted, uses now.\n\nReturns:\n    dict: Success or error message.\n\nConstraints:\n    - task_id must be unique.\n    - status must be in allowed lifecycle values.\n    - evaluation_result must be None at creation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "creation_time": {
+            "type": "string"
+          },
+          "update_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "owner"
+        ]
+      }
+    },
+    {
+      "name": "update_task_status",
+      "description": "Change the status of a specified task, following valid lifecycle transitions.\n\nArgs:\n    task_id (str): Unique ID of the task to update.\n    new_status (str): The new status for the task (e.g., 'pending', 'running', 'completed', 'failed').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Task <task_id> status updated to <new_status>.\"\n    } on success,\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    } on failure.\n\nConstraints:\n    - Task must exist.\n    - new_status must be a valid status.\n    - Status transition must follow allowed lifecycle.\n    - update_time must be set to current (ISO8601) time on change.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "set_evaluation_result",
+      "description": "Attach/set the evaluation result for a terminal task, enforcing that evaluation\nresults may only be present for tasks that have completed execution.\n\nArgs:\n    task_id (str): The unique ID of the task.\n    evaluation_result (Any): The evaluation result to be stored.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True,\n            \"message\": \"Evaluation result set for task <task_id>\"\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": \"<reason>\"\n        }\n\nConstraints:\n    - Task must exist.\n    - Task status must be terminal ('completed' or 'failed') to set an evaluation result.\n    - On success, the evaluation_result is saved for the task.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          },
+          "evaluation_result": {}
+        },
+        "required": [
+          "task_id",
+          "evaluation_result"
+        ]
+      }
+    },
+    {
+      "name": "delete_task",
+      "description": "Remove an existing task from the system and clean up all related dependencies.\n\nArgs:\n    task_id (str): Unique identifier of the task to delete.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Task <task_id> and related dependencies deleted.\" }\n        - On failure: { \"success\": False, \"error\": \"Task <task_id> does not exist.\" }\n\nConstraints:\n    - Task must exist.\n    - All dependencies involving the task (as parent or child) are removed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id"
+        ]
+      }
+    },
+    {
+      "name": "add_task_dependency",
+      "description": "Add a dependency from parent_task_id to child_task_id, enforcing that no cycles are created.\n\nArgs:\n    parent_task_id (str): The ID of the parent (upstream) task.\n    child_task_id (str): The ID of the child (downstream) task.\n    dependency_type (str): The type of the dependency relationship.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"message\": \"...\"}\n        - On failure: {\"success\": False, \"error\": \"...\"}\nConstraints:\n    - Both task IDs must exist in the system.\n    - Cannot add a dependency forming a cycle.\n    - No duplicate dependencies.\n    - Cannot add self-dependency.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "parent_task_id": {
+            "type": "string"
+          },
+          "child_task_id": {
+            "type": "string"
+          },
+          "dependency_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "parent_task_id",
+          "child_task_id",
+          "dependency_type"
+        ]
+      }
+    },
+    {
+      "name": "remove_task_dependency",
+      "description": "Remove a dependency of the specified type between the given parent and child tasks.\n\nArgs:\n    parent_task_id (str): The task ID of the parent in the dependency.\n    child_task_id (str): The task ID of the child in the dependency.\n    dependency_type (str): The type of dependency to remove.\n\nReturns:\n    dict:\n        Success: { \"success\": True, \"message\": \"Dependency removed successfully.\" }\n        Failure:\n            - { \"success\": False, \"error\": \"Specified dependency does not exist.\" }\n            - { \"success\": False, \"error\": \"Parent task does not exist.\" }\n            - { \"success\": False, \"error\": \"Child task does not exist.\" }\n\nConstraints:\n    - Both parent and child tasks must exist.\n    - Only removes the specified dependency (matching all three attributes).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "parent_task_id": {
+            "type": "string"
+          },
+          "child_task_id": {
+            "type": "string"
+          },
+          "dependency_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "parent_task_id",
+          "child_task_id",
+          "dependency_type"
+        ]
+      }
+    },
+    {
+      "name": "update_task_metadata",
+      "description": "Patch or update the metadata dictionary for an existing task.\n\nArgs:\n    task_id (str): ID of the task to patch/update.\n    metadata_update (Dict[str, Any], optional): Canonical dictionary of key-value pairs to update/insert into the task's metadata.\n    metadata (Dict[str, Any], optional): Accepted alias for metadata_update.\n    new_metadata (Dict[str, Any], optional): Accepted alias for metadata_update.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Task metadata updated for task_id <task_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<error reason>\"\n    }\n\nConstraints:\n    - task_id must exist in self.tasks\n    - One of metadata_update / metadata / new_metadata must be a dictionary (may be empty)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          },
+          "metadata_update": {
+            "type": "object"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "new_metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "task_id"
+        ]
+      }
+    },
+    {
+      "name": "bulk_update_task_status",
+      "description": "Update the status of a batch of tasks given their IDs.\n\nArgs:\n    task_ids (list of str): List of task IDs to update.\n    new_status (str): The target status to set for these tasks.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Description of what was updated (how many, details)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error\n    }\n\nConstraints:\n  - Each task_id must exist in the system.\n  - Status values must be one of (\"pending\", \"running\", \"completed\", \"failed\").\n  - TaskInfo.update_time should be updated to current UTC ISO timestamp for updated tasks.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_ids",
+          "new_status"
+        ]
+      }
+    }
+  ]
+}

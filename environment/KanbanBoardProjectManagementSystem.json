@@ -1,0 +1,771 @@
+{
+  "env_name": "KanbanBoardProjectManagementSystem",
+  "description": "A Kanban board project management system is designed to visualize and manage tasks through cards arranged in columns representing workflow stages. It maintains stateful records linking cards to boards and columns, tracking their movement and progress. Users interact with the system by updating card positions, editing task details, and configuring boards to suit diverse project requirements.",
+  "initial_parameter_schema": {
+    "boards": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "board_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "owner_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "board_id",
+          "name",
+          "description",
+          "owner_user_id"
+        ]
+      }
+    },
+    "columns": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "column_id": {
+            "type": "string"
+          },
+          "board_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "column_id",
+          "board_id",
+          "name",
+          "position"
+        ]
+      }
+    },
+    "cards": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          },
+          "board_id": {
+            "type": "string"
+          },
+          "column_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "assigned_user_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "card_id",
+          "board_id",
+          "column_id",
+          "title",
+          "description",
+          "assigned_user_id",
+          "status",
+          "position"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "email",
+          "role"
+        ]
+      }
+    },
+    "check_user_authorization_for_card_action": {
+      "type": "string"
+    },
+    "trigger_card_status_update_on_move": {
+      "type": "string"
+    },
+    "notify_users_on_card_movement": {
+      "type": "string"
+    }
+  },
+  "tool_state_dependencies": {
+    "get_board_by_id": [
+      "boards"
+    ],
+    "list_boards_by_user": [
+      "boards",
+      "users"
+    ],
+    "get_column_by_id": [
+      "columns"
+    ],
+    "list_columns_by_board": [
+      "boards",
+      "columns"
+    ],
+    "get_card_by_id": [
+      "cards"
+    ],
+    "list_cards_by_column": [
+      "cards",
+      "columns"
+    ],
+    "list_cards_by_board": [
+      "boards",
+      "cards"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "check_user_authorization_for_card_action": [
+      "boards",
+      "cards",
+      "users"
+    ],
+    "validate_column_in_board": [
+      "boards",
+      "columns"
+    ],
+    "validate_card_in_column_and_board": [
+      "boards",
+      "cards",
+      "columns"
+    ],
+    "get_next_card_position_in_column": [
+      "cards",
+      "columns"
+    ],
+    "get_column_position_in_board": [
+      "columns"
+    ],
+    "list_users_by_board": [
+      "boards",
+      "cards",
+      "users"
+    ],
+    "move_card_to_column": [
+      "cards",
+      "check_user_authorization_for_card_action",
+      "columns",
+      "notify_users_on_card_movement",
+      "trigger_card_status_update_on_move"
+    ],
+    "update_card_position_in_column": [
+      "cards",
+      "columns"
+    ],
+    "trigger_card_status_update_on_move": [
+      "cards",
+      "columns"
+    ],
+    "notify_users_on_card_movement": [
+      "boards",
+      "cards",
+      "users"
+    ],
+    "create_card": [
+      "boards",
+      "cards",
+      "columns",
+      "users"
+    ],
+    "delete_card": [
+      "cards"
+    ],
+    "update_card_details": [
+      "cards",
+      "users"
+    ],
+    "reorder_cards_in_column": [
+      "cards",
+      "columns"
+    ],
+    "create_column": [
+      "boards",
+      "columns"
+    ],
+    "delete_column": [
+      "cards",
+      "columns"
+    ],
+    "reorder_columns_in_board": [
+      "boards",
+      "columns"
+    ],
+    "assign_user_to_card": [
+      "cards",
+      "users"
+    ],
+    "create_board": [
+      "boards",
+      "users"
+    ],
+    "delete_board": [
+      "boards",
+      "cards",
+      "columns"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_board_by_id",
+      "description": "Retrieve detailed information for a specific board using board_id.\n\nArgs:\n    board_id (str): The unique identifier for the board.\n\nReturns:\n    dict:\n      - success (bool): True if found, False otherwise.\n      - data (BoardInfo): On success, the board details.\n      - error (str): On failure, an error message.\n\nConstraints:\n    - board_id must correspond to an existing board.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "board_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "board_id"
+        ]
+      }
+    },
+    {
+      "name": "list_boards_by_user",
+      "description": "List all boards owned (and accessible) by the specified user.\n\nArgs:\n    user_id (str): The user ID.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BoardInfo], # List of boards owned by the user (may be empty).\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str, # e.g., \"User does not exist\"\n    }\n\nConstraints:\n    - User must exist.\n    - Boards returned are those where user is owner. (If enhanced access logic exists, include here.)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_column_by_id",
+      "description": "Retrieve details for a specific column using column_id.\n\nArgs:\n    column_id (str): The unique identifier for the column.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ColumnInfo  # The column information\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g., column not found\n    }\n\nConstraints:\n    - The column with the given column_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "column_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "column_id"
+        ]
+      }
+    },
+    {
+      "name": "list_columns_by_board",
+      "description": "List all columns for a given board, ordered by position.\n\nArgs:\n    board_id (str): The ID of the board whose columns are to be listed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ColumnInfo],  # Ordered list of columns (may be empty if none)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if board does not exist\n    }\n\nConstraints:\n    - Board must exist in the system.\n    - Columns are filtered for the board_id and ordered by position (ascending).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "board_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "board_id"
+        ]
+      }
+    },
+    {
+      "name": "get_card_by_id",
+      "description": "Retrieve a card's details by its unique card_id.\n\nArgs:\n    card_id (str): The unique identifier of the card.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": CardInfo,  # The card's info if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"Card not found\" if id is missing\n    }\n\nConstraints:\n    - The card_id must exist in the Kanban system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id"
+        ]
+      }
+    },
+    {
+      "name": "list_cards_by_column",
+      "description": "List all cards in the specified column, ordered by their position.\n\nArgs:\n    column_id (str): The ID of the column.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CardInfo],  # Cards belonging to the column in position order.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description (e.g., column not found)\n    }\n\nConstraints:\n    - The given column_id must exist in the system.\n    - Cards are sorted by the 'position' field in ascending order.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "column_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "column_id"
+        ]
+      }
+    },
+    {
+      "name": "list_cards_by_board",
+      "description": "List all cards contained within a specific board.\n\nArgs:\n    board_id (str): The ID of the board to retrieve cards from.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[CardInfo],  # List of cards for the board (may be empty)\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Description of the error, e.g. board does not exist\n        }\n\nConstraints:\n    - The board with the provided board_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "board_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "board_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve full user information using user_id.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo\n    } if the user is found,\n    otherwise {\n        \"success\": False,\n        \"error\": \"User not found\"\n    }\nConstraints:\n    - The user must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "check_user_authorization_for_card_action",
+      "description": "Verify if a user is authorized to move or edit a card.\n\nArgs:\n    user_id (str): ID of the user.\n    card_id (str): ID of the card.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"authorized\": bool,\n        \"reason\": str\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - User and card must exist.\n    - Only board owners, assigned users, or admins can move/edit a card.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "card_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "card_id"
+        ]
+      }
+    },
+    {
+      "name": "validate_column_in_board",
+      "description": "Check if a given column_id exists within a specified board.\n\nArgs:\n    column_id (str): The unique identifier for the column.\n    board_id (str): The unique identifier for the board.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"data\": { \"valid\": True } }\n        On error: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Both the board and column must exist.\n    - The column must belong to the specified board.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "column_id": {
+            "type": "string"
+          },
+          "board_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "column_id",
+          "board_id"
+        ]
+      }
+    },
+    {
+      "name": "validate_card_in_column_and_board",
+      "description": "Ensure a card belongs to a specific column and board.\n\nArgs:\n    card_id (str): The card's unique identifier.\n    column_id (str): The column's unique identifier in which the card should be.\n    board_id (str): The board's unique identifier in which the card should be.\n\nReturns:\n    dict: \n      - { \"success\": True, \"data\": True } if the card belongs to the specified column and board\n      - { \"success\": True, \"data\": False } if the card does not belong to the specified column/board\n      - { \"success\": False, \"error\": str } if input entities are not found\n\nConstraints:\n    - Card must exist.\n    - Column must exist.\n    - Board must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          },
+          "column_id": {
+            "type": "string"
+          },
+          "board_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "column_id",
+          "board_id"
+        ]
+      }
+    },
+    {
+      "name": "get_next_card_position_in_column",
+      "description": "Determines the next available position value for a card in the specified column.\nThe next position is (current maximum position in the column) + 1.\nIf there are no cards in the column, position starts at 1.\n\nArgs:\n    column_id (str): The ID of the target column.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"data\": int }\n        On failure (e.g. invalid column): { \"success\": False, \"error\": str }\n\nConstraints:\n    - column_id must refer to an existing column.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "column_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "column_id"
+        ]
+      }
+    },
+    {
+      "name": "get_column_position_in_board",
+      "description": "Get the numerical position of a column in the board workflow.\n\nArgs:\n    column_id (str): The identifier for the column.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"column_id\": str,\n            \"board_id\": str,\n            \"position\": int,\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description, e.g. 'Column does not exist'\n    }\n\nConstraints:\n    - The column_id must exist in the system.\n    - The returned position is unique within its board.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "column_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "column_id"
+        ]
+      }
+    },
+    {
+      "name": "list_users_by_board",
+      "description": "List all users who are participants/collaborators in a board.\n\nArgs:\n    board_id (str): The ID of the board.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"data\": List[UserInfo]}\n        - On failure: {\"success\": False, \"error\": \"Board does not exist\"}\n\nConstraints:\n    - User is a participant if they are (1) the board owner,\n      or (2) assigned to any card on the board.\n    - Users are unique in the result.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "board_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "board_id"
+        ]
+      }
+    },
+    {
+      "name": "move_card_to_column",
+      "description": "Move a card to a different column within the same board.\nUpdates the card's column_id and assigns the next position at the end of the target column.\n\nArgs:\n    card_id (str): The ID of the card to move.\n    target_column_id (str): The ID of the column to move the card into.\n    user_id (str): The ID of the user attempting the operation.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Card moved to column.\"\n    } on success,\n    or {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    } on failure.\n\nConstraints:\n    - Card and target column must exist and be in the same board.\n    - Only authorized users can move cards.\n    - Card positions are unique and maintained within columns.\n    - May trigger status updates or notifications.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          },
+          "target_column_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "target_column_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "update_card_position_in_column",
+      "description": "Change a card’s order within its column. The card will be moved to the given position,\nand all other cards will be shifted to maintain unique, sequential positions within the column.\n\nArgs:\n    card_id (str): The card to reposition within its column.\n    new_position (int): The target position (1-based index) within the column.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Card position updated in column\" }\n        - On failure: { \"success\": False, \"error\": str }\n\nConstraints:\n    - Card must exist and belong to a valid column/board.\n    - Position must be within 1..N, where N is number of cards in column.\n    - Positions after update are sequential and unique.\n\nNotes:\n    - No exceptions are raised; errors are reported in the returned dict.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          },
+          "new_position": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "card_id",
+          "new_position"
+        ]
+      }
+    },
+    {
+      "name": "trigger_card_status_update_on_move",
+      "description": "Update the card's status if moving to a column implies a status change (e.g., \"In Progress\",\"Done\").\n\nArgs:\n    card_id (str): The card being moved.\n    target_column_id (str): The column to which the card is being moved.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"message\": \"Card status updated to <status>\" | \"Card status unchanged\"\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": \"reason\"\n        }\n\nConstraints:\n    - Card and Column must exist.\n    - Card must belong to the same board as the column.\n    - Status only updated if moving into a special-named column.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          },
+          "target_column_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "target_column_id"
+        ]
+      }
+    },
+    {
+      "name": "notify_users_on_card_movement",
+      "description": "Generate notifications for relevant users when a card is moved.\n\nArgs:\n    card_id (str): The ID of the card that has been moved.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Notifications sent to: [list of user display names or IDs]\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Card must exist.\n    - Notifies both assigned user and board owner (if distinct).\n    - No notifications are sent if neither can be found.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id"
+        ]
+      }
+    },
+    {
+      "name": "create_card",
+      "description": "Add a new card to a column in a board at a specific position.\n\nArgs:\n    card_id (str): Unique card identifier.\n    board_id (str): Board where card will be created.\n    column_id (str): Column (must belong to board) for card placement.\n    title (str): Title of the card/task.\n    description (str): Text description.\n    assigned_user_id (str): User assigned to card (empty or valid user).\n    status (str): Initial card status.\n    position (int): Intended order/position in column (0-based).\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Card created in column X at position Y\" }\n        On failure: { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - card_id must be unique.\n    - board_id and column_id must exist, column must belong to board.\n    - assigned_user_id must be empty or valid user_id.\n    - position must be valid (0 <= position <= len(cards in column)).\n    - Cards in column maintain ordering; on conflicting position, shift existing cards accordingly.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          },
+          "board_id": {
+            "type": "string"
+          },
+          "column_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "assigned_user_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "card_id",
+          "board_id",
+          "column_id",
+          "title",
+          "description",
+          "assigned_user_id",
+          "status",
+          "position"
+        ]
+      }
+    },
+    {
+      "name": "delete_card",
+      "description": "Remove a card from the board and its column.\nAlso reorders the remaining cards in the column to maintain contiguous positions.\n\nArgs:\n    card_id (str): The unique identifier of the card to delete.\n\nReturns:\n    dict:\n        - success: True and message if deletion was successful\n        - success: False and error message otherwise\n\nConstraints:\n    - Card must exist.\n    - After deletion, card positions within the same column must remain contiguous (0, 1, 2, ...).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id"
+        ]
+      }
+    },
+    {
+      "name": "update_card_details",
+      "description": "Edit the title, description, and/or assignee of a card.\n\nArgs:\n    card_id (str): The ID of the card to update.\n    title (str, optional): New title for the card.\n    description (str, optional): New description for the card.\n    assigned_user_id (str, optional): User ID to assign the card to. Pass an empty string to keep or set the card as unassigned.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Card details updated.\" }\n        On failure:\n            { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The card must exist.\n    - If assigned_user_id is provided and non-empty, the corresponding user must exist.\n    - At least one of title, description, assigned_user_id must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "assigned_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "title",
+          "description",
+          "assigned_user_id"
+        ]
+      }
+    },
+    {
+      "name": "reorder_cards_in_column",
+      "description": "Reassigns positions for all cards in the specified column to ensure they are unique and sequential\n(starting at 1, no gaps), resolving any duplicates or gaps after card moves.\n\nArgs:\n    column_id (str): The ID of the column to reorder cards in.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": f\"Cards in column {column_id} reordered successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason description\"\n    }\n\nConstraints:\n    - The column_id must exist.\n    - All cards in the column will be assigned new positions (1, 2, ..., N) by current sort order.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "column_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "column_id"
+        ]
+      }
+    },
+    {
+      "name": "create_column",
+      "description": "Add a new column (workflow stage) to a specific board at a given position.\n\nArgs:\n    board_id (str): The ID of the board.\n    name (str): New column's name.\n    position (int): Desired unique position of the column in the board.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Column created\",\n        \"column_id\": str  # The new column's ID\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message explaining why creation failed\n    }\n\nConstraints:\n    - Board must exist.\n    - Position must be unique among all columns in the board.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "board_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "board_id",
+          "name",
+          "position"
+        ]
+      }
+    },
+    {
+      "name": "delete_column",
+      "description": "Remove a column from a board.\nAppropriately handles any cards remaining in the column (deletes them).\nAfter removal, maintains column positions uniqueness within the board.\n\nArgs:\n    column_id (str): The unique identifier of the column to delete.\n\nReturns:\n    dict: \n      - { \"success\": True, \"message\": \"Column <column_id> deleted and <N> cards handled.\" }\n      - { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - If the column does not exist, returns error.\n    - All cards in the column are also deleted.\n    - Column positions remain unique/sequential within the board.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "column_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "column_id"
+        ]
+      }
+    },
+    {
+      "name": "reorder_columns_in_board",
+      "description": "Reassigns positions for all columns in the specified board to ensure unique, sequential ordering\nafter insertions or moves.\n\nArgs:\n    board_id (str): The ID of the board whose columns are to be reordered.\n\nReturns:\n    dict: {\n      \"success\": True,\n      \"message\": \"Columns in board {board_id} reordered successfully.\"\n    }\n    OR\n    {\n      \"success\": False,\n      \"error\": \"Board not found\"\n    }\n\nConstraints:\n    - Column positions are made unique and sequential (0, 1, 2, ...) within the board.\n    - If the board does not exist, return error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "board_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "board_id"
+        ]
+      }
+    },
+    {
+      "name": "assign_user_to_card",
+      "description": "Set or change the assigned_user_id for a specified card.\n\nArgs:\n    card_id (str): The ID of the card to modify.\n    user_id (str): The ID of the user to assign to the card. Pass an empty string to explicitly leave the card unassigned.\n\nReturns:\n    dict: Success with message, or failure with error explanation.\n        Example:\n            { \"success\": True, \"message\": \"User assigned to card successfully.\" }\n            { \"success\": False, \"error\": \"Card does not exist.\" }\n            { \"success\": False, \"error\": \"User does not exist.\" }\n\nConstraints:\n    - The card must exist.\n    - The user must exist unless user_id is an empty string.\n    - Updates card's 'assigned_user_id' to the new user or clears it when passed an empty string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "create_board",
+      "description": "Add a new board with the given owner.\n\nArgs:\n    board_id (str): Unique identifier for the new board.\n    name (str): Name of the board.\n    description (str): Description of the board.\n    owner_user_id (str): User ID of the board's owner.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Board created successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The board_id must be unique.\n    - The owner_user_id must correspond to an existing user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "board_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "owner_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "board_id",
+          "name",
+          "description",
+          "owner_user_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_board",
+      "description": "Remove an entire board and all associated columns and cards.\n\nArgs:\n    board_id (str): The ID of the board to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Board and all associated columns and cards deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Board does not exist.\"\n    }\n\nConstraints:\n    - All columns and cards belonging to the board will also be deleted.\n    - No error is raised for columns/cards if none exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "board_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "board_id"
+        ]
+      }
+    }
+  ]
+}

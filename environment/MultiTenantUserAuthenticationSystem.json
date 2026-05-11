@@ -1,0 +1,577 @@
+{
+  "env_name": "MultiTenantUserAuthenticationSystem",
+  "description": "A multi-tenant user authentication system manages the life cycle of user accounts across multiple organizations or customer segments (tenants) within a single application platform. It tracks users, authentication tokens, tenant affiliations, and account statuses, supporting workflows like registration, confirmation, login, and password reset. The environment ensures data isolation per tenant while centralizing identity and access management operations.",
+  "initial_parameter_schema": {
+    "tenants": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          },
+          "tenant_name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenant_id",
+          "tenant_name",
+          "status"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          },
+          "registration_date": {
+            "type": "string"
+          },
+          "last_login": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "_id",
+          "tenant_id",
+          "email",
+          "username",
+          "account_status",
+          "registration_date",
+          "last_login"
+        ]
+      }
+    },
+    "auth_tokens": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "token_value": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "token_type": {
+            "type": "string"
+          },
+          "creation_time": {
+            "type": "string"
+          },
+          "expiry_time": {
+            "type": "string"
+          },
+          "token_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token_value",
+          "user_id",
+          "tenant_id",
+          "token_type",
+          "creation_time",
+          "expiry_time",
+          "token_status"
+        ]
+      }
+    },
+    "current_time": {
+      "type": "string"
+    }
+  },
+  "tool_state_dependencies": {
+    "get_tenant_by_id": [
+      "tenants"
+    ],
+    "get_tenant_by_name": [
+      "tenants"
+    ],
+    "list_all_tenants": [
+      "tenants"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_user_by_username": [
+      "tenants",
+      "users"
+    ],
+    "get_users_by_tenant": [
+      "tenants",
+      "users"
+    ],
+    "get_user_account_status": [
+      "users"
+    ],
+    "get_token_by_value": [
+      "auth_tokens"
+    ],
+    "list_tokens_for_user": [
+      "auth_tokens",
+      "tenants",
+      "users"
+    ],
+    "check_token_validity": [
+      "auth_tokens",
+      "tenants",
+      "users"
+    ],
+    "check_user_token_association": [
+      "auth_tokens",
+      "tenants",
+      "users"
+    ],
+    "set_user_account_status": [
+      "users"
+    ],
+    "mark_token_as_used": [
+      "auth_tokens"
+    ],
+    "create_user": [
+      "tenants",
+      "users"
+    ],
+    "create_auth_token": [
+      "auth_tokens",
+      "tenants",
+      "users"
+    ],
+    "invalidate_token": [
+      "auth_tokens"
+    ],
+    "update_token_expiry": [
+      "auth_tokens"
+    ],
+    "confirm_account_with_token": [
+      "auth_tokens",
+      "tenants",
+      "users"
+    ],
+    "reset_user_password": [
+      "auth_tokens",
+      "users"
+    ],
+    "deactivate_user_account": [
+      "users"
+    ],
+    "delete_user": [
+      "auth_tokens",
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_tenant_by_id",
+      "description": "Retrieve information for a specific tenant by tenant_id.\n\nArgs:\n    tenant_id (str): The unique identifier of the tenant.\n\nReturns:\n    dict: \n      Success: {\n        \"success\": True,\n        \"data\": TenantInfo\n      }\n      Failure: {\n        \"success\": False,\n        \"error\": \"Tenant not found\"\n      }\n\nConstraints:\n    - tenant_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenant_id"
+        ]
+      }
+    },
+    {
+      "name": "get_tenant_by_name",
+      "description": "Retrieve tenant information for a given tenant_name.\n\nArgs:\n    tenant_name (str): The name of the tenant.\n\nReturns:\n    dict: \n      - If found: { \"success\": True, \"data\": TenantInfo }\n      - If not found: { \"success\": False, \"error\": \"Tenant not found\" }\n\nConstraints:\n    - Searches for exact tenant_name match.\n    - Returns only one result, if found.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tenant_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenant_name"
+        ]
+      }
+    },
+    {
+      "name": "list_all_tenants",
+      "description": "List all registered tenants in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TenantInfo]  # a list (possibly empty) of all tenant records\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user info by user _id (includes account status and tenant association).\n\nArgs:\n    user_id (str): The unique _id of the user.\n\nReturns:\n    dict: \n      - On success:\n           { \"success\": True, \"data\": UserInfo }\n      - If user not found:\n           { \"success\": False, \"error\": \"User not found\" }\n\nConstraints:\n    - user_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_username",
+      "description": "Retrieve user info by username in the given tenant.\n\nArgs:\n    tenant_id (str): The tenant's unique identifier (scope for the search).\n    username (str): The username to look for.\n\nReturns:\n    dict:\n        If found: {\"success\": True, \"data\": UserInfo}\n        If tenant not found: {\"success\": False, \"error\": \"Tenant not found\"}\n        If user not found for username+tenant: {\"success\": False, \"error\": \"User not found for specified username and tenant\"}\nConstraints:\n    - The provided tenant_id must exist.\n    - Only users belonging to the given tenant_id are searched.\n    - Does not leak info about users in other tenants.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenant_id",
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "get_users_by_tenant",
+      "description": "List all users belonging to the specified tenant.\n\nArgs:\n    tenant_id (str): The unique identifier of the tenant.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": List[UserInfo]  # List of user info dicts for the tenant, could be empty.\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason, e.g., \"Tenant does not exist\"\n            }\n\nConstraints:\n    - tenant_id must refer to an existing tenant.\n    - Returned users must only belong to the provided tenant (isolation).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenant_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_account_status",
+      "description": "Query the account_status of a specific user.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"user_id\": str,\n            \"account_status\": str\n        }\n    } if user exists\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    } if user is not found\n\nConstraints:\n    - The user must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_token_by_value",
+      "description": "Retrieve AuthTokenInfo for a given token_value.\n\nArgs:\n    token_value (str): The authentication token's unique value.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": AuthTokenInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Token not found\"\n    }\n\nConstraints:\n    - Token value must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "token_value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token_value"
+        ]
+      }
+    },
+    {
+      "name": "list_tokens_for_user",
+      "description": "List all AuthTokens associated with a specific user and tenant.\n\nArgs:\n    user_id (str): The ID of the user whose tokens are to be listed.\n    tenant_id (str): The ID of the tenant to which the user and tokens must belong.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": List[AuthTokenInfo]  # List of AuthTokenInfo dicts (possibly empty)\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Description of the error\n            }\n\nConstraints:\n    - The user must exist and belong to the provided tenant.\n    - All returned tokens must be associated with both the user and tenant.\n    - If user or tenant invalid, return error message.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "tenant_id"
+        ]
+      }
+    },
+    {
+      "name": "check_token_validity",
+      "description": "Verify if a given AuthToken is valid for the specified user and tenant.\n\nArgs:\n    token_value (str): The authentication/confirmation token value to be checked.\n    user_id (str): The user ID that should own the token.\n    tenant_id (str): The tenant ID under which the token and user should exist.\n\nReturns:\n    dict:\n        On query success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"is_valid\": bool,\n                    \"reason\": str\n                }\n            }\n        If inputs are invalid or entities not found:\n            {\n                \"success\": False,\n                \"error\": str\n            }\n\nValidation logic:\n    - AuthToken exists, references provided user and tenant.\n    - Token status is \"active\" (not used/invalid/expired).\n    - Token is not expired (expiry_time > environment current time).\n    - User exists and belongs to provided tenant.\n    - Tenant exists.\n    - For token_type==\"confirmation\": user's account_status must be \"pending_confirmation\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "token_value": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token_value",
+          "user_id",
+          "tenant_id"
+        ]
+      }
+    },
+    {
+      "name": "check_user_token_association",
+      "description": "Check if a specified token is correctly associated with the given user and tenant.\n\nArgs:\n    token_value (str): The token value to validate.\n    user_id (str): The user ID supposed to be associated with the token.\n    tenant_id (str): The tenant ID supposed to be associated with both the token and user.\n\nReturns:\n    dict: \n        - { \"success\": True, \"data\": True } if association is correct.\n        - { \"success\": True, \"data\": False } if association is incorrect.\n        - { \"success\": False, \"error\": <reason> } if token, user, or tenant do not exist.\n\nConstraints:\n    - Token, user, and tenant must all exist.\n    - Token.user_id must match user_id and token.tenant_id must match tenant_id.\n    - User.tenant_id must match tenant_id as well.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "token_value": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token_value",
+          "user_id",
+          "tenant_id"
+        ]
+      }
+    },
+    {
+      "name": "set_user_account_status",
+      "description": "Update a user's account_status field.\n\nArgs:\n    user_id (str): The unique identifier of the user to update.\n    new_status (str): The new account status to be set (e.g., 'active', 'pending_confirmation', etc.).\n\nReturns:\n    dict:\n        Success: { \"success\": True, \"message\": \"User account_status updated.\" }\n        Failure: { \"success\": False, \"error\": \"User not found\" }\n\nConstraints:\n    - The user with user_id must exist.\n    - No additional constraints on account_status transitions are specified.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "mark_token_as_used",
+      "description": "Mark the specified authentication token as used (invalidating it).\n\nArgs:\n    token_value (str): The identifier of the token to be marked as used.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Token marked as used.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"<reason for failure>\"\n            }\n\nConstraints:\n    - The token must exist in the system.\n    - If the token is already used or invalid, the operation is idempotent (returns success with appropriate message).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "token_value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token_value"
+        ]
+      }
+    },
+    {
+      "name": "create_user",
+      "description": "Add a new user to the system under the specified tenant.\n\nArgs:\n    tenant_id (str): The ID of the tenant to which the user is to be added.\n    email (str): The user's email address (unique within tenant).\n    username (str): The user's username (unique within tenant).\n    account_status (Optional[str]): Optional initial account status \n                                    (default is \"pending_confirmation\").\n\nReturns:\n    dict:\n        On success:\n        {\n            \"success\": True,\n            \"message\": \"User created with _id <id>\",\n            \"user_id\": <id>\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": \"<reason>\"\n        }\n\nConstraints:\n    - tenant_id must exist.\n    - email and username must be unique within the tenant.\n    - Each user is associated with exactly one tenant.\n    - registration_date uses the environment current time if provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenant_id",
+          "email",
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "create_auth_token",
+      "description": "Generate a new AuthToken for a user within a specific tenant.\n\nArgs:\n    user_id (str): ID of the user receiving the token.\n    tenant_id (str): Tenant context; must match the user's tenant.\n    token_type (str): Purpose of the token (e.g., \"confirmation\").\n    expiry_time (str): When the token expires (as string or float).\n    creation_time (Optional[str]): Creation timestamp (default: environment current time).\n    token_value (Optional[str]): Force set a token value. If None, auto-generate.\n    token_status (Optional[str]): Initial status, default is \"active\".\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"AuthToken created\",\n        \"token_value\": str,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - user_id and tenant_id must exist and match.\n    - token_value must be unique.\n    - expiry_time must be after creation_time.\n    - tenant isolation enforced.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "token_type": {
+            "type": "string"
+          },
+          "expiry_time": {
+            "type": "string"
+          },
+          "creation_time": {
+            "type": "string"
+          },
+          "token_value": {
+            "type": "string"
+          },
+          "token_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "tenant_id",
+          "token_type",
+          "expiry_time"
+        ]
+      }
+    },
+    {
+      "name": "invalidate_token",
+      "description": "Mark an AuthToken as invalid before its expiry.\n\nArgs:\n    token_value (str): The value (identifier) of the token to invalidate.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Token <token_value> is now invalid.\" }\n        On failure: { \"success\": False, \"error\": \"Token does not exist.\" }\n\nConstraints:\n    - The token must exist in the system.\n    - If the token is already 'invalid' or 'used', operation is idempotent (no error, just indicate token is already invalid).\n    - Sets 'token_status' to 'invalid'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "token_value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token_value"
+        ]
+      }
+    },
+    {
+      "name": "update_token_expiry",
+      "description": "Change the expiry_time of an AuthToken.\n\nArgs:\n    token_value (str): The value of the token whose expiry time is to be updated.\n    new_expiry_time (str): The new expiry time to set (can be string/float per environment).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Token expiry updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<error message>\"\n    }\n\nConstraints:\n    - The auth token with the provided value must exist.\n    - (Optional: If token is already used or invalid, updating should not be allowed.)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "token_value": {
+            "type": "string"
+          },
+          "new_expiry_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token_value",
+          "new_expiry_time"
+        ]
+      }
+    },
+    {
+      "name": "confirm_account_with_token",
+      "description": "Atomically confirms a user account with the provided confirmation token:\n  - Validates token and referenced user/tenant.\n  - Ensures token is of type 'confirmation_token'\n  - Ensures token is valid (not expired, not already used/invalid).\n  - Ensures user status is 'pending_confirmation'.\n  - Ensures user and token belong to the same tenant.\n  - Sets user account_status to 'active'.\n  - Sets token_status to 'used'.\n\nArgs:\n    token_value (str): The confirmation token value.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User account confirmed and token marked as used.\"\n    }\n    or {\n        \"success\": False,\n        \"error\": str\n    }\nConstraints:\n    - No cross-tenant operation; user and token must be in the same tenant.\n    - Account status and token type/status validations enforced.\n    - Expiry is checked against the environment current time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "token_value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token_value"
+        ]
+      }
+    },
+    {
+      "name": "reset_user_password",
+      "description": "Reset a user's password using a valid password reset token.\n\nArgs:\n    token_value (str): Password reset token.\n    new_password (str): New plain password to set (in practice should be properly hashed/stored).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Password reset successful.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Token must exist and be of type \"password_reset\".\n    - Token must not be expired or already used/invalid.\n    - Token must reference a valid user and tenant.\n    - After success, token is marked as used/inactive and password is updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "token_value": {
+            "type": "string"
+          },
+          "new_password": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token_value",
+          "new_password"
+        ]
+      }
+    },
+    {
+      "name": "deactivate_user_account",
+      "description": "Deactivate a user's account by setting their account_status to 'deactivated' or 'suspended'.\n\nArgs:\n    user_id (str): The unique user identifier.\n    new_status (str): Either 'deactivated' or 'suspended'.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User {user_id} account_status set to {new_status}.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - user_id must refer to an existing user.\n    - new_status must be either 'deactivated' or 'suspended'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "delete_user",
+      "description": "Remove a user account identified by user_id.\nOptionally invalidates all tokens associated with this user.\n\nArgs:\n    user_id (str): The unique user ID to delete.\n    invalidate_tokens (bool): If True, all tokens for this user will be invalidated (default: True).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User deleted (and tokens invalidated if specified)\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description (e.g., user does not exist)\n    }\n\nConstraints:\n    - User must exist.\n    - If invalidate_tokens is True, all tokens for the user (by user_id) will have token_status set to \"invalid\".\n    - All user data and affected tokens are scoped to the same tenant.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "invalidate_tokens": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "user_id",
+          "invalidate_tokens"
+        ]
+      }
+    }
+  ]
+}

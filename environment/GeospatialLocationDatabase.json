@@ -1,0 +1,315 @@
+{
+  "env_name": "GeospatialLocationDatabase",
+  "description": "A geospatial location database manages structured representations of geographic entities, associating names, unique identifiers, and coordinates (latitude and longitude) with physical locations worldwide. It supports search and retrieval operations via APIs, enabling users to resolve place names, analyze spatial relationships, and power map-based applications. Such systems form the backbone for navigation, logistics, and location-aware services.",
+  "initial_parameter_schema": {
+    "locations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "alternate_names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "type": {
+            "type": "string"
+          },
+          "bounding_box": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "required": [
+          "location_id",
+          "name",
+          "alternate_names",
+          "latitude",
+          "longitude",
+          "type",
+          "bounding_box"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "search_locations_by_name": [
+      "locations"
+    ],
+    "get_location_by_id": [
+      "locations"
+    ],
+    "get_coordinates_by_location_id": [
+      "locations"
+    ],
+    "filter_locations_by_type": [
+      "locations"
+    ],
+    "search_locations_in_bounding_box": [
+      "locations"
+    ],
+    "list_all_locations": [
+      "locations"
+    ],
+    "validate_location_coordinates": [
+      "locations"
+    ],
+    "add_location": [
+      "locations"
+    ],
+    "update_location_info": [
+      "locations"
+    ],
+    "add_alternate_name_to_location": [
+      "locations"
+    ],
+    "set_location_bounding_box": [
+      "locations"
+    ],
+    "remove_alternate_name_from_location": [
+      "locations"
+    ]
+  },
+  "tools": [
+    {
+      "name": "search_locations_by_name",
+      "description": "Retrieve all locations whose 'name' or an element of 'alternate_names' matches the provided search string.\n\nArgs:\n    search_string (str): Name to search. Case-insensitive. Must fully match either the main name or any alternate.\n\nReturns:\n    dict:\n        - success (bool): True if query was performed.\n        - data (List[LocationInfo]): List of matching LocationInfo objects (empty if none match).\nNotes:\n    - Matching is case-insensitive.\n    - No partial/fuzzy/substring matching; only full equality.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "search_string": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "search_string"
+        ]
+      }
+    },
+    {
+      "name": "get_location_by_id",
+      "description": "Retrieve a specific location's complete info using its unique location_id.\n\nArgs:\n    location_id (str): The unique identifier for the requested location.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": LocationInfo,  # The full info dict for the found location\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"Location not found\"\n    }\n\nConstraints:\n    - location_id must exist in the locations dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      }
+    },
+    {
+      "name": "get_coordinates_by_location_id",
+      "description": "Obtain the latitude and longitude for the specified location_id.\n\nArgs:\n    location_id (str): The unique ID of the location.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"latitude\": float,\n            \"longitude\": float\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Location not found or missing coordinates\n    }\n\nConstraints:\n    - The specified location_id must exist in the database.\n    - All locations are guaranteed to have valid coordinates per database constraints.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      }
+    },
+    {
+      "name": "filter_locations_by_type",
+      "description": "Retrieve all locations of a given type (e.g., city, park, building).\n\nArgs:\n    location_type (str): The location type to filter by (case-insensitive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[LocationInfo]  # All matching locations (may be empty)\n    }\n\nNotes:\n    - This operation is case-insensitive on the location type.\n    - If no locations match, returns success with an empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_type"
+        ]
+      }
+    },
+    {
+      "name": "search_locations_in_bounding_box",
+      "description": "Retrieve all locations whose coordinates (or bounding box, if defined) intersect or are contained within \nthe specified bounding box.\n\nArgs:\n    bounding_box (list of float): [min_lat, min_lon, max_lat, max_lon], \n        where lat ∈ [-90, 90], lon ∈ [-180, 180].\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[LocationInfo],  # Matching locations (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g. invalid bounding box\n    }\n\nConstraints:\n    - bounding_box must be valid (length=4, correct order, within latitude/longitude bounds).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bounding_box": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "required": [
+          "bounding_box"
+        ]
+      }
+    },
+    {
+      "name": "list_all_locations",
+      "description": "List all registered location entities in the database.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[LocationInfo]  # May be empty if no locations registered\n    }\nConstraints:\n    - No constraints are checked; all locations currently present are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "validate_location_coordinates",
+      "description": "Check if the specified location's coordinates fall within valid geographical bounds.\n\nArgs:\n    location_id (str): The unique identifier of the location to validate.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": {\n                \"valid\": bool,    # True if coordinates are within valid bounds, else False\n                \"latitude\": float,\n                \"longitude\": float\n            }\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Error message, e.g., location not found\n        }\n\nConstraints:\n    - Latitude must be between -90 and 90.\n    - Longitude must be between -180 and 180.\n    - location_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      }
+    },
+    {
+      "name": "add_location",
+      "description": "Add a new location entity to the geospatial location database.\n\nArgs:\n    location_id (str): Unique identifier for the location.\n    name (str): Main name for the location.\n    alternate_names (List[str]): Alternate/variant names.\n    latitude (float): Latitude of the location (-90 <= latitude <= 90).\n    longitude (float): Longitude of the location (-180 <= longitude <= 180).\n    type (str): Type/category (e.g., city, park, building).\n    bounding_box (Optional[List[float]]): Optional bounding box [min_lat, min_lon, max_lat, max_lon].\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Location added successfully\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - location_id must be unique.\n    - latitude in [-90, 90], longitude in [-180, 180].\n    - bounding_box, if provided, must have 4 floats (min_lat, min_lon, max_lat, max_lon)\n      in valid ranges and min < max for lat and lon.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "alternate_names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "type": {
+            "type": "string"
+          },
+          "bounding_box": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "location_id",
+          "name",
+          "alternate_names",
+          "latitude",
+          "longitude",
+          "type"
+        ]
+      }
+    },
+    {
+      "name": "update_location_info",
+      "description": "Update any attribute(s) for a given location while enforcing coordinate and uniqueness constraints.\n\nArgs:\n    location_id (str): The ID of the location to update.\n    updates (dict): Dictionary of attribute names and their new values.\n        Allowed keys: name (str), alternate_names (List[str]), latitude (float),\n                     longitude (float), type (str), bounding_box (Optional[List[float]])\n        Changing location_id is NOT supported (use a new add/remove operation).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Location updated successfully.\"\n    } or {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - location_id must exist.\n    - latitude (if present) must be in [-90, 90].\n    - longitude (if present) must be in [-180, 180].\n    - location_id is unique and cannot be changed by this operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "location_id",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "add_alternate_name_to_location",
+      "description": "Add a new alternate name to a location's alternate_names list.\n\nArgs:\n    location_id (str): The unique ID of the location.\n    alternate_name (str): The alternate name to add.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Alternate name added to location.\"\n            }\n        On failure (location not found, name already exists, or invalid input):\n            {\n                \"success\": False,\n                \"error\": str\n            }\n\nConstraints:\n    - The location must exist.\n    - The alternate name must not already exist in the location's alternate_names list.\n    - The alternate name must not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "alternate_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id",
+          "alternate_name"
+        ]
+      }
+    },
+    {
+      "name": "set_location_bounding_box",
+      "description": "Define or update the bounding box for a specified location.\n\nArgs:\n    location_id (str): Unique identifier of the location.\n    bounding_box (list of float): List [min_lat, min_lon, max_lat, max_lon] representing the bounding area.\n\nReturns:\n    dict: \n      - Success: { \"success\": True, \"message\": \"Bounding box set for location <location_id>\" }\n      - Failure: { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - location_id must exist in the location database.\n    - bounding_box must be a list of four floats: [min_lat, min_lon, max_lat, max_lon]\n    - Each coordinate must be within valid bounds:\n        min_lat and max_lat: -90 <= value <= 90\n        min_lon and max_lon: -180 <= value <= 180\n    - min_lat <= max_lat, min_lon <= max_lon",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "bounding_box": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "required": [
+          "location_id",
+          "bounding_box"
+        ]
+      }
+    },
+    {
+      "name": "remove_alternate_name_from_location",
+      "description": "Remove an alternate name from a location's alternate_names list.\n\nArgs:\n    location_id (str): The unique identifier for the location.\n    alternate_name (str): The alternate name to remove from the list.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"message\": \"Alternate name removed from location.\" }\n        - On failure: {\"success\": False, \"error\": <error message> }\n\nConstraints:\n    - location_id must exist in the locations database.\n    - alternate_name must exist in the location's alternate_names list (comparison is case-sensitive).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "alternate_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id",
+          "alternate_name"
+        ]
+      }
+    }
+  ]
+}

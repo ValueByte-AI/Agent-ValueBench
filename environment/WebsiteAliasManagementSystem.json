@@ -1,0 +1,317 @@
+{
+  "env_name": "WebsiteAliasManagementSystem",
+  "description": "A website alias management system tracks custom identifiers assigned to resources, profiles, or URLs on a web platform. The environment maintains a registry of all existing aliases, supports operations to query for alias availability, and facilitates assigning new aliases without conflicts. This ensures clear, branded website navigation and prevents duplicate name assignments across the platform.",
+  "initial_parameter_schema": {
+    "aliases": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "alias_id": {
+            "type": "string"
+          },
+          "alias_string": {
+            "type": "string"
+          },
+          "associated_entity_type": {
+            "type": "string"
+          },
+          "associated_entity_id": {
+            "type": "string"
+          },
+          "date_created": {
+            "type": "string"
+          },
+          "sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "alias_id",
+          "alias_string",
+          "associated_entity_type",
+          "associated_entity_id",
+          "date_created",
+          "sta"
+        ]
+      }
+    },
+    "entities": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "entity_id": {
+            "type": "string"
+          },
+          "entity_type": {
+            "type": "string"
+          },
+          "owner_id": {
+            "type": "string"
+          },
+          "target_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity_id",
+          "entity_type",
+          "owner_id",
+          "target_url"
+        ]
+      }
+    },
+    "validate_alias_string_format": {
+      "type": "string"
+    }
+  },
+  "tool_state_dependencies": {
+    "check_alias_availability": [
+      "aliases",
+      "validate_alias_string_format"
+    ],
+    "get_alias_by_string": [
+      "aliases"
+    ],
+    "get_alias_by_id": [
+      "aliases"
+    ],
+    "list_all_aliases": [
+      "aliases"
+    ],
+    "get_entity_alias": [
+      "aliases",
+      "entities"
+    ],
+    "get_entity_by_id": [
+      "entities"
+    ],
+    "list_aliases_by_entity_type": [
+      "aliases"
+    ],
+    "validate_alias_string_format": [],
+    "assign_alias_to_entity": [
+      "aliases",
+      "entities",
+      "validate_alias_string_format"
+    ],
+    "unassign_alias": [
+      "aliases"
+    ],
+    "update_alias_string": [
+      "aliases",
+      "validate_alias_string_format"
+    ],
+    "delete_alias": [
+      "aliases"
+    ],
+    "reassign_alias_to_entity": [
+      "aliases",
+      "entities"
+    ]
+  },
+  "tools": [
+    {
+      "name": "check_alias_availability",
+      "description": "Determines whether a specific alias string is available for assignment.\nChecks:\n  - That alias_string meets platform's format/character policy (calls validate_alias_string_format).\n  - That alias_string is not already in use (globally unique among aliases).\n\nArgs:\n    alias_string (str): The string to check for availability.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"available\": True\n        }\n        if available\n        or\n        {\n            \"success\": True,\n            \"available\": False,\n            \"reason\": <reason>\n        }\n        if not available or format-invalid\n        or\n        {\n            \"success\": False,\n            \"error\": <error message>\n        }\n        for unexpected conditions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alias_string": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "alias_string"
+        ]
+      }
+    },
+    {
+      "name": "get_alias_by_string",
+      "description": "Retrieve all information about a given alias using its alias_string.\n\nArgs:\n    alias_string (str): The alias string to look up.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": AliasInfo  # Information about the alias\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Alias not found\"\n            }\n\nConstraints:\n    - alias_string must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alias_string": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "alias_string"
+        ]
+      }
+    },
+    {
+      "name": "get_alias_by_id",
+      "description": "Retrieve all information about a given alias using its alias_id.\n\nArgs:\n    alias_id (str): The unique identifier for the alias.\n\nReturns:\n    dict: \n        {\"success\": True, \"data\": AliasInfo} if found,\n        {\"success\": False, \"error\": \"Alias ID not found\"} otherwise.\n\nConstraints:\n    - Alias ID must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alias_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "alias_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_aliases",
+      "description": "List all aliases currently registered in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AliasInfo]  # All AliasInfo records (may be empty)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_entity_alias",
+      "description": "Fetch the alias (if any) currently assigned to the specified entity.\n\nArgs:\n    entity_id (str): The ID of the resource, profile, or URL.\n\nReturns:\n    dict: \n        { \"success\": True, \"data\": AliasInfo }  # If an alias is assigned\n        { \"success\": True, \"data\": None }       # If no alias assigned\n        { \"success\": False, \"error\": str }      # If entity_id is not found\n\nConstraints:\n    - The entity must exist.\n    - There should be at most one alias assigned to a given entity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entity_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity_id"
+        ]
+      }
+    },
+    {
+      "name": "get_entity_by_id",
+      "description": "Retrieve details (EntityInfo) about a resource, profile, or URL given its entity_id.\n\nArgs:\n    entity_id (str): The unique identifier of the target entity.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": EntityInfo  # Entity information dict\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g., entity not found)\n    }\n\nConstraints:\n    - The entity_id must exist in the entities registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entity_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity_id"
+        ]
+      }
+    },
+    {
+      "name": "list_aliases_by_entity_type",
+      "description": "List every alias assigned to a specific entity type (resource, profile, url).\n\nArgs:\n    entity_type (str): The target entity type. Must be one of 'resource', 'profile', or 'url'.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AliasInfo],  # May be empty if no matches\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Description of error reason\n    }\n\nConstraints:\n    - entity_type must be exactly 'resource', 'profile', or 'url' (case-sensitive).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entity_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity_type"
+        ]
+      }
+    },
+    {
+      "name": "validate_alias_string_format",
+      "description": "Check if the given alias string meets platform format/character restrictions.\n\nArgs:\n    alias_string (str): The alias string to validate.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"valid\": bool,    # True if the string is valid, else False\n            \"reason\": str     # If not valid, a brief description of why\n        }\n    }\n\nConstraints (assumed, typical):\n    - Length between 3 and 32 characters inclusive\n    - Allowed characters: a-z, A-Z, 0-9, underscore (_), hyphen (-)\n    - Must start with a letter\n    - No spaces or special characters\n    - No consecutive hyphens/underscores, not start/end with hyphen/underscore",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alias_string": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "alias_string"
+        ]
+      }
+    },
+    {
+      "name": "assign_alias_to_entity",
+      "description": "Assign an available and valid alias to a specific entity.\n\nArgs:\n    alias_string (str): The desired alias to assign (must conform to platform policy).\n    associated_entity_id (str): The ID of the entity (resource/profile/URL) to link to this alias.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"message\": \"Alias '<alias>' assigned to entity '<entity_id>'\"}\n        On failure:\n            {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - If the alias string already exists and is currently unassigned, it may be assigned in place.\n    - If the alias string already exists and is assigned, the operation fails.\n    - Alias string must pass any format/character restrictions.\n    - The associated entity must exist in the system.\n    - An alias may only be assigned to one entity (no shared assignments).\n\nNotes:\n    - If a platform-specific format validator exists (as a method), it will be called.\n    - Timestamps (date_created) are in ISO 8601 format (UTC).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alias_string": {
+            "type": "string"
+          },
+          "associated_entity_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "alias_string",
+          "associated_entity_id"
+        ]
+      }
+    },
+    {
+      "name": "unassign_alias",
+      "description": "Remove the assignment of an alias from its associated entity.\n\nArgs:\n    alias_id (str): The unique identifier of the alias to unassign.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Alias unassigned from entity\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <error message>\n    }\n\nConstraints:\n    - Alias must exist in the system.\n    - Alias must currently be assigned to an entity (associated_entity_id and associated_entity_type must be non-empty).\n    - After unassignment, associated_entity_id and associated_entity_type will be set to empty strings, and 'sta' (status) set to 'unassigned'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alias_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "alias_id"
+        ]
+      }
+    },
+    {
+      "name": "update_alias_string",
+      "description": "Modify the alias_string of an existing alias, enforcing global uniqueness \nand format/character policy rules.\n\nArgs:\n    alias_id (str): The ID of the alias to modify.\n    new_alias_string (str): The new alias string to assign.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Alias string updated successfully.\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - alias_id must already exist.\n    - new_alias_string must be globally unique (not used by any other alias).\n    - new_alias_string must pass the platform's format/character validity checks.\n    - If the alias remains associated with an entity after the update, its status is refreshed to `assigned`; otherwise it becomes `unassigned`.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alias_id": {
+            "type": "string"
+          },
+          "new_alias_string": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "alias_id",
+          "new_alias_string"
+        ]
+      }
+    },
+    {
+      "name": "delete_alias",
+      "description": "Permanently remove an alias from the system.\n\nArgs:\n    alias_id (str): The unique identifier of the alias to delete.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Alias <alias_id> deleted permanently.\" }\n        - On failure: { \"success\": False, \"error\": \"Alias not found\" }\n\nConstraints:\n    - Alias must exist in the system.\n    - Only admin-level operations may invoke this (assumed by system, not checked here).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alias_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "alias_id"
+        ]
+      }
+    },
+    {
+      "name": "reassign_alias_to_entity",
+      "description": "Change an alias’s association from one entity to another, enforcing all uniqueness and assignment constraints.\n\nArgs:\n    alias_id (str): The ID of the alias to be reassigned.\n    new_entity_id (str): The target entity ID to associate with the alias.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Alias reassigned from entity {old} to entity {new}\"\n    } on success,\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    } on error.\n\nConstraints:\n    - Alias must exist.\n    - New entity must exist.\n    - The alias is updated to reference the new entity.\n    - Alias string remains unique as there is no renaming here.\n    - Each alias is always tied to exactly one entity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alias_id": {
+            "type": "string"
+          },
+          "new_entity_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "alias_id",
+          "new_entity_id"
+        ]
+      }
+    }
+  ]
+}

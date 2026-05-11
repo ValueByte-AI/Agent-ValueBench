@@ -1,0 +1,446 @@
+{
+  "env_name": "OnlineJobListingPlatform",
+  "description": "An online job listing platform maintains a structured database of job postings, each linked to employer profiles and enriched with metadata such as posting dates, job titles, locations, and application links. It supports searching, filtering, and reporting functionalities to help employers and job seekers manage employment opportunities. The platform's state updates continuously as new jobs are posted and old openings are filled or expire.",
+  "initial_parameter_schema": {
+    "employers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "employer_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "profile_url": {
+            "type": "string"
+          },
+          "industry": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "employer_id",
+          "name",
+          "profile_url",
+          "industry"
+        ]
+      }
+    },
+    "job_postings": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "employer_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "posting_date": {
+            "type": "string"
+          },
+          "application_link": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "employer_id",
+          "title",
+          "description",
+          "location",
+          "posting_date",
+          "application_link",
+          "status"
+        ]
+      }
+    },
+    "job_statuses": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "job_id": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "status_update_date": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "job_id",
+            "status",
+            "status_update_date"
+          ]
+        }
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_employer_by_name": [
+      "employers"
+    ],
+    "get_employer_by_id": [
+      "employers"
+    ],
+    "list_all_employers": [
+      "employers"
+    ],
+    "list_job_postings_by_employer": [
+      "employers",
+      "job_postings"
+    ],
+    "list_job_postings_by_employer_and_status": [
+      "employers",
+      "job_postings"
+    ],
+    "count_job_postings_by_employer_and_status": [
+      "employers",
+      "job_postings"
+    ],
+    "get_job_posting_by_id": [
+      "job_postings"
+    ],
+    "list_job_status_history": [
+      "job_postings",
+      "job_statuses"
+    ],
+    "search_job_postings": [
+      "employers",
+      "job_postings"
+    ],
+    "post_new_job": [
+      "employers",
+      "job_postings",
+      "job_statuses"
+    ],
+    "update_job_status": [
+      "job_postings",
+      "job_statuses"
+    ],
+    "remove_job_posting": [
+      "job_postings",
+      "job_statuses"
+    ],
+    "update_job_posting_metadata": [
+      "job_postings"
+    ],
+    "expire_job_postings_by_date": [
+      "job_postings",
+      "job_statuses"
+    ],
+    "reassign_job_posting_employer": [
+      "employers",
+      "job_postings"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_employer_by_name",
+      "description": "Retrieve detailed employer data by employer name.\n\nArgs:\n    name (str): The exact employer name to search for.\n\nReturns:\n    dict:\n      On success:\n        {\n          \"success\": True,\n          \"data\": List[EmployerInfo],  # List of matching employer info dicts\n        }\n      On failure:\n        {\n          \"success\": False,\n          \"error\": str  # Reason for failure (e.g., no employer found)\n        }\n\nConstraints:\n    - Returns all matching employers with the exact given name.\n    - Employer name is not necessarily unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_employer_by_id",
+      "description": "Retrieve employer profile by employer_id.\n\nArgs:\n    employer_id (str): The unique ID of the employer.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": EmployerInfo\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Description of why the lookup failed\n            }\n\nConstraints:\n    - employer_id must exist in the platform's employer database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "employer_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_employers",
+      "description": "List all registered employers (company profiles) on the platform.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[EmployerInfo]  # List may be empty if no employers registered.\n    }\n\nConstraints:\n    - No parameters required.\n    - Returns all employer entities currently in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_job_postings_by_employer",
+      "description": "Retrieve all job postings submitted by a particular employer.\n\nArgs:\n    employer_id (str): The unique identifier of the employer.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[JobPostingInfo],   # Job postings for this employer (empty list if none)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g., employer does not exist\n    }\n\nConstraints:\n    - The given employer_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "employer_id"
+        ]
+      }
+    },
+    {
+      "name": "list_job_postings_by_employer_and_status",
+      "description": "Retrieve all job postings for a specific employer filtered by current status.\n\nArgs:\n    employer_id (str): The unique ID of the employer.\n    status (str): The desired current status to filter by (e.g., \"open\", \"filled\", \"expired\").\n\nReturns:\n    dict: \n      {\n        \"success\": True,\n        \"data\": List[JobPostingInfo]\n      }\n      or\n      {\n        \"success\": False,\n        \"error\": str\n      }\n\nConstraints:\n    - The employer must exist in the platform.\n    - Status filtering is applied to the \"status\" field of job postings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employer_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "employer_id",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "count_job_postings_by_employer_and_status",
+      "description": "Count the number of job postings for a specific employer that have a given status.\n\nArgs:\n    employer_id (str): Identifier of the employer.\n    status (str): The job posting status to count (e.g., \"open\", \"filled\", \"expired\").\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"data\": int }\n        - On error: { \"success\": False, \"error\": str }\n\nConstraints:\n    - Employer must exist in the platform.\n    - Only postings linked to given employer_id are counted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employer_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "employer_id",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "get_job_posting_by_id",
+      "description": "Retrieve metadata for a specific job posting by its job_id.\n\nArgs:\n    job_id (str): The unique identifier of the job posting.\n\nReturns:\n    dict: \n        On success:\n            {\n              \"success\": True,\n              \"data\": JobPostingInfo  # Metadata of the job posting\n            }\n        On failure:\n            {\n              \"success\": False,\n              \"error\": \"Job posting not found\"\n            }\n\nConstraints:\n    - job_id must exist within self.job_postings.\n    - (Indirect) Job postings must be linked to a valid employer at creation but this fetch does not enforce that.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      }
+    },
+    {
+      "name": "list_job_status_history",
+      "description": "Return the full status change history (audit log) for a given job posting.\n\nArgs:\n    job_id (str): The unique identifier of the job posting.\n\nReturns:\n    dict: \n        { \"success\": True, \"data\": List[JobStatusInfo] } \n        Or { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The job posting must exist.\n    - The result is the (possibly empty) list of status changes for the job posting.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      }
+    },
+    {
+      "name": "search_job_postings",
+    "description": "Search for job postings using combined criteria. All parameters are optional.\nThe result contains only postings matching all provided filters.\n\nArgs:\n    job_id (Optional[str]): Filters to a single job posting by exact job_id. If given, must be a valid job_id.\n    employer_id (Optional[str]): Filters jobs by employer. If given, must be a valid employer_id.\n    status (Optional[str]): Only jobs matching this status (e.g., 'open', 'filled', etc.).\n    job_title_keywords (Optional[List[str]]): List of case-insensitive substrings to match in job title.\n    location (Optional[str]): Only jobs with matching location (case insensitive, exact match).\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[JobPostingInfo]\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": <reason>\n        }\n\nConstraints:\n    - If job_id is provided, it must exist.\n    - If employer_id is provided, it must exist.\n    - All filters are ANDed. An empty filter returns all postings.\n    - job_title_keywords matches if ANY of the provided words is a substring in the title.\n    - location match is case-insensitive, full string match.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "job_id": {
+          "type": "string"
+        },
+        "employer_id": {
+          "type": "string"
+        },
+          "status": {
+            "type": "string"
+          },
+          "job_title_keywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "location": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "post_new_job",
+      "description": "Create and add a new job posting to the system for a valid employer.\nThe job will have status 'open' upon creation, and an initial audit entry is recorded.\n\nArgs:\n    employer_id (str): The ID of the employer posting the job. Must be a valid employer.\n    title (str): Job title.\n    description (str): Job description.\n    location (str): Job location.\n    posting_date (str): Date of posting (ISO format preferred).\n    application_link (str): Link for job applications.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Job posted successfully\",\n        \"job_id\": <new_job_id>\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The employer_id must match an existing employer in the system.\n    - job_id is unique and assigned automatically.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employer_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "posting_date": {
+            "type": "string"
+          },
+          "application_link": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "employer_id",
+          "title",
+          "description",
+          "location",
+          "posting_date",
+          "application_link"
+        ]
+      }
+    },
+    {
+      "name": "update_job_status",
+      "description": "Change the status of a given job posting (e.g., from 'open' to 'filled' or 'expired')\nand record this change in the job's status history.\n\nArgs:\n    job_id (str): ID of the job posting to update.\n    new_status (str): New status for the job posting (e.g., 'open', 'filled', 'expired').\n    status_update_date (str): Date/time of the status update (e.g., ISO format string).\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"message\": \"Job status updated to <new_status> for job <job_id>.\"}\n        On failure:\n            {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - The job posting must exist.\n    - The status change must be recorded in job_statuses history.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          },
+          "status_update_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "new_status",
+          "status_update_date"
+        ]
+      }
+    },
+    {
+      "name": "remove_job_posting",
+      "description": "Delete a job posting and its status history from the platform.\n\nArgs:\n    job_id (str): The unique identifier for the job posting.\n\nReturns:\n    dict:\n        - On success:\n            {\"success\": True, \"message\": \"Job posting removed successfully.\"}\n        - On failure:\n            {\"success\": False, \"error\": \"Job posting not found.\"}\n\nConstraints:\n    - The job posting must exist in self.job_postings.\n    - Related status change records (if any) are also removed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      }
+    },
+    {
+      "name": "update_job_posting_metadata",
+      "description": "Modify the metadata fields (title, description, location, posting_date, application_link) of an existing job posting.\n\nArgs:\n    job_id (str): The ID of the job posting to update.\n    title (str, optional): New job title.\n    description (str, optional): New job description.\n    location (str, optional): New job location.\n    posting_date (str, optional): New posting date (ISO string or format as used in state).\n    application_link (str, optional): New application link.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Job posting metadata updated successfully\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - job_id must exist.\n    - Only attributes title, description, location, posting_date, application_link are updated.\n    - Attempting to update job_id or employer_id is ignored (not allowed).\n    - If no provided metadata fields to update, operation is a no-op but can be considered successful.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "posting_date": {
+            "type": "string"
+          },
+          "application_link": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      }
+    },
+    {
+      "name": "expire_job_postings_by_date",
+      "description": "Set status to 'expired' for all job postings whose posting_date is before the provided cutoff_date.\nAlso appends a new JobStatusInfo entry for each expired job for auditing.\n\nArgs:\n    cutoff_date (str): The cutoff date in ISO format ('YYYY-MM-DD').\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"message\": \"<N> job postings expired\"}\n        - On error: {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - Only jobs not already expired and with posting_date < cutoff_date are updated.\n    - posting_date and cutoff_date must be in a valid comparable ISO format.\n    - Each status change should be recorded in job_statuses for auditing.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cutoff_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cutoff_date"
+        ]
+      }
+    },
+    {
+      "name": "reassign_job_posting_employer",
+      "description": "Change which employer a job posting is assigned to.\n\nArgs:\n    job_id (str): The identifier of the job posting to be reassigned.\n    new_employer_id (str): The identifier of the employer to assign the posting to.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"message\": \"Job posting {job_id} reassigned to employer {new_employer_id}.\"\n        }\n      or\n        {\n            \"success\": False,\n            \"error\": <error message>\n        }\n\nConstraints:\n- The job_id must identify an existing job posting.\n- The new_employer_id must identify an existing employer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "new_employer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "new_employer_id"
+        ]
+      }
+    }
+  ]
+}

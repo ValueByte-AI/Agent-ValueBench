@@ -1,0 +1,438 @@
+{
+  "env_name": "EmailClientMailboxSystem",
+  "description": "An email client mailbox system is responsible for organizing, storing, and managing electronic messages for users in various folders such as Inbox, Sent, and Trash. This environment maintains persistent state about each user's mailboxes, including message metadata and folder assignments, and supports operations like reading, composing, deleting, and filtering emails. Such systems are crucial for personal, business, and organizational communications worldwide.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email_add": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "email_add"
+        ]
+      }
+    },
+    "mailboxes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "mailbox_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mailbox_id",
+          "name",
+          "user_id"
+        ]
+      }
+    },
+    "mails": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "mail_id": {
+            "type": "string"
+          },
+          "sender": {
+            "type": "string"
+          },
+          "receiver": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "mailbox_id": {
+            "type": "string"
+          },
+          "read_sta": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "mail_id",
+          "sender",
+          "receiver",
+          "subject",
+          "body",
+          "timestamp",
+          "mailbox_id",
+          "read_sta"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_name": [
+      "users"
+    ],
+    "get_user_by_email": [
+      "users"
+    ],
+    "list_user_mailboxes": [
+      "mailboxes",
+      "users"
+    ],
+    "get_mailbox_by_name": [
+      "mailboxes",
+      "users"
+    ],
+    "list_emails_in_mailbox": [
+      "mailboxes",
+      "mails"
+    ],
+    "count_emails_in_mailbox": [
+      "mailboxes",
+      "mails"
+    ],
+    "list_unread_emails_in_mailbox": [
+      "mailboxes",
+      "mails"
+    ],
+    "count_unread_emails_in_mailbox": [
+      "mailboxes",
+      "mails"
+    ],
+    "get_email_metadata": [
+      "mails"
+    ],
+    "get_email_by_id": [
+      "mails"
+    ],
+    "move_email_to_mailbox": [
+      "mailboxes",
+      "mails"
+    ],
+    "mark_email_as_read": [
+      "mails"
+    ],
+    "mark_email_as_unread": [
+      "mails"
+    ],
+    "compose_and_send_email": [
+      "mailboxes",
+      "mails",
+      "users"
+    ],
+    "permanently_delete_email": [
+      "mailboxes",
+      "mails"
+    ],
+    "create_mailbox": [
+      "mailboxes",
+      "users"
+    ],
+    "delete_mailbox": [
+      "mailboxes",
+      "mails"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_name",
+      "description": "Get user information dictionary by user name.\n\nArgs:\n    name (str): The exact name of the user to search for.\n\nReturns:\n    dict: \n    - success True: {\"success\": True, \"data\": UserInfo}, if a user is found with the given name\n    - success False: {\"success\": False, \"error\": \"User not found\"}, if no such user exists\n\nNotes:\n    - If multiple users have the same name, returns the first one found.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_email",
+      "description": "Retrieve user info by email address.\n\nArgs:\n    email_address (str): The email address to search for.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"data\": UserInfo}\n        - On failure: {\"success\": False, \"error\": \"User with that email not found\"}\n\nConstraints:\n    - Email addresses are unique to each user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "email_address": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email_address"
+        ]
+      }
+    },
+    {
+      "name": "list_user_mailboxes",
+      "description": "List all mailboxes (folders) belonging to a specific user.\n\nArgs:\n    user_id (str): The unique user identifier.\n\nReturns:\n    dict: \n        { \"success\": True, \"data\": List[MailboxInfo] }\n        or\n        { \"success\": False, \"error\": str }\nConstraints:\n    - The user must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_mailbox_by_name",
+      "description": "Retrieve a mailbox (folder) for a given user by its name.\n\nArgs:\n    user_id (str): The user identifier.\n    mailbox_name (str): The name of the mailbox/folder (e.g., 'Inbox', 'Sent', 'Trash').\n\nReturns:\n    dict: \n        - On success:\n            {\"success\": True, \"data\": MailboxInfo}\n        - On failure:\n            {\"success\": False, \"error\": str}\n\nConstraints:\n    - Mailboxes must belong to a single user (MailboxInfo.user_id = user_id).\n    - Mailbox name must match exactly.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "mailbox_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "mailbox_name"
+        ]
+      }
+    },
+    {
+      "name": "list_emails_in_mailbox",
+      "description": "List all emails assigned to a specific mailbox.\n\nArgs:\n    mailbox_id (str): The ID of the mailbox/folder.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MailInfo]  # List of mails in this mailbox (empty list if none)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If mailbox does not exist\n    }\n\nConstraints:\n    - Mailbox with the given ID must exist.\n    - All emails listed will have MailInfo.mailbox_id == mailbox_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mailbox_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mailbox_id"
+        ]
+      }
+    },
+    {
+      "name": "count_emails_in_mailbox",
+      "description": "Return the total number of emails in a given mailbox.\n\nArgs:\n    mailbox_id (str): The unique identifier of the mailbox folder.\n\nReturns:\n    dict:\n        { \"success\": True, \"data\": int }             # On success, count of emails in the mailbox\n        { \"success\": False, \"error\": str }           # If mailbox does not exist\n\nConstraints:\n    - The mailbox_id must exist in the system.\n    - Counts all emails where mail.mailbox_id == mailbox_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mailbox_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mailbox_id"
+        ]
+      }
+    },
+    {
+      "name": "list_unread_emails_in_mailbox",
+      "description": "List all unread emails in the specified mailbox.\n\nArgs:\n    mailbox_id (str): The ID of the mailbox to search in.\n\nReturns:\n    dict:\n        On success: {\n            \"success\": True,\n            \"data\": List[MailInfo],  # List of all unread emails in the mailbox\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": str,  # Error message, e.g., mailbox does not exist\n        }\n\nConstraints:\n    - The mailbox must exist.\n    - Only mails with mail_info.read_sta == False are included.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mailbox_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mailbox_id"
+        ]
+      }
+    },
+    {
+      "name": "count_unread_emails_in_mailbox",
+      "description": "Count the number of unread emails in the specified mailbox.\n\nArgs:\n    mailbox_id (str): The identifier for the mailbox.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": int    # The count of unread emails\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str   # Description, e.g. mailbox does not exist\n    }\n\nConstraints:\n    - The specified mailbox must exist.\n    - Only mails with read_sta == False (unread) are counted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mailbox_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mailbox_id"
+        ]
+      }
+    },
+    {
+      "name": "get_email_metadata",
+      "description": "Retrieve metadata (subject, sender, timestamp, read status) for a given email.\n\nArgs:\n    mail_id (str): The unique identifier of the email.\n\nReturns:\n    dict: On success,\n        {\n            \"success\": True,\n            \"data\": {\n                \"subject\": str,\n                \"sender\": str,\n                \"timestamp\": str,\n                \"read_sta\": bool\n            }\n        }\n        On error,\n        {\n            \"success\": False,\n            \"error\": str  # e.g. \"Email not found.\"\n        }\n\nConstraints:\n    - The email with the given mail_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mail_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mail_id"
+        ]
+      }
+    },
+    {
+      "name": "get_email_by_id",
+      "description": "Retrieve full detail of an email by its mail_id.\n\nArgs:\n    mail_id (str): The unique ID of the email to retrieve.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": MailInfo\n    } on success, or\n    {\n        \"success\": False,\n        \"error\": str  # Reason (e.g. 'Email not found')\n    } on error.\n\nConstraints:\n    - The mail must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mail_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mail_id"
+        ]
+      }
+    },
+    {
+      "name": "move_email_to_mailbox",
+      "description": "Move an email to a different mailbox (e.g., Inbox → Trash for delete).\n\nArgs:\n    mail_id (str): The unique identifier of the email to be moved.\n    target_mailbox_id (str): The target mailbox's identifier.\n\nReturns:\n    dict: \n        On success:\n            { \"success\": True, \"message\": \"Email moved to mailbox 'NAME'.\" }\n        On failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - mail_id must exist.\n    - target_mailbox_id must exist.\n    - Both the current and target mailbox must belong to the same user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mail_id": {
+            "type": "string"
+          },
+          "target_mailbox_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mail_id",
+          "target_mailbox_id"
+        ]
+      }
+    },
+    {
+      "name": "mark_email_as_read",
+      "description": "Set the read status of a specific email to True.\n\nArgs:\n    mail_id (str): The unique identifier of the email to be marked as read.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"message\": \"Email marked as read\"}\n        On failure:\n            {\"success\": False, \"error\": <reason string>}\n\nConstraints:\n    - The provided mail_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mail_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mail_id"
+        ]
+      }
+    },
+    {
+      "name": "mark_email_as_unread",
+      "description": "Set the read status of a specific email (by mail_id) to False.\n\nArgs:\n    mail_id (str): The unique ID of the email to update.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Email marked as unread.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Email not found\"\n    }\n\nConstraints:\n    - The mail_id must correspond to an existing email.\n    - Operation is idempotent (multiple calls have same effect).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mail_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mail_id"
+        ]
+      }
+    },
+    {
+      "name": "compose_and_send_email",
+      "description": "Create and send an email from sender to receiver.\n\nArgs:\n    sender_email (str): The sender's email address.\n    receiver_email (str): The recipient's email address.\n    subject (str): The email subject text.\n    body (str): The email message body.\n\nReturns:\n    dict: \n      - On success: {\n          \"success\": True,\n          \"message\": \"Email sent successfully\",\n          \"mail_id\": <mail_id>  # Mail ID of sent email object (sender's copy)\n      }\n      - On failure: {\n          \"success\": False,\n          \"error\": <reason>\n      }\n\nConstraints:\n    - Sender and receiver must exist in the system.\n    - Sender must have a \"Sent\" mailbox; receiver must have an \"Inbox\" mailbox.\n    - An email is stored as two separate objects (one in each user's mailbox).\n    - Sent copy is 'read', inbox copy is 'unread'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sender_email": {
+            "type": "string"
+          },
+          "receiver_email": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sender_email",
+          "receiver_email",
+          "subject",
+          "body"
+        ]
+      }
+    },
+    {
+      "name": "permanently_delete_email",
+      "description": "Permanently deletes an email from the system, but only if it is currently in a mailbox named \"Trash\".\n\nArgs:\n    mail_id (str): The unique identifier of the email to be permanently deleted.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Email permanently deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": Error message describing what failed.\n    }\n\nConstraints:\n    - Email must exist.\n    - Associated mailbox must exist and must be named \"Trash\".\n    - Only then will the email be deleted from storage.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mail_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mail_id"
+        ]
+      }
+    },
+    {
+      "name": "create_mailbox",
+      "description": "Add a new mailbox (folder) for a user.\n\nArgs:\n    user_id (str): User identifier to own the mailbox.\n    mailbox_name (str): Name of the mailbox/folder.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Mailbox created for user.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - user_id must exist.\n    - mailbox_name must not be empty.\n    - mailbox_name must be unique for this user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "mailbox_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "mailbox_name"
+        ]
+      }
+    },
+    {
+      "name": "delete_mailbox",
+      "description": "Remove an existing mailbox identified by mailbox_id, if allowed.\n\nArgs:\n    mailbox_id (str): The identifier of the mailbox to delete.\n\nReturns:\n    dict: \n        - { \"success\": True,  \"message\": \"Mailbox deleted.\" }\n        - { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints / Rules:\n    - System mailboxes (Inbox, Sent, Trash) cannot be deleted.\n    - Mailbox must exist.\n    - Mailbox must be empty (no mails assigned to it).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mailbox_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mailbox_id"
+        ]
+      }
+    }
+  ]
+}

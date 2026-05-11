@@ -1,0 +1,521 @@
+{
+  "env_name": "DatabaseManagementWithBackupScheduling",
+  "description": "A Database Management System with backup scheduling maintains structured data organized by identifiers and supports advanced data management operations, including automated backups. It tracks the state of data entities, backup histories, and scheduled tasks, enabling administrators to ensure data integrity and recoverability. This environment is widely used in enterprise, web, and cloud applications where scheduled data protection is essential.",
+  "initial_parameter_schema": {
+    "data_entities": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "data_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "last_modified": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "data_id",
+          "name",
+          "owner",
+          "last_modified",
+          "size"
+        ]
+      }
+    },
+    "backup_schedules": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          },
+          "data_id": {
+            "type": "string"
+          },
+          "time_of_day": {
+            "type": "string"
+          },
+          "frequency": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schedule_id",
+          "data_id",
+          "time_of_day",
+          "frequency",
+          "status"
+        ]
+      }
+    },
+    "backup_jobs": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "schedule_id": {
+            "type": "string"
+          },
+          "data_id": {
+            "type": "string"
+          },
+          "scheduled_time": {
+            "type": "string"
+          },
+          "actual_start_time": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "completion_time": {
+            "type": "string"
+          },
+          "result": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_data_by_id": [
+      "data_entities"
+    ],
+    "list_all_data_entities": [
+      "data_entities"
+    ],
+    "get_data_by_name": [
+      "data_entities"
+    ],
+    "list_backup_schedules_for_data": [
+      "backup_schedules",
+      "data_entities"
+    ],
+    "get_backup_schedule_by_id": [
+      "backup_schedules"
+    ],
+    "check_overlapping_schedules": [
+      "backup_schedules",
+      "data_entities"
+    ],
+    "list_backup_jobs_for_data": [
+      "backup_jobs",
+      "data_entities"
+    ],
+    "list_backup_jobs_for_schedule": [
+      "backup_jobs",
+      "backup_schedules"
+    ],
+    "get_backup_job_by_id": [
+      "backup_jobs"
+    ],
+    "create_backup_schedule": [
+      "backup_schedules",
+      "data_entities"
+    ],
+    "modify_backup_schedule": [
+      "backup_schedules",
+      "data_entities"
+    ],
+    "delete_backup_schedule": [
+      "backup_jobs",
+      "backup_schedules"
+    ],
+    "set_schedule_status": [
+      "backup_schedules"
+    ],
+    "manually_trigger_backup_job": [
+      "backup_jobs",
+      "backup_schedules",
+      "data_entities"
+    ],
+    "update_backup_job_status": [
+      "backup_jobs"
+    ],
+    "delete_backup_job": [
+      "backup_jobs"
+    ],
+    "create_data_entity": [
+      "data_entities"
+    ],
+    "modify_data_entity": [
+      "data_entities"
+    ],
+    "delete_data_entity": [
+      "backup_jobs",
+      "backup_schedules",
+      "data_entities"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_data_by_id",
+      "description": "Retrieve the details of a data entity given its data_id.\n\nArgs:\n    data_id (str): The identifier of the data entity to be retrieved.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": DataEntityInfo  # Info about the data entity\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If data_id does not exist\n    }\n\nConstraints:\n    - data_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "data_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "data_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_data_entities",
+      "description": "List all data entities managed by the system.\n\nArgs:\n    None.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DataEntityInfo]  # List of all data entities (could be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Only if an unexpected error occurred (not expected)\n    }\n\nConstraints:\n    - None specific; readonly operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_data_by_name",
+      "description": "Query a data entity by its human-readable name.\n\nArgs:\n    name (str): The name of the data entity to search for.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": DataEntityInfo  # The matching data entity's information.\n            }\n        - On failure (not found):\n            {\n                \"success\": False,\n                \"error\": \"No data entity with the specified name found\"\n            }\n\nNotes:\n    - If multiple entities have the same name, the first one found is returned.\n    - The match is case-sensitive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "list_backup_schedules_for_data",
+      "description": "List all backup schedules associated with a given data_id.\n\nArgs:\n    data_id (str): The unique ID of the data entity.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BackupScheduleInfo]  # May be empty if no schedules exist for data_id\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g. \"Data entity does not exist\"\n    }\n\nConstraints:\n    - The data_id must exist in self.data_entities.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "data_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "data_id"
+        ]
+      }
+    },
+    {
+      "name": "get_backup_schedule_by_id",
+      "description": "Retrieve details of a backup schedule given its schedule_id.\n\nArgs:\n    schedule_id (str): The unique identifier of the backup schedule to retrieve.\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"data\": BackupScheduleInfo  # The schedule's information\n        }\n        On failure (e.g., schedule_id does not exist):\n        {\n            \"success\": False,\n            \"error\": \"Schedule not found\"\n        }\n\nConstraints:\n    - schedule_id must exist in the backup_schedules.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schedule_id"
+        ]
+      }
+    },
+    {
+      "name": "check_overlapping_schedules",
+      "description": "Determine whether placing or keeping a schedule for a given data_id at a specified time_of_day and frequency would conflict with active schedules.\n\nArgs:\n    data_id (str): The identifier of the data entity to check.\n    time_of_day (str): The backup time (e.g., \"22:00\").\n    frequency (str): The recurrence period (e.g., \"daily\", \"weekly\").\n\nReturns:\n    dict: \n        - On success: {\n            \"success\": True,\n            \"data\": List[BackupScheduleInfo]  # matching active conflicts (may be empty)\n          }\n        - On error: {\n            \"success\": False,\n            \"error\": str\n          }\nConstraints:\n    - Only 'active' schedules are considered.\n    - The daily 00:00 slot is treated as a system-wide guarded window.\n    - Other slots are checked within the same data entity.\n    - If data_id does not exist, it's an error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "data_id": {
+            "type": "string"
+          },
+          "time_of_day": {
+            "type": "string"
+          },
+          "frequency": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "data_id",
+          "time_of_day",
+          "frequency"
+        ]
+      }
+    },
+    {
+      "name": "list_backup_jobs_for_data",
+      "description": "List all backup jobs executed/created for a specific data entity (data_id).\n\nArgs:\n    data_id (str): The identifier of the data entity.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BackupJobInfo]  # List of backup jobs for this data entity (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g., data entity does not exist)\n    }\n\nConstraints:\n    - The provided data_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "data_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "data_id"
+        ]
+      }
+    },
+    {
+      "name": "list_backup_jobs_for_schedule",
+      "description": "List all backup jobs triggered by a specific backup schedule.\n\nArgs:\n    schedule_id (str): The identifier of the backup schedule.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[BackupJobInfo],    # List of backup jobs associated with the schedule (may be empty)\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str    # Reason for failure, e.g. \"Backup schedule does not exist\"\n        }\n\nConstraints:\n    - The specified schedule_id must exist in the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schedule_id"
+        ]
+      }
+    },
+    {
+      "name": "get_backup_job_by_id",
+      "description": "Retrieve detailed information about a specific backup job given its job_id.\n\nArgs:\n    job_id (str): The unique identifier for the backup job.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": BackupJobInfo  # All metadata of the backup job\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g. job not found\n    }\n\nConstraints:\n    - job_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      }
+    },
+    {
+      "name": "create_backup_schedule",
+      "description": "Create a new backup schedule for a data entity.\n\nArgs:\n    data_id (str): The ID of the data entity to back up.\n    time_of_day (str): Time for the backup (e.g., '22:00').\n    frequency (str): Frequency of the backup (e.g., 'daily', 'weekly').\n    status (str): Initial status of the backup schedule ('active' or 'inactive').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Backup schedule created\",\n        \"schedule_id\": <newly_created_schedule_id>\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<error message>\"\n    }\n\nConstraints:\n    - data_id must exist in data_entities.\n    - The daily 00:00 slot can have only one active BackupSchedule system-wide.\n    - Other slots disallow overlap only within the same data entity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "data_id": {
+            "type": "string"
+          },
+          "time_of_day": {
+            "type": "string"
+          },
+          "frequency": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "data_id",
+          "time_of_day",
+          "frequency",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "modify_backup_schedule",
+      "description": "Edit the time_of_day, frequency, or status of an existing backup schedule.\n\nArgs:\n    schedule_id (str): The backup schedule to modify.\n    time_of_day (Optional[str]): New time of day (e.g., \"02:00\").\n    frequency (Optional[str]): New frequency (e.g., \"daily\", \"weekly\").\n    status (Optional[str]): New status (e.g., \"active\", \"inactive\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Backup schedule modified successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\nConstraints:\n    - schedule_id must exist.\n    - BackupSchedule must remain linked to a valid DataEntity.\n    - The daily 00:00 slot can have only one active BackupSchedule system-wide.\n    - Other slots disallow overlap only within the same data entity.\n    - At least one of time_of_day, frequency, or status must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          },
+          "time_of_day": {
+            "type": "string"
+          },
+          "frequency": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schedule_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_backup_schedule",
+      "description": "Remove (cancel) a backup schedule from the system by schedule_id.\nAlso deletes all BackupJob records associated with this schedule.\n\nArgs:\n    schedule_id (str): The unique identifier of the backup schedule to remove.\n\nReturns:\n    dict:\n        Success: { \"success\": True, \"message\": \"Backup schedule deleted\" }\n        Failure: { \"success\": False, \"error\": \"Backup schedule does not exist\" }\n\nConstraints:\n    - schedule_id must exist in the system.\n    - Deletes related BackupJob entries for this schedule.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schedule_id"
+        ]
+      }
+    },
+    {
+      "name": "set_schedule_status",
+      "description": "Activate or deactivate a backup schedule (toggle between 'active' and 'inactive').\n\nArgs:\n    schedule_id (str): Identifier of the BackupSchedule to update.\n    status (str): Target status (\"active\" or \"inactive\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Schedule status updated to <status>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Schedule must exist.\n    - Status must be \"active\" or \"inactive\".\n    - Activating a schedule is subject to the same guarded-window and per-entity overlap rules used by schedule creation and modification.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schedule_id",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "manually_trigger_backup_job",
+      "description": "Immediately start a backup job for a given schedule and data entity (outside of scheduled time).\n\nArgs:\n    schedule_id (str): The backup schedule to use for this manual job.\n    data_id (str): The data entity to back up.\n\nReturns:\n    dict: On success:\n            {\n                \"success\": True,\n                \"message\": \"Backup job manually triggered with job_id=<job_id>\"\n            }\n          On failure:\n            {\n                \"success\": False,\n                \"error\": <reason>\n            }\n\nConstraints:\n    - BackupSchedule must exist and be \"active\".\n    - DataEntity must exist and match the schedule's data_id.\n    - Creates and starts a BackupJob immediately (status: \"running\"),\n      with both scheduled_time and actual_start_time set to now.\n    - Completes only job creation; actual backup completion is separate.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          },
+          "data_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schedule_id",
+          "data_id"
+        ]
+      }
+    },
+    {
+      "name": "update_backup_job_status",
+      "description": "Manually adjust the status of a backup job.\n\nArgs:\n    job_id (str): The job to update.\n    new_status (str): The new status (\"scheduled\", \"running\", \"completed\", \"failed\").\n    actual_start_time (Optional[str]): Set if status moves to \"running\".\n    completion_time (Optional[str]): Set if status moves to \"completed\"/\"failed\".\n    result (Optional[str]): Result information for completed/failed jobs.\n\nReturns:\n    dict: Success or failure information.\n\nConstraints:\n    - The job must exist.\n    - Only valid transitions are allowed:\n        \"scheduled\" → \"running\"\n        \"running\" → \"completed\"/\"failed\"\n        \"failed\" → \"scheduled\" (reset)\n    - Updates appropriate timestamps and result fields.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          },
+          "actual_start_time": {
+            "type": "string"
+          },
+          "completion_time": {
+            "type": "string"
+          },
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "delete_backup_job",
+      "description": "Remove a backup job record from the backup job history.\n\nArgs:\n    job_id (str): The unique identifier of the backup job to be deleted.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Backup job <job_id> deleted.\"\n            }\n        On failure (backup job does not exist):\n            {\n                \"success\": False,\n                \"error\": \"Backup job not found.\"\n            }\n\nConstraints:\n    - The backup job must exist in the system to be deleted.\n    - No status or dependency checks are required for deletion.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      }
+    },
+    {
+      "name": "create_data_entity",
+      "description": "Add a new data entity to the database management system.\n\nArgs:\n    data_id (str): Unique identifier for the data entity.\n    name (str): Name of the data entity.\n    owner (str): Owner of the data entity.\n    last_modified (str): Last modified time (ISO timestamp).\n    size (float): Size of the data entity.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Data entity <data_id> created.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Data entity with this ID already exists.\"\n    }\n\nConstraints:\n    - data_id must be unique within self.data_entities.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "data_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "last_modified": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "data_id",
+          "name",
+          "owner",
+          "last_modified",
+          "size"
+        ]
+      }
+    },
+    {
+      "name": "modify_data_entity",
+      "description": "Update metadata (name, owner) for an existing data entity.\n\nArgs:\n    data_id (str): Identifier for the data entity to modify.\n    name (Optional[str]): New name for the data entity (if any).\n    owner (Optional[str]): New owner for the data entity (if any).\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Data entity updated successfully\" }\n        On failure: { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - data_id must exist in the data_entities.\n    - At least one of `name` or `owner` must be provided.\n    - Updates last_modified timestamp to current time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "data_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "data_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_data_entity",
+      "description": "Remove a data entity and all associated backup schedules and backup jobs.\n\nArgs:\n    data_id (str): The identifier of the data entity to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Data entity and all associated schedules and jobs deleted.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - The data entity must exist.\n    - All associated BackupSchedule and BackupJob records (by data_id and schedule_id) are also deleted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "data_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "data_id"
+        ]
+      }
+    }
+  ]
+}

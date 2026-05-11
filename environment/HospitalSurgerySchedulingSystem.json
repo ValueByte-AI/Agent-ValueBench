@@ -1,0 +1,573 @@
+{
+  "env_name": "HospitalSurgerySchedulingSystem",
+  "description": "A hospital surgery scheduling system is a specialized environment for managing surgical procedure queues, patient records, and hospital resources. It tracks upcoming surgeries, patient details, procedure types, and waitlist status for each hospital, enabling efficient scheduling, registration, and prioritization. Such systems are integral to healthcare operations, ensuring organized access to surgical services and resource allocation.",
+  "initial_parameter_schema": {
+    "patients": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "DOB": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "medical_history": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id",
+          "name",
+          "DOB",
+          "contact_info",
+          "medical_history"
+        ]
+      }
+    },
+    "hospitals": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "hospital_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "available_resources": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "hospital_id",
+          "name",
+          "location",
+          "available_resources"
+        ]
+      }
+    },
+    "procedures": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "procedure_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "typical_duration": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "procedure_id",
+          "name",
+          "category",
+          "typical_duration"
+        ]
+      }
+    },
+    "surgery_waitlist": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "entry_id": {
+            "type": "string"
+          },
+          "hospital_id": {
+            "type": "string"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "procedure_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entry_id",
+          "hospital_id",
+          "patient_id",
+          "procedure_id",
+          "timestamp",
+          "status"
+        ]
+      }
+    },
+    "scheduled_surgeries": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "surgery_id": {
+            "type": "string"
+          },
+          "hospital_id": {
+            "type": "string"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "procedure_id": {
+            "type": "string"
+          },
+          "scheduled_time": {
+            "type": "string"
+          },
+          "assigned_resources": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "surgery_id",
+          "hospital_id",
+          "patient_id",
+          "procedure_id",
+          "scheduled_time",
+          "assigned_resources",
+          "status"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_patient_by_name": [
+      "patients"
+    ],
+    "get_patient_by_id": [
+      "patients"
+    ],
+    "list_all_patients": [
+      "patients"
+    ],
+    "get_hospital_by_id": [
+      "hospitals"
+    ],
+    "list_all_hospitals": [
+      "hospitals"
+    ],
+    "get_procedure_by_name": [
+      "procedures"
+    ],
+    "list_hospital_procedures": [
+      "hospitals",
+      "procedures"
+    ],
+    "get_waitlist_entry": [
+      "surgery_waitlist"
+    ],
+    "list_waitlist_for_hospital": [
+      "hospitals",
+      "surgery_waitlist"
+    ],
+    "list_waitlist_for_procedure": [
+      "hospitals",
+      "procedures",
+      "surgery_waitlist"
+    ],
+    "check_resource_availability": [
+      "hospitals"
+    ],
+    "add_waitlist_entry": [
+      "hospitals",
+      "patients",
+      "procedures",
+      "surgery_waitlist"
+    ],
+    "update_waitlist_entry_status": [
+      "surgery_waitlist"
+    ],
+    "remove_waitlist_entry": [
+      "surgery_waitlist"
+    ],
+    "schedule_surgery": [
+      "hospitals",
+      "patients",
+      "procedures",
+      "scheduled_surgeries",
+      "surgery_waitlist"
+    ],
+    "update_hospital_resources": [
+      "hospitals"
+    ],
+    "update_patient_info": [
+      "patients"
+    ],
+    "update_procedure_info": [
+      "procedures"
+    ],
+    "update_surgery_status": [
+      "scheduled_surgeries"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_patient_by_name",
+      "description": "Retrieve information for all patients with the given name.\n\nArgs:\n    name (str): The patient's name to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PatientInfo]  # All matching patients (may be empty if none)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # No patient found with the given name\n    }\n\nNotes:\n    - Patient names are not guaranteed unique; returns all exact matches.\n    - If no patient found, returns an error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_patient_by_id",
+      "description": "Retrieve a patient's information by patient_id.\n\nArgs:\n    patient_id (str): Unique identifier of the patient.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": PatientInfo  # On successful retrieval\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If the patient_id does not exist\n    }\n\nConstraints:\n    - patient_id must exist within self.patients.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_patients",
+      "description": "Return a list of all registered patients.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PatientInfo]  # May be empty if no patients are registered.\n    }\nConstraints:\n    None.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_hospital_by_id",
+      "description": "Fetch the details for a hospital (name, location, available resources) with the given hospital_id.\n\nArgs:\n    hospital_id (str): Unique identifier for the hospital.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": HospitalInfo  # keys: hospital_id, name, location, available_resources\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description if hospital_id not found.\n    }\n\nConstraints:\n    - The hospital must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hospital_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "hospital_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_hospitals",
+      "description": "List all hospitals registered in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[HospitalInfo]  # List of hospital info dicts; may be empty if system has no hospitals\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_procedure_by_name",
+      "description": "Retrieve procedure info given its name.\n\nArgs:\n    name (str): The name of the procedure to search for (case-sensitive).\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": ProcedureInfo\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": \"Procedure not found\"\n            }\nConstraints:\n    - If there is no procedure with the given name, return error.\n    - Name matching is case-sensitive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "list_hospital_procedures",
+      "description": "List all procedures available at a given hospital.\n\nArgs:\n    hospital_id (str): The unique identifier for the hospital.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ProcedureInfo],  # All procedures (may be empty if none present)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., hospital does not exist\n    }\n\nConstraints:\n    - The hospital must exist.\n    - If no procedures are present, returns empty list.\n    - Assumes all procedures are available at all hospitals in this implementation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hospital_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "hospital_id"
+        ]
+      }
+    },
+    {
+      "name": "get_waitlist_entry",
+      "description": "Retrieve the waitlist entry for a given patient, hospital, and procedure combination\n(used to check uniqueness constraint before adding a new entry).\n\nArgs:\n    hospital_id (str): ID of the hospital.\n    patient_id (str): ID of the patient.\n    procedure_id (str): ID of the surgical procedure.\n\nReturns:\n    dict: { \n        \"success\": True,\n        \"data\": SurgeryWaitlistEntryInfo or None  # The matching entry, or None if not found\n    }\nConstraints:\n    - Does not error if entities don't exist, just checks for a matching combination in waitlist.\n    - At most one entry should exist per the system’s constraints.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hospital_id": {
+            "type": "string"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "procedure_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "hospital_id",
+          "patient_id",
+          "procedure_id"
+        ]
+      }
+    },
+    {
+      "name": "list_waitlist_for_hospital",
+      "description": "List all waitlist entries for the specified hospital.\n\nArgs:\n    hospital_id (str): The ID of the hospital.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SurgeryWaitlistEntryInfo]  # May be empty if no entries\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If the hospital does not exist\n    }\n\nConstraints:\n    - Hospital must exist.\n    - Only entries belonging to given hospital_id are included.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hospital_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "hospital_id"
+        ]
+      }
+    },
+    {
+      "name": "list_waitlist_for_procedure",
+      "description": "List all surgery waitlist entries for a given procedure at a specified hospital.\n\nArgs:\n    hospital_id (str): The ID of the hospital.\n    procedure_id (str): The ID of the surgical procedure.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SurgeryWaitlistEntryInfo]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Returns only entries where both the hospital and procedure exist.\n    - Returns an empty list if no entries are found for the given criteria.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hospital_id": {
+            "type": "string"
+          },
+          "procedure_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "hospital_id",
+          "procedure_id"
+        ]
+      }
+    },
+    {
+      "name": "check_resource_availability",
+      "description": "Query the available resources at a specified hospital.\n\nArgs:\n    hospital_id (str): The unique identifier for the hospital to query.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": str  # Available resources information\n        }\n    or\n        {\n            \"success\": False,\n            \"error\": str  # Description of error (e.g., hospital does not exist)\n        }\n\nConstraints:\n    - The hospital with the given hospital_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hospital_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "hospital_id"
+        ]
+      }
+    },
+    {
+      "name": "add_waitlist_entry",
+      "description": "Add a new entry to the surgery waitlist for a patient/procedure/hospital, subject to constraints:\n  - Patient, hospital, and procedure must exist.\n  - Patient cannot already be on the waitlist for the same procedure and hospital at the same time (unless status is 'removed').\n  - New entry receives a unique entry_id.\n\nArgs:\n    patient_id (str): The ID of the patient to be added to the waitlist.\n    hospital_id (str): The hospital in which the procedure is requested.\n    procedure_id (str): The surgical procedure being requested.\n    timestamp (str): The timestamp of request (e.g., ISO format).\n    status (str, optional): Initial waitlist status. Default is 'waiting'.\n\nReturns:\n    dict: {\n      \"success\": True, \n      \"message\": \"Waitlist entry added\", \n      \"entry_id\": <entry_id>\n    }\n    Or {\n      \"success\": False,\n      \"error\": <reason>\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          },
+          "hospital_id": {
+            "type": "string"
+          },
+          "procedure_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id",
+          "hospital_id",
+          "procedure_id",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "update_waitlist_entry_status",
+      "description": "Change the status of a waitlist entry (e.g., from waiting to scheduled or removed).\n\nArgs:\n    entry_id (str): The unique identifier of the waitlist entry.\n    new_status (str): The new status to set (e.g., \"waiting\", \"scheduled\", \"removed\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Waitlist entry status updated to <new_status>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error\n    }\n\nConstraints:\n    - The waitlist entry must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entry_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entry_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "remove_waitlist_entry",
+      "description": "Remove an entry from the surgery waitlist using its entry_id.\n\nArgs:\n    entry_id (str): Unique identifier of the waitlist entry.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Waitlist entry removed.\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Entry must exist in the current surgery waitlist to be removed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entry_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entry_id"
+        ]
+      }
+    },
+    {
+      "name": "schedule_surgery",
+      "description": "Move an eligible waitlist entry into a scheduled surgery, allocating hospital resources.\n\nArgs:\n    entry_id (str): ID of the waitlist entry to promote to scheduled surgery.\n    scheduled_time (str): When the surgery is to be scheduled.\n    assigned_resources (str): Resources (as a string) to allocate from the hospital.\n\nReturns:\n    dict:\n        On success: {\n            \"success\": True,\n            \"message\": \"Surgery scheduled for patient X at hospital Y for procedure Z.\"\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": \"reason\"\n        }\n\nConstraints:\n    - Waitlist entry must exist and be in eligible status (e.g., 'waiting').\n    - Referenced hospital, patient, and procedure must exist.\n    - Only available hospital resources can be allocated to scheduled surgeries.\n    - On success, the status of the waitlist entry is updated to 'scheduled'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entry_id": {
+            "type": "string"
+          },
+          "scheduled_time": {
+            "type": "string"
+          },
+          "assigned_resources": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entry_id",
+          "scheduled_time",
+          "assigned_resources"
+        ]
+      }
+    },
+    {
+      "name": "update_hospital_resources",
+      "description": "Adjust hospital available resources (e.g., after surgery is scheduled or resources are freed).\n\nArgs:\n    hospital_id (str): The unique identifier for the hospital whose resources are to be updated.\n    new_available_resources (str): The new descriptor for available resources.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Hospital resources updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Hospital not found\"\n    }\n\nConstraints:\n    - The hospital_id must correspond to an existing hospital.\n    - new_available_resources is treated as a string per HospitalInfo definition.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hospital_id": {
+            "type": "string"
+          },
+          "new_available_resources": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "hospital_id",
+          "new_available_resources"
+        ]
+      }
+    },
+    {
+      "name": "update_patient_info",
+      "description": "Modify patient records fields (name, DOB, contact_info, medical_history) for a given patient.\n\nArgs:\n    patient_id (str): The unique patient identifier to update.\n    name (str, optional): New name for the patient.\n    DOB (str, optional): New date of birth.\n    contact_info (str, optional): New contact information.\n    medical_history (str, optional): New medical history summary or notes.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Patient info updated.\" }\n        On failure: { \"success\": False, \"error\": \"<description>\" }\n\nConstraints:\n    - patient_id must exist in the environment's patient records.\n    - Only updates fields provided (and recognized).\n    - patient_id cannot be changed by this method.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "DOB": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "medical_history": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      }
+    },
+    {
+      "name": "update_procedure_info",
+      "description": "Modify mutable fields of a surgery/procedure.\n\nArgs:\n    procedure_id (str): ID of the procedure to be updated.\n    name (str, optional): New name for the procedure.\n    category (str, optional): New category.\n    typical_duration (float, optional): New typical duration (hours).\n\nReturns:\n    dict:\n        On success: {\"success\": True, \"message\": \"Procedure info updated\"}\n        On failure: {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - procedure_id must exist in the system.\n    - typical_duration must be positive if provided.\n    - At least one updatable field must be given.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "procedure_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "typical_duration": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "procedure_id"
+        ]
+      }
+    },
+    {
+      "name": "update_surgery_status",
+      "description": "Change the status of a scheduled surgery.\n\nArgs:\n    surgery_id (str): The unique identifier for the scheduled surgery.\n    new_status (str): The new status to assign (e.g., \"completed\", \"cancelled\", \"rescheduled\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Surgery status updated to <new_status>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The surgery_id must exist in the scheduled surgeries.\n    - No other scheduling rules restrict direct status update.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "surgery_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "surgery_id",
+          "new_status"
+        ]
+      }
+    }
+  ]
+}

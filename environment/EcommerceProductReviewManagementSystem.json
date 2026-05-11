@@ -1,0 +1,456 @@
+{
+  "env_name": "EcommerceProductReviewManagementSystem",
+  "description": "An e-commerce product review management system collects, organizes, and stores user ratings and reviews for products listed in an online marketplace. It maintains structured data about products, users, review content, timestamps, and associated ratings, supporting search, filtering, and retrieval operations for monitoring product feedback. This environment enables vendors and customers to interact through review submission, moderation, and consumption functionalities within the e-commerce platform.",
+  "initial_parameter_schema": {
+    "products": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "vendor_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "name",
+          "category",
+          "vendor_id"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "account_status"
+        ]
+      }
+    },
+    "reviews": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "type": "string"
+          },
+          "product_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "integer"
+          },
+          "content": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "moderation_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id",
+          "product_id",
+          "user_id",
+          "rating",
+          "content",
+          "timestamp",
+          "moderation_status"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_product_by_id": [
+      "products"
+    ],
+    "list_products_by_vendor": [
+      "products"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "list_reviews_by_product": [
+      "products",
+      "reviews"
+    ],
+    "list_reviews_by_product_and_date_range": [
+      "products",
+      "reviews"
+    ],
+    "list_reviews_by_user": [
+      "reviews",
+      "users"
+    ],
+    "list_reviews_by_moderation_status": [
+      "reviews"
+    ],
+    "get_review_by_id": [
+      "reviews"
+    ],
+    "get_average_rating_for_product": [
+      "products",
+      "reviews"
+    ],
+    "count_reviews_for_product": [
+      "products",
+      "reviews"
+    ],
+    "list_products_with_reviews": [
+      "products",
+      "reviews"
+    ],
+    "submit_review": [
+      "products",
+      "reviews",
+      "users"
+    ],
+    "update_review": [
+      "reviews"
+    ],
+    "delete_review": [
+      "reviews"
+    ],
+    "moderate_review": [
+      "reviews"
+    ],
+    "update_product_details": [
+      "products",
+      "users"
+    ],
+    "update_user_account_status": [
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_product_by_id",
+      "description": "Retrieve all information for a single product by product_id.\n\nArgs:\n    product_id (str): The unique identifier of the product.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ProductInfo  # Information about the product\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g., product not found\n    }\n\nConstraints:\n    - The product_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "list_products_by_vendor",
+      "description": "Retrieve all products listed by a specific vendor.\n\nArgs:\n    vendor_id (str): The unique identifier of the vendor.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ProductInfo]  # List of products for this vendor (may be empty if none)\n    }\n\nNotes:\n    - Always succeeds, but returned list may be empty if the vendor has no products.\n    - No error if vendor_id is not associated with any products.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vendor_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vendor_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve all information for a single user by user_id.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo,  # The user information if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., \"User not found\"\n    }\n\nConstraints:\n    - user_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_reviews_by_product",
+      "description": "Retrieve all reviews for a specific product by product_id.\n\nArgs:\n    product_id (str): The unique id of the product for which to fetch reviews.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ReviewInfo],  # List of reviews, may be empty\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g. product does not exist\n    }\n\nConstraints:\n    - The given product_id must refer to an existing product.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "list_reviews_by_product_and_date_range",
+      "description": "Retrieve all reviews for the specified product_id where the review's timestamp is\nwithin [start_timestamp, end_timestamp] (inclusive).\n\nArgs:\n    product_id (str): The product whose reviews to list.\n    start_timestamp (str): The beginning of the date range (inclusive). ISO 8601 string or epoch string.\n    end_timestamp (str): The end of the date range (inclusive). ISO 8601 string or epoch string.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ReviewInfo]  # may be empty if none found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # reason, e.g. product does not exist or invalid timestamps\n    }\n\nConstraints:\n    - Product must exist.\n    - Timestamps are compared lexicographically (ISO 8601 format).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "start_timestamp": {
+            "type": "string"
+          },
+          "end_timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "start_timestamp",
+          "end_timestamp"
+        ]
+      }
+    },
+    {
+      "name": "list_reviews_by_user",
+      "description": "Retrieve all reviews submitted by a specific user.\n\nArgs:\n    user_id (str): The unique user ID for which to fetch submitted reviews.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ReviewInfo],  # All reviews authored by the user (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Explanation, e.g., \"User does not exist\"\n    }\n\nConstraints:\n    - The user must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_reviews_by_moderation_status",
+      "description": "Retrieve all reviews whose moderation_status matches the provided status.\n\nArgs:\n    moderation_status (str): The moderation status to filter reviews by (e.g., \"approved\", \"pending\", \"rejected\").\n\nReturns:\n    dict: \n        If success: {\n            \"success\": True,\n            \"data\": List[ReviewInfo]  # List (possibly empty) of matching reviews\n        }\n        If input error:\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - No constraints enforced, as this is a query.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "moderation_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "moderation_status"
+        ]
+      }
+    },
+    {
+      "name": "get_review_by_id",
+      "description": "Retrieve full details for a given review_id.\n\nArgs:\n    review_id (str): The unique identifier of the review to retrieve.\n\nReturns:\n    dict:\n        success: True and \"data\" containing the ReviewInfo if found.\n        success: False and \"error\" message if not found.\n\nConstraints:\n    - The review must exist in the system; otherwise, an error is returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id"
+        ]
+      }
+    },
+    {
+      "name": "get_average_rating_for_product",
+      "description": "Compute the average rating from all approved reviews for a specific product.\n\nArgs:\n    product_id (str): The product's unique identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": float | None,  # Average rating (1.0–5.0), or None if no approved reviews\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g. product not found\n    }\nConstraints:\n    - Only reviews with moderation_status == 'approved' are included in the average.\n    - Returns None if there are no approved reviews for the given product.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "count_reviews_for_product",
+      "description": "Return the total number of reviews for a specific product.\n\nArgs:\n    product_id (str): The ID of the product to count reviews for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": int  # Number of reviews for the given product\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description, e.g., product does not exist\n    }\n\nConstraints:\n    - The product must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "list_products_with_reviews",
+      "description": "Retrieve all products that have at least one associated review.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ProductInfo],  # list of product info dicts, may be empty\n    }\n\nConstraints:\n    - Only products that have at least one review should be included.\n    - Products must exist in self.products.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "submit_review",
+      "description": "Add a new review for a product by a user, enforcing association and rating constraints.\n\nArgs:\n    product_id (str): ID of the product to review.\n    user_id (str): ID of the user submitting the review.\n    rating (int): Review rating (must be within valid range, e.g. 1-5).\n    content (str): Review text/content.\n    timestamp (str): ISO8601 string or epoch seconds indicating when review was submitted.\n\nReturns:\n    dict:\n        On success: {\"success\": True, \"message\": \"Review submitted successfully\", \"review_id\": <str>}\n        On error:   {\"success\": False, \"error\": <str>}\n\nConstraints:\n    - The product_id and user_id must exist.\n    - Rating must be an integer between 1 and 5 (inclusive).\n    - The same user can submit only one review per product.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "integer"
+          },
+          "content": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "user_id",
+          "rating",
+          "content",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "update_review",
+      "description": "Edit content, rating, or moderation status of an existing review.\n\nArgs:\n    review_id (str): The unique identifier for the review to update.\n    new_content (Optional[str]): New review text (if changing).\n    new_rating (Optional[int]): New rating value (if changing, must be 1-5).\n    new_moderation_status (Optional[str]): New moderation status (\"pending\", \"approved\", \"rejected\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Review updated successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\nConstraints:\n    - Only provided fields will be updated.\n    - Rating must be in range [1, 5] if changed.\n    - Moderation status should be valid (\"pending\", \"approved\", \"rejected\") if changed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "type": "string"
+          },
+          "new_content": {
+            "type": "string"
+          },
+          "new_rating": {
+            "type": "integer"
+          },
+          "new_moderation_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_review",
+      "description": "Remove a review from the system.\n\nArgs:\n    review_id (str): The unique identifier of the review to remove.\n\nReturns:\n    dict:\n      On success: { \"success\": True, \"message\": \"Review deleted.\" }\n      On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The review must exist in the system.\n    - (Permissions are not enforced in this method.)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id"
+        ]
+      }
+    },
+    {
+      "name": "moderate_review",
+      "description": "Change the moderation status (\"pending\", \"approved\", or \"rejected\") of a review.\n\nArgs:\n    review_id (str): Identifier of the review to moderate.\n    new_status (str): New status (\"pending\", \"approved\", or \"rejected\").\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"message\": \"Review moderation status updated to <new_status> for review <review_id>\"}\n        On failure:\n            {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - The review must exist.\n    - The new_status must be one of {\"pending\", \"approved\", \"rejected\"}.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "update_product_details",
+      "description": "Edit product metadata (name and category) if permitted.\n\nArgs:\n    product_id (str): ID of the product to update.\n    requester_id (str): ID of the user making the request. Must be product's vendor or admin.\n    name (str, optional): New product name.\n    category (str, optional): New product category.\n\nReturns:\n    dict: \n        - {\"success\": True, \"message\": \"Product details updated\"}\n        - {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - Product must exist.\n    - At least one of name/category must be provided.\n    - Only an admin or the vendor of the product can update.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "requester_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "requester_id"
+        ]
+      }
+    },
+    {
+      "name": "update_user_account_status",
+      "description": "Change the account status of a user.\n\nArgs:\n    user_id (str): Unique identifier of the user whose status will be changed.\n    new_status (str): The new account status value (e.g., 'active', 'suspended').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User account status updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason the update failed\"\n    }\n\nConstraints:\n    - The user must exist.\n    - (Optionally) new_status should be non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "new_status"
+        ]
+      }
+    }
+  ]
+}

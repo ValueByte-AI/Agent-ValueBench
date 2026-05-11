@@ -1,0 +1,535 @@
+{
+  "env_name": "FinancialDataRepository",
+  "description": "A financial data repository maintains structured information about companies, including their identifiers, financial statements, and historical performance metrics. It supports operations such as storing, updating, and querying financial documents like balance sheets, income statements, and cash flow statements for each company. This environment is essential for analysts, investors, and financial applications seeking timely and reliable access to corporate financial data.",
+  "initial_parameter_schema": {
+    "companies": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "ticker": {
+            "type": "string"
+          },
+          "sector": {
+            "type": "string"
+          },
+          "industry": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id",
+          "name",
+          "ticker",
+          "sector",
+          "industry"
+        ]
+      }
+    },
+    "financial_statements": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "statement_id": {
+            "type": "string"
+          },
+          "company_id": {
+            "type": "string"
+          },
+          "statement_type": {
+            "type": "string"
+          },
+          "period_start_date": {
+            "type": "string"
+          },
+          "period_end_date": {
+            "type": "string"
+          },
+          "filing_date": {
+            "type": "string"
+          },
+          "data": {}
+        },
+        "required": [
+          "statement_id",
+          "company_id",
+          "statement_type",
+          "period_start_date",
+          "period_end_date",
+          "filing_date",
+          "data"
+        ]
+      }
+    },
+    "performance_metrics": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "metric_id": {
+            "type": "string"
+          },
+          "company_id": {
+            "type": "string"
+          },
+          "metric_type": {
+            "type": "string"
+          },
+          "period_end_date": {
+            "type": "string"
+          },
+          "val": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "metric_id"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_company_by_id": [
+      "companies"
+    ],
+    "get_company_by_ticker": [
+      "companies"
+    ],
+    "list_companies": [
+      "companies"
+    ],
+    "get_financial_statements_by_company": [
+      "companies",
+      "financial_statements"
+    ],
+    "get_financial_statements_by_type": [
+      "companies",
+      "financial_statements"
+    ],
+    "get_financial_statement_by_id": [
+      "financial_statements"
+    ],
+    "get_latest_financial_statement_by_type": [
+      "companies",
+      "financial_statements"
+    ],
+    "get_performance_metrics_by_company": [
+      "companies",
+      "performance_metrics"
+    ],
+    "get_performance_metrics_by_type": [
+      "companies",
+      "performance_metrics"
+    ],
+    "get_performance_metric_by_id": [
+      "performance_metrics"
+    ],
+    "add_company": [
+      "companies"
+    ],
+    "update_company": [
+      "companies"
+    ],
+    "add_financial_statement": [
+      "companies",
+      "financial_statements"
+    ],
+    "update_financial_statement": [
+      "companies",
+      "financial_statements"
+    ],
+    "add_performance_metric": [
+      "companies",
+      "performance_metrics"
+    ],
+    "update_performance_metric": [
+      "companies",
+      "performance_metrics"
+    ],
+    "delete_company": [
+      "companies",
+      "financial_statements",
+      "performance_metrics"
+    ],
+    "delete_financial_statement": [
+      "financial_statements"
+    ],
+    "delete_performance_metric": [
+      "performance_metrics"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_company_by_id",
+      "description": "Retrieve full information about a company using its unique company_id.\n\nArgs:\n    company_id (str): Unique identifier for the company.\n\nReturns:\n    dict:\n      - On success: {\"success\": True, \"data\": CompanyInfo}\n      - On failure: {\"success\": False, \"error\": <reason>}\n  \nConstraints:\n    - The given company_id must exist in the repository.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id"
+        ]
+      }
+    },
+    {
+      "name": "get_company_by_ticker",
+      "description": "Retrieve company details via its ticker symbol.\n\nArgs:\n    ticker (str): The ticker symbol of the company (case-insensitive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": CompanyInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Ticker not found\"\n    }\n\nConstraints:\n    - Ticker symbols are unique across companies.\n    - Match ticker case-insensitively for robustness.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticker": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticker"
+        ]
+      }
+    },
+    {
+      "name": "list_companies",
+      "description": "List all companies in the repository.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CompanyInfo]  # May be an empty list if no companies exist\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_financial_statements_by_company",
+      "description": "Retrieve all financial statements associated with the specified company_id.\n\nArgs:\n    company_id (str): Unique company identifier.\n\nReturns:\n    dict:\n        - If success:\n            {\n                \"success\": True,\n                \"data\": List[FinancialStatementInfo]  # List of all financial statements (possibly empty) for this company\n            }\n        - If company_id does not exist:\n            {\n                \"success\": False,\n                \"error\": \"Company not found\"\n            }\n\nConstraints:\n    - The company_id must exist in the repository.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id"
+        ]
+      }
+    },
+    {
+      "name": "get_financial_statements_by_type",
+      "description": "Retrieve all financial statements of a specific type for a given company.\n\nArgs:\n    company_id (str): The unique identifier of the company.\n    statement_type (str): The financial statement type (e.g., 'balance sheet', 'income statement', 'cash flow statement').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[FinancialStatementInfo]  # May be empty if no statements exist.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., company does not exist.\n    }\n\nConstraints:\n    - The specified company must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          },
+          "statement_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id",
+          "statement_type"
+        ]
+      }
+    },
+    {
+      "name": "get_financial_statement_by_id",
+      "description": "Retrieve a specific financial statement by its statement_id.\n\nArgs:\n    statement_id (str): Unique identifier for the financial statement.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": FinancialStatementInfo  # Full statement information\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Reason, e.g. not found\n        }\nConstraints:\n    - statement_id must exist in the repository.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "statement_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "statement_id"
+        ]
+      }
+    },
+    {
+      "name": "get_latest_financial_statement_by_type",
+      "description": "For a company and statement type, retrieve the statement with the latest period_end_date (and, as a tiebreaker, filing_date).\n\nArgs:\n    company_id (str): The unique identifier of the company.\n    statement_type (str): Statement type (e.g., 'balance sheet', 'income statement').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": FinancialStatementInfo or None,  # None if no statement for criteria\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,  # Error message\n    }\n\nConstraints:\n    - company_id must exist in the repository.\n    - If multiple statements have the same (latest) period_end_date, use latest filing_date.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          },
+          "statement_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id",
+          "statement_type"
+        ]
+      }
+    },
+    {
+      "name": "get_performance_metrics_by_company",
+      "description": "Retrieve all performance metrics calculated for a given company.\n\nArgs:\n    company_id (str): The unique identifier of the company.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PerformanceMetricInfo],\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error reason (e.g., company does not exist)\n    }\n\nConstraints:\n    - The specified company must exist in the repository.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id"
+        ]
+      }
+    },
+    {
+      "name": "get_performance_metrics_by_type",
+      "description": "Retrieve all performance metrics of a given type for a specific company.\n\nArgs:\n    company_id (str): The unique identifier for the company.\n    metric_type (str): Type of the metric to retrieve (e.g., \"EPS\", \"ROE\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PerformanceMetricInfo]  # all matching metrics (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description, e.g. if company not found\n    }\n\nConstraints:\n    - The company_id must exist in the repository.\n    - Returns empty list if no metrics of this type for the company.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          },
+          "metric_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id",
+          "metric_type"
+        ]
+      }
+    },
+    {
+      "name": "get_performance_metric_by_id",
+      "description": "Retrieve a specific performance metric using its metric_id.\n\nArgs:\n    metric_id (str): The unique identifier for the performance metric.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": PerformanceMetricInfo  # The matching performance metric info\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If the metric_id does not exist\n    }\n\nConstraints:\n    - The metric_id must exist in the repository.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "metric_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "metric_id"
+        ]
+      }
+    },
+    {
+      "name": "add_company",
+      "description": "Add a new company record.\n\nArgs:\n    company_id (str): Unique identifier for the company.\n    name (str): Name of the company.\n    ticker (str): Ticker symbol.\n    sector (str): Business sector.\n    industry (str): Industry group.\n\nReturns:\n    dict: \n        Success: { \"success\": True, \"message\": \"Company added successfully.\" }\n        Failure: { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - company_id must be unique (not already in the repository).\n    - All fields must be provided and non-empty strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "ticker": {
+            "type": "string"
+          },
+          "sector": {
+            "type": "string"
+          },
+          "industry": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id",
+          "name",
+          "ticker",
+          "sector",
+          "industry"
+        ]
+      }
+    },
+    {
+      "name": "update_company",
+      "description": "Update the descriptive attributes (name, ticker, sector, industry) of an existing company.\n\nArgs:\n    company_id (str): Unique ID of the company to update.\n    update_fields (dict): Dictionary of attribute names (name, ticker, sector, industry) and their new values.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Company updated successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - company_id must exist.\n    - Only allowed attributes (name, ticker, sector, industry) can be updated.\n    - company_id itself cannot be updated.\n    - At least one valid attribute must be provided for update.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          },
+          "update_fields": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "company_id",
+          "update_fields"
+        ]
+      }
+    },
+    {
+      "name": "add_financial_statement",
+      "description": "Add a new financial statement to the repository.\n\nArgs:\n    statement_id (str): Unique identifier for the financial statement.\n    company_id (str): Identifier of the company the statement is linked to.\n    statement_type (str): Type of statement (e.g., balance sheet, income statement, cash flow statement).\n    period_start_date (str): Start date of the reported period.\n    period_end_date (str): End date of the reported period.\n    filing_date (str): Filing date of the statement.\n    data (Any): Statement data, usually a dict or similar structure.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Financial statement added\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - company_id must exist in the repository.\n    - Only one statement of each type per company per (period_start_date, period_end_date) is allowed.\n    - statement_id must be unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "statement_id": {
+            "type": "string"
+          },
+          "company_id": {
+            "type": "string"
+          },
+          "statement_type": {
+            "type": "string"
+          },
+          "period_start_date": {
+            "type": "string"
+          },
+          "period_end_date": {
+            "type": "string"
+          },
+          "filing_date": {
+            "type": "string"
+          },
+          "data": {}
+        },
+        "required": [
+          "statement_id",
+          "company_id",
+          "statement_type",
+          "period_start_date",
+          "period_end_date",
+          "filing_date",
+          "data"
+        ]
+      }
+    },
+    {
+      "name": "update_financial_statement",
+      "description": "Modify the fields or data contents of an existing financial statement.\n\nArgs:\n    statement_id (str): ID of the financial statement to update.\n    updates (dict): Dictionary of fields to update (e.g., statement_type, company_id,\n                    period_start_date, period_end_date, filing_date, data).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Financial statement <statement_id> updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - statement_id must exist.\n    - If company_id is modified, new company_id must exist.\n    - Cannot create a duplicate (company_id, statement_type, period_start_date, period_end_date)\n      for the same company and statement_type in the same reporting period.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "statement_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "statement_id",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "add_performance_metric",
+      "description": "Add a new computed performance metric for a company.\n\nArgs:\n    metric_id (str): Unique identifier for this performance metric.\n    company_id (str): Identifier of the company this metric relates to.\n    metric_type (str): Type of metric (e.g., EPS, ROE, etc.).\n    period_end_date (str): Period end date this metric covers (ISO string).\n    val (float): The computed value of the metric.\n\nReturns:\n    dict: \n        {\"success\": True, \"message\": \"Performance metric added for company <company_id>.\"}\n        or\n        {\"success\": False, \"error\": <error_message>}\nConstraints:\n    - metric_id must be unique.\n    - company_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "metric_id": {
+            "type": "string"
+          },
+          "company_id": {
+            "type": "string"
+          },
+          "metric_type": {
+            "type": "string"
+          },
+          "period_end_date": {
+            "type": "string"
+          },
+          "val": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "metric_id"
+        ]
+      }
+    },
+    {
+      "name": "update_performance_metric",
+      "description": "Modify an existing performance metric record.\n\nArgs:\n    metric_id (str): ID of the performance metric to update.\n    company_id (str, optional): New company_id. If set, must refer to a valid company.\n    metric_type (str, optional): New metric_type.\n    period_end_date (str, optional): New period_end_date.\n    val (float, optional): New value.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Performance metric <metric_id> updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - metric_id must exist.\n    - If updating company_id, the company must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "metric_id": {
+            "type": "string"
+          },
+          "company_id": {
+            "type": "string"
+          },
+          "metric_type": {
+            "type": "string"
+          },
+          "period_end_date": {
+            "type": "string"
+          },
+          "val": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "metric_id",
+          "company_id",
+          "metric_type",
+          "period_end_date",
+          "val"
+        ]
+      }
+    },
+    {
+      "name": "delete_company",
+      "description": "Remove a company and all associated financial statements and performance metrics.\n\nArgs:\n    company_id (str): The unique ID of the company to be removed.\n\nReturns:\n    dict: \n        - On success: \n            {\"success\": True, \"message\": \"Company <company_id> and all associated records have been deleted.\"}\n        - On failure (company not found): \n            {\"success\": False, \"error\": \"Company not found.\"}\n\nConstraints:\n    - All FinancialStatements and PerformanceMetrics linked to company_id are deleted.\n    - Company must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_financial_statement",
+      "description": "Remove a specific financial statement by its unique identifier.\n\nArgs:\n    statement_id (str): The unique ID of the financial statement to delete.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Financial statement <statement_id> deleted.\" }\n        - On failure: { \"success\": False, \"error\": \"Financial statement does not exist.\" }\n\nConstraints:\n    - The financial statement with the given ID must exist to be deleted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "statement_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "statement_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_performance_metric",
+      "description": "Remove a specific performance metric from the repository by its metric_id.\n\nArgs:\n    metric_id (str): Identifier of the performance metric to delete.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Performance metric <metric_id> deleted.\" }\n        On failure: { \"success\": False, \"error\": \"Performance metric not found.\" }\n\nConstraints:\n    - metric_id must exist in the performance_metrics store.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "metric_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "metric_id"
+        ]
+      }
+    }
+  ]
+}

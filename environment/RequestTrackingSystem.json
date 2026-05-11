@@ -1,0 +1,344 @@
+{
+  "env_name": "RequestTrackingSystem",
+  "description": "A Request Tracking System maintains records of individual requests, which may correspond to support tickets, service orders, or workflow tasks. Each request is assigned a unique ID and contains metadata such as status, description, timestamps, and requester information. The system allows users to create, update, retrieve, and query requests, supporting efficient management and tracking of work items across an organization.",
+  "initial_parameter_schema": {
+    "requests": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "created_timestamp": {
+            "type": "string"
+          },
+          "updated_timestamp": {
+            "type": "string"
+          },
+          "requester_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "status",
+          "description",
+          "created_timestamp",
+          "updated_timestamp",
+          "requester_id"
+        ]
+      }
+    },
+    "requesters": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "requester_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "department": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requester_id",
+          "name",
+          "contact_info",
+          "department"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_request_by_id": [
+      "requests"
+    ],
+    "list_requests_by_ids": [
+      "requests"
+    ],
+    "get_requester_by_id": [
+      "requesters"
+    ],
+    "list_all_requests": [
+      "requests"
+    ],
+    "list_requests_by_status": [
+      "requests"
+    ],
+    "list_requests_by_requester": [
+      "requesters",
+      "requests"
+    ],
+    "get_request_status": [
+      "requests"
+    ],
+    "create_request": [
+      "requesters",
+      "requests"
+    ],
+    "update_request_status": [
+      "requests"
+    ],
+    "update_request_description": [
+      "requests"
+    ],
+    "delete_request": [
+      "requests"
+    ],
+    "add_requester": [
+      "requesters"
+    ],
+    "update_requester_info": [
+      "requesters"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_request_by_id",
+      "description": "Retrieve all metadata for a request given its unique request_id.\n\nArgs:\n    request_id (str): The unique identifier of the request to retrieve.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"data\": RequestInfo}\n        - On failure: {\"success\": False, \"error\": \"Request not found\"}\n\nConstraints:\n    - The request_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id"
+        ]
+      }
+    },
+    {
+      "name": "list_requests_by_ids",
+      "description": "Retrieve request information for multiple requests based on their request_ids.\n\nArgs:\n    request_ids (list[str]): The list of request IDs to query.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[RequestInfo]  # List of request info for existing requests only (empty if none found)\n        }\n\nNotes:\n    - Only returns info for request IDs that exist in the system.\n    - If input list is empty or none found, returns success with empty list.\n    - No error is returned for missing IDs; they are silently skipped.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "request_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "request_ids"
+        ]
+      }
+    },
+    {
+      "name": "get_requester_by_id",
+      "description": "Retrieve the details of a requester given their requester_id.\n\nArgs:\n    requester_id (str): Unique identifier of the requester.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": RequesterInfo  # Dict of requester's info (name, contact_info, department, etc.)\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Error message if the requester is not found\n    }\n\nConstraints:\n    - requester_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "requester_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requester_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_requests",
+      "description": "Retrieve information for all requests in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RequestInfo],  # List of all RequestInfo entries in the system (may be empty if no requests)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_requests_by_status",
+      "description": "Retrieve all requests that have the specified status.\n\nArgs:\n    status (str): The status value to filter requests by. Must be one of the allowed statuses.\n\nReturns:\n    dict:\n      - On success:\n          {\n              \"success\": True,\n              \"data\": List[RequestInfo]  # All requests with the given status (may be empty)\n          }\n      - On failure (invalid status):\n          {\n              \"success\": False,\n              \"error\": \"Invalid status\"\n          }\n\nConstraints:\n    - status must be from the predefined allowed status set.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "list_requests_by_requester",
+      "description": "Retrieve all requests associated with a specific requester ID.\n\nArgs:\n    requester_id (str): The requester whose requests should be listed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RequestInfo],  # All RequestInfo dicts with requester_id equal to input (may be empty)\n    }\n    or {\n        \"success\": False,\n        \"error\": str  # Reason, e.g., requester not found\n    }\n\nConstraints:\n    - The requester_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "requester_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requester_id"
+        ]
+      }
+    },
+    {
+      "name": "get_request_status",
+      "description": "Retrieve the current status of a request given its ID.\n\nArgs:\n    request_id (str): Unique identifier of the request.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": str  # Status of the request\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g. request not found\n    }\n\nConstraints:\n    - The given request_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id"
+        ]
+      }
+    },
+    {
+      "name": "create_request",
+      "description": "Create a new request.\n\nArgs:\n    request_id (str): Unique identifier for the request.\n    status (str): Status of the request. Must be one of allowed statuses.\n    description (str): Description of the request.\n    requester_id (str): ID of requester, must exist in system.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"message\": \"Request created successfully\"}\n        - On error: {\"success\": False, \"error\": <error message>}\n\nConstraints:\n    - request_id must be unique.\n    - status must be in allowed set.\n    - requester_id must exist in self.requesters.\n    - created_timestamp and updated_timestamp are both set to now (ISO string).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "requester_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "status",
+          "description",
+          "requester_id"
+        ]
+      }
+    },
+    {
+      "name": "update_request_status",
+      "description": "Change the status of an existing request, enforcing allowed status values and updating the updated_timestamp.\n\nArgs:\n    request_id (str): Unique identifier of the request to update.\n    new_status (str): Desired new status (\"open\", \"in progress\", \"closed\", etc.).\n\nReturns:\n    dict:\n        On success: {\n            \"success\": True,\n            \"message\": \"Status of request <id> updated to <status>.\"\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": <description>\n        }\n\nConstraints:\n    - request_id must exist.\n    - new_status must be in the allowed status set.\n    - updated_timestamp must accurately reflect the update.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "update_request_description",
+      "description": "Modify the description of a request by request_id and update its updated_timestamp.\n\nArgs:\n    request_id (str): Unique identifier of the request to modify.\n    new_description (str): The new description string to set.\n\nReturns:\n    dict:\n        On success: {\"success\": True, \"message\": \"Request description updated.\"}\n        On failure: {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - The request with request_id must exist.\n    - The updated_timestamp should be set to the current time (ISO format).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "new_description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "new_description"
+        ]
+      }
+    },
+    {
+      "name": "delete_request",
+      "description": "Remove an existing request from the system.\n\nArgs:\n    request_id (str): The unique identifier of the request to delete.\n\nReturns:\n    dict: \n        - { \"success\": True, \"message\": \"Request <request_id> deleted successfully.\" }\n        - { \"success\": False, \"error\": \"Request not found.\" }\n\nConstraints:\n    - The request must exist in the system (request_id in self.requests).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id"
+        ]
+      }
+    },
+    {
+      "name": "add_requester",
+      "description": "Add a new requester entity with all required non-null information.\n\nArgs:\n    requester_id (str): Unique identifier for the requester.\n    name (str): Name of the requester (must be non-null and non-empty).\n    contact_info (str): Contact information (must be non-null and non-empty).\n    department (str): Department (must be non-null and non-empty).\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Requester added successfully\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - requester_id must be unique.\n    - All fields must be non-null and non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "requester_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "department": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requester_id",
+          "name",
+          "contact_info",
+          "department"
+        ]
+      }
+    },
+    {
+      "name": "update_requester_info",
+      "description": "Edit requester information (name, contact_info, department).\n\nArgs:\n    requester_id (str): ID of the requester to update.\n    name (str, optional): New name for the requester.\n    contact_info (str, optional): New contact info for the requester.\n    department (str, optional): New department for the requester.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Requester info updated.\" }\n        On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - requester_id must exist in the system.\n    - At least one of name, contact_info, department must be provided (not None).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "requester_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "department": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requester_id"
+        ]
+      }
+    }
+  ]
+}

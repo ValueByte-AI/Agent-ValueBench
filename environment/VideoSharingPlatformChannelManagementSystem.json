@@ -1,0 +1,477 @@
+{
+  "env_name": "VideoSharingPlatformChannelManagementSystem",
+  "description": "A video sharing platform channel management system maintains records of content creator channels, including their identifiers, profile information, and relationships such as featured or related channels. The environment supports operations for retrieving, updating, and organizing channel metadata and their associations. It enables social interactions, recommendations, content discovery, and various administrative queries for efficient platform usage and management.",
+  "initial_parameter_schema": {
+    "channels": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "profile_info": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "creation_date": {
+            "type": "string"
+          },
+          "sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id",
+          "name",
+          "profile_info",
+          "creation_date",
+          "sta"
+        ]
+      }
+    },
+    "channel_relationships": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          },
+          "related_channel_id": {
+            "type": "string"
+          },
+          "relationship_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id",
+          "related_channel_id",
+          "relationship_type"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_channel_by_id": [
+      "channels"
+    ],
+    "get_channels_by_ids": [
+      "channels"
+    ],
+    "list_all_channels": [
+      "channels"
+    ],
+    "get_channel_by_name": [
+      "channels"
+    ],
+    "get_channels_by_status": [
+      "channels"
+    ],
+    "get_channel_relationships_by_channel": [
+      "channel_relationships",
+      "channels"
+    ],
+    "get_channel_relationships_by_type": [
+      "channel_relationships"
+    ],
+    "get_related_channels": [
+      "channel_relationships",
+      "channels"
+    ],
+    "get_channels_with_relationship": [
+      "channel_relationships",
+      "channels"
+    ],
+    "validate_channel_relationship_integrity": [
+      "channel_relationships",
+      "channels"
+    ],
+    "is_channel_profile_up_to_date": [
+      "channels"
+    ],
+    "add_channel": [
+      "channels"
+    ],
+    "update_channel_profile": [
+      "channels"
+    ],
+    "change_channel_status": [
+      "channels"
+    ],
+    "delete_channel": [
+      "channel_relationships",
+      "channels"
+    ],
+    "add_channel_relationship": [
+      "channel_relationships",
+      "channels"
+    ],
+    "remove_channel_relationship": [
+      "channel_relationships"
+    ],
+    "update_channel_relationship_type": [
+      "channel_relationships",
+      "channels"
+    ],
+    "bulk_update_channel_profiles": [
+      "channels"
+    ],
+    "repair_invalid_relationships": [
+      "channel_relationships",
+      "channels"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_channel_by_id",
+      "description": "Retrieve full metadata for a single channel using its channel_id.\n\nArgs:\n    channel_id (str): The unique identifier of the channel.\n\nReturns:\n    dict:\n        - If found: { \"success\": True, \"data\": ChannelInfo }\n        - If not found: { \"success\": False, \"error\": \"Channel not found\" }\nConstraints:\n    - channel_id must exist in self.channels.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id"
+        ]
+      }
+    },
+    {
+      "name": "get_channels_by_ids",
+      "description": "Fetch metadata for a list of channel_ids.\n\nArgs:\n    channel_ids (List[str]): The list of unique channel IDs to fetch.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[ChannelInfo]  # May be empty if none found\n            }\nNotes:\n    - Only channel_ids present in the system are returned.\n    - If none are found, returns empty data list.\n    - No error raised for missing IDs.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "channel_ids"
+        ]
+      }
+    },
+    {
+      "name": "list_all_channels",
+      "description": "Retrieve the metadata for all channels in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ChannelInfo]  # List of channel metadata (may be empty if no channels)\n    }\n\nConstraints:\n    - None (returns whatever is present in self.channels)",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_channel_by_name",
+      "description": "Lookup channel metadata by channel name.\n\nArgs:\n    name (str): The channel name to look up.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": ChannelInfo,  # metadata of the found channel\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Channel not found\"\n            }\nConstraints:\n    - If multiple channels have the same name, returns the first found.\n    - Returns error if the name is empty or no match found.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_channels_by_status",
+      "description": "Retrieve all channels whose `sta` (status) field matches the given status.\n\nArgs:\n    status (str): The status value to filter channels by (e.g., \"active\", \"suspended\").\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[ChannelInfo]  # All matching channels (empty list if none)\n            }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "get_channel_relationships_by_channel",
+      "description": "List all outgoing relationships (featured, related, recommended, etc.) for a given channel_id.\n\nArgs:\n    channel_id (str): The channel's unique identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ChannelRelationshipInfo]  # all relationships where channel_id is source\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If the channel does not exist\n    }\n\nConstraints:\n    - The channel_id must exist in self.channels.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id"
+        ]
+      }
+    },
+    {
+      "name": "get_channel_relationships_by_type",
+      "description": "Retrieve all channel relationships in the system with the specified type.\n\nArgs:\n    relationship_type (str): The type of relationship to filter (e.g., 'featured', 'related', 'recommended').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ChannelRelationshipInfo]  # All matching relationships (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description if input is invalid\n    }\n\nConstraints:\n    - relationship_type must be non-empty.\n    - Only returns relationships where relationship_type matches.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "relationship_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "relationship_type"
+        ]
+      }
+    },
+    {
+      "name": "get_related_channels",
+      "description": "For a given channel_id, fetch all associated channels by specified relationship_type.\n\nArgs:\n    channel_id (str): The source channel's unique identifier.\n    relationship_type (str): The relationship type ('featured', 'related', 'recommended', etc).\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"data\": [ChannelInfo, ...] }\n        - On failure: { \"success\": False, \"error\": str }\n\nConstraints:\n    - channel_id must exist.\n    - relationship_type must be valid (present in at least one relationship, or check against allowed types if such a set is maintained).\n    - Excludes self-loops and relationships referencing non-existent channels.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          },
+          "relationship_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id",
+          "relationship_type"
+        ]
+      }
+    },
+    {
+      "name": "get_channels_with_relationship",
+      "description": "For a list of channel_ids and a relationship_type, retrieve the set of related channels and their metadata.\n\nArgs:\n    channel_ids (List[str]): The channel_ids to be examined as sources of the relationship.\n    relationship_type (str): The type of relationship to filter on (e.g., \"featured\", \"related\", \"recommended\").\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": List[ChannelInfo]  # List of metadata dicts for related channels (deduplicated)\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - Only retrieve related_channel_id where both relationship_type matches and channel_id is in the input list.\n    - Only return metadata for valid channels (skip any dangling relationships).\n    - Result does not include duplicates if there are multiple relationships pointing to the same channel.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "relationship_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_ids",
+          "relationship_type"
+        ]
+      }
+    },
+    {
+      "name": "validate_channel_relationship_integrity",
+      "description": "Checks all channel relationships for integrity violations:\n  - References to invalid (nonexistent) channel IDs.\n  - Self-referential relationships (where channel_id == related_channel_id).\n  - Invalid relationship_type (should be one of \"featured\", \"related\", \"recommended\").\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": {\n                \"invalid_relationships\": List[ChannelRelationshipInfo],\n                \"self_referential_relationships\": List[ChannelRelationshipInfo],\n                \"invalid_type_relationships\": List[ChannelRelationshipInfo]\n            }\n        }\n    or\n        {\n            \"success\": False,\n            \"error\": str\n        }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "is_channel_profile_up_to_date",
+      "description": "Verify if the specified channel's profile_info is non-null and substantively current,\nas required for public channels (status 'active').\n\nArgs:\n    channel_id (str): The unique identifier of the channel.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": bool,  # True iff profile_info contains at least one non-note, non-empty field for a public channel\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g. channel not found)\n    }\n\nConstraints:\n    - Channel must exist.\n    - Applies the check only for 'active' (public) channels.\n    - Note-only placeholder fields such as *_note do not count as an up-to-date public profile.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id"
+        ]
+      }
+    },
+    {
+      "name": "add_channel",
+      "description": "Add a new channel to the system with required metadata.\n\nArgs:\n    channel_id (str): Unique identifier for the channel.\n    name (str): Channel name.\n    profile_info (Dict[str, str]): Channel profile information. Must be non-null/non-empty for public channels (e.g., status 'active').\n    creation_date (str): ISO formatted string for creation date.\n    sta (str): Channel status (\"active\", \"suspended\", etc.).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Channel <channel_id> successfully added.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - channel_id must be unique.\n    - For public channels (sta == \"active\"), profile_info must be non-null and non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "profile_info": {
+            "type": "object"
+          },
+          "creation_date": {
+            "type": "string"
+          },
+          "sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id",
+          "name",
+          "profile_info",
+          "creation_date",
+          "sta"
+        ]
+      }
+    },
+    {
+      "name": "update_channel_profile",
+      "description": "Update the profile_info or metadata for a given channel.\n\nArgs:\n    channel_id (str): The identifier for the channel to update.\n    update_data (Dict[str, object]): Dict of fields to update. Keys can include\n        \"name\", \"profile_info\", \"sta\", etc. \"profile_info\" should be a dict.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Channel profile updated successfully\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The channel must exist.\n    - profile_info must be non-null for public channels.\n    - Only valid keys are updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          },
+          "update_data": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "channel_id",
+          "update_data"
+        ]
+      }
+    },
+    {
+      "name": "change_channel_status",
+      "description": "Update the status (sta) of a channel.\n\nArgs:\n    channel_id (str): The unique identifier of the channel.\n    new_status (str): The new status value (e.g., 'active', 'suspended').\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Status updated successfully\" }\n        On failure: { \"success\": False, \"error\": \"Channel not found\" }\n\nConstraints:\n    - The channel must exist in the system.\n    - No restriction on new_status value assumed unless specified.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "delete_channel",
+      "description": "Remove a channel from the system and automatically clean up all associated channel relationships.\n\nArgs:\n    channel_id (str): The unique identifier of the channel to be deleted.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Channel <channel_id> and all its relationships deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Channel does not exist.\"\n    }\n\nConstraints:\n    - Channel must exist to be deleted.\n    - All relationships where this channel is channel_id or related_channel_id are also removed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id"
+        ]
+      }
+    },
+    {
+      "name": "add_channel_relationship",
+      "description": "Create a new relationship (featured, related, recommended, etc.) between two channels,\nenforcing constraints:\n    - Both channel_id and related_channel_id exist in the system.\n    - channel_id != related_channel_id (no self-reference).\n    - relationship_type is one of the allowed types (\"featured\", \"related\", \"recommended\").\n    - Duplicate relationships (same channel_id, related_channel_id, relationship_type) are not allowed.\n\nArgs:\n    channel_id (str): The source/origin channel.\n    related_channel_id (str): The destination/target channel.\n    relationship_type (str): The type of relationship.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          },
+          "related_channel_id": {
+            "type": "string"
+          },
+          "relationship_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id",
+          "related_channel_id",
+          "relationship_type"
+        ]
+      }
+    },
+    {
+      "name": "remove_channel_relationship",
+      "description": "Delete all existing relationships that match the specified (channel_id, related_channel_id, relationship_type).\n\nArgs:\n    channel_id (str): The source channel's ID.\n    related_channel_id (str): The target channel's ID.\n    relationship_type (str): The type of the relationship (e.g., featured, related, recommended).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Relationship removed successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Specified relationship does not exist.\"\n    }\n\nConstraints:\n    - Only removes relationships matching all three parameters.\n    - If no such relationship exists, operation fails with error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          },
+          "related_channel_id": {
+            "type": "string"
+          },
+          "relationship_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id",
+          "related_channel_id",
+          "relationship_type"
+        ]
+      }
+    },
+    {
+      "name": "update_channel_relationship_type",
+      "description": "Change the relationship type of an existing channel-to-channel association.\n\nArgs:\n    channel_id (str): The channel initiating the relationship.\n    related_channel_id (str): The related/target channel.\n    new_relationship_type (str): The new relationship type ('featured', 'related', 'recommended').\n\nReturns:\n    dict: Success or failure with a descriptive message.\n\nConstraints:\n    - Both channel_id and related_channel_id must reference existing channels.\n    - channel_id must not equal related_channel_id.\n    - new_relationship_type must be a valid type.\n    - The relationship must already exist to be updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          },
+          "related_channel_id": {
+            "type": "string"
+          },
+          "new_relationship_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id",
+          "related_channel_id",
+          "new_relationship_type"
+        ]
+      }
+    },
+    {
+      "name": "bulk_update_channel_profiles",
+      "description": "Update the profile_info field for multiple channels at once.\n\nArgs:\n    updates (Dict[str, Dict[str, str]]): Mapping of channel_id to new profile_info dict.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str,  # Success description, including counts\n        \"updated\": List[str],  # List of channel_ids updated\n        \"failed\": List[str],   # List of channel_ids not found\n    }\n\nConstraints:\n    - Only channels that exist in self.channels will be updated.\n    - Nonexistent channel_ids are reported as failed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "repair_invalid_relationships",
+      "description": "Remove or fix all relationships that violate constraints in channel_relationships.\nConstraints enforced:\n  - Both channel_id and related_channel_id must exist in channels.\n  - channel_id != related_channel_id (no self-relationships).\n  - relationship_type must be among allowed types ('featured', 'related', 'recommended').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Summary of what was repaired/removed\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    }
+  ]
+}

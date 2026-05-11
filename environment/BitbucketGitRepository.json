@@ -1,0 +1,547 @@
+{
+  "env_name": "BitbucketGitRepository",
+  "description": "A Bitbucket Git repository is a managed environment for version controlling source code, allowing users to create, update, and organize branches, commits, and collaborative workflows. It stores code, branch history, and user activity, enabling teams to work concurrently on features, fixes, and releases. The repository supports operations like branching, merging, pull requests, and code reviews, facilitating robust project management and software development.",
+  "initial_parameter_schema": {
+    "repositories": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "repository_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "owner_id": {
+            "type": "string"
+          },
+          "creation_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository_id",
+          "name",
+          "description",
+          "owner_id",
+          "creation_date"
+        ]
+      }
+    },
+    "branches": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "branch_name": {
+            "type": "string"
+          },
+          "repository_id": {
+            "type": "string"
+          },
+          "tip_commit_id": {
+            "type": "string"
+          },
+          "creation_date": {
+            "type": "string"
+          },
+          "created_by_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "branch_name",
+          "repository_id",
+          "tip_commit_id",
+          "creation_date",
+          "created_by_user_id"
+        ]
+      }
+    },
+    "commits": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "commit_id": {
+            "type": "string"
+          },
+          "parent_commit_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "author_user_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "commit_message": {
+            "type": "string"
+          },
+          "tree_hash": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "commit_id",
+          "parent_commit_ids",
+          "author_user_id",
+          "timestamp",
+          "commit_message",
+          "tree_hash"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "username",
+          "permissions",
+          "email"
+        ]
+      }
+    },
+    "default_branches": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "audit_log": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_repository_by_name": [
+      "repositories"
+    ],
+    "get_repositories_by_owner": [
+      "repositories",
+      "users"
+    ],
+    "get_repository_info": [
+      "repositories"
+    ],
+    "list_branches_in_repository": [
+      "branches",
+      "repositories"
+    ],
+    "branch_exists": [
+      "branches",
+      "repositories"
+    ],
+    "get_branch_info": [
+      "branches"
+    ],
+    "list_commits_in_repository": [
+      "branches",
+      "commits",
+      "repositories"
+    ],
+    "get_commit_info": [
+      "commits"
+    ],
+    "get_repository_default_branch": [
+      "branches",
+      "default_branches",
+      "repositories"
+    ],
+    "get_tip_commit_of_branch": [
+      "branches",
+      "commits"
+    ],
+    "get_user_by_username": [
+      "users"
+    ],
+    "get_user_permissions_on_repository": [
+      "repositories",
+      "users"
+    ],
+    "create_branch": [
+      "branches",
+      "commits",
+      "repositories",
+      "users"
+    ],
+    "delete_branch": [
+      "branches",
+      "repositories",
+      "users"
+    ],
+    "update_branch_tip_commit": [
+      "branches",
+      "commits",
+      "repositories"
+    ],
+    "log_repository_event": [
+      "audit_log",
+      "branches",
+      "repositories",
+      "users"
+    ],
+    "set_repository_default_branch": [
+      "branches",
+      "repositories"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_repository_by_name",
+      "description": "Retrieve metadata for a repository with the given name.\n\nArgs:\n    name (str): The repository name to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": RepositoryInfo  # Repository metadata\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"Repository not found\"\n    }\n\nConstraints:\n    - The repository name is case-sensitive.\n    - Only one repository will be returned (first match if duplicates exist, though names should be unique).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_repositories_by_owner",
+      "description": "List all repositories owned by a specific user.\n\nArgs:\n    user_id (str): The ID of the user whose owned repositories to list.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RepositoryInfo]  # May be empty if user owns none\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description, e.g. user does not exist\n    }\n\nConstraints:\n    - The specified user_id must exist.\n    - Includes all repositories with owner_id == user_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_repository_info",
+      "description": "Retrieve detailed information about a repository given its repository_id.\n\nArgs:\n    repository_id (str): The ID of the repository to fetch.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": RepositoryInfo  # (Dictionary with info about the repository)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g. repository does not exist)\n    }\n\nConstraints:\n    - The provided repository_id must exist in the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "repository_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository_id"
+        ]
+      }
+    },
+    {
+      "name": "list_branches_in_repository",
+      "description": "List all branch names in a specified repository.\n\nArgs:\n    repository_id (str): The unique identifier for the repository.\n\nReturns:\n    dict:\n        If repository exists:\n            {\n                \"success\": True,\n                \"data\": List[str]  # List of branch names (may be empty)\n            }\n        If repository does not exist:\n            {\n                \"success\": False,\n                \"error\": \"Repository does not exist\"\n            }\nConstraints:\n    - Repository must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "repository_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository_id"
+        ]
+      }
+    },
+    {
+      "name": "branch_exists",
+      "description": "Check if a branch name already exists in a given repository.\n\nArgs:\n    repository_id (str): The ID of the repository in which to check for the branch.\n    branch_name (str): The name of the branch to check.\n\nReturns:\n    dict: \n        On success:\n            { \"success\": True, \"exists\": bool }\n        On failure (repository does not exist):\n            { \"success\": False, \"error\": str }\n\nConstraints:\n    - The repository with the provided ID must exist.\n    - No permissions required for this query operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "repository_id": {
+            "type": "string"
+          },
+          "branch_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository_id",
+          "branch_name"
+        ]
+      }
+    },
+    {
+      "name": "get_branch_info",
+      "description": "Retrieve detailed info for a specific branch identified by (repository_id, branch_name).\n\nArgs:\n    repository_id (str): The unique ID of the repository.\n    branch_name (str): The name of the branch within the repository.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": BranchInfo     # TypedDict containing all branch metadata\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str           # \"Branch not found\"\n    }\n\nConstraints:\n    - Branch is uniquely identified by (repository_id, branch_name).\n    - No permissions are checked for this query.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "repository_id": {
+            "type": "string"
+          },
+          "branch_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository_id",
+          "branch_name"
+        ]
+      }
+    },
+    {
+      "name": "list_commits_in_repository",
+      "description": "List all commits (or the most recent N) in the given repository.\n\nArgs:\n    repository_id (str): ID of the repository to search in.\n    limit (int, optional): Maximum number of commits to return (sorted by timestamp descending).\n                          If None, returns all.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[CommitInfo]  # Ordered by timestamp descending, may be empty\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str\n            }\nConstraints:\n    - The repository must exist.\n    - If limit is provided, must be a positive integer.\n    - A commit is in the repo if it is reachable from any branch tip in that repo.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "repository_id": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "repository_id"
+        ]
+      }
+    },
+    {
+      "name": "get_commit_info",
+      "description": "Obtain detailed information for a specific commit by commit_id.\n\nArgs:\n    commit_id (str): The unique identifier for the commit.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": CommitInfo  # Full info for the commit\n            }\n        - If commit_id not found:\n            {\n                \"success\": False,\n                \"error\": \"Commit not found\"\n            }\n\nConstraints:\n    - commit_id must exist in the repository.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "commit_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "commit_id"
+        ]
+      }
+    },
+    {
+      "name": "get_repository_default_branch",
+      "description": "Identify the default/main branch for a specified repository.\n\nArgs:\n    repository_id (str): The ID of the repository.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": branch_name (str)  # The default branch name\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": error_message (str)\n            }\n\nConstraints:\n    - The repository must exist.\n    - The repository must have a default branch configured.\n    - The default branch must exist in the repository.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "repository_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository_id"
+        ]
+      }
+    },
+    {
+      "name": "get_tip_commit_of_branch",
+      "description": "Retrieve the CommitInfo of the latest (tip) commit for a given branch in a repository.\n\nArgs:\n    repository_id (str): The ID of the repository.\n    branch_name (str): The name of the branch.\n\nReturns:\n    dict: On success:\n              {\n                \"success\": True,\n                \"data\": CommitInfo  # Information about the tip commit\n              }\n          On failure:\n              {\n                \"success\": False,\n                \"error\": str  # Description of the error\n              }\n\nConstraints:\n    - The branch must exist in the repository.\n    - The tip commit must exist for the branch.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "repository_id": {
+            "type": "string"
+          },
+          "branch_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository_id",
+          "branch_name"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_username",
+      "description": "Retrieve user object (user_id, username, permissions, email, etc.) given a username.\n\nArgs:\n    username (str): The username to look up.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo  # The matching user's info,\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Usernames are assumed unique. If not found, reports an error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "get_user_permissions_on_repository",
+      "description": "Retrieve the list of permissions a user has on a specific repository.\n\nArgs:\n    user_id (str): The ID of the user.\n    repository_id (str): The ID of the repository.\n\nReturns:\n    dict:\n        { \"success\": True, \"data\": List[str] }\n        or\n        { \"success\": False, \"error\": str }\n\nConstraints:\n    - The user must exist.\n    - The repository must exist.\n    - Returns the permissions list from UserInfo (per-user global permissions).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "repository_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "repository_id"
+        ]
+      }
+    },
+    {
+      "name": "create_branch",
+      "description": "Create a new branch in the repository, pointing to an existing commit.\n\nArgs:\n    repository_id (str): The target repository's unique ID.\n    branch_name (str): The branch's unique name within the repo.\n    tip_commit_id (str): The commit from which to branch.\n    created_by_user_id (str): The user (by user_id) performing the operation.\n    creation_date (str): ISO8601 datetime branch creation timestamp.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"message\": \"Branch <name> created in repository <id>.\"}\n        On failure:\n            {\"success\": False, \"error\": <reason>} \n\nConstraints:\n    - Branch name must be unique in the repository.\n    - User must exist and have proper permissions.\n    - Repository and commit must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "repository_id": {
+            "type": "string"
+          },
+          "branch_name": {
+            "type": "string"
+          },
+          "tip_commit_id": {
+            "type": "string"
+          },
+          "created_by_user_id": {
+            "type": "string"
+          },
+          "creation_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository_id",
+          "branch_name",
+          "tip_commit_id",
+          "created_by_user_id",
+          "creation_date"
+        ]
+      }
+    },
+    {
+      "name": "delete_branch",
+      "description": "Remove a branch from the repository.\n\nArgs:\n    repository_id (str): Target repository.\n    branch_name (str): Branch to delete.\n    user_id (str): User requesting the operation.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Confirmation message\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description\n    }\n\nConstraints:\n    - Only users with appropriate permissions (\"delete_branch\" or \"admin\") can delete branches.\n    - Branch must exist within the specified repository.\n    - User and repository must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "repository_id": {
+            "type": "string"
+          },
+          "branch_name": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository_id",
+          "branch_name",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "update_branch_tip_commit",
+      "description": "Move the tip (HEAD) of a branch to another commit within the same repository.\n\nArgs:\n    repository_id (str): The ID of the repository.\n    branch_name (str): The name of the branch to update.\n    new_tip_commit_id (str): The commit ID to set as the new tip.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"message\": \"Branch tip updated to new commit.\"}\n        - On failure: {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - The repository and branch must exist.\n    - The new_tip_commit_id must be a valid commit.\n    - The update is atomic.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "repository_id": {
+            "type": "string"
+          },
+          "branch_name": {
+            "type": "string"
+          },
+          "new_tip_commit_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository_id",
+          "branch_name",
+          "new_tip_commit_id"
+        ]
+      }
+    },
+    {
+      "name": "log_repository_event",
+      "description": "Record an event/audit entry for repository branch operations.\n\nArgs:\n    repository_id (str): The repository in which the branch operation occurred.\n    branch_name (str): The name of the branch involved in the event.\n    user_id (str): The ID of the user who performed the operation.\n    timestamp (str): Timestamp of the event (ISO 8601 or RFC 3339 string).\n    event_type (str, optional): Event category such as 'branch_creation', 'branch_restore', 'branch_tip_update', or 'branch_deletion'. Defaults to 'branch_creation'.\n    details (str, optional): Free-form audit detail text. If omitted, a default detail string is generated based on event_type.\n\nReturns:\n    dict:\n        - On success: {'success': True, 'message': 'Event logged for branch creation'} or {'success': True, 'message': 'Repository event logged successfully'}\n        - On failure: {'success': False, 'error': 'reason'}\n\nConstraints:\n    - The repository_id must reference an existing repository.\n    - The branch_name identifies the branch involved in the event; for deletion/cleanup logs it may refer to a branch that has already been removed.\n    - The user_id must correspond to an existing user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "repository_id": {
+            "type": "string"
+          },
+          "branch_name": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "details": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository_id",
+          "branch_name",
+          "user_id",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "set_repository_default_branch",
+      "description": "Designate a branch as the default/main for a repository.\n\nArgs:\n    repository_id (str): The ID of the target repository.\n    branch_name (str): The branch name to set as default.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The repository must exist.\n    - The branch must exist within the specified repository.\n    - If 'default_branch' field is not present in repository info, it will be added.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "repository_id": {
+            "type": "string"
+          },
+          "branch_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository_id",
+          "branch_name"
+        ]
+      }
+    }
+  ]
+}

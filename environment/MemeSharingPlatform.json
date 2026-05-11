@@ -1,0 +1,556 @@
+{
+  "env_name": "MemeSharingPlatform",
+  "description": "A meme-sharing platform is an online system where users upload, categorize, and interact with meme content. It organizes memes by metadata such as genre, popularity, and upload date, and provides functionality to browse, search, rank, and retrieve both specific and random items. State is maintained for each meme (including genre, views, and upvotes) as well as for user-generated organization and trending lists.",
+  "initial_parameter_schema": {
+    "memes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "meme_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "image_url": {
+            "type": "string"
+          },
+          "genre": {
+            "type": "string"
+          },
+          "upload_date": {
+            "type": "string"
+          },
+          "uploader_id": {
+            "type": "string"
+          },
+          "views": {
+            "type": "integer"
+          },
+          "upvotes": {
+            "type": "integer"
+          },
+          "downvotes": {
+            "type": "integer"
+          },
+          "tag": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "meme_id",
+          "title",
+          "image_url",
+          "genre",
+          "upload_date",
+          "uploader_id",
+          "views",
+          "upvotes",
+          "downvotes",
+          "tag"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "uploaded_memes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "favorite_memes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "created_l": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "uploaded_memes",
+          "favorite_memes",
+          "created_l"
+        ]
+      }
+    },
+    "user_lists": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "meme_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "creation_da": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "list_id",
+          "user_id",
+          "name",
+          "meme_ids",
+          "creation_da"
+        ]
+      }
+    },
+    "trending_lists": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string"
+          },
+          "genre": {
+            "type": "string"
+          },
+          "ranked_meme_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "generation_timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "period",
+          "genre",
+          "ranked_meme_ids",
+          "generation_timestamp"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "list_memes_by_genre": [
+      "memes"
+    ],
+    "get_top_memes_by_genre": [
+      "memes"
+    ],
+    "get_trending_list": [
+      "trending_lists"
+    ],
+    "get_random_meme_by_genre": [
+      "memes"
+    ],
+    "get_meme_details": [
+      "memes"
+    ],
+    "list_all_genres": [
+      "memes"
+    ],
+    "get_user_info_by_username": [
+      "users"
+    ],
+    "get_user_uploaded_memes": [
+      "memes",
+      "users"
+    ],
+    "get_user_favorite_memes": [
+      "memes",
+      "users"
+    ],
+    "list_user_generated_lists": [
+      "user_lists",
+      "users"
+    ],
+    "get_user_meme_list_by_name": [
+      "user_lists"
+    ],
+    "increment_meme_views": [
+      "memes"
+    ],
+    "upvote_meme": [
+      "memes"
+    ],
+    "downvote_meme": [
+      "memes"
+    ],
+    "add_meme_to_user_list": [
+      "memes",
+      "user_lists"
+    ],
+    "remove_meme_from_user_list": [
+      "memes",
+      "user_lists"
+    ],
+    "add_meme_to_user_favorites": [
+      "memes",
+      "users"
+    ],
+    "remove_meme_from_user_favorites": [
+      "memes",
+      "users"
+    ],
+    "create_user_meme_list": [
+      "memes",
+      "user_lists",
+      "users"
+    ],
+    "delete_user_meme_list": [
+      "user_lists"
+    ]
+  },
+  "tools": [
+    {
+      "name": "list_memes_by_genre",
+      "description": "Return all memes (with metadata) that have the specified genre.\n\nArgs:\n    genre (str): The genre to filter memes by.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MemeInfo]  # list of meme dictionaries with matching genre (may be empty)\n    }\n\nConstraints:\n    - Each meme must belong to at least one genre.\n    - Only existing memes can be listed.\n    - If no memes have the specified genre, data is an empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "genre": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "genre"
+        ]
+      }
+    },
+    {
+      "name": "get_top_memes_by_genre",
+      "description": "Return memes of a specific genre, sorted by (upvotes - downvotes), then by views descending.\n\nArgs:\n    genre (str): The genre to filter and rank memes by.\n\nReturns:\n    dict:\n        success (bool): True if operation is successful.\n        data (List[MemeInfo]): Ranked list of memes matching the genre.\n        OR\n        success (bool): False if genre is missing.\n        error (str): Error description.\nConstraints:\n    - Only existing memes with the specified genre are considered.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "genre": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "genre"
+        ]
+      }
+    },
+    {
+      "name": "get_trending_list",
+      "description": "Retrieve the precomputed trending list for the given period and genre.\n\nArgs:\n    period (str): Time period, e.g., 'day', 'week', 'month'.\n    genre (str): Genre/category for which trending memes are requested.\n\nReturns:\n    dict: \n        {\"success\": True, \"data\": TrendingListInfo}\n        OR\n        {\"success\": False, \"error\": str}\n\nConstraints:\n    - Trending list must exist for the specified period and genre.\n    - Only existing memes are referenced in trending lists (assumed constructed correctly).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string"
+          },
+          "genre": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "period",
+          "genre"
+        ]
+      }
+    },
+    {
+      "name": "get_random_meme_by_genre",
+      "description": "Return a random meme (full MemeInfo) from all memes of a specified genre.\n\nArgs:\n    genre (str): The genre to filter memes by.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"data\": MemeInfo}\n        On failure (no memes for genre):\n            {\"success\": False, \"error\": \"No memes found for specified genre\"}\n\nConstraints:\n    - Only memes whose 'genre' matches the input are considered.\n    - If no such memes exist, returns failure.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "genre": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "genre"
+        ]
+      }
+    },
+    {
+      "name": "get_meme_details",
+      "description": "Retrieve all metadata for a specific meme by its meme_id.\n\nArgs:\n    meme_id (str): The unique ID of the meme to retrieve.\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"data\": MemeInfo}\n        - On failure: {\"success\": False, \"error\": \"Meme does not exist\"}\n\nConstraints:\n    - Only existing memes can be retrieved.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "meme_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "meme_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_genres",
+      "description": "Return a list of all distinct genres currently represented among memes.\n\nArgs:\n    None\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[str],  # List of unique genres\n        }\n        On error, returns:\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - Only genres of existing memes are included.\n    - Duplicates are removed; each genre appears once.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_user_info_by_username",
+      "description": "Retrieve a user profile (UserInfo) given their username.\n\nArgs:\n    username (str): The username to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo  # The user's information, if found.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description if user not found.\n    }\n\nConstraints:\n    - Returns the user's info if a unique username match is found.\n    - If no match, returns not found.\n    - Username lookup is case-sensitive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "get_user_uploaded_memes",
+      "description": "List all existing MemeInfo records for memes uploaded by a particular user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MemeInfo],    # List of meme info (may be empty)\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g. user does not exist)\n    }\n\nConstraints:\n    - Only existing memes can be listed/retrieved.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_favorite_memes",
+      "description": "List all memes a user has favorited.\n\nArgs:\n    username (str): The username of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MemeInfo],  # All favorited memes by this user (empty if none)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., 'User not found'\n    }\n\nConstraints:\n    - Only memes that exist in the platform will be returned.\n    - If user does not exist, returns error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "list_user_generated_lists",
+      "description": "Retrieve all user-generated meme lists for the specified user.\n\nArgs:\n    user_id (str): The unique ID of the user.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[UserListInfo]\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str\n            }\n\nConstraints:\n    - User must exist in the system.\n    - Lists returned are only those where user_id matches.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_meme_list_by_name",
+      "description": "Retrieve a specific meme list (collection) created by a user with the specified name.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n    list_name (str): The name of the user-generated list to retrieve.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserListInfo  # The user list info if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if not found\n    }\n\nConstraints:\n    - Only lists linked to user_id can be retrieved.\n    - Only existing lists can be retrieved.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "list_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "list_name"
+        ]
+      }
+    },
+    {
+      "name": "increment_meme_views",
+      "description": "Increments the view count of a meme by 1.\n\nArgs:\n    meme_id (str): The unique ID of the meme to increment the view count for.\n\nReturns:\n    dict: \n        - If success: { \"success\": True, \"message\": \"Meme view count incremented.\" }\n        - If meme does not exist: { \"success\": False, \"error\": \"Meme does not exist\" }\nConstraints:\n    - Only existing memes can be updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "meme_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "meme_id"
+        ]
+      }
+    },
+    {
+      "name": "upvote_meme",
+      "description": "Increase the upvote count of a specified meme by 1.\n\nArgs:\n    meme_id (str): The unique identifier of the meme to upvote.\n\nReturns:\n    dict: \n        If successful: { \"success\": True, \"message\": \"Upvote incremented for meme <meme_id>\" }\n        If meme does not exist: { \"success\": False, \"error\": \"Meme does not exist\" }\n\nConstraints:\n    - Meme must exist in the platform to be upvoted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "meme_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "meme_id"
+        ]
+      }
+    },
+    {
+      "name": "downvote_meme",
+      "description": "Increments the downvote count of a meme by 1.\n\nArgs:\n    meme_id (str): Unique identifier of the meme to downvote.\n\nReturns:\n    dict:\n        - On success: {\n            \"success\": True,\n            \"message\": \"Downvoted meme '<title>' (id: <meme_id>).\"\n          }\n        - On failure: {\n            \"success\": False,\n            \"error\": \"Meme does not exist.\"\n          }\nConstraints:\n    - Only existing memes can be downvoted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "meme_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "meme_id"
+        ]
+      }
+    },
+    {
+      "name": "add_meme_to_user_list",
+      "description": "Add a specified meme to a user-generated list.\n\nArgs:\n    list_id (str): The identifier of the user-generated meme list.\n    meme_id (str): The identifier of the meme to add.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Meme added to user list.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # error description.\n    }\n\nConstraints:\n    - Both list and meme must exist.\n    - Meme must not already be present in the list.\n    - Only existing memes may be referenced by user lists.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string"
+          },
+          "meme_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "list_id",
+          "meme_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_meme_from_user_list",
+      "description": "Remove a specified meme from a user-generated list.\n\nArgs:\n    list_id (str): The unique identifier of the user-generated list.\n    meme_id (str): The unique identifier of the meme to remove.\n\nReturns:\n    dict: \n        On success:\n            { \"success\": True, \"message\": \"Meme removed from user list.\" }\n        On failure:\n            { \"success\": False, \"error\": str }\nConstraints:\n    - The user-generated list must exist.\n    - The meme must exist in the system.\n    - The meme must currently be in the list.\n    - Updates list state by removing meme from meme_ids.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string"
+          },
+          "meme_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "list_id",
+          "meme_id"
+        ]
+      }
+    },
+    {
+      "name": "add_meme_to_user_favorites",
+      "description": "Add a meme to the user's list of favorite memes.\n\nArgs:\n    user_id (str): The user's unique ID.\n    meme_id (str): The meme's unique ID to be added.\n\nReturns:\n    dict:\n        - success (bool): True if the operation succeeds, else False.\n        - message (str): Description for success.\n        - error (str): Description for failure if not successful.\n\nConstraints:\n    - The user must exist.\n    - The meme must exist.\n    - Memes are not duplicated in a user's favorites.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "meme_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "meme_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_meme_from_user_favorites",
+      "description": "Remove a meme from a user's favorites.\n\nArgs:\n    user_id (str): The user's unique identifier (_id).\n    meme_id (str): The meme's unique identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Meme removed from favorites.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure.\"\n    }\n\nConstraints:\n    - The user must exist.\n    - The meme must exist.\n    - Operation is idempotent (removing a meme not present: still success).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "meme_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "meme_id"
+        ]
+      }
+    },
+    {
+      "name": "create_user_meme_list",
+      "description": "Create a new user-generated meme list for the specified user.\n\nArgs:\n    user_id (str): ID of the user creating the list.\n    name (str): Name/title for the new meme list. Must not duplicate an existing list name for this user.\n    meme_ids (List[str]): List of meme IDs to include. Each must exist in the memes registry.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"List created\",\n                \"list_id\": <new_list_id>\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": <description>\n            }\n\nConstraints:\n    - The user must exist.\n    - All meme_ids must be valid (i.e., exist in self.memes).\n    - The list name must not already exist for this user.\n    - The new list will be added to self.user_lists with a unique list_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "meme_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "meme_ids"
+        ]
+      }
+    },
+    {
+      "name": "delete_user_meme_list",
+      "description": "Delete an existing user-generated meme list.\n\nArgs:\n    list_id (str): The unique identifier of the user list to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User meme list deleted successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"List does not exist\"\n    }\n\nConstraints:\n    - List must exist in self.user_lists.\n    - No deletion of non-existent list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "list_id"
+        ]
+      }
+    }
+  ]
+}

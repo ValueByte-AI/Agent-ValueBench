@@ -1,0 +1,339 @@
+{
+  "env_name": "GISPlaceDatabase",
+  "description": "A GIS place database organizes and stores information about various locations, each associated with specific geographic coordinates and attributes. It enables spatial queries such as finding all places within a given radius of a point, mapping, and analysis of spatial relationships. These systems are widely used for navigation, urban planning, resource management, and location-based services.",
+  "initial_parameter_schema": {
+    "places": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "place_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "type": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "a": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "place_id",
+          "name",
+          "latitude",
+          "longitude",
+          "type",
+          "address",
+          "tags",
+          "a"
+        ]
+      }
+    },
+    "spatial_index": {
+      "type": "object",
+      "properties": {
+        "index_type": {
+          "type": "string"
+        },
+        "index_data": {}
+      }
+    },
+    "_update_spatial_index_with_new_place": {
+      "type": "string"
+    },
+    "rebuild_spatial_index": {
+      "type": "string"
+    }
+  },
+  "tool_state_dependencies": {
+    "get_place_by_id": [
+      "places"
+    ],
+    "list_all_places": [
+      "places"
+    ],
+    "find_places_within_radius": [
+      "places"
+    ],
+    "search_places_by_attribute": [
+      "places"
+    ],
+    "get_place_by_coordinates": [
+      "places"
+    ],
+    "add_place": [
+      "_update_spatial_index_with_new_place",
+      "places"
+    ],
+    "_update_spatial_index_with_new_place": [
+      "spatial_index"
+    ],
+    "update_place": [
+      "places",
+      "rebuild_spatial_index",
+      "spatial_index"
+    ],
+    "remove_place": [
+      "places",
+      "rebuild_spatial_index"
+    ],
+    "rebuild_spatial_index": [
+      "places",
+      "spatial_index"
+    ],
+    "validate_coordinates_uniqueness": [
+      "places"
+    ],
+    "validate_place_attributes_consistency": []
+  },
+  "tools": [
+    {
+      "name": "get_place_by_id",
+      "description": "Retrieve the complete information of a place given its unique place_id.\n\nArgs:\n    place_id (str): The unique identifier of the place to retrieve.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": PlaceInfo  # Full information of the requested place\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason why the place could not be retrieved (e.g. not found)\n    }\n\nConstraints:\n    - The place_id must exist in the system.\n    - Place attributes are assumed to be consistent and up to date.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "place_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "place_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_places",
+      "description": "Return a list of all places stored in the GIS database.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PlaceInfo]\n    }\n    - List may be empty if no places exist.\n\nConstraints:\n    - Returns current data in the system.\n    - No input parameters.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "find_places_within_radius",
+      "description": "Find all places within a given radius (in kilometers) from the specified latitude and longitude,\nusing the haversine formula for spherical Earth geometry.\n\nArgs:\n    center_latitude (float): Latitude of the center point (-90 <= latitude <= 90)\n    center_longitude (float): Longitude of the center point (-180 <= longitude <= 180)\n    radius_km (float): Radius in kilometers (must be >= 0)\n\nReturns:\n    dict:\n        - If input is valid: {\n              \"success\": True,\n              \"data\": List[PlaceInfo]  # All places within or exactly at the given radius (may be empty)\n          }\n        - If input invalid: {\n              \"success\": False,\n              \"error\": \"<error reason>\"\n          }\n\nConstraints:\n    - Use the haversine formula.\n    - Only valid latitude, longitude and non-negative radius.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "center_latitude": {
+            "type": "number"
+          },
+          "center_longitude": {
+            "type": "number"
+          },
+          "radius_km": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "center_latitude",
+          "center_longitude",
+          "radius_km"
+        ]
+      }
+    },
+    {
+      "name": "search_places_by_attribute",
+      "description": "Query places filtered by specified attributes.\n\nArgs:\n    filters (dict): Keys can include:\n        - \"type\" (str): Place type to match exactly.\n        - \"tags\" (List[str]): At least one tag must match.\n        - \"name\" (str): Substring (case-insensitive) match within place name.\n\nReturns:\n    dict: On success,\n        { \"success\": True, \"data\": List[PlaceInfo] }\n        On error,\n        { \"success\": False, \"error\": \"description\" }\n\nConstraints:\n    - Only supported filter keys are applied (\"type\", \"tags\", \"name\").\n    - Tag matching: place's tags must have at least one element in common with provided \"tags\" list.\n    - Name matching: case-insensitive substring.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filters": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "filters"
+        ]
+      }
+    },
+    {
+      "name": "get_place_by_coordinates",
+      "description": "Retrieve a place's details using its exact latitude and longitude.\n\nArgs:\n    latitude (float): The latitude of the place to retrieve.\n    longitude (float): The longitude of the place to retrieve.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": PlaceInfo\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": \"Place not found at the specified coordinates\"\n        }\n\nConstraints:\n    - There can be at most one place at a given (latitude, longitude) due to uniqueness.\n    - Coordinates must match exactly (no tolerance).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude"
+        ]
+      }
+    },
+    {
+      "name": "add_place",
+      "description": "Add a new place to the database, enforcing coordinate uniqueness and updating the spatial index.\n\nArgs:\n    place_id (str): Unique place identifier.\n    name (str): Name of the place.\n    latitude (float): Latitude of the place (must be unique when paired with longitude).\n    longitude (float): Longitude of the place (must be unique when paired with latitude).\n    type (str): Type/category of the place.\n    address (str): Postal or textual address.\n    tags (List[str]): List of descriptive tags.\n    a (str): Additional attribute.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Place added and spatial index updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <error reason>\n    }\n\nConstraints:\n    - Coordinates (latitude, longitude) must be unique across all places.\n    - Place attributes must be up to date.\n    - Spatial index must be updated after addition.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "place_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "type": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "a": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "place_id",
+          "name",
+          "latitude",
+          "longitude",
+          "type",
+          "address",
+          "tags",
+          "a"
+        ]
+      }
+    },
+    {
+      "name": "_update_spatial_index_with_new_place",
+      "description": "Internal helper to update the spatial index with new place (abstract/stub implementation).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "place_id": {
+            "type": "string"
+          },
+          "new_place": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "place_id",
+          "new_place"
+        ]
+      }
+    },
+    {
+      "name": "update_place",
+      "description": "Modify attributes of an existing place, enforcing data consistency and spatial index update.\n\nArgs:\n    place_id (str): The ID of the place to update.\n    updates (Dict[str, Any]): Dictionary mapping attribute names to new values.\n\nReturns:\n    dict: On success: {\"success\": True, \"message\": \"Place <place_id> updated successfully\"}\n          On failure: {\"success\": False, \"error\": str}\n\nConstraints:\n    - Target place must exist.\n    - Only valid attributes may be updated.\n    - If latitude/longitude are updated, resulting coordinates must remain unique.\n    - Place attributes must remain consistent/valid.\n    - Spatial index must be updated to reflect changes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "place_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "place_id",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "remove_place",
+      "description": "Remove a place from the database by place_id or by coordinates,\nand trigger a spatial index update.\n\nArgs:\n    place_id (str, optional): Unique identifier of the place.\n    latitude (float, optional): Latitude coordinate.\n    longitude (float, optional): Longitude coordinate.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Place removed and spatial index updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Only one place can exist at any unique coordinate.\n    - If both place_id and coordinates are provided, they must refer to the same place or an error is returned.\n    - After successful removal, the spatial index must be updated accordingly.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "place_id": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "rebuild_spatial_index",
+      "description": "Explicitly rebuild the internal spatial index from the current set of places.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Spatial index rebuilt from current places.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Explanation of failure (should almost never occur)\n    }\n\nConstraints:\n    - The new spatial index must accurately reflect all places in self.places.\n    - If there are no places, the index should be empty but the operation is successful.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "validate_coordinates_uniqueness",
+      "description": "Check if the provided latitude/longitude pair is already used by any existing place\n(excluding optionally a specific place by place_id during updates).\n\nArgs:\n    latitude (float): Latitude to check.\n    longitude (float): Longitude to check.\n    exclude_place_id (str, optional): If provided, this place_id is ignored (for updates).\n\nReturns:\n    dict:\n        On success (coordinates unique): {\"success\": True, \"message\": \"Coordinates are unique.\"}\n        On error (coordinates in use): {\"success\": False, \"error\": \"Coordinates already in use by place_id <id>\"}\n\nConstraints:\n    - No two places may have identical (latitude, longitude) pairs.\n    - Optional exclusion for update operations.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "exclude_place_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude"
+        ]
+      }
+    },
+    {
+      "name": "validate_place_attributes_consistency",
+      "description": "Check if a place's attributes are consistent and up-to-date with system rules before making changes.\n\nArgs:\n    place_info (dict): Dictionary containing the proposed PlaceInfo attributes.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Place attributes are consistent\"\n    } if valid,\n    {\n        \"success\": False,\n        \"error\": str\n    } if any attribute is inconsistent/invalid.\n\nConstraints:\n    - All required fields (*place_id, name, latitude, longitude, type, address, tags, a*) must be present and not empty.\n    - Latitude must be in [-90, 90]; longitude in [-180, 180].\n    - tags must be a list of strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "place_info": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "place_info"
+        ]
+      }
+    }
+  ]
+}

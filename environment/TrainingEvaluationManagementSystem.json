@@ -1,0 +1,632 @@
+{
+  "env_name": "TrainingEvaluationManagementSystem",
+  "description": "A Participant Evaluation Management System for training programs maintains structured records of sessions, participants, evaluation criteria, and scores. The system supports logging assessments over time, retrieving historical progress, and generating reports to monitor improvement or identify areas for development. It provides a framework for instructors and organizers to consistently evaluate and track participant performance throughout a program.",
+  "initial_parameter_schema": {
+    "participants": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "participant_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "enrollment_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "participant_id",
+          "name",
+          "contact_info",
+          "enrollment_status"
+        ]
+      }
+    },
+    "sessions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "topic": {
+            "type": "string"
+          },
+          "instructor_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "date",
+          "topic",
+          "instructor_id"
+        ]
+      }
+    },
+    "evaluation_criteria": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "criterion_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "criterion_id"
+        ]
+      }
+    },
+    "evaluations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "evaluation_id": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "participant_id": {
+            "type": "string"
+          },
+          "criterion_id": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number"
+          },
+          "evaluator_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "evaluation_id",
+          "session_id",
+          "participant_id",
+          "criterion_id",
+          "score",
+          "evaluator_id",
+          "timestamp"
+        ]
+      }
+    },
+    "instructors": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "instructor_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "instructor_id"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_session_by_date": [
+      "instructors",
+      "sessions"
+    ],
+    "get_session_by_id": [
+      "sessions"
+    ],
+    "list_all_sessions": [
+      "sessions"
+    ],
+    "list_enrolled_participants": [
+      "participants"
+    ],
+    "get_participant_by_id": [
+      "participants"
+    ],
+    "list_evaluation_criteria": [
+      "evaluation_criteria"
+    ],
+    "get_criterion_by_name": [
+      "evaluation_criteria"
+    ],
+    "get_evaluations_for_participant": [
+      "evaluations",
+      "participants"
+    ],
+    "get_evaluations_for_session": [
+      "evaluations",
+      "sessions"
+    ],
+    "get_evaluations_by_criterion": [
+      "evaluation_criteria",
+      "evaluations"
+    ],
+    "get_evaluator_by_id": [
+      "instructors"
+    ],
+    "get_evaluation_by_id": [
+      "evaluations"
+    ],
+    "add_evaluation": [
+      "evaluation_criteria",
+      "evaluations",
+      "instructors",
+      "participants",
+      "sessions"
+    ],
+    "update_evaluation_score": [
+      "evaluations"
+    ],
+    "delete_evaluation": [
+      "evaluations"
+    ],
+    "add_session": [
+      "instructors",
+      "sessions"
+    ],
+    "update_session": [
+      "instructors",
+      "sessions"
+    ],
+    "enroll_participant": [
+      "participants"
+    ],
+    "unenroll_participant": [
+      "participants"
+    ],
+    "add_evaluation_criterion": [
+      "evaluation_criteria"
+    ],
+    "update_evaluation_criterion": [
+      "evaluation_criteria"
+    ],
+    "add_instructor": [
+      "instructors"
+    ],
+    "update_instructor": [
+      "instructors"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_session_by_date",
+      "description": "Retrieve the session (session_id, topic, and instructor info) for the specified date.\n\nArgs:\n    date (str): ISO-formatted date string to look up the session.\n\nReturns:\n    dict: \n        Success: {\n            \"success\": True,\n            \"data\": {\n                \"session_id\": str,\n                \"topic\": str,\n                \"instructor_id\": str,\n                \"instructor_name\": str\n            }\n        }\n        Failure: {\n            \"success\": False,\n            \"error\": \"No session found for the specified date\" | \"Instructor not found\"\n        }\n\nConstraints:\n    - At most one session per date (as per system constraints).\n    - Instructor information is returned alongside session info.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "date"
+        ]
+      }
+    },
+    {
+      "name": "get_session_by_id",
+      "description": "Retrieve all information for a given session_id.\n\nArgs:\n    session_id (str): The unique identifier of the session.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": SessionInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"Session not found\"\n    }\n\nConstraints:\n    - The session_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_sessions",
+      "description": "List all sessions in the training program.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SessionInfo]  # List of all session records (may be empty list)\n    }\n\nConstraints:\n    - None (query only, no constraints apply to the operation itself)",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_enrolled_participants",
+      "description": "Retrieve all participants with an active/enrolled status.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ParticipantInfo],  # All participants where enrollment_status == \"enrolled\"\n    }\n\nConstraints:\n    - Only participants with 'enrollment_status' equal to \"enrolled\" are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_participant_by_id",
+      "description": "Retrieve information for a participant by participant_id.\n\nArgs:\n    participant_id (str): The unique ID of the participant.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ParticipantInfo  # Information about the participant\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Error message if participant_id is not found\n    }\n\nConstraints:\n    - The participant_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "participant_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "participant_id"
+        ]
+      }
+    },
+    {
+      "name": "list_evaluation_criteria",
+      "description": "List all evaluation criteria defined in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[EvaluationCriterionInfo],  # May be empty if no criteria exist\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_criterion_by_name",
+      "description": "Retrieve the evaluation criterion details based on the specified criterion name.\n\nArgs:\n    criterion_name (str): The name of the evaluation criterion.\n\nReturns:\n    dict: If found,\n        {\n            \"success\": True,\n            \"data\": EvaluationCriterionInfo\n        }\n        If not found,\n        {\n            \"success\": False,\n            \"error\": \"Criterion with the specified name does not exist.\"\n        }\n\nConstraints:\n    - Name must match exactly.\n    - Returns the first match if multiple criteria share the same name (should be unique).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "criterion_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "criterion_name"
+        ]
+      }
+    },
+    {
+      "name": "get_evaluations_for_participant",
+      "description": "Retrieve all evaluations for a given participant, optionally filtered by session or evaluation criterion.\n\nArgs:\n    participant_id (str): ID of the participant whose evaluations to retrieve.\n    session_id (str, optional): If provided, filter evaluations to this session only.\n    criterion_id (str, optional): If provided, filter evaluations to this criterion only.\n\nReturns:\n    dict: \n        On success:\n            {\"success\": True, \"data\": List[EvaluationInfo]}\n            (List may be empty if no matching evaluations.)\n        On failure:\n            {\"success\": False, \"error\": <reason>}\nConstraints:\n    - Participant must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "participant_id": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "criterion_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "participant_id"
+        ]
+      }
+    },
+    {
+      "name": "get_evaluations_for_session",
+      "description": "List all evaluations recorded for a specific session.\n\nArgs:\n    session_id (str): Unique identifier of the session.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[EvaluationInfo]  # List of evaluations for the session (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g., session does not exist)\n    }\n\nConstraints:\n    - The session_id must refer to an existing session in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "get_evaluations_by_criterion",
+      "description": "Retrieve all evaluation records related to the specified evaluation criterion.\n\nArgs:\n    criterion_id (str): Unique identifier for the evaluation criterion.\n\nReturns:\n    dict: \n        - On success: {\n            \"success\": True,\n            \"data\": List[EvaluationInfo]  # possibly empty if no evaluations found\n          }\n        - On failure: {\n            \"success\": False,\n            \"error\": str  # Reason for failure (\"Criterion not found\")\n          }\n\nConstraints:\n    - criterion_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "criterion_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "criterion_id"
+        ]
+      }
+    },
+    {
+      "name": "get_evaluator_by_id",
+      "description": "Fetch instructor/evaluator information given an instructor_id.\n\nArgs:\n    instructor_id (str): Unique identifier for the instructor/evaluator.\n\nReturns:\n    dict:\n        - {\"success\": True, \"data\": InstructorInfo}\n          if the instructor is found\n        - {\"success\": False, \"error\": \"Instructor not found\"}\n          if not present in the system\n\nConstraints:\n    - instructor_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "instructor_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "instructor_id"
+        ]
+      }
+    },
+    {
+      "name": "get_evaluation_by_id",
+      "description": "Retrieve the full details of a specific evaluation record by its ID.\n\nArgs:\n    evaluation_id (str): The unique identifier of the evaluation to retrieve.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": EvaluationInfo  # All details about the evaluation\n            }\n        On failure (not found):\n            {\n                \"success\": False,\n                \"error\": \"Evaluation not found\"\n            }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "evaluation_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "evaluation_id"
+        ]
+      }
+    },
+    {
+      "name": "add_evaluation",
+      "description": "Record a new evaluation for a participant, session, and criterion, specifying score and evaluator.\n\nArgs:\n    participant_id (str): ID of the participant being evaluated.\n    session_id (str): ID of the session.\n    criterion_id (str): ID of the evaluation criterion.\n    score (float): Score assigned (must be between 0 and 10 inclusive).\n    evaluator_id (str): ID of the instructor/evaluator.\n    timestamp (str): Time when the evaluation is recorded.\n    evaluation_id (str, optional): If not supplied, generated automatically.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Evaluation successfully recorded for participant <id> in session <id>.\"\n    }\n    or\n    dict: {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Participant, session, criterion, and evaluator must exist.\n    - Participant must be enrolled.\n    - Score must be in [0, 10].\n    - Cannot record duplicate evaluation for the same (participant_id, session_id, criterion_id).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "participant_id": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "criterion_id": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number"
+          },
+          "evaluator_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "evaluation_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "participant_id",
+          "session_id",
+          "criterion_id",
+          "score",
+          "evaluator_id",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "update_evaluation_score",
+      "description": "Modify the score in an existing evaluation record.\n\nArgs:\n    evaluation_id (str): The unique ID of the evaluation record to update.\n    new_score (float): The new score to set (must be between 0 and 10 inclusive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Evaluation score updated successfully.\",\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,\n    }\n\nConstraints:\n    - Evaluation must exist.\n    - Score must be within the allowed range 0–10 inclusive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "evaluation_id": {
+            "type": "string"
+          },
+          "new_score": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "evaluation_id",
+          "new_score"
+        ]
+      }
+    },
+    {
+      "name": "delete_evaluation",
+      "description": "Remove an evaluation record from the system by its unique evaluation_id.\n\nArgs:\n    evaluation_id (str): The unique identifier of the evaluation record to be deleted.\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"message\": \"Evaluation record deleted.\"}\n        - On failure: {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - Only deletes an existing evaluation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "evaluation_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "evaluation_id"
+        ]
+      }
+    },
+    {
+      "name": "add_session",
+      "description": "Register a new training session.\n\nArgs:\n    session_id (str): Unique identifier for the session.\n    date (str): Session date (should be in ISO format, e.g., '2023-05-15').\n    topic (str): The topic/title of the session.\n    instructor_id (str): Instructor responsible for the session. Must exist.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Session <session_id> added successfully.\" }\n        On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - session_id must be unique.\n    - instructor_id must exist.\n    - date must be present/valid (ISO format if possible).\n    - topic must be non-empty.\n    - Sessions cannot be duplicated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "topic": {
+            "type": "string"
+          },
+          "instructor_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "update_session",
+      "description": "Update the information for an existing session (date, topic, instructor).\n\nArgs:\n    session_id (str): The ID of the session to update (required).\n    date (str, optional): The new date for the session.\n    topic (str, optional): The new topic for the session.\n    instructor_id (str, optional): The new instructor ID.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Session <session_id> updated successfully.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - session_id must exist.\n    - Sessions must not duplicate an existing (date + topic) combination (except itself).\n    - instructor_id (if provided) must exist.\n    - At least one of date, topic, or instructor_id must be provided for update.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "topic": {
+            "type": "string"
+          },
+          "instructor_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "date",
+          "topic",
+          "instructor_id"
+        ]
+      }
+    },
+    {
+      "name": "enroll_participant",
+      "description": "Change the enrollment status of a participant to 'enrolled'.\n\nArgs:\n    participant_id (str): The ID of the participant to enroll.\n\nReturns:\n    dict: \n      - On success: { \"success\": True, \"message\": \"Participant <id> successfully enrolled.\" }\n      - On error: { \"success\": False, \"error\": reason }\n\nConstraints:\n    - Participant must exist in the system.\n    - If already enrolled, does not change status and returns error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "participant_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "participant_id"
+        ]
+      }
+    },
+    {
+      "name": "unenroll_participant",
+      "description": "Mark a participant as not enrolled/inactive.\n\nArgs:\n    participant_id (str): The ID of the participant to unenroll.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Participant marked as not enrolled.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g., participant not found)\n    }\n\nConstraints:\n    - Participant must exist.\n    - Updates the 'enrollment_status' to 'inactive'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "participant_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "participant_id"
+        ]
+      }
+    },
+    {
+      "name": "add_evaluation_criterion",
+      "description": "Add a new evaluation criterion to the system.\n\nArgs:\n    criterion_id (str): Unique identifier for the new criterion.\n    name (str): Name of the evaluation criterion.\n    description (str): Description of the evaluation criterion.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Evaluation criterion added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason string>\n    }\n\nConstraints:\n    - criterion_id must be unique (not already in self.evaluation_criteria).\n    - criterion_id and name must be non-empty strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "criterion_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "criterion_id",
+          "name",
+          "description"
+        ]
+      }
+    },
+    {
+      "name": "update_evaluation_criterion",
+      "description": "Update the name and/or description of an existing evaluation criterion.\n\nArgs:\n    criterion_id (str): The ID of the evaluation criterion to update.\n    name (str, optional): New name for the criterion.\n    description (str, optional): New description for the criterion.\n\nReturns:\n    dict: \n        - On success:\n            { \"success\": True, \"message\": \"Evaluation criterion updated\" }\n        - On failure:\n            { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The criterion must exist in the system.\n    - At least one of the parameters (name, description) must be supplied.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "criterion_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "criterion_id",
+          "name",
+          "description"
+        ]
+      }
+    },
+    {
+      "name": "add_instructor",
+      "description": "Register a new instructor.\n\nArgs:\n    instructor_id (str): Unique identifier for the instructor.\n    name (str): Name of the instructor.\n    contact_info (str): Instructor's contact information.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True, \n            \"message\": \"Instructor added successfully.\"\n        }\n        On failure: {\n            \"success\": False, \n            \"error\": str\n        }\n\nConstraints:\n    - instructor_id must be unique in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "instructor_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "instructor_id",
+          "name",
+          "contact_info"
+        ]
+      }
+    },
+    {
+      "name": "update_instructor",
+      "description": "Update the instructor's information (name and/or contact_info).\n\nArgs:\n    instructor_id (str): The unique identifier for the instructor to update.\n    name (str, optional): New name for the instructor.\n    contact_info (str, optional): New contact information for the instructor.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Instructor info updated.\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - instructor_id must exist in the system.\n    - At least one update field must be provided.\n    - instructor_id itself is not changed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "instructor_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "instructor_id",
+          "name",
+          "contact_info"
+        ]
+      }
+    }
+  ]
+}

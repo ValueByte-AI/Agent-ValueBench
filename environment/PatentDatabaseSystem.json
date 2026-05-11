@@ -1,0 +1,776 @@
+{
+  "env_name": "PatentDatabaseSystem",
+  "description": "A Patent Database System is a structured environment designed to store and manage details of patent documents, including metadata such as classification codes, assignee names, titles, and filing dates. Users can query the database for patents matching various criteria, retrieve lists of relevant documents, and analyze patent landscapes for legal or research purposes. It supports functions such as search, filtering, and result organization across various domains of intellectual property.",
+  "initial_parameter_schema": {
+    "patents": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "patent_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "filing_date": {
+            "type": "string"
+          },
+          "publication_date": {
+            "type": "string"
+          },
+          "abstract": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "classification_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "assignee_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "inventor_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patent_id",
+          "title",
+          "filing_date",
+          "publication_date",
+          "abstract",
+          "status",
+          "classification_codes",
+          "assignee_ids",
+          "inventor_id"
+        ]
+      }
+    },
+    "classification_codes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "description",
+          "type"
+        ]
+      }
+    },
+    "assignees": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "assignee_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "assignee_id",
+          "name",
+          "type",
+          "address"
+        ]
+      }
+    },
+    "inventors": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "inventor_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "nationality": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "inventor_id",
+          "name",
+          "address",
+          "nationality"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "search_patents": [
+      "assignees",
+      "patents"
+    ],
+    "get_patent_by_id": [
+      "patents"
+    ],
+    "list_patent_titles": [
+      "assignees",
+      "patents"
+    ],
+    "get_patent_assignee_ids": [
+      "patents"
+    ],
+    "get_assignee_by_id": [
+      "assignees"
+    ],
+    "get_assignee_name_by_id": [
+      "assignees"
+    ],
+    "list_patents_by_classification_code": [
+      "classification_codes",
+      "patents"
+    ],
+    "list_classification_codes": [
+      "classification_codes"
+    ],
+    "get_patent_classification_codes": [
+      "classification_codes",
+      "patents"
+    ],
+    "list_patents_by_assignee_id": [
+      "assignees",
+      "patents"
+    ],
+    "list_assignees": [
+      "assignees"
+    ],
+    "list_inventors": [
+      "inventors"
+    ],
+    "get_inventor_by_id": [
+      "inventors"
+    ],
+    "add_patent": [
+      "assignees",
+      "classification_codes",
+      "inventors",
+      "patents"
+    ],
+    "update_patent": [
+      "assignees",
+      "classification_codes",
+      "inventors",
+      "patents"
+    ],
+    "delete_patent": [
+      "patents"
+    ],
+    "add_assignee": [
+      "assignees"
+    ],
+    "update_assignee": [
+      "assignees"
+    ],
+    "delete_assignee": [
+      "assignees",
+      "patents"
+    ],
+    "add_classification_code": [
+      "classification_codes"
+    ],
+    "update_classification_code": [
+      "classification_codes"
+    ],
+    "delete_classification_code": [
+      "classification_codes",
+      "patents"
+    ],
+    "add_inventor": [
+      "inventors"
+    ],
+    "update_inventor": [
+      "inventors"
+    ],
+    "delete_inventor": [
+      "inventors",
+      "patents"
+    ],
+    "validate_patent_relationships": [
+      "assignees",
+      "classification_codes",
+      "patents"
+    ]
+  },
+  "tools": [
+    {
+      "name": "search_patents",
+      "description": "Retrieve patents filtered by any combination of:\n    - classification_codes: List of classification code strings (intersection: patent must have at least one)\n    - filing_date_from / filing_date_to: Only patents with filing_date >= from and/or <= to (ISO string)\n    - publication_date_from / publication_date_to: Only patents with publication_date >= from and/or <= to\n    - assignee_ids: list of IDs (patent must have at least one in this list)\n    - assignee_names: list of names (maps to IDs)\n    - inventor_ids: list of inventor_id values\n    - status: legal status string\n\nAll parameters are optional. If none are given, returns all patents.\n\nReturns:\n    dict with keys:\n        - success (bool)\n        - data (list of PatentInfo dicts) on success; each patent record includes both assignee_ids and resolved assignee_names\n        - error (str) on failure\n\nConstraints:\n    - For assignee_names, matches are case-sensitive.\n    - Dates should be in comparable-string format (YYYY-MM-DD).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "classification_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "filing_date_from": {
+            "type": "string"
+          },
+          "filing_date_to": {
+            "type": "string"
+          },
+          "publication_date_from": {
+            "type": "string"
+          },
+          "publication_date_to": {
+            "type": "string"
+          },
+          "assignee_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "assignee_names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "inventor_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "get_patent_by_id",
+      "description": "Retrieve the complete information of a patent given its patent_id.\n\nArgs:\n    patent_id (str): The unique identifier of the desired patent.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": PatentInfo  # all fields for the patent, including assignee_ids and resolved assignee_names\n            }\n        On failure (not found):\n            {\n                \"success\": False,\n                \"error\": \"Patent not found\"\n            }\n\nConstraints:\n    - Only returns patents present in the database.\n    - Patent relationships are not validated during this operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patent_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patent_id"
+        ]
+      }
+    },
+    {
+      "name": "list_patent_titles",
+      "description": "Retrieve and optionally sort the titles of patents, with filtering support.\n\nArgs:\n    classification_codes (list[str], optional): Only include patents having at least one of these codes.\n    assignee_names (list[str], optional): Only include patents with at least one assignee matching these names.\n    status (str, optional): Filter patents by status (e.g., 'granted', 'pending').\n    filing_date_range (tuple(str, str), optional): (start_date, end_date), as ISO format 'YYYY-MM-DD'.\n    sort_by (str, optional): Field to sort by ('title', 'filing_date', etc.), default is 'title'.\n    ascending (bool, optional): Sort order; True for ascending (default), False for descending.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str],  # Sorted, filtered list of patent titles.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if parameters invalid, etc.\n    }\nConstraints:\n    - Titles and assignee names are retrievable and results are sortable.\n    - Filters are combined with AND logic.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "classification_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "assignee_names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string"
+          },
+          "filing_date_range": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "sort_by": {
+            "type": "string"
+          },
+          "ascending": {
+            "type": "boolean"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "get_patent_assignee_ids",
+      "description": "Get the list of assignee_id(s) assigned to a particular patent.\n\nArgs:\n    patent_id (str): Unique identifier for the patent.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str],  # List of assignee_id(s), may be empty if none\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"Patent not found\" if the patent_id does not exist\n    }\n\nConstraints:\n    - patent_id must exist in the database.\n    - Returns the assignee IDs as listed in the patent record.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patent_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patent_id"
+        ]
+      }
+    },
+    {
+      "name": "get_assignee_by_id",
+      "description": "Retrieve full details of an assignee by their assignee_id.\n\nArgs:\n    assignee_id (str): The unique identifier of the assignee.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": AssigneeInfo\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Assignee not found\"\n            }\nConstraints:\n    - assignee_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "assignee_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "assignee_id"
+        ]
+      }
+    },
+    {
+      "name": "get_assignee_name_by_id",
+      "description": "Returns the name of an assignee given their assignee_id.\n\nArgs:\n    assignee_id (str): The unique identifier of the assignee.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": str  # The name of the assignee\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The assignee_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "assignee_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "assignee_id"
+        ]
+      }
+    },
+    {
+      "name": "list_patents_by_classification_code",
+      "description": "Retrieve all patents associated with a specific classification code.\n\nArgs:\n    classification_code (str): The code to filter patents by.\n\nReturns:\n    dict:\n        - On success:\n            { \"success\": True, \"data\": List[PatentInfo] }\n        - On error:\n            { \"success\": False, \"error\": str }\n\nConstraints:\n    - Provided classification_code must exist in the database.\n    - Results may be empty if no patents are associated with the classification code.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "classification_code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "classification_code"
+        ]
+      }
+    },
+    {
+      "name": "list_classification_codes",
+      "description": "Retrieve and describe all patent classification codes in the database.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ClassificationCodeInfo],  # All classification codes (could be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description\n    }\n\nConstraints:\n    - None (simple retrieval, no relationship checks)",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_patent_classification_codes",
+      "description": "Retrieves the list of classification codes (with details) assigned to a particular patent.\n\nArgs:\n    patent_id (str): The unique identifier of the patent.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ClassificationCodeInfo]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason the operation failed\n    }\n\nConstraints:\n    - The patent must exist in the database.\n    - Each classification code listed for a patent should exist in the classification_codes dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patent_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patent_id"
+        ]
+      }
+    },
+    {
+      "name": "list_patents_by_assignee_id",
+      "description": "Retrieve all patents (PatentInfo) associated with the given assignee_id.\n\nArgs:\n    assignee_id (str): The unique ID of the assignee.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": [PatentInfo, ...]  # List of PatentInfo dicts for all matching patents (may be empty if none)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"Assignee does not exist\"\n    }\n\nConstraints:\n    - assignee_id must exist in the database.\n    - Only patents where assignee_id is present in patent[\"assignee_ids\"] are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "assignee_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "assignee_id"
+        ]
+      }
+    },
+    {
+      "name": "list_assignees",
+      "description": "List all assignees, with optional filtering and sorting.\n\nArgs:\n    name (str, optional): Filter assignees by exact name.\n    type (str, optional): Filter assignees by type (\"individual\" or \"organization\").\n    sort_by (str, optional): Sort results by this field (\"name\", \"assignee_id\", \"type\", \"address\"). Defaults to \"name\".\n    ascending (bool, optional): Sort order; True is ascending, False is descending. Defaults to True.\n\nReturns:\n    dict: \n        - \"success\": True\n        - \"data\": List of AssigneeInfo dicts (possibly empty)\n    or\n        - \"success\": False\n        - \"error\": Reason for failure (e.g., invalid sort key)\n\nConstraints:\n    - Filtering is exact match.\n    - Sorting can be by one of the fields: \"name\", \"assignee_id\", \"type\", \"address\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "sort_by": {
+            "type": "string"
+          },
+          "ascending": {
+            "type": "boolean"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "list_inventors",
+      "description": "List all inventors, with optional filtering and sorting.\n\nArgs:\n    filters (dict, optional): Keys can be any of:\n        - 'inventor_id': exact match (str)\n        - 'name': substring match (case-insensitive) (str)\n        - 'address': substring match (case-insensitive) (str)\n        - 'nationality': exact match (str)\n    sort_by (str, optional): Attribute to sort by. One of 'inventor_id', 'name', 'address', 'nationality'.\n    sort_order (str, optional): 'asc' (default) or 'desc'.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[InventorInfo]  # Filtered, sorted inventor records (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filters": {
+            "type": "object"
+          },
+          "sort_by": {
+            "type": "string"
+          },
+          "sort_order": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "get_inventor_by_id",
+      "description": "Retrieve full details of an inventor by inventor_id.\n\nArgs:\n    inventor_id (str): The unique identifier for an Inventor.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": InventorInfo  # If inventor is found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If inventor is not found\n    }\nConstraints:\n    - inventor_id must exist in the inventors database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "inventor_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "inventor_id"
+        ]
+      }
+    },
+    {
+      "name": "add_patent",
+      "description": "Add a new patent entry, enforcing data integrity:\n  - patent_id must be unique\n  - At least one valid classification code required\n  - All classification_codes must exist in the system\n  - All assignee_ids must exist in the system\n  - inventor_id must exist in the system\n\nArgs:\n    patent_id (str): New patent's unique identifier.\n    title (str): Patent's title.\n    filing_date (str): Filing date.\n    publication_date (str): Publication date.\n    abstract (str): Abstract.\n    status (str): Status.\n    classification_codes (List[str]): List of at least one classification code string.\n    assignee_ids (List[str]): List of assignee IDs.\n    inventor_id (str): Inventor's ID.\n\nReturns:\n    dict: Success or error message.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patent_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "filing_date": {
+            "type": "string"
+          },
+          "publication_date": {
+            "type": "string"
+          },
+          "abstract": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "classification_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "assignee_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "inventor_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patent_id",
+          "title",
+          "filing_date",
+          "publication_date",
+          "abstract",
+          "status",
+          "classification_codes",
+          "assignee_ids",
+          "inventor_id"
+        ]
+      }
+    },
+    {
+      "name": "update_patent",
+      "description": "Update metadata or relationships (classification, assignee, inventor, etc.) for a given patent.\n\nArgs:\n    patent_id (str): The patent to update.\n    updates (dict): Key-value pairs to update (e.g., any of the PatentInfo fields).\n        - Valid keys: title, filing_date, publication_date, abstract, status,\n                     classification_codes (List[str]), assignee_ids (List[str]), inventor_id (str)\nReturns:\n    dict: \n        - Success: {\"success\": True, \"message\": \"Patent updated successfully.\"}\n        - Failure: {\"success\": False, \"error\": <reason>}\nConstraints:\n    - New classification_codes must all exist and must not be empty.\n    - New assignee_ids must each exist.\n    - New inventor_id must exist.\n    - patent_id must exist.\n    - Only fields in PatentInfo can be updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patent_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "patent_id",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "delete_patent",
+      "description": "Remove a patent and its relationships from the database.\n\nArgs:\n    patent_id (str): The unique identifier of the patent to delete.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Patent <patent_id> deleted.\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The provided patent_id must exist in the database.\n    - Only the patent record is removed; assignees, classification codes, and inventor records remain.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patent_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patent_id"
+        ]
+      }
+    },
+    {
+      "name": "add_assignee",
+      "description": "Add a new assignee (individual or organization).\n\nArgs:\n    assignee_id (str): Unique identifier for the assignee.\n    name (str): Name of the assignee.\n    type (str): Type of assignee - must be \"individual\" or \"organization\".\n    address (str): Address of the assignee.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Assignee added.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - assignee_id must be unique in the system.\n    - type must be \"individual\" or \"organization\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "assignee_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "assignee_id",
+          "name",
+          "type",
+          "address"
+        ]
+      }
+    },
+    {
+      "name": "update_assignee",
+      "description": "Update information for an existing assignee.\n\nArgs:\n    assignee_id (str): Unique identifier of the assignee to update.\n    name (str, optional): New name for the assignee.\n    type (str, optional): \"individual\" or \"organization\".\n    address (str, optional): New address for the assignee.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Assignee updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - assignee_id must exist.\n    - At least one of name, type, or address must be provided.\n    - If provided, type must be either \"individual\" or \"organization\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "assignee_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "assignee_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_assignee",
+      "description": "Remove an assignee from the database, only if it is not referenced by any patent.\n\nArgs:\n    assignee_id (str): The ID of the assignee to delete.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Assignee deleted successfully\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Error description\n            }\n\nConstraints:\n    - Deletion is only possible if no patent references this assignee.\n    - If the assignee does not exist, return an error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "assignee_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "assignee_id"
+        ]
+      }
+    },
+    {
+      "name": "add_classification_code",
+      "description": "Add a new classification code to the database.\n\nArgs:\n    code (str): Unique classification code.\n    description (str): Description of the classification code.\n    type (str): The classification type (e.g., USPC, IPC, CPC).\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Classification code added successfully\" }\n        On failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - The classification code ('code') must be unique.\n    - All parameters must be provided and non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "description",
+          "type"
+        ]
+      }
+    },
+    {
+      "name": "update_classification_code",
+      "description": "Update information (description, type) for an existing classification code.\n\nArgs:\n    code (str): The unique code identifier of the classification code to update.\n    description (str, optional): New description for the classification code.\n    type (str, optional): New type for the classification code (e.g., USPC, IPC, CPC).\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Classification code updated successfully.\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The classification code (\"code\") must already exist in the system.\n    - At least one of \"description\" or \"type\" must be provided.\n    - The classification code's \"code\" field itself cannot be updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ]
+      }
+    },
+    {
+      "name": "delete_classification_code",
+      "description": "Remove a classification code from the database. This operation is only permitted if\nthe code is not currently assigned to any patent.\n\nArgs:\n    code (str): The classification code to remove.\n\nReturns:\n    dict: \n        - { \"success\": True, \"message\": \"Classification code <code> deleted successfully.\" }\n          if deletion succeeded.\n        - { \"success\": False, \"error\": <reason> }\n          if code does not exist or is referenced by any patent.\n\nConstraints:\n    - Cannot delete if the classification code is used by any patent in patents.\n    - Code must exist in classification_codes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ]
+      }
+    },
+    {
+      "name": "add_inventor",
+      "description": "Add a new inventor to the Patent Database System.\n\nArgs:\n    inventor_id (str): Unique identifier for the inventor.\n    name (str): Inventor's name.\n    address (str): Inventor's address.\n    nationality (str): Inventor's nationality.\n\nReturns:\n    dict:\n        - If success: { \"success\": True, \"message\": \"Inventor added successfully.\" }\n        - If failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - inventor_id must be unique.\n    - inventor_id and name must not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "inventor_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "nationality": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "inventor_id",
+          "name",
+          "address",
+          "nationality"
+        ]
+      }
+    },
+    {
+      "name": "update_inventor",
+      "description": "Update details (name, address, nationality) for an inventor with the given inventor_id.\nOnly provided (non-None) fields will be updated.\n\nArgs:\n    inventor_id (str): The unique ID of the inventor to update.\n    name (str, optional): The new name for the inventor.\n    address (str, optional): The new address for the inventor.\n    nationality (str, optional): The new nationality for the inventor.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Inventor updated successfully.\",\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Error reason (e.g., inventor does not exist, no update fields provided)\n    }\n\nConstraints:\n    - Inventor with that ID must exist.\n    - At least one field must be provided to update.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "inventor_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "nationality": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "inventor_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_inventor",
+      "description": "Delete an inventor from the patent database, only if the inventor is not referenced by any patent.\n\nArgs:\n    inventor_id (str): The ID of the inventor to delete.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Inventor deleted successfully.\" }\n        - On error: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Inventor must exist.\n    - Inventor cannot be deleted if referenced by any patent's 'inventor_id'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "inventor_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "inventor_id"
+        ]
+      }
+    },
+    {
+      "name": "validate_patent_relationships",
+      "description": "Verify that all patent-assignee and patent-classification links are valid.\nEnsures no patent exists without at least one valid classification code,\nand that all referenced assignee_ids and classification_codes exist.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"All patent relationships are valid.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of invalid references (all found problems)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    }
+  ]
+}

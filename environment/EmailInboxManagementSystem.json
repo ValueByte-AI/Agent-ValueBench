@@ -1,0 +1,352 @@
+{
+  "env_name": "EmailInboxManagementSystem",
+  "description": "An Email Inbox Management System organizes and maintains electronic messages for users or organizations, tracking message state, metadata, and content. It provides capabilities for listing new or read emails, querying by various criteria, and retrieving full message bodies. Such systems are foundational components in both business and personal communications, supporting operations like reading, searching, deleting, and organizing messages.",
+  "initial_parameter_schema": {
+    "mails": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "mail_id": {
+            "type": "string"
+          },
+          "sender": {
+            "type": "string"
+          },
+          "recipient": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "fold": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mail_id",
+          "sender",
+          "recipient",
+          "subject",
+          "timestamp",
+          "body",
+          "state",
+          "fold"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email_add": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "email_add"
+        ]
+      }
+    },
+    "inboxes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "list_of_emails": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "current_view": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "list_of_emails",
+          "current_view"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_email": [
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_inbox_for_user": [
+      "inboxes",
+      "users"
+    ],
+    "list_inbox_emails": [
+      "inboxes",
+      "mails"
+    ],
+    "list_new_emails": [
+      "inboxes",
+      "mails"
+    ],
+    "get_email_metadata": [
+      "mails"
+    ],
+    "get_email_by_id": [
+      "mails"
+    ],
+    "list_emails_by_fold": [
+      "inboxes",
+      "mails"
+    ],
+    "mark_email_as_read": [
+      "mails"
+    ],
+    "change_email_fold": [
+      "mails"
+    ],
+    "delete_email": [
+      "inboxes",
+      "mails"
+    ],
+    "add_email_to_inbox": [
+      "inboxes",
+      "mails",
+      "users"
+    ],
+    "set_inbox_view": [
+      "inboxes"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_email",
+      "description": "Retrieve UserInfo for a given email address.\n\nArgs:\n    email_add (str): The email address to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo,  # The user's info if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,  # If no user matches the email address\n    }\n\nConstraints:\n    - The email address is assumed unique per user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "email_add": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email_add"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve UserInfo by the user's unique _id.\n\nArgs:\n    _id (str): The unique identifier for the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo,  # User information if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If user is not found\n    }\n\nConstraints:\n    - The _id must exist in the user registry (self.users).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id"
+        ]
+      }
+    },
+    {
+      "name": "get_inbox_for_user",
+      "description": "Retrieve the InboxInfo for a given user _id.\n\nArgs:\n    user_id (str): The _id of the user.\n\nReturns:\n    dict: \n        { \"success\": True, \"data\": InboxInfo }\n        or\n        { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The user must exist.\n    - The inbox for that user must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_inbox_emails",
+      "description": "Get a list of all email metadata currently in an inbox.\n\nArgs:\n    inbox_id (str): The unique identifier of the inbox.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MailInfo],  # List of mail metadata found in the inbox.\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str,  # Error description (e.g., inbox not found).\n    }\n\nConstraints:\n    - Only valid mail_ids present in the system are returned (missing/corrupt references ignored).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "inbox_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "inbox_id"
+        ]
+      }
+    },
+    {
+      "name": "list_new_emails",
+      "description": "List unread emails in the given inbox using safe listing metadata only.\n\nArgs:\n    inbox_id (str): The ID of the inbox.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": List[dict] }\n        - On failure: { \"success\": False, \"error\": str }\n\nConstraints:\n    - Only return emails with state == \"new\".\n    - The inbox must exist.\n    - Email IDs referenced in the inbox must exist in the mail store.\n    - Returned entries include mail_id, sender, recipient, subject, timestamp, state, and fold.\n    - Returned entries do not include the email body and do not change read state.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "inbox_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "inbox_id"
+        ]
+      }
+    },
+    {
+      "name": "get_email_metadata",
+      "description": "Retrieve metadata (sender, subject, timestamp, state) for the email with the given mail_id.\nDoes NOT return the body of the email.\n\nArgs:\n    mail_id (str): The unique identifier for the email.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"sender\": str,\n            \"subject\": str,\n            \"timestamp\": str,\n            \"state\": str,\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason email not found\n    }\n\nConstraints:\n    - mail_id must exist in the system.\n    - No email body is returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mail_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mail_id"
+        ]
+      }
+    },
+    {
+      "name": "get_email_by_id",
+      "description": "Retrieve the full MailInfo (including body and metadata) for a given mail_id.\nIf the mail is in 'new' state, its state is changed to 'read' as a side-effect.\n\nArgs:\n    mail_id (str): The unique identifier for the email.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"data\": MailInfo}\n        - On failure: {\"success\": False, \"error\": <str>}\n\nConstraints:\n    - mail_id must exist.\n    - If mail state is 'new', update to 'read'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mail_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mail_id"
+        ]
+      }
+    },
+    {
+      "name": "list_emails_by_fold",
+      "description": "List all emails in a specified folder (e.g., \"inbox\", \"sent\", \"archive\") for the user.\n\nArgs:\n    user_id (str): The unique identifier for the user (Inbox _id).\n    fold (str): The target folder name.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MailInfo],  # may be empty if no emails found\n    }\n    or {\n        \"success\": False,\n        \"error\": str  # User or inbox not found\n    }\n\nConstraints:\n    - User and inbox must exist.\n    - Only emails found in the user's inbox and with the specified fold are included.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "fold": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "fold"
+        ]
+      }
+    },
+    {
+      "name": "mark_email_as_read",
+      "description": "Updates the state of a mail from \"new\" to \"read\".\nArgs:\n    mail_id (str): The unique identifier for the mail.\nReturns:\n    dict: {\n        \"success\": True, \"message\": \"Mail marked as read.\"\n    }\n    or\n    {\n        \"success\": False, \"error\": \"Mail not found.\"\n    }\nConstraints:\n    - The mail must exist.\n    - Idempotent: If mail is already \"read\", returns success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mail_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mail_id"
+        ]
+      }
+    },
+    {
+      "name": "change_email_fold",
+      "description": "Move an email to a different folder by updating its 'fold' attribute.\n\nArgs:\n    mail_id (str): The unique identifier of the email to move.\n    new_fold (str): The name of the target folder (e.g., 'archive', 'inbox', etc.).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Operation success message\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Explanation of failure, e.g., email not found\n    }\n\nConstraints:\n    - The mail_id must correspond to an existing email.\n    - Folder name is a free string; no enforced set in current environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mail_id": {
+            "type": "string"
+          },
+          "new_fold": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mail_id",
+          "new_fold"
+        ]
+      }
+    },
+    {
+      "name": "delete_email",
+      "description": "Remove an email from all inboxes and from the system.\n\nArgs:\n    mail_id (str): Unique identifier of the email to be deleted.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Email deleted successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Email must exist.\n    - Remove email from all inboxes' list_of_emails.\n    - Email must be fully deleted from the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mail_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mail_id"
+        ]
+      }
+    },
+    {
+      "name": "add_email_to_inbox",
+      "description": "Insert a new email into a user's inbox, enforcing:\n    - mail_id is unique\n    - recipient is a valid user\n    - inbox for recipient exists and is updated\n    - all required fields are present\n\nArgs:\n    mail_info (dict): Dictionary containing mail attributes. Expected keys:\n        'mail_id', 'sender', 'recipient', 'subject', 'timestamp', 'body', 'state', 'fold'\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Email successfully added to inbox.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"...reason...\"\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mail_info": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "mail_info"
+        ]
+      }
+    },
+    {
+      "name": "set_inbox_view",
+      "description": "Change the user's inbox current_view to a specified value (\"inbox\", \"sent\", \"archive\").\n\nArgs:\n    inbox_id (str): The identifier of the inbox to modify.\n    new_view (str): The target view value. Expected: \"inbox\", \"sent\", \"archive\".\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Inbox view updated to <new_view>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Inbox with given id must exist.\n    - new_view should be one of \"inbox\", \"sent\", \"archive\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "inbox_id": {
+            "type": "string"
+          },
+          "new_view": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "inbox_id",
+          "new_view"
+        ]
+      }
+    }
+  ]
+}

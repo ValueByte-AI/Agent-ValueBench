@@ -1,0 +1,593 @@
+{
+  "env_name": "SceneGraphEnvironment",
+  "description": "A 3D modeling software scene graph is a structured environment where digital objects are organized, each maintaining attributes such as geometry, materials, and transformations. It enables users to assign and modify materials, finishes, and visual properties for every object, supporting precise control over appearance and rendering outcomes. The graph structure allows efficient management, editing, and querying of objects and their associated properties within complex digital scenes.",
+  "initial_parameter_schema": {
+    "scene_objects": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "object_id": {
+            "type": "string"
+          },
+          "geometry": {
+            "type": "string"
+          },
+          "parent_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "children_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "transform": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          "material_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "object_id",
+          "geometry",
+          "parent_id",
+          "children_ids",
+          "transform",
+          "material_id"
+        ]
+      }
+    },
+    "materials": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "material_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "color": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "texture_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finish_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "properties": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          }
+        },
+        "required": [
+          "material_id",
+          "type",
+          "color",
+          "texture_id",
+          "finish_id",
+          "properties"
+        ]
+      }
+    },
+    "textures": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "texture_id": {
+            "type": "string"
+          },
+          "image_data": {},
+          "mapping_type": {
+            "type": "string"
+          },
+          "scale": {
+            "type": "number"
+          },
+          "repeat": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "texture_id",
+          "image_data",
+          "mapping_type",
+          "scale",
+          "repeat"
+        ]
+      }
+    },
+    "finishes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "finish_id": {
+            "type": "string"
+          },
+          "style": {
+            "type": "string"
+          },
+          "reflectivity": {
+            "type": "number"
+          },
+          "roughness": {
+            "type": "number"
+          },
+          "glossiness": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "finish_id",
+          "style",
+          "reflectivity",
+          "roughness",
+          "glossiness"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_scene_object_by_id": [
+      "scene_objects"
+    ],
+    "list_scene_objects": [
+      "scene_objects"
+    ],
+    "get_material_by_id": [
+      "materials"
+    ],
+    "list_materials": [
+      "materials"
+    ],
+    "get_texture_by_id": [
+      "textures"
+    ],
+    "list_textures": [
+      "textures"
+    ],
+    "get_finish_by_id": [
+      "finishes"
+    ],
+    "list_finishes": [
+      "finishes"
+    ],
+    "get_parent_and_children": [
+      "scene_objects"
+    ],
+    "check_material_finish_compatibility": [
+      "finishes",
+      "materials"
+    ],
+    "assign_material_to_object": [
+      "materials",
+      "scene_objects"
+    ],
+    "assign_texture_to_material": [
+      "materials",
+      "textures"
+    ],
+    "assign_finish_to_material": [
+      "finishes",
+      "materials"
+    ],
+    "create_material": [
+      "finishes",
+      "materials",
+      "textures"
+    ],
+    "create_texture": [
+      "textures"
+    ],
+    "create_finish": [
+      "finishes"
+    ],
+    "remove_material_from_object": [
+      "scene_objects"
+    ],
+    "update_object_transform": [
+      "scene_objects"
+    ],
+    "remove_finish_from_material": [
+      "materials"
+    ],
+    "remove_texture_from_material": [
+      "materials"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_scene_object_by_id",
+      "description": "Retrieve a SceneObject's attributes by object_id, including geometry, parent/children, transform, and material assignment.\n\nArgs:\n    object_id (str): The unique identifier of the scene object.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": SceneObjectInfo  # The object's complete descriptor (may include material_id=None)\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # \"SceneObject not found\"\n            }\nConstraints:\n    - object_id must exist in the scene.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "object_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "object_id"
+        ]
+      }
+    },
+    {
+      "name": "list_scene_objects",
+      "description": "List all SceneObjects in the scene.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SceneObjectInfo],  # May be empty if no objects are present\n    }\n\nConstraints:\n    - None. This is a pure query — no permissions nor object restrictions apply.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_material_by_id",
+      "description": "Retrieve all properties of a Material given its material_id.\n\nArgs:\n    material_id (str): The unique identifier of the material to query.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": MaterialInfo  # full properties of the material\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Reason for failure (e.g., material not found)\n        }\n\nConstraints:\n    - material_id must correspond to an existing Material in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "material_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "material_id"
+        ]
+      }
+    },
+    {
+      "name": "list_materials",
+      "description": "List all defined materials in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MaterialInfo]  # List of all material definitions (possibly empty)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_texture_by_id",
+      "description": "Retrieve all Texture properties by texture_id.\n\nArgs:\n    texture_id (str): The unique identifier of the texture to retrieve.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": TextureInfo         # Texture properties if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str                # Reason for failure, e.g., texture not found\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "texture_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "texture_id"
+        ]
+      }
+    },
+    {
+      "name": "list_textures",
+      "description": "List all available textures in the scene graph environment.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TextureInfo],  # List of textures (may be empty if none exist)\n    }\n\nConstraints:\n    - None (all textures are listed unfiltered)",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_finish_by_id",
+      "description": "Retrieve Finish information by finish_id.\n\nArgs:\n    finish_id (str): The unique identifier for the finish.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": FinishInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The finish_id must exist in the environment's finishes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "finish_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "finish_id"
+        ]
+      }
+    },
+    {
+      "name": "list_finishes",
+      "description": "List all defined finishes in the environment.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[FinishInfo]  # List of all finishes (possibly empty)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_parent_and_children",
+      "description": "Retrieve the parent ID and list of direct children IDs for a given SceneObject.\n\nArgs:\n    object_id (str): The unique identifier of the SceneObject.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"parent_id\": Optional[str],   # None if root\n            \"children_ids\": List[str]     # List of direct children IDs\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"SceneObject not found\"\n    }\n\nConstraints:\n    - The SceneObject identified by object_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "object_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "object_id"
+        ]
+      }
+    },
+    {
+      "name": "check_material_finish_compatibility",
+      "description": "Check whether the specified material_id and finish_id are compatible.\n\nArgs:\n    material_id (str): The ID of the material to check.\n    finish_id (str): The ID of the finish to check.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": { \"compatible\": bool }\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Description of why the check failed\n        }\n\nConstraints:\n    - Both material_id and finish_id must exist.\n    - Compatibility: e.g., a wood material cannot have a metallic finish.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "material_id": {
+            "type": "string"
+          },
+          "finish_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "material_id",
+          "finish_id"
+        ]
+      }
+    },
+    {
+      "name": "assign_material_to_object",
+      "description": "Assign or replace the material assignment for a SceneObject.\n\nArgs:\n    object_id (str): The ID of the SceneObject.\n    material_id (str): The ID of the Material to assign.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Material assigned to object.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - SceneObject must exist.\n    - Material must exist.\n    - Replaces any prior material (at most one material assignment).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "object_id": {
+            "type": "string"
+          },
+          "material_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "object_id",
+          "material_id"
+        ]
+      }
+    },
+    {
+      "name": "assign_texture_to_material",
+      "description": "Assign or replace the texture linked to a Material.\n\nArgs:\n    material_id (str): The ID of the material to assign the texture to.\n    texture_id (str): The ID of the texture to assign.\n\nReturns:\n    dict: On success,\n        {\n            \"success\": True,\n            \"message\": \"Texture <texture_id> assigned to Material <material_id>.\"\n        }\n        On failure,\n        {\n            \"success\": False,\n            \"error\": <reason>\n        }\n\nConstraints:\n    - material_id must exist in the environment.\n    - texture_id must exist in the environment.\n    - Each Material can reference zero or one Texture; this operation replaces any previous assignment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "material_id": {
+            "type": "string"
+          },
+          "texture_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "material_id",
+          "texture_id"
+        ]
+      }
+    },
+    {
+      "name": "assign_finish_to_material",
+      "description": "Assign or replace the finish linked to a Material, after checking compatibility.\n\nArgs:\n    material_id (str): ID of the Material to update.\n    finish_id (str): ID of the Finish to assign.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Finish assigned to material.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Both the material and finish must exist.\n    - Material type and finish style must be compatible (e.g., wood material cannot have metallic finish).\n    - Assigning replaces any existing finish assignment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "material_id": {
+            "type": "string"
+          },
+          "finish_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "material_id",
+          "finish_id"
+        ]
+      }
+    },
+    {
+      "name": "create_material",
+      "description": "Create and register a new Material with specified properties.\n\nArgs:\n    material_id (str): Unique ID for the new material.\n    type (str): Material type, e.g., 'metallic', 'wood'.\n    color (list[float]): List of color values (e.g., RGB[A]).\n    properties (dict): Dictionary of material properties (e.g., reflectivity, roughness).\n    texture_id (str, optional): Texture to assign (must exist or be None).\n    finish_id (str, optional): Finish to assign (must exist or be None).\n\nReturns:\n    dict: { \"success\": True, \"message\": \"Material created\" }\n          or { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - material_id must be unique.\n    - If texture_id is specified, it must exist.\n    - If finish_id is specified, it must exist.\n    - Finish must be compatible with the material type.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "material_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "color": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "properties": {
+            "type": "object"
+          },
+          "texture_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finish_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "material_id",
+          "type",
+          "color",
+          "properties"
+        ]
+      }
+    },
+    {
+      "name": "create_texture",
+      "description": "Create and add a new Texture to the environment.\n\nArgs:\n    texture_id (str): Unique identifier for the new texture.\n    image_data (any): Texture's image data (bytes, array, etc.).\n    mapping_type (str): Specifies how texture is mapped ('UV', 'planar', etc.).\n    scale (float): Scaling factor for the texture mapping (must be > 0).\n    repeat (int): Number of times the texture is repeated (must be >= 1).\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Texture created successfully\" }\n        - On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - texture_id must be unique (not already present in self.textures).\n    - scale must be positive.\n    - repeat must be at least 1.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "texture_id": {
+            "type": "string"
+          },
+          "image_data": {
+          },
+          "mapping_type": {
+            "type": "string"
+          },
+          "scale": {
+            "type": "number"
+          },
+          "repeat": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "texture_id",
+          "image_data",
+          "mapping_type",
+          "scale",
+          "repeat"
+        ]
+      }
+    },
+    {
+      "name": "create_finish",
+      "description": "Create and register a new Finish with given properties.\n\nArgs:\n    finish_id (str): Unique identifier for the new finish.\n    style (str): Style of the finish (e.g., 'metallic', 'matte').\n    reflectivity (float): Surface reflectivity (should be >= 0).\n    roughness (float): Surface roughness (should be >= 0).\n    glossiness (float): Surface glossiness (should be >= 0).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Finish <finish_id> created successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - finish_id must not duplicate an existing finish.\n    - reflectivity, roughness, glossiness should be non-negative.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "finish_id": {
+            "type": "string"
+          },
+          "style": {
+            "type": "string"
+          },
+          "reflectivity": {
+            "type": "number"
+          },
+          "roughness": {
+            "type": "number"
+          },
+          "glossiness": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "finish_id",
+          "style",
+          "reflectivity",
+          "roughness",
+          "glossiness"
+        ]
+      }
+    },
+    {
+      "name": "remove_material_from_object",
+      "description": "Unassign (remove) the material from the specified SceneObject, leaving it with no material.\n\nArgs:\n    object_id (str): The unique identifier of the SceneObject.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Material removed from object <object_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of why the operation failed (e.g., object does not exist)\n    }\n\nConstraints:\n    - The SceneObject must exist in the scene graph.\n    - After this operation, the object's material_id will be None.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "object_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "object_id"
+        ]
+      }
+    },
+    {
+      "name": "update_object_transform",
+      "description": "Change a SceneObject's transformation matrix (translate/rotate/scale).\n\nArgs:\n    object_id (str): ID of the SceneObject whose transform is to be updated.\n    transform (list): New 4x4 transformation matrix (List[List[float]]).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Transformation updated for object <object_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - object_id must exist in the scene.\n    - transform must be a 4x4 matrix of floats.\n    - The transformation is stored as local to the object's parent.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "object_id": {
+            "type": "string"
+          },
+          "transform": {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 4,
+            "items": {
+              "type": "array",
+              "minItems": 4,
+              "maxItems": 4,
+              "items": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "required": [
+          "object_id",
+          "transform"
+        ]
+      }
+    },
+    {
+      "name": "remove_finish_from_material",
+      "description": "Unassign (remove) the finish from a Material, if present.\n\nArgs:\n    material_id (str): The unique identifier for the Material.\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"message\": \"Finish removed from material <material_id>\"\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": \"Material does not exist\"\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": \"Material does not have a finish assigned\"\n        }\n\nConstraints:\n    - Material must exist.\n    - Removing a finish is a no-op if no finish is assigned (returns error).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "material_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "material_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_texture_from_material",
+      "description": "Unassign (remove) the texture from the specified Material, if present.\n\nArgs:\n    material_id (str): The unique identifier for the material.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Success message, even if no texture was assigned.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g. material not found.\n    }\n\nConstraints:\n    - The material must exist.\n    - It is valid to call this even if the material has no texture assigned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "material_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "material_id"
+        ]
+      }
+    }
+  ]
+}

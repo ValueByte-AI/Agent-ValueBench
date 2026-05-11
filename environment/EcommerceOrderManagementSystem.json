@@ -1,0 +1,533 @@
+{
+  "env_name": "EcommerceOrderManagementSystem",
+  "description": "An e-commerce order management system maintains data related to customer orders, including order IDs, status (e.g., pending, shipped, delivered), product details, and user information. It provides operations for order placement, status tracking, updates, and retrievals. Such systems are central to the workflow of online retail platforms, ensuring efficient purchase processing and customer support.",
+  "initial_parameter_schema": {
+    "products": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "stock_quantity": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "product_id",
+          "name",
+          "price",
+          "stock_quantity"
+        ]
+      }
+    },
+    "customers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "account_sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "name",
+          "email",
+          "account_sta"
+        ]
+      }
+    },
+    "orders": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "order_date": {
+            "type": "string"
+          },
+          "order_item": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "order_id": {
+                  "type": "string"
+                },
+                "product_id": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "order_id",
+                "product_id",
+                "quantity"
+              ]
+            }
+          }
+        },
+        "required": [
+          "order_id",
+          "customer_id",
+          "status",
+          "order_date",
+          "order_item"
+        ]
+      }
+    },
+    "order_items": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "order_id": {
+              "type": "string"
+            },
+            "product_id": {
+              "type": "string"
+            },
+            "quantity": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "order_id",
+            "product_id",
+            "quantity"
+          ]
+        }
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_customer_by_id": [
+      "customers"
+    ],
+    "get_customer_by_email": [
+      "customers"
+    ],
+    "get_orders_by_customer": [
+      "customers",
+      "orders"
+    ],
+    "get_order_by_id": [
+      "orders"
+    ],
+    "verify_order_ownership": [
+      "orders"
+    ],
+    "get_order_status": [
+      "orders"
+    ],
+    "get_order_item_list": [
+      "order_items",
+      "orders"
+    ],
+    "get_product_by_id": [
+      "products"
+    ],
+    "get_products_for_order": [
+      "order_items",
+      "orders",
+      "products"
+    ],
+    "list_allowed_order_statuses": [],
+    "update_order_status": [
+      "orders"
+    ],
+    "create_order": [
+      "customers",
+      "order_items",
+      "orders",
+      "products"
+    ],
+    "update_order_items": [
+      "order_items",
+      "orders",
+      "products"
+    ],
+    "delete_order": [
+      "order_items",
+      "orders"
+    ],
+    "update_product_stock": [
+      "products"
+    ],
+    "create_customer_account": [
+      "customers"
+    ],
+    "update_customer_info": [
+      "customers"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_customer_by_id",
+      "description": "Retrieve customer information using the customer's unique identifier.\n\nArgs:\n    customer_id (str): The unique identifier of the customer.\n\nReturns:\n    dict:\n      On success: {\n          \"success\": True,\n          \"data\": CustomerInfo  # Dictionary of customer info\n      }\n      On failure: {\n          \"success\": False,\n          \"error\": \"Customer not found\"\n      }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "get_customer_by_email",
+      "description": "Retrieve customer information using the provided email address.\n\nArgs:\n    email (str): The customer's email address.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": CustomerInfo  # The found customer's information\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": \"Customer with the given email does not exist\"\n        }\n\nConstraints:\n    - Email is expected to be unique among customers.\n    - If no customer has the given email, the operation fails.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      }
+    },
+    {
+      "name": "get_orders_by_customer",
+      "description": "Retrieve a list of all orders belonging to a specific customer.\n\nArgs:\n    customer_id (str): The customer's unique ID.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[OrderInfo]  # list of orders for the customer (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # error message, e.g. customer does not exist\n    }\n\nConstraints:\n    - Customer must exist.\n    - Each order is associated with exactly one customer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "get_order_by_id",
+      "description": "Retrieve order details (OrderInfo) including customer_id, status, order_date, and order_item list,\ngiven an order_id.\n\nArgs:\n    order_id (str): The ID of the order to retrieve.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": OrderInfo\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Order not found\"\n            }\n\nConstraints:\n    - order_id must refer to a valid existing order.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id"
+        ]
+      }
+    },
+    {
+      "name": "verify_order_ownership",
+      "description": "Check if a given order_id is owned by a specific customer_id.\n\nArgs:\n    order_id (str): The order's unique identifier.\n    customer_id (str): The supposed owner's customer_id.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"owned\": bool  # True if the order belongs to the customer, else False\n            }\n        On failure (order not found):\n            {\n                \"success\": False,\n                \"error\": \"Order does not exist\"\n            }\n\nConstraints:\n    - Each order is associated with exactly one customer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id",
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "get_order_status",
+      "description": "Return the current status of an order, if and only if the requesting customer owns this order.\n\nArgs:\n    order_id (str): The ID of the order to query.\n    customer_id (str): The ID of the customer making the request.\n\nReturns:\n    dict: \n        { \"success\": True, \"data\": { \"order_id\": str, \"status\": str } }\n        OR\n        { \"success\": False, \"error\": str } if order not found or not owned by the customer.\n\nConstraints:\n    - Only the customer who owns the order may query its status.\n    - The order must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id",
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "get_order_item_list",
+      "description": "Retrieve the list of OrderItemInfo objects associated with a particular order.\n\nArgs:\n    order_id (str): The unique ID of the order.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[OrderItemInfo]  # May be empty (but constraints suggest at least 1)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason the operation failed (e.g., order does not exist)\n    }\n\nConstraints:\n    - The provided order_id must correspond to an existing order.\n    - Each order should have at least one associated OrderItemInfo.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id"
+        ]
+      }
+    },
+    {
+      "name": "get_product_by_id",
+      "description": "Retrieve product details for the given product_id.\n\nArgs:\n    product_id (str): The unique identifier of the product.\n\nReturns:\n    dict: If found, returns {\n              \"success\": True,\n              \"data\": ProductInfo\n          }\n          If not found, returns {\n              \"success\": False,\n              \"error\": \"Product not found\"\n          }\n\nConstraints:\n    - The given product_id must exist in the products dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "get_products_for_order",
+      "description": "Retrieve product details for all products (with quantities) in a specific order.\n\nArgs:\n    order_id (str): ID of the order.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[dict]  # Each dict includes: product info, and quantity ordered\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": str  # error message describing the failure\n        }\n\nConstraints:\n    - order_id must exist and be associated with at least one OrderItem.\n    - Product must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id"
+        ]
+      }
+    },
+    {
+      "name": "list_allowed_order_statuses",
+      "description": "Return the list of valid order status values that orders can have.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": list of str,  # e.g. [\"pending\", \"shipped\", \"delivered\", \"cancelled\"]\n    }\nConstraints:\n    - Status list is defined by system convention and does not change per-request.\n    - No input required.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "update_order_status",
+      "description": "Change the status of an order, enforcing allowed transitions and validation.\n\nArgs:\n    order_id (str): The ID of the order to update.\n    new_status (str): One of the allowed status values ('pending', 'shipped', 'delivered', 'cancelled').\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Order status updated to <new_status>\" }\n        On failure: { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - Order must exist.\n    - new_status must be one of allowed values.\n    - Status transition must obey allowed rules:\n        * Allowed: \n            - pending → shipped, pending → cancelled\n            - shipped → delivered, shipped → cancelled\n        * Not allowed:\n            - Any transition from delivered or cancelled (final states)\n            - Any transition not listed above",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "create_order",
+      "description": "Add a new order for a customer, with initial status and products.\n\nArgs:\n    order_id (str): Unique order identifier.\n    customer_id (str): Customer placing the order.\n    order_items (List[dict]): [{ \"product_id\": str, \"quantity\": int }...] List of order items.\n    status (str): Initial status for the order (must be allowed).\n    order_date (str): Date/time when the order is placed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - order_id must be unique.\n    - customer_id must exist.\n    - status must be one of allowed values.\n    - order_items must be non-empty, all product IDs must exist, quantities > 0.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "order_items": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "product_id": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "product_id",
+                "quantity"
+              ]
+            }
+          },
+          "status": {
+            "type": "string"
+          },
+          "order_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id",
+          "customer_id",
+          "order_items",
+          "status",
+          "order_date"
+        ]
+      }
+    },
+    {
+      "name": "update_order_items",
+      "description": "Change the list or quantities of items in an order.\n\nArgs:\n    order_id (str): The order whose items are to be updated.\n    new_items (list of dict): Each dict contains:\n        product_id (str): Product identifier.\n        quantity (int): Quantity for that product (> 0).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Order items updated for order_id=<...>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The order must exist.\n    - Each new item product_id must exist in products.\n    - Each quantity must be positive integer.\n    - new_items must not be empty (order must have at least one product).\n    - No duplicate product_ids within new_items.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
+          },
+          "new_items": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "product_id": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "product_id",
+                "quantity"
+              ]
+            }
+          }
+        },
+        "required": [
+          "order_id",
+          "new_items"
+        ]
+      }
+    },
+    {
+      "name": "delete_order",
+      "description": "Permanently remove an order and its order items from the system.\n\nArgs:\n    order_id (str): The unique identifier of the order to be deleted.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Order <order_id> and its items have been deleted.\" }\n        - On failure: { \"success\": False, \"error\": \"Order not found\" }\n\nConstraints:\n    - Order must exist for deletion.\n    - All order items associated with that order are also removed.\n    - After deletion, the order and its items are not recoverable.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id"
+        ]
+      }
+    },
+    {
+      "name": "update_product_stock",
+      "description": "Modify the available stock quantity for the specified product.\n\nArgs:\n    product_id (str): The unique identifier for the product.\n    delta_quantity (int): The amount to change the stock by.\n                          Positive to increase, negative to decrease.\n\nReturns:\n    dict: \n        If success:\n            { \"success\": True, \"message\": \"Product <id> stock updated from <old> to <new>.\" }\n        If failure:\n            { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Product must exist.\n    - Stock quantity after update must not be negative.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "delta_quantity": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "product_id",
+          "delta_quantity"
+        ]
+      }
+    },
+    {
+      "name": "create_customer_account",
+      "description": "Add a new customer record to the system.\n\nArgs:\n    customer_id (str): The unique ID for the new customer.\n    name (str): The customer's name.\n    email (str): The customer's email address (must be unique).\n    account_sta (str): Account status string.\n\nReturns:\n    dict: \n        On success:\n            {\n              \"success\": True,\n              \"message\": \"Customer account created.\"\n            }\n        On failure (duplicate email or customer_id, or missing arguments):\n            {\n              \"success\": False,\n              \"error\": str\n            }\n\nConstraints:\n    - customer_id must be unique.\n    - email must be unique among customers.\n    - Required fields must not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "account_sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "name",
+          "email",
+          "account_sta"
+        ]
+      }
+    },
+    {
+      "name": "update_customer_info",
+      "description": "Update customer account information for the specified customer.\n\nArgs:\n    customer_id (str): Unique identifier of the customer to update.\n    name (str, optional): New name for the customer.\n    email (str, optional): New email address (must not duplicate another customer's email).\n    account_sta (str, optional): New account status value.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Customer info updated successfully.\"\n    } on success,\n    or\n    {\n        \"success\": False,\n        \"error\": <description>\n    } on failure.\n\nConstraints:\n    - customer_id must exist.\n    - If email is provided, it must not be taken by another customer.\n    - At least one updatable field must be given.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "account_sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    }
+  ]
+}

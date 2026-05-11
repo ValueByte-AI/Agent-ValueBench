@@ -1,0 +1,507 @@
+{
+  "env_name": "IoTSensorDataManagementSystem",
+  "description": "An IoT sensor data management system collects, stores, and manages time-series measurements from numerous distributed devices. It tracks device identifiers, sensor types, and timestamped readings, providing functions to query historical data, monitor device status, and analyze sensor trends. Such systems are foundational to smart infrastructure, enabling efficient oversight and analytics of environmental conditions across diverse deployments.",
+  "initial_parameter_schema": {
+    "devices": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "installation_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id",
+          "location",
+          "status",
+          "installation_date"
+        ]
+      }
+    },
+    "sensors": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "sensor_id": {
+            "type": "string"
+          },
+          "sensor_type": {
+            "type": "string"
+          },
+          "device_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "calibration_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sensor_id",
+          "sensor_type",
+          "device_id",
+          "status",
+          "calibration_info"
+        ]
+      }
+    },
+    "measurements": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "measurement_id": {
+            "type": "string"
+          },
+          "device_id": {
+            "type": "string"
+          },
+          "sensor_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "value": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "measurement_id",
+          "device_id",
+          "sensor_id",
+          "timestamp",
+          "value",
+          "unit"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_device_by_id": [
+      "devices"
+    ],
+    "list_all_devices": [
+      "devices"
+    ],
+    "get_sensors_by_device": [
+      "devices",
+      "sensors"
+    ],
+    "get_sensors_by_type": [
+      "sensors"
+    ],
+    "get_device_status": [
+      "devices"
+    ],
+    "get_sensor_by_id": [
+      "sensors"
+    ],
+    "get_sensor_status": [
+      "sensors"
+    ],
+    "get_measurements_by_device_and_type_and_time_range": [
+      "devices",
+      "measurements",
+      "sensors"
+    ],
+    "get_measurements_by_sensor_and_time_range": [
+      "measurements",
+      "sensors"
+    ],
+    "get_latest_measurement_for_sensor": [
+      "measurements",
+      "sensors"
+    ],
+    "get_measurement_history_for_sensor": [
+      "measurements",
+      "sensors"
+    ],
+    "add_device": [
+      "devices"
+    ],
+    "update_device_status": [
+      "devices"
+    ],
+    "add_sensor": [
+      "devices",
+      "sensors"
+    ],
+    "update_sensor_status": [
+      "sensors"
+    ],
+    "calibrate_sensor": [
+      "sensors"
+    ],
+    "add_measurement": [
+      "devices",
+      "measurements",
+      "sensors"
+    ],
+    "delete_measurement": [
+      "measurements"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_device_by_id",
+      "description": "Retrieve metadata and status for a device given its device_id.\n\nArgs:\n    device_id (str): The identifier of the device to lookup.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": DeviceInfo  # The device's metadata and status info\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Device not found\"\n    }\n\nConstraints:\n    - The provided device_id must exist within the system's device dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_devices",
+      "description": "Retrieve all devices and their properties from the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DeviceInfo]  # List of all device info (possibly empty if no devices)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_sensors_by_device",
+      "description": "List all sensors physically associated with a given device_id.\n\nArgs:\n    device_id (str): The ID of the device.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SensorInfo]  # List may be empty if no sensors are associated.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Device does not exist\"\n    }\n\nConstraints:\n    - device_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id"
+        ]
+      }
+    },
+    {
+      "name": "get_sensors_by_type",
+      "description": "Retrieve all sensors filtered by the given sensor_type.\n\nArgs:\n    sensor_type (str): The type of sensors to retrieve (e.g., 'temperature', 'humidity').\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[SensorInfo]  # List of matching sensors (may be empty if no matches)\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Description of the error (e.g., invalid sensor_type)\n        }\n\nConstraints:\n    - sensor_type must not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sensor_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sensor_type"
+        ]
+      }
+    },
+    {
+      "name": "get_device_status",
+      "description": "Retrieve the operational status (active/inactive/faulty) of the specified device.\n\nArgs:\n    device_id (str): Unique identifier of the device.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": { \"device_id\": str, \"status\": str }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Device not found\"\n    }\n\nConstraints:\n    - The device with the given device_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id"
+        ]
+      }
+    },
+    {
+      "name": "get_sensor_by_id",
+      "description": "Retrieve sensor details by sensor_id.\n\nArgs:\n    sensor_id (str): The ID of the sensor to look up.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": SensorInfo }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - sensor_id must exist in the system's sensors.\n    - No exceptions are raised; errors are reported via the return dict.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sensor_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sensor_id"
+        ]
+      }
+    },
+    {
+      "name": "get_sensor_status",
+      "description": "Retrieve the operational status of a specific sensor by its sensor_id.\n\nArgs:\n    sensor_id (str): The unique identifier of the sensor.\n\nReturns:\n    dict: \n        - If found: {\"success\": True, \"data\": <status str>}\n        - If not found: {\"success\": False, \"error\": \"Sensor not found\"}",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sensor_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sensor_id"
+        ]
+      }
+    },
+    {
+      "name": "get_measurements_by_device_and_type_and_time_range",
+      "description": "Fetch all measurement records for a given device, filtered by sensor type and a timestamp interval.\n\nArgs:\n    device_id (str): ID of the target device.\n    sensor_type (str): Type of sensor to consider (e.g., 'temperature').\n    start_time (float): Start of the timestamp interval (inclusive).\n    end_time (float): End of the timestamp interval (inclusive).\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[MeasurementInfo]\n            }\n        On error:\n            {\n                \"success\": False,\n                \"error\": str\n            }\n\nConstraints:\n    - Device with device_id must exist.\n    - Only measurements from sensors of the specified type and device are considered.\n    - Measurements' timestamps are filtered between start_time and end_time (inclusive).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          },
+          "sensor_type": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "device_id",
+          "sensor_type",
+          "start_time",
+          "end_time"
+        ]
+      }
+    },
+    {
+      "name": "get_measurements_by_sensor_and_time_range",
+      "description": "Fetch all measurements for a specified sensor_id, filtered by a timestamp range.\n\nArgs:\n    sensor_id (str): The ID of the sensor to fetch measurements for.\n    start_time (float): Start of timestamp range (inclusive).\n    end_time (float): End of timestamp range (inclusive).\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": List[MeasurementInfo]  # may be empty\n        }\n        or \n        {\n            \"success\": False,\n            \"error\": str  # Explanation, e.g. \"Sensor not found\"\n        }\nConstraints:\n    - sensor_id must exist in the system.\n    - Returns all measurement records where:\n        - measurement[\"sensor_id\"] == sensor_id\n        - start_time <= measurement[\"timestamp\"] <= end_time",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sensor_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "sensor_id",
+          "start_time",
+          "end_time"
+        ]
+      }
+    },
+    {
+      "name": "get_latest_measurement_for_sensor",
+      "description": "Retrieve the most recent (i.e., with the latest timestamp) measurement for a given sensor_id.\n\nArgs:\n    sensor_id (str): The ID of the sensor whose latest measurement is queried.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": MeasurementInfo or None  # None if no measurements for this sensor\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason, e.g., sensor does not exist\n            }\nConstraints:\n    - The sensor must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sensor_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sensor_id"
+        ]
+      }
+    },
+    {
+      "name": "get_measurement_history_for_sensor",
+      "description": "Retrieve the chronological sequence of all measurements for the given sensor_id.\n\nArgs:\n    sensor_id (str): The ID of the sensor to query measurement history for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MeasurementInfo],  # Ordered chronologically by timestamp (ascending)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g. sensor not found\n    }\n\nConstraints:\n    - Sensor must exist in the system.\n    - Returned list is sorted by timestamp ascending.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sensor_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sensor_id"
+        ]
+      }
+    },
+    {
+      "name": "add_device",
+      "description": "Add a new IoT device to the system.\n\nArgs:\n    device_id (str): Unique identifier for the device.\n    location (str): Device location.\n    status (str): Device operational status, must be \"active\", \"inactive\", or \"faulty\".\n    installation_date (str): Date of device installation (format not enforced).\n\nReturns:\n    dict: \n        Success: { \"success\": True, \"message\": \"Device added: <device_id>\" }\n        Failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Device ID must be unique in the system.\n    - Status must be one of: \"active\", \"inactive\", \"faulty\".\n    - All fields are required (non-empty).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "installation_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id",
+          "location",
+          "status",
+          "installation_date"
+        ]
+      }
+    },
+    {
+      "name": "update_device_status",
+      "description": "Change the status (active/inactive/faulty) of an existing device.\n\nArgs:\n    device_id (str): The unique ID of the device to update.\n    new_status (str): The new status value (\"active\", \"inactive\", or \"faulty\").\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Device <device_id> status updated to <new_status>.\" }\n        On failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - device_id must exist in the system.\n    - new_status must be one of {\"active\", \"inactive\", \"faulty\"}.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "add_sensor",
+      "description": "Register a new sensor and associate it with an existing device.\n\nArgs:\n    sensor_id (str): Unique sensor identifier.\n    sensor_type (str): Type of the sensor (e.g., temperature).\n    device_id (str): Existing device's ID to associate with the sensor.\n    status (str): Initial status of the sensor (e.g., active/inactive).\n    calibration_info (str): Calibration information for the sensor.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Sensor <sensor_id> registered and associated with device <device_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure\"\n    }\n\nConstraints:\n    - sensor_id must be unique (not already registered).\n    - device_id must point to an existing device.\n    - New sensor's device association is immutable after creation (implicit).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sensor_id": {
+            "type": "string"
+          },
+          "sensor_type": {
+            "type": "string"
+          },
+          "device_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "calibration_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sensor_id",
+          "sensor_type",
+          "device_id",
+          "status",
+          "calibration_info"
+        ]
+      }
+    },
+    {
+      "name": "update_sensor_status",
+      "description": "Change the operational status of a sensor.\n\nArgs:\n    sensor_id (str): The unique identifier of the sensor to update.\n    new_status (str): The new operational status. Must be one of \"active\", \"inactive\", \"faulty\".\n\nReturns:\n    dict: \n        On success:\n        {\n            \"success\": True,\n            \"message\": \"Sensor status updated to <new_status> for sensor <sensor_id>\"\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": \"reason for failure\"\n        }\n\nConstraints:\n    - sensor_id must exist in the system.\n    - new_status must be one of the allowed states (\"active\", \"inactive\", \"faulty\").",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sensor_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sensor_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "calibrate_sensor",
+      "description": "Update the calibration information for a specified sensor.\n\nArgs:\n    sensor_id (str): Unique identifier of the sensor to calibrate.\n    calibration_info (str): New calibration information as a string.\n\nReturns:\n    dict:\n      - On success:\n            {\n                \"success\": True,\n                \"message\": \"Calibration info updated for sensor <sensor_id>\"\n            }\n      - On failure (sensor not found):\n            {\n                \"success\": False,\n                \"error\": \"Sensor not found\"\n            }\n\nConstraints:\n    - Sensor must exist in the system.\n    - No restriction on sensor status for calibration.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sensor_id": {
+            "type": "string"
+          },
+          "calibration_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sensor_id",
+          "calibration_info"
+        ]
+      }
+    },
+    {
+      "name": "add_measurement",
+      "description": "Add a new measurement for a specific sensor and device.\n\nArgs:\n    measurement_id (str): Unique identifier for the measurement.\n    device_id (str): ID of the device collecting the measurement.\n    sensor_id (str): ID of the sensor generating the measurement.\n    timestamp (float): Timestamp for the measurement (unix time).\n    value (float): Value of the measurement.\n    unit (str): Measurement unit.\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"message\": \"Measurement <id> added.\"}\n        - On failure: {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - Device and sensor IDs must exist.\n    - The sensor must be associated with the device.\n    - measurement_id must be unique.\n    - Timestamps for the same sensor must be unique (no duplicate <sensor_id, timestamp> pairs).\n    - Device and sensor statuses must be \"active\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "measurement_id": {
+            "type": "string"
+          },
+          "device_id": {
+            "type": "string"
+          },
+          "sensor_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "value": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "measurement_id",
+          "device_id",
+          "sensor_id",
+          "timestamp",
+          "value",
+          "unit"
+        ]
+      }
+    },
+    {
+      "name": "delete_measurement",
+      "description": "Remove a measurement from the system by its measurement_id, if allowed by data retention policy.\n\nArgs:\n    measurement_id (str): The unique identifier of the measurement to delete.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Measurement <measurement_id> deleted.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Measurement not found.\"\n            }\n\nConstraints:\n    - Measurement must exist in the system.\n    - (If implemented) Data retention policy must allow deletion.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "measurement_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "measurement_id"
+        ]
+      }
+    }
+  ]
+}

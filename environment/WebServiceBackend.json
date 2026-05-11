@@ -1,0 +1,362 @@
+{
+  "env_name": "WebServiceBackend",
+  "description": "A web service backend in a microservices architecture consists of multiple, independent service components, each exposing endpoints for specific business capabilities. Each service maintains state about its operational health, deployment metadata, and application version, supporting monitoring and diagnostics through designated endpoints. Such environments are commonly found in modern, large-scale applications, especially in sectors requiring high reliability and traceability, such as healthcare.",
+  "initial_parameter_schema": {
+    "services": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "operational_status": {
+            "type": "string"
+          },
+          "last_health_check_timestamp": {
+            "type": "string"
+          },
+          "deployment_metadata": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "string"
+              },
+              "build_date": {
+                "type": "string"
+              },
+              "git_commit_hash": {
+                "type": "string"
+              },
+              "environment": {
+                "type": "string"
+              },
+              "release_no": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "version",
+              "build_date",
+              "git_commit_hash",
+              "environment",
+              "release_no"
+            ]
+          }
+        },
+        "required": [
+          "service_id",
+          "name",
+          "operational_status",
+          "last_health_check_timestamp",
+          "deployment_metadata"
+        ]
+      }
+    },
+    "health_checks": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "service_id": {
+              "type": "string"
+            },
+            "check_timestamp": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "detail": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "service_id",
+            "check_timestamp",
+            "status",
+            "detail"
+          ]
+        }
+      }
+    },
+    "_actual_deployment_metadata": {
+      "type": [
+        "object",
+        "string"
+      ]
+    }
+  },
+  "tool_state_dependencies": {
+    "get_service_by_name": [
+      "services"
+    ],
+    "get_service_by_id": [
+      "services"
+    ],
+    "list_all_services": [
+      "services"
+    ],
+    "get_service_operational_status": [
+      "services"
+    ],
+    "get_service_deployment_metadata": [
+      "services"
+    ],
+    "get_service_health_check_history": [
+      "health_checks",
+      "services"
+    ],
+    "get_latest_health_check_result": [
+      "health_checks",
+      "services"
+    ],
+    "get_health_check_detail_by_timestamp": [
+      "health_checks",
+      "services"
+    ],
+    "check_metadata_consistency": [
+      "services"
+    ],
+    "trigger_health_check": [
+      "health_checks",
+      "services"
+    ],
+    "update_service_operational_status": [
+      "services"
+    ],
+    "update_service_deployment_metadata": [
+      "services"
+    ],
+    "delete_health_check_record": [
+      "health_checks",
+      "services"
+    ],
+    "force_metadata_consistency_sync": [
+      "_actual_deployment_metadata",
+      "services"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_service_by_name",
+      "description": "Fetch the service entity and metadata using the service's name.\n\nArgs:\n    name (str): The name of the service to retrieve.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": ServiceInfo,  # Full metadata for the found service\n            }\n        On failure (not found):\n            {\n                \"success\": False,\n                \"error\": \"Service not found\"\n            }\nConstraints:\n    - This function assumes service names are unique or returns the first match if multiple exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_service_by_id",
+      "description": "Fetch the service entity and associated deployment metadata using its unique service_id.\n\nArgs:\n    service_id (str): Unique identifier for the service.\n\nReturns:\n    dict: \n      - If found: { \"success\": True, \"data\": ServiceInfo }\n      - If not found: { \"success\": False, \"error\": \"Service not found\" }\n\nConstraints:\n    - service_id must exist in the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_services",
+      "description": "List all registered microservices in the backend environment.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ServiceInfo]   # List of service metadata objects. Empty list if no services.\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_service_operational_status",
+      "description": "Retrieve the current operational status (e.g., 'up', 'degraded', 'down') of a given service.\n\nArgs:\n    service_id (str): The unique identifier of the target service.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": str  # The operational status string of the service\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g. service not found\n    }\n\nConstraints:\n    - The service_id must reference an existing service.\n    - The operational status returned should accurately reflect the current state in the service metadata.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_id"
+        ]
+      }
+    },
+    {
+      "name": "get_service_deployment_metadata",
+      "description": "Retrieve deployment metadata (version, build date, git commit hash, environment, release number)\nfor a specific service.\n\nArgs:\n    service_id (str): Unique identifier of the service.\n\nReturns:\n    dict: \n        { \"success\": True, \"data\": DeploymentMetadataInfo }\n        or\n        { \"success\": False, \"error\": \"Service not found\" }\n\nConstraints:\n    - The given service must exist in the backend.\n    - If the service is not found, returns an error dict.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_id"
+        ]
+      }
+    },
+    {
+      "name": "get_service_health_check_history",
+      "description": "Retrieve the historical log of health check results for a given service.\n\nArgs:\n    service_id (str): The ID of the service to retrieve the health check history for.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[HealthCheckResultInfo],  # List of health check records (may be empty)\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str,  # Reason why the operation failed (e.g., service does not exist)\n            }\n\nConstraints:\n    - service_id must correspond to an existing service.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_id"
+        ]
+      }
+    },
+    {
+      "name": "get_latest_health_check_result",
+      "description": "Fetch the most recent health check result for a given service.\n\nArgs:\n    service_id (str): The unique identifier of the service.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": HealthCheckResultInfo  # The most recent health check result\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error\n    }\n\nConstraints:\n    - The service should exist in the system.\n    - There must be at least one health check result for the service.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_id"
+        ]
+      }
+    },
+    {
+      "name": "get_health_check_detail_by_timestamp",
+      "description": "Retrieve the full detail of a health check result for a specific service at a particular timestamp.\n\nArgs:\n    service_id (str): The unique identifier of the service.\n    check_timestamp (str): The ISO timestamp string of the health check to retrieve.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": HealthCheckResultInfo  # The details of the requested health check result.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the failure: service or the requested check not found.\n    }\n\nConstraints:\n    - The provided service_id must exist.\n    - The specified health check timestamp must exist in that service's health check history.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          },
+          "check_timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_id",
+          "check_timestamp"
+        ]
+      }
+    },
+    {
+      "name": "check_metadata_consistency",
+      "description": "Verify if the current service deployment metadata matches the actual running deployment for all services.\nThis is a diagnostic/audit operation.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[dict]: [\n            {\n                \"service_id\": str,\n                \"is_consistent\": bool,\n                \"discrepancy\": dict (optional, only if inconsistent)\n            },\n            ...\n        ]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - If no services are present, success with empty list.\n    - This mock simply asserts stored deployment_metadata is \"actual\".",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "trigger_health_check",
+      "description": "Initiate an on-demand health check on a specified service; result is logged and service status is updated if needed.\n\nArgs:\n    service_id (str): The unique identifier of the service to health-check.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str,  # Operation description.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,  # Description of error (e.g., service not found).\n    }\n\nConstraints:\n    - The service must exist.\n    - Health check result is appended to health_checks history.\n    - Service's last_health_check_timestamp is updated.\n    - Service's operational_status may be updated to reflect latest check.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_id"
+        ]
+      }
+    },
+    {
+      "name": "update_service_operational_status",
+      "description": "Change the operational status of a service, with proper validation and authorization.\n\nArgs:\n    service_id (str): The unique ID of the service.\n    new_status (str): The new operational status to set.\n        Valid internal values include 'up', 'healthy', 'degraded', 'down', 'maintenance', and 'restricted'.\n        The common operator-facing alias 'operational' is also accepted and normalized to 'healthy'.\n    requester_identity (str): User or system requesting the change (for authorization).\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Service status updated.\" }\n        On failure:\n            { \"success\": False, \"error\": <reason str> }\n\nConstraints:\n    - Only authorized users/systems can update service status.\n    - Service must exist.\n    - Status must be a valid option.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          },
+          "requester_identity": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_id",
+          "new_status",
+          "requester_identity"
+        ]
+      }
+    },
+    {
+      "name": "update_service_deployment_metadata",
+      "description": "Replace or modify the deployment metadata for a specified service.\n\nArgs:\n    service_id (str): ID of the target service instance.\n    new_deployment_metadata (dict): New deployment metadata to set. Must contain:\n        - version (str)\n        - build_date (str)\n        - git_commit_hash (str)\n        - environment (str)\n        - release_no (str)\n\nReturns:\n    dict: \n        On success:\n            {\"success\": True, \"message\": \"Deployment metadata updated for service <service_id>.\"}\n        On failure:\n            {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - Service with the given service_id must exist.\n    - All required deployment_metadata fields must be present.\n    - Only authorized users/systems can invoke this operation (not enforced here).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          },
+          "new_deployment_metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "service_id",
+          "new_deployment_metadata"
+        ]
+      }
+    },
+    {
+      "name": "delete_health_check_record",
+      "description": "Remove specific entries from a service's health check history.\n\nArgs:\n    service_id (str): ID of the service whose health check records to delete.\n    check_timestamps (List[str]): List of ISO-formatted timestamps for records to remove.\n\nReturns:\n    dict:\n        - On success:\n            {\n              \"success\": True,\n              \"message\": \"Deleted X health check records for service 'Y'. Not found: [...]\"\n            }\n        - On partial success:\n            {\n              \"success\": True,\n              \"message\": \"Deleted X health check records for service 'Y'. Not found: [...]\"\n            }\n        - On failure (e.g. service not found or no records present):\n            {\n              \"success\": False,\n              \"error\": \"Reason for failure\"\n            }\n\nConstraints:\n    - The service must exist.\n    - Only the requested timestamps for which records exist will be deleted.\n    - If none matched, report as such (success: False).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          },
+          "check_timestamps": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "service_id",
+          "check_timestamps"
+        ]
+      }
+    },
+    {
+      "name": "force_metadata_consistency_sync",
+      "description": "Force-synchronize the recorded deployment metadata with the actual running deployment metadata\nfor all services in the backend. If recorded metadata for a service differs from the actual, it\nwill be updated to match the actual state.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str,  # Description of how many services were synchronized (with reporting of any missing actual metadata)\n        \"updated_services\": List[str],  # List of service_ids that were patched\n        \"missing_actual_metadata\": List[str],  # service_ids for which actual metadata was not available (if any)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of fatal/infrastructure error\n    }\n\nConstraints:\n    - The operation sets deployment_metadata per service to match the actual state,\n      assuming self._actual_deployment_metadata is available per service_id.\n    - If a service is missing actual metadata, it will be reported but not block others.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,584 @@
+{
+  "env_name": "SportsBettingAggregatorSystem",
+  "description": "A sports betting aggregator system collects and organizes match data, odds, and outcomes from multiple bookmakers, allowing users to query, compare, and analyze sporting events across providers. It maintains stateful records of sporting matches, associated bookmakers, timestamps, and sport types, facilitating filtering by timeframe and provider. Such systems support typical operations like searching for recent events, comparing odds, and retrieving results relevant to the sports betting market.",
+  "initial_parameter_schema": {
+    "matches": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          },
+          "teams": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sport_type": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "competition": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bookmaker_odd": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "match_id",
+          "teams",
+          "sport_type",
+          "start_time",
+          "competition",
+          "location",
+          "outcome",
+          "bookmaker_odd"
+        ]
+      }
+    },
+    "bookmakers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "bookmaker_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "supported_sports": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "country": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bookmaker_id",
+          "name",
+          "supported_sports",
+          "country"
+        ]
+      }
+    },
+    "odds": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "odds_id": {
+            "type": "string"
+          },
+          "match_id": {
+            "type": "string"
+          },
+          "bookmaker_id": {
+            "type": "string"
+          },
+          "odds_type": {
+            "type": "string"
+          },
+          "odds_value": {
+            "type": "number"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "odds_id",
+          "match_id",
+          "bookmaker_id",
+          "odds_type",
+          "odds_value",
+          "timestamp"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_bookmaker_by_name": [
+      "bookmakers"
+    ],
+    "list_all_bookmakers": [
+      "bookmakers"
+    ],
+    "list_matches_by_time_sport_bookmaker": [
+      "matches",
+      "odds"
+    ],
+    "list_matches_by_time_range": [
+      "matches"
+    ],
+    "list_matches_by_sport_type": [
+      "matches"
+    ],
+    "list_matches_by_bookmaker": [
+      "bookmakers",
+      "matches",
+      "odds"
+    ],
+    "get_match_by_id": [
+      "matches"
+    ],
+    "get_odds_for_match_bookmaker": [
+      "bookmakers",
+      "matches",
+      "odds"
+    ],
+    "get_most_recent_odds_for_match_bookmaker": [
+      "bookmakers",
+      "matches",
+      "odds"
+    ],
+    "get_historical_odds_for_match": [
+      "matches",
+      "odds"
+    ],
+    "get_match_outcome": [
+      "matches"
+    ],
+    "add_match": [
+      "bookmakers",
+      "matches",
+      "odds"
+    ],
+    "add_bookmaker": [
+      "bookmakers"
+    ],
+    "add_odds_entry": [
+      "bookmakers",
+      "matches",
+      "odds"
+    ],
+    "update_odds_entry": [
+      "matches",
+      "odds"
+    ],
+    "set_match_outcome": [
+      "matches"
+    ],
+    "delete_odds_entry": [
+      "matches",
+      "odds"
+    ],
+    "remove_match": [
+      "matches",
+      "odds"
+    ],
+    "remove_bookmaker": [
+      "bookmakers",
+      "matches",
+      "odds"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_bookmaker_by_name",
+      "description": "Retrieve bookmaker info by bookmaker name.\n\nArgs:\n    name (str): The name of the bookmaker to search for.\n\nReturns:\n    dict: \n        success: True and the BookmakerInfo if found;\n        success: False and error message if not found.\n\nConstraints:\n    - Bookmaker name is matched exactly (case-sensitive).\n    - Returns the first match found if multiple bookmakers have the same name.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "list_all_bookmakers",
+      "description": "List all registered bookmakers in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": List[BookmakerInfo]  # All bookmakers, may be empty if none registered\n        }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_matches_by_time_sport_bookmaker",
+      "description": "Retrieve all matches whose:\n  - start_time is within [start_time, end_time] (inclusive),\n  - sport_type equals the given sport_type,\n  - have at least one associated Odds entry from the given bookmaker.\n\nArgs:\n    start_time (str): ISO8601 datetime string, inclusive lower bound for match's start_time.\n    end_time (str): ISO8601 datetime string, inclusive upper bound.\n    sport_type (str): Required sport type for matches.\n    bookmaker_id (str): Bookmaker ID that must be represented in the match's odds.\n\nReturns:\n    dict: \n      - {\"success\": True, \"data\": List[MatchInfo]}\n        (even if the list is empty; this is not an error)\n      - {\"success\": False, \"error\": <str>} if severe error arises.\nConstraints:\n    - Returns only matches that satisfy all three conditions.\n    - Bookmaker does not need to exist in the system to return empty list (not an error).\n    - Time strings must be properly formatted ISO8601; otherwise, return error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "sport_type": {
+            "type": "string"
+          },
+          "bookmaker_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "start_time",
+          "end_time",
+          "sport_type",
+          "bookmaker_id"
+        ]
+      }
+    },
+    {
+      "name": "list_matches_by_time_range",
+      "description": "Retrieve all matches with start_time between the specified time interval [start_time, end_time] (inclusive).\n\nArgs:\n    start_time (str): Start of the interval (ISO8601 datetime string).\n    end_time (str): End of the interval (ISO8601 datetime string).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MatchInfo],  # Possibly empty.\n    }\n    or {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - start_time and end_time must be valid ISO8601 datetime strings.\n    - start_time must be <= end_time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "start_time",
+          "end_time"
+        ]
+      }
+    },
+    {
+      "name": "list_matches_by_sport_type",
+      "description": "Retrieve all matches (MatchInfo) of a specified sport type.\n\nArgs:\n    sport_type (str): The type of sport to filter matches (e.g., \"football\").\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"data\": List[MatchInfo]}\n        - On failure: {\"success\": False, \"error\": str}\n\nConstraints:\n    - sport_type must be a non-empty string\n    - Returns empty list if no matches found for sport_type",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sport_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sport_type"
+        ]
+      }
+    },
+    {
+      "name": "list_matches_by_bookmaker",
+      "description": "Retrieve all matches that have odds provided by the specified bookmaker.\n\nArgs:\n    bookmaker_id (str): The ID of the bookmaker.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MatchInfo],  # May be empty if bookmaker has provided no odds\n    }\n    or \n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g., \"Bookmaker not found\"\n    }\n\nConstraints:\n    - The bookmaker_id must exist in the system.\n    - Each returned match must have at least one odds entry by this bookmaker.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bookmaker_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bookmaker_id"
+        ]
+      }
+    },
+    {
+      "name": "get_match_by_id",
+      "description": "Retrieve complete details of a match by its match_id.\n\nArgs:\n    match_id (str): The identifier of the match to look up.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": MatchInfo  # Match information dictionary\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Match not found\"\n    }\n\nConstraints:\n    - match_id must exist in the matches dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id"
+        ]
+      }
+    },
+    {
+      "name": "get_odds_for_match_bookmaker",
+      "description": "Retrieve all odds entries for a specific match and bookmaker, sorted by timestamp (ascending).\n\nArgs:\n    match_id (str): ID of the match.\n    bookmaker_id (str): ID of the bookmaker.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[OddsInfo]  # Sorted by timestamp (oldest first, can be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - The match and bookmaker must exist.\n    - Sorting is by timestamp; timestamps are assumed ISO8601 or numeric.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          },
+          "bookmaker_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id",
+          "bookmaker_id"
+        ]
+      }
+    },
+    {
+      "name": "get_most_recent_odds_for_match_bookmaker",
+      "description": "Retrieve the most recently updated odds entry for a given match and bookmaker.\n\nArgs:\n    match_id (str): The ID of the match.\n    bookmaker_id (str): The ID of the bookmaker.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": OddsInfo,  # The most recent odds entry\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g. not found or invalid IDs)\n    }\n\nConstraints:\n    - The match_id and bookmaker_id must both be valid (present in the system).\n    - If no odds entries exist for this match and bookmaker, failure is returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          },
+          "bookmaker_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id",
+          "bookmaker_id"
+        ]
+      }
+    },
+    {
+      "name": "get_historical_odds_for_match",
+      "description": "Retrieve all historical (versioned) odds for the specified match_id across all bookmakers,\nordered by their timestamp (ascending).\n\nArgs:\n    match_id (str): The unique identifier for the match.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[OddsInfo]  # May be empty if no odds found for match\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Description (e.g., \"Match not found\")\n    }\n\nConstraints:\n    - match_id must exist in self.matches.\n    - Results are ordered by timestamp (ascending).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id"
+        ]
+      }
+    },
+    {
+      "name": "get_match_outcome",
+      "description": "Return the outcome/result of the given match.\n\nArgs:\n    match_id (str): Unique identifier of the match.\n\nReturns:\n    dict:\n      {\n        \"success\": True,\n        \"data\": {\n            \"match_id\": str,\n            \"outcome\": Optional[str]  # None if match not completed yet\n        }\n      }\n      OR\n      {\n        \"success\": False,\n        \"error\": str  # \"Match not found\"\n      }\n\nConstraints:\n    - The provided match_id must exist in the system.\n    - If the outcome is not yet determined, it may be None.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id"
+        ]
+      }
+    },
+    {
+      "name": "add_match",
+      "description": "Add a new match with required details and associate it with at least one existing odds entry.\n\nArgs:\n    match_id (str): Unique match identifier.\n    teams (List[str]): List of team/participant names.\n    sport_type (str): Category of the sport.\n    start_time (str): ISO8601 datetime or timestamp for match start.\n    competition (str): Competition or league.\n    location (str): Physical or virtual location.\n    bookmaker_odd (List[str]): List of odds_ids (must already exist in the system), must reference this match.\n    outcome (str, optional): Outcome if already known.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Match <match_id> added with odds entries.\"\n    }\n    OR\n    dict: {\n        \"success\": False,\n        \"error\": \"Reason for failure\"\n    }\n\nConstraints:\n    - match_id must be unique (not already in self.matches).\n    - bookmaker_odd must be a non-empty list of odds_ids, each of which:\n        * exists in self.odds\n        * references this match_id and a valid bookmaker",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          },
+          "teams": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sport_type": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "competition": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "bookmaker_odd": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "outcome": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "match_id",
+          "teams",
+          "sport_type",
+          "start_time",
+          "competition",
+          "location",
+          "bookmaker_odd"
+        ]
+      }
+    },
+    {
+      "name": "add_bookmaker",
+      "description": "Register a new bookmaker.\n\nArgs:\n    bookmaker_id (str): Unique ID for the bookmaker.\n    name (str): Human-readable name of the bookmaker.\n    supported_sports (List[str]): List of sports this bookmaker covers (must be non-empty).\n    country (str): Country of operation.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"message\": \"Bookmaker <name> added.\"}\n        On failure:\n            {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - bookmaker_id must be unique.\n    - supported_sports must be a non-empty list.\n    - Each required field must be non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bookmaker_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "supported_sports": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "country": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bookmaker_id",
+          "name",
+          "supported_sports",
+          "country"
+        ]
+      }
+    },
+    {
+      "name": "add_odds_entry",
+      "description": "Add a new odds entry for a match, bookmaker, and odds type, with the supplied timestamp.\n\nArgs:\n    odds_id (str): Unique identifier for this odds entry.\n    match_id (str): Match to which this odds entry pertains (must exist).\n    bookmaker_id (str): Bookmaker offering the odds (must exist).\n    odds_type (str): Type/category of odds (e.g., 'win', 'draw', 'loss').\n    odds_value (float): Value for these odds (e.g., 3.25).\n    timestamp (str): ISO8601 timestamp for when the odds were recorded.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Odds entry added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - odds_id must be unique (not already present).\n    - match_id must exist in self.matches.\n    - bookmaker_id must exist in self.bookmakers.\n    - On success, the new entry is added to self.odds, and odds_id is appended to the match's bookmaker_odd list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "odds_id": {
+            "type": "string"
+          },
+          "match_id": {
+            "type": "string"
+          },
+          "bookmaker_id": {
+            "type": "string"
+          },
+          "odds_type": {
+            "type": "string"
+          },
+          "odds_value": {
+            "type": "number"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "odds_id",
+          "match_id",
+          "bookmaker_id",
+          "odds_type",
+          "odds_value",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "update_odds_entry",
+      "description": "Update an existing odds entry's value by creating a new version (preserving history).\n\nArgs:\n    odds_id (str): The identifier of the odds entry to update.\n    odds_value (float): The new odds value.\n    timestamp (str): ISO8601 timestamp for the new version.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Odds updated (new version created)\",\n        \"new_odds_id\": str,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Explanation of the failure.\n    }\n\nConstraints:\n    - The odds entry to update must exist.\n    - The updated odds value and timestamp are required.\n    - This preserves the old odds as history (does not overwrite).\n    - The new odds_id is auto-generated as \"<old_odds_id>-vN\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "odds_id": {
+            "type": "string"
+          },
+          "odds_value": {
+            "type": "number"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "odds_id",
+          "odds_value",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "set_match_outcome",
+      "description": "Record or update the outcome of a match.\n\nArgs:\n    match_id (str): The unique identifier of the match.\n    outcome (str): The outcome to record (e.g., \"Team A win\", \"draw\", \"cancelled\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Outcome set/updated for match {match_id}\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The match must exist in the system.\n    - Outcome must be a non-empty string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id",
+          "outcome"
+        ]
+      }
+    },
+    {
+      "name": "delete_odds_entry",
+      "description": "Remove an odds entry from the system.\nMaintains integrity: a match must have at least one associated odds entry;\nif this is the last odds entry for the match, operation fails.\n\nArgs:\n    odds_id (str): Unique identifier of the odds entry to be deleted.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Description of operation\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\nConstraints:\n    - An odds entry cannot be deleted if it is the only one associated with its match.\n    - The specified odds_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "odds_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "odds_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_match",
+      "description": "Remove a match and all associated odds entries from the system.\n\nArgs:\n    match_id (str): Unique identifier of the match to remove.\n\nReturns:\n    dict: \n        - On success: {\n            \"success\": True,\n            \"message\": \"Match <match_id> and associated odds entries removed.\"\n          }\n        - On failure: {\n            \"success\": False,\n            \"error\": \"Match <match_id> does not exist.\"\n          }\n\nConstraints:\n    - The match must exist in the system.\n    - All associated odds entries (odds['match_id'] == match_id) are also removed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_bookmaker",
+      "description": "Remove a bookmaker and all associated odds entries from the system.\n\nArgs:\n    bookmaker_id (str): The unique identifier of the bookmaker to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Bookmaker <id> and related odds entries removed\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <error-message str>\n    }\n\nConstraints:\n    - Cannot remove a bookmaker if doing so would leave any match with no odds entries.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bookmaker_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bookmaker_id"
+        ]
+      }
+    }
+  ]
+}

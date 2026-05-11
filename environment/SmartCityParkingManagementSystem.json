@@ -1,0 +1,493 @@
+{
+  "env_name": "SmartCityParkingManagementSystem",
+  "description": "A smart city parking management system aggregates real-time and historical data about multiple parking lots throughout an urban area. It maintains stateful records about each lot's geographic location, capacity, current availability, and operational status. This environment enables location-based queries, lot reservations, and dynamic data updates to facilitate efficient parking for residents and visitors.",
+  "initial_parameter_schema": {
+    "parking_lots": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "lot_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "capacity": {
+            "type": "integer"
+          },
+          "available_spaces": {
+            "type": "integer"
+          },
+          "operational_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "lot_id",
+          "name",
+          "latitude",
+          "longitude",
+          "capacity",
+          "available_spaces",
+          "operational_status"
+        ]
+      }
+    },
+    "reservations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "reservation_id": {
+            "type": "string"
+          },
+          "lot_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "reserved_spaces": {
+            "type": "integer"
+          },
+          "reservation_start_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "reservation_end_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "reservation_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reservation_id",
+          "lot_id",
+          "user_id",
+          "reserved_spaces",
+          "reservation_start_time",
+          "reservation_end_time",
+          "reservation_status"
+        ]
+      }
+    },
+    "historical_usage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "lot_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "spaces_occupied": {
+            "type": "integer"
+          },
+          "spaces_available": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "lot_id",
+          "timestamp",
+          "spaces_occupied",
+          "spaces_available"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "list_open_parking_lots": [
+      "parking_lots"
+    ],
+    "filter_parking_lots_by_distance": [
+      "parking_lots"
+    ],
+    "get_available_spaces": [
+      "parking_lots"
+    ],
+    "get_lot_with_max_available_spaces": [
+      "parking_lots"
+    ],
+    "get_parking_lot_info": [
+      "parking_lots"
+    ],
+    "get_reservations_by_user": [
+      "reservations"
+    ],
+    "get_reservations_by_lot": [
+      "parking_lots",
+      "reservations"
+    ],
+    "check_lot_operational_status": [
+      "parking_lots"
+    ],
+    "get_historical_usage_by_lot": [
+      "historical_usage",
+      "parking_lots"
+    ],
+    "get_lot_capacity": [
+      "parking_lots"
+    ],
+    "create_reservation": [
+      "parking_lots",
+      "reservations"
+    ],
+    "cancel_reservation": [
+      "parking_lots",
+      "reservations"
+    ],
+    "update_available_spaces": [
+      "parking_lots"
+    ],
+    "change_lot_operational_status": [
+      "parking_lots"
+    ],
+    "update_lot_capacity": [
+      "parking_lots"
+    ],
+    "record_historical_usage": [
+      "historical_usage",
+      "parking_lots"
+    ]
+  },
+  "tools": [
+    {
+      "name": "list_open_parking_lots",
+      "description": "Retrieve all parking lots currently operational (operational_status == \"open\").\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[ParkingLotInfo],  # List of open parking lots (may be empty)\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": str\n        }\nConstraints:\n    - Only parking lots with operational_status == \"open\" are included in the result.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "filter_parking_lots_by_distance",
+      "description": "Given a geographic location and radius (in kilometers), return all 'open'\nparking lots within that range.\n\nArgs:\n    latitude (float): Reference latitude, must be between -90 and 90.\n    longitude (float): Reference longitude, must be between -180 and 180.\n    radius (float): Search radius in kilometers, must be > 0.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ParkingLotInfo],  # May be empty if no lots within range.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Only parking lots with operational_status == \"open\" are considered.\n    - Invalid location/radius parameters return failure.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "radius": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude",
+          "radius"
+        ]
+      }
+    },
+    {
+      "name": "get_available_spaces",
+      "description": "Query the number of currently available spaces for a specific, open parking lot.\n\nArgs:\n    lot_id (str): Identifier of the parking lot.\n\nReturns:\n    dict:\n        On success:\n            {\n              \"success\": True,\n              \"data\": {\n                  \"lot_id\": str,\n                  \"available_spaces\": int\n              }\n            }\n        On failure:\n            {\n              \"success\": False,\n              \"error\": str  # Reason, e.g., lot not found or not open\n            }\nConstraints:\n    - Only lots with operational_status == \"open\" can be queried.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "lot_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "lot_id"
+        ]
+      }
+    },
+    {
+      "name": "get_lot_with_max_available_spaces",
+      "description": "Given a candidate list of parking lot IDs, select the open parking lot with the highest available_spaces.\n\nArgs:\n    candidate_lot_ids (list of str): List of parking lot IDs to consider.\n\nReturns:\n    dict: \n       { \"success\": True, \"data\": <ParkingLotInfo> }\n       or\n       { \"success\": False, \"error\": str }\n\nConstraints:\n    - Only parking lots with operational_status == \"open\" are considered.\n    - If none are open or exist, returns an error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "candidate_lot_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "candidate_lot_ids"
+        ]
+      }
+    },
+    {
+      "name": "get_parking_lot_info",
+      "description": "Retrieve details (ParkingLotInfo) for a parking lot by lot_id or name.\n\nArgs:\n    lot_id (str, optional): Unique identifier of the parking lot.\n    name (str, optional): Name of the parking lot.\n\nReturns:\n    dict: \n        {\"success\": True, \"data\": ParkingLotInfo} if found;\n        {\"success\": False, \"error\": str} otherwise.\n\nConstraints:\n    - At least one of lot_id or name must be provided.\n    - Closed lots remain queryable so coordinators can inspect and plan around them.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "lot_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "get_reservations_by_user",
+      "description": "List all reservations made by a specific user.\n\nArgs:\n    user_id (str): The identifier of the user for whom to fetch reservations.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ReservationInfo]  # List may be empty if user has no reservations\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g. invalid input)\n    }\n\nConstraints:\n    - user_id should not be None or empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_reservations_by_lot",
+      "description": "List all current reservations for a specific parking lot.\n\nArgs:\n    lot_id (str): The unique identifier of the parking lot.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[ReservationInfo]  # Reservations for this lot (possibly empty)\n            }\n        On error:\n            {\n                \"success\": False,\n                \"error\": str  # Reason for failure\n            }\n\nConstraints:\n    - The specified lot_id must exist.\n    - The parking lot must have operational_status == \"open\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "lot_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "lot_id"
+        ]
+      }
+    },
+    {
+      "name": "check_lot_operational_status",
+      "description": "Query the operational status of the specified parking lot.\n\nArgs:\n    lot_id (str): Identifier of the parking lot.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": str  # The operational_status (e.g., \"open\", \"closed\", etc.)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Parking lot not found\"\n    }\nConstraints:\n    - lot_id must exist in self.parking_lots.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "lot_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "lot_id"
+        ]
+      }
+    },
+    {
+      "name": "get_historical_usage_by_lot",
+      "description": "Retrieve historical occupancy and availability data for the specified parking lot.\n\nArgs:\n    lot_id (str): Unique identifier of the parking lot.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[HistoricalUsageInfo]  # List may be empty if no data.\n            }\n        On failure (e.g., invalid lot_id):\n            {\n                \"success\": False,\n                \"error\": str  # Description of the error, e.g. Parking lot does not exist\n            }\n\nConstraints:\n    - The provided lot_id must correspond to an existing parking lot.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "lot_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "lot_id"
+        ]
+      }
+    },
+    {
+      "name": "get_lot_capacity",
+      "description": "Query the maximum capacity for a specific parking lot.\n\nArgs:\n    lot_id (str): The unique identifier for the parking lot.\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"data\": {\n                \"lot_id\": str,\n                \"capacity\": int\n            }\n        }\n        On failure (e.g., invalid lot_id):\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - The specified lot_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "lot_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "lot_id"
+        ]
+      }
+    },
+    {
+      "name": "create_reservation",
+      "description": "Reserve one or more spaces in a parking lot if availability and operational status allow.\n\nArgs:\n    lot_id (str): The ID of the parking lot.\n    user_id (str): ID of the user making the reservation.\n    reserved_spaces (int): Number of spaces to reserve (must be > 0).\n    reservation_start_time (str/float): Reservation start time.\n    reservation_end_time (str/float): Reservation end time.\n\nReturns:\n    dict: On success:\n            {\n              \"success\": True,\n              \"message\": \"Reservation created successfully.\",\n              \"reservation_id\": <new_reservation_id>\n            }\n          On failure:\n            {\n              \"success\": False,\n              \"error\": <description of reason>\n            }\n\nConstraints:\n    - Lot must exist and be open.\n    - reserved_spaces must be positive and ≤ lot's available_spaces.\n    - Lot's available_spaces is decremented upon successful reservation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "lot_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "reserved_spaces": {
+            "type": "integer"
+          },
+          "reservation_start_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "reservation_end_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          }
+        },
+        "required": [
+          "lot_id",
+          "user_id",
+          "reserved_spaces",
+          "reservation_start_time",
+          "reservation_end_time"
+        ]
+      }
+    },
+    {
+      "name": "cancel_reservation",
+      "description": "Cancel an existing reservation and update the available_spaces for the associated lot.\n\nArgs:\n    reservation_id (str): The unique identifier for the reservation to cancel.\n\nReturns:\n    dict:\n        {\"success\": True, \"message\": \"Reservation cancelled and availability updated.\"}\n        or\n        {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - Only reservations that exist and are currently active can be cancelled.\n    - When cancelling, reserved spaces are released back into the lot's available_spaces.\n    - After release, available_spaces for the lot should not exceed its capacity.\n    - If the reservation or lot does not exist, or reservation is already cancelled, operation fails.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reservation_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reservation_id"
+        ]
+      }
+    },
+    {
+      "name": "update_available_spaces",
+      "description": "Adjust the available_spaces for a parking lot.\n\nArgs:\n    lot_id (str): The unique ID of the parking lot to update.\n    new_available_spaces (int): The new integer value for available spaces.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Confirmation of the update\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error\n    }\n\nConstraints:\n    - Lot must exist in the system.\n    - Lot's operational_status must be \"open\".\n    - new_available_spaces must be >= 0 and <= lot's capacity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "lot_id": {
+            "type": "string"
+          },
+          "new_available_spaces": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "lot_id",
+          "new_available_spaces"
+        ]
+      }
+    },
+    {
+      "name": "change_lot_operational_status",
+      "description": "Set a parking lot's operational_status to \"open\" or \"closed\".\n\nArgs:\n    lot_id (str): The unique identifier for the parking lot.\n    operational_status (str): The new operational status (\"open\" or \"closed\").\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Operational status of parking lot <lot_id> set to <operational_status>\" }\n        On failure:\n            { \"success\": False, \"error\": \"reason for failure\" }\n\nConstraints:\n    - Only \"open\" or \"closed\" are valid operational status values.\n    - lot_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "lot_id": {
+            "type": "string"
+          },
+          "operational_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "lot_id",
+          "operational_status"
+        ]
+      }
+    },
+    {
+      "name": "update_lot_capacity",
+      "description": "Change the capacity attribute of a parking lot (e.g., after remodeling).\n\nArgs:\n    lot_id (str): The identifier for the parking lot to update.\n    new_capacity (int): The new capacity value to set (must be non-negative).\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Capacity for lot <lot_id> updated to <new_capacity>.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Reason for failure.\"\n            }\n\nConstraints:\n    - available_spaces must not exceed new_capacity after the update. If it does, adjust available_spaces down to match new_capacity.\n    - new_capacity must be a non-negative integer.\n    - lot_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "lot_id": {
+            "type": "string"
+          },
+          "new_capacity": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "lot_id",
+          "new_capacity"
+        ]
+      }
+    },
+    {
+      "name": "record_historical_usage",
+      "description": "Record a new historical usage entry for a parking lot.\n\nArgs:\n    lot_id (str): The parking lot's unique identifier.\n    timestamp (str): The time when the record is captured (may be ISO8601 or float, per convention).\n    spaces_occupied (int): Number of spaces occupied at the timestamp.\n    spaces_available (int): Number of spaces available at the timestamp.\n\nReturns:\n    dict: \n      - On success: { \"success\": True, \"message\": \"Historical usage recorded successfully.\" }\n      - On failure: { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - lot_id must exist in self.parking_lots.\n    - spaces_occupied and spaces_available must be >= 0.\n    - spaces_occupied + spaces_available should not exceed the lot's capacity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "lot_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "spaces_occupied": {
+            "type": "integer"
+          },
+          "spaces_available": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "lot_id",
+          "timestamp",
+          "spaces_occupied",
+          "spaces_available"
+        ]
+      }
+    }
+  ]
+}

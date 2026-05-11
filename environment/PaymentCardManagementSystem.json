@@ -1,0 +1,523 @@
+{
+  "env_name": "PaymentCardManagementSystem",
+  "description": "A payment card management system is designed to issue, track, and maintain information about debit, credit, or prepaid cards. It manages cardholder data, card attributes, branding elements, BIN mapping, and often supports administrative functions such as querying, updating, and revoking cards. The system maintains a secure state and typically integrates with external processors and regulatory compliance checks.",
+  "initial_parameter_schema": {
+    "cards": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          },
+          "card_number": {
+            "type": "string"
+          },
+          "expiration_date": {
+            "type": "string"
+          },
+          "cardholder_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "BIN": {
+            "type": "string"
+          },
+          "issue_date": {
+            "type": "string"
+          },
+          "card_type": {
+            "type": "string"
+          },
+          "card_art_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "card_number",
+          "expiration_date",
+          "cardholder_id",
+          "status",
+          "BIN",
+          "issue_date",
+          "card_type",
+          "card_art_url"
+        ]
+      }
+    },
+    "cardholders": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "cardholder_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "account_sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cardholder_id",
+          "name",
+          "address",
+          "contact_info",
+          "account_sta"
+        ]
+      }
+    },
+    "bins": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "n_number": {
+            "type": "string"
+          },
+          "brand": {
+            "type": "string"
+          },
+          "card_art_url": {
+            "type": "string"
+          },
+          "issuer_name": {
+            "type": "string"
+          },
+          "card_typ": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "n_number",
+          "brand",
+          "card_art_url",
+          "issuer_name",
+          "card_typ"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_card_info": [
+      "cards"
+    ],
+    "get_card_full_info_admin": [
+      "cards"
+    ],
+    "get_cards_by_cardholder": [
+      "cardholders",
+      "cards"
+    ],
+    "get_cardholder_info": [
+      "cardholders"
+    ],
+    "get_bin_info": [
+      "bins"
+    ],
+    "get_card_art_url_by_bin": [
+      "bins"
+    ],
+    "list_active_cards": [
+      "cards"
+    ],
+    "list_cards_by_status": [
+      "cards"
+    ],
+    "list_bins": [
+      "bins"
+    ],
+    "list_brands": [
+      "bins"
+    ],
+    "validate_card_status": [
+      "cards"
+    ],
+    "issue_card": [
+      "bins",
+      "cardholders",
+      "cards"
+    ],
+    "update_card_status": [
+      "cards"
+    ],
+    "revoke_card": [
+      "cards"
+    ],
+    "expire_card": [
+      "cards"
+    ],
+    "update_cardholder_info": [
+      "cardholders"
+    ],
+    "add_bin_entry": [
+      "bins"
+    ],
+    "update_bin_info": [
+      "bins"
+    ],
+    "remove_card": [
+      "cards"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_card_info",
+      "description": "Retrieve the details of a specified card by card_id with masked card number.\n\nArgs:\n    card_id (str): The ID of the card to retrieve.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": CardInfo (with card_number masked)\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str\n            }\n\nConstraints:\n    - The card must exist.\n    - The card_number in the response must be masked for security (all but last 4 digits replaced by '*').",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id"
+        ]
+      }
+    },
+    {
+      "name": "get_card_full_info_admin",
+      "description": "Retrieve full (unmasked) card details for the specified card_id.\nOnly accessible to admin users.\n\nArgs:\n    card_id (str): The ID of the card whose details are to be retrieved.\n    user_role (str): The role of the requester (must be 'admin').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": CardInfo  # Full card info, unmasked card_number\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (not found, permission denied)\n    }\n\nConstraints:\n    - Only users with admin privileges can retrieve unmasked card info.\n    - If card_id is invalid or not found, return error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          },
+          "user_role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "user_role"
+        ]
+      }
+    },
+    {
+      "name": "get_cards_by_cardholder",
+      "description": "Retrieve all cards (with masked card numbers) belonging to a given cardholder.\n\nArgs:\n    cardholder_id (str): The identifier of the cardholder to retrieve cards for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CardInfo] (with card_number masked)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - cardholder_id must exist in system.\n    - Returned card_number fields are masked (e.g., \"************1234\").",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cardholder_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cardholder_id"
+        ]
+      }
+    },
+    {
+      "name": "get_cardholder_info",
+      "description": "Retrieve KYC and contact info for a specified cardholder by cardholder_id.\n\nArgs:\n    cardholder_id (str): The unique identifier for the cardholder.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": CardholderInfo  # Cardholder's full KYC and contact info\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message, e.g. cardholder does not exist\n    }\n\nConstraints:\n    - cardholder_id must exist in the system.\n    - Operation returns all KYC and contact info fields.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cardholder_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cardholder_id"
+        ]
+      }
+    },
+    {
+      "name": "get_bin_info",
+      "description": "Retrieve complete BIN details for a given BIN number.\n\nArgs:\n    n_number (str): The BIN (Bank Identification Number) to look up.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": BINInfo  # Complete BIN details for the given n_number\n            }\n        On failure (e.g., not found):\n            {\n                \"success\": False,\n                \"error\": \"BIN not found\"\n            }\n\nConstraints:\n    - The BIN number must exist in the system.\n    - Each BIN uniquely maps to its info.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "n_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "n_number"
+        ]
+      }
+    },
+    {
+      "name": "get_card_art_url_by_bin",
+      "description": "Retrieve the card art URL for a specific BIN.\n\nArgs:\n    n_number (str): The BIN number to query.\n\nReturns:\n    dict: \n        - If BIN exists: { \"success\": True, \"data\": str (card_art_url) }\n        - If not found:  { \"success\": False, \"error\": \"BIN not found\" }\n\nConstraints:\n    - n_number must exist in the BINs database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "n_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "n_number"
+        ]
+      }
+    },
+    {
+      "name": "list_active_cards",
+      "description": "List all cards with status \"active\".\n\nReturns:\n    dict:\n        success (bool): True if query is successful.\n        data (List[CardInfo]): A list of masked CardInfo for cards where status == \"active\".\n    If no active cards exist, returns success with an empty list.\n    Card numbers will be masked according to security requirements\n    (e.g., format: \"**** **** **** 1234\").\n\nConstraints:\n- Only cards with status \"active\" are listed.\n- Card numbers in the listing are always masked for security compliance.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_cards_by_status",
+      "description": "List all cards filtered by the given status (e.g., 'active', 'revoked', 'expired').\n\nArgs:\n    status (str): The card status to filter by.\n\nReturns:\n    dict:\n        success (bool): True if query succeeds.\n        data (List[CardInfo]): List of CardInfo dictionaries matching the input status. Empty list if none found.\nConstraints:\n    - No permissions check.\n    - The 'status' field is matched exactly.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "list_bins",
+      "description": "Retrieve the list of all registered BINs in the system.\n\nArgs:\n    None.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BINInfo],  # List may be empty if no BINs are present.\n    }\nConstraints:\n    - No input required.\n    - Returns all BINs present in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_brands",
+      "description": "List all unique brands from the BIN definitions in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str],  # List of unique brand names (may be empty if no BINs)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "validate_card_status",
+      "description": "Check if a specific card is currently valid ('active'), or provide the reason for its invalidity.\n\nArgs:\n    card_id (str): The unique identifier of the card to check.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"status\": str,        # The status of the card (e.g., \"active\", \"revoked\", \"expired\")\n                    \"is_valid\": bool,     # True if status == \"active\", else False\n                    \"reason\": str|null    # If not valid, reason (same as status), else None\n                }\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str    # Reason for failure, e.g. card not found\n            }\n\nConstraints:\n    - The card must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id"
+        ]
+      }
+    },
+    {
+      "name": "issue_card",
+      "description": "Issue (create) a new card for a cardholder.\n\nArgs:\n    card_id (str): Unique identifier for the card (must be unique).\n    card_number (str): Primary account number (must be unique).\n    expiration_date (str): Expiry date for the card.\n    cardholder_id (str): Cardholder entity id (must exist).\n    BIN (str): Bank Identification Number (must exist).\n    issue_date (str): Date of card issuance.\n    card_type (str): Card type (e.g., debit, credit).\n    card_art_url (str): URL for card image/art.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Card issued successfully\",\n        \"card_id\": card_id\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - card_id and card_number must be globally unique.\n    - cardholder_id must exist.\n    - BIN must exist.\n    - Required fields must not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          },
+          "card_number": {
+            "type": "string"
+          },
+          "expiration_date": {
+            "type": "string"
+          },
+          "cardholder_id": {
+            "type": "string"
+          },
+          "BIN": {
+            "type": "string"
+          },
+          "issue_date": {
+            "type": "string"
+          },
+          "card_type": {
+            "type": "string"
+          },
+          "card_art_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "card_number",
+          "expiration_date",
+          "cardholder_id",
+          "BIN",
+          "issue_date",
+          "card_type",
+          "card_art_url"
+        ]
+      }
+    },
+    {
+      "name": "update_card_status",
+      "description": "Change the status of a card to \"active,\" \"revoked,\" or \"expired.\"\n\nArgs:\n    card_id (str): The identifier of the card to update.\n    new_status (str): The new status to set; must be one of [\"active\", \"revoked\", \"expired\"].\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Card status updated to <new_status>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<error_reason>\"\n    }\n\nConstraints:\n    - card_id must exist in the system.\n    - new_status must be \"active\", \"revoked\", or \"expired\".\n    - Card status must accurately reflect current validity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "revoke_card",
+      "description": "Set a card's status to \"revoked\", making it invalid for further transactions.\n\nArgs:\n    card_id (str): The unique identifier of the card to revoke.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Card <card_id> status updated to revoked.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": <error_reason>\n            }\n\nConstraints:\n    - The card must exist.\n    - Sets status to \"revoked\" (idempotent if already revoked).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id"
+        ]
+      }
+    },
+    {
+      "name": "expire_card",
+      "description": "Mark a card as 'expired' by updating its status and/or expiration date.\n\nArgs:\n    card_id (str): The ID of the card to be expired.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Card <card_id> expired successfully\" }\n        - On failure: { \"success\": False, \"error\": \"<error-message>\" }\n\nConstraints:\n    - Card must exist.\n    - Card status will be updated to 'expired'.\n    - Optionally, expiration_date can be set to current date.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id"
+        ]
+      }
+    },
+    {
+      "name": "update_cardholder_info",
+      "description": "Edit the KYC/contact details for a given cardholder.\n\nArgs:\n    cardholder_id (str): The ID of the cardholder to update.\n    name (str, optional): Updated name.\n    address (str, optional): Updated address.\n    contact_info (str, optional): Updated contact info.\n    account_sta (str, optional): Updated account status.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Cardholder info updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - Only updates to allowed fields are performed.\n    - Cardholder must exist.\n    - At least one updatable field must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cardholder_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "account_sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cardholder_id"
+        ]
+      }
+    },
+    {
+      "name": "add_bin_entry",
+      "description": "Add a new BIN entry and its associated metadata.\n\nArgs:\n    n_number (str): The BIN (Bank Identification Number, must be unique).\n    brand (str): Brand for the BIN (e.g., VISA, Mastercard).\n    card_art_url (str): URL to the card art resource for this BIN.\n    issuer_name (str): Name of the issuing bank.\n    card_type (str): Type of card (e.g., credit, debit).\n\nReturns:\n    dict: \n        { \"success\": True, \"message\": \"BIN entry added successfully.\" }\n        OR\n        { \"success\": False, \"error\": \"BIN already exists.\" }\nConstraints:\n    - BIN numbers must be unique (cannot overwrite existing entry).\n    - All required fields must be provided (not empty).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "n_number": {
+            "type": "string"
+          },
+          "brand": {
+            "type": "string"
+          },
+          "card_art_url": {
+            "type": "string"
+          },
+          "issuer_name": {
+            "type": "string"
+          },
+          "card_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "n_number",
+          "brand",
+          "card_art_url",
+          "issuer_name",
+          "card_type"
+        ]
+      }
+    },
+    {
+      "name": "update_bin_info",
+      "description": "Edit details (brand, card_art_url, issuer_name, optionally card_typ) for an existing BIN.\n\nArgs:\n    n_number (str): The BIN identifier (must exist).\n    brand (Optional[str]): New brand (if to be updated).\n    card_art_url (Optional[str]): New card art URL (if to be updated).\n    issuer_name (Optional[str]): New issuer name (if to be updated).\n    card_typ (Optional[str]): New card type (if to be updated).\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"BIN info updated.\" }\n        On failure: { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - The BIN must already exist.\n    - Only supplied, valid fields will be updated.\n    - Each BIN maps to a unique brand and card art URL (not enforced across all BINs here).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "n_number": {
+            "type": "string"
+          },
+          "brand": {
+            "type": "string"
+          },
+          "card_art_url": {
+            "type": "string"
+          },
+          "issuer_name": {
+            "type": "string"
+          },
+          "card_typ": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "n_number"
+        ]
+      }
+    },
+    {
+      "name": "remove_card",
+      "description": "Admin action to delete (deactivate) a card.\nEnsures regulatory compliance by retaining card information, but marks card as inactive.\n\nArgs:\n    card_id (str): ID of the card to remove/deactivate.\n    is_admin (bool): Must be True; only admins are allowed to perform this operation.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Card <card_id> deactivated (data retained for compliance)\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": <error reason>\n            }\n\nConstraints:\n    - Only admin users may remove a card.\n    - Card data must be retained (not deleted) for compliance; card status is set to 'deactivated'.\n    - If already deactivated/revoked/expired, just confirm current status but do not error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          },
+          "is_admin": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "card_id",
+          "is_admin"
+        ]
+      }
+    }
+  ]
+}

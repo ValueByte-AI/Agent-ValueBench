@@ -1,0 +1,516 @@
+{
+  "env_name": "RSSFeedReaderSystem",
+  "description": "An RSS feed reader system aggregates content from multiple syndicated sources, organizing feeds and their articles for efficient user discovery and consumption. It maintains state about feed metadata, article content, publication times, and read status, supporting querying and filtering to surface relevant information. Such systems are used widely for personalized news, blog, and scientific article aggregation.",
+  "initial_parameter_schema": {
+    "feeds": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "feed_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "last_updated": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "feed_id",
+          "title",
+          "description",
+          "url",
+          "last_updated"
+        ]
+      }
+    },
+    "articles": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "article_id": {
+            "type": "string"
+          },
+          "feed_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "publication_date": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "article_id",
+          "feed_id",
+          "title",
+          "content",
+          "publication_date",
+          "url",
+          "author"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "preferences": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "_id",
+          "display_name",
+          "preferences"
+        ]
+      }
+    },
+    "article_user_states": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "article_id": {
+            "type": "string"
+          },
+          "read_status": {
+            "type": "string"
+          },
+          "bookmarked": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "_id",
+          "article_id",
+          "read_status",
+          "bookmarked"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "search_feeds_by_title_keyword": [
+      "feeds"
+    ],
+    "get_feed_by_id": [
+      "feeds"
+    ],
+    "list_all_active_feeds": [
+      "feeds"
+    ],
+    "list_articles_by_feed": [
+      "articles",
+      "feeds"
+    ],
+    "get_latest_articles_by_feed": [
+      "articles",
+      "feeds"
+    ],
+    "get_article_by_id": [
+      "articles"
+    ],
+    "get_feed_articles_count": [
+      "articles",
+      "feeds"
+    ],
+    "get_article_user_state": [
+      "article_user_states"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "mark_article_as_read": [
+      "article_user_states",
+      "articles",
+      "feeds",
+      "users"
+    ],
+    "bookmark_article": [
+      "article_user_states",
+      "articles",
+      "users"
+    ],
+    "update_feed_active_status": [
+      "feeds"
+    ],
+    "update_article_active_status": [
+      "articles"
+    ],
+    "add_new_feed": [
+      "feeds"
+    ],
+    "add_new_article": [
+      "articles",
+      "feeds"
+    ],
+    "update_user_preferences": [
+      "users"
+    ],
+    "delete_article_user_state": [
+      "article_user_states",
+      "articles",
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "search_feeds_by_title_keyword",
+      "description": "Find all active feeds whose `title` contains a given keyword (case-insensitive).\n\nArgs:\n    keyword (str): Keyword to search for in feed titles.\n\nReturns:\n    dict:\n        { \"success\": True, \"data\": List[FeedInfo] }\n        If no match, data is empty list.\n\nConstraints:\n    - Search only considers active feeds (if 'active' status is tracked; otherwise, all feeds).\n    - The match is performed on the 'title' attribute of Feed, case-insensitive containment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "keyword": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "keyword"
+        ]
+      }
+    },
+    {
+      "name": "get_feed_by_id",
+      "description": "Retrieve full metadata of a feed by its feed_id, but only if the feed is active.\n\nArgs:\n    feed_id (str): Unique identifier of the feed.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": FeedInfo  # Full metadata for the requested feed.\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": \"Feed not found or inactive\"\n            }\n\nConstraints:\n    - Only active feeds are returned.\n    - If the feed does not exist or is inactive, failure is returned.\n\nNotes:\n    - The FeedInfo dict is expected to contain an \"active\" boolean key.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "feed_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "feed_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_active_feeds",
+      "description": "Return the list of all active (non-deleted) feeds in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[FeedInfo],  # May be empty if no feeds/none are active\n    }\n\nConstraints:\n    - Only feeds considered 'active' (not deleted) are included.\n    - If 'active' attribute is present in FeedInfo, use it to filter.\n    - Otherwise, assume all feeds in self.feeds are active.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_articles_by_feed",
+      "description": "List all active articles for a given feed_id, ordered by 'publication_date' descending.\n\nArgs:\n    feed_id (str): The ID of the feed whose articles to list.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ArticleInfo]  # list may be empty if no articles for feed,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (feed does not exist/inactive)\n    }\n\nConstraints:\n    - Only active (non-deleted) feeds and articles are listed. If 'active' fields are not present,\n      all entries in self.feeds/self.articles are considered active.\n    - Articles must be ordered by publication_date descending (ISO timestamp).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "feed_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "feed_id"
+        ]
+      }
+    },
+    {
+      "name": "get_latest_articles_by_feed",
+      "description": "Retrieve the N most recent active articles for a specified feed, sorted by publication_date descending.\n\nArgs:\n    feed_id (str): ID of the feed to retrieve articles from.\n    count (int): Number of latest articles to retrieve (N ≥ 0).\n\nReturns:\n    dict:\n        On success:\n        {\n            \"success\": True,\n            \"data\": List[ArticleInfo],  # length ≤ count, ordered newest (descending publication_date)\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - Feed must exist (present in self.feeds).\n    - Only articles with matching feed_id are returned.\n    - If active status is ever tracked, only active articles/feeds are returned.\n    - Articles sorted by publication_date descending (ISO timestamp string comparison is safe for this).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "feed_id": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "feed_id",
+          "count"
+        ]
+      }
+    },
+    {
+      "name": "get_article_by_id",
+      "description": "Fetch full data for a single article, only if it is active.\n\nArgs:\n    article_id (str): The article's unique identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ArticleInfo  # Full info for the article\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # 'Article not found or inactive'\n    }\n\nConstraints:\n    - Only active (non-deleted) articles may be returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "article_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "article_id"
+        ]
+      }
+    },
+    {
+      "name": "get_feed_articles_count",
+      "description": "Return the number of active articles for a given feed.\n\nArgs:\n    feed_id (str): The ID of the feed.\n\nReturns:\n    dict: On success:\n        { \"success\": True, \"data\": int }  # The count of active articles\n        On error:\n        { \"success\": False, \"error\": str }  # Reason for error (feed not found, not active)\n\nConstraints:\n    - Feed must exist and be active (if 'active' field is present, active==True).\n    - Only count articles that are active (if 'active' in ArticleInfo, active==True),\n      and whose feed_id == provided feed_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "feed_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "feed_id"
+        ]
+      }
+    },
+    {
+      "name": "get_article_user_state",
+      "description": "Check if a user has a read/bookmarked state for a particular article.\n\nArgs:\n    user_id (str): The user identifier.\n    article_id (str): The article identifier.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": ArticleUserStateInfo  # The state object for this user/article.\n            }\n        On failure (no state found):\n            {\n                \"success\": False,\n                \"error\": \"No ArticleUserState for this user-article pair\"\n            }\n\nConstraints:\n    - ArticleUserState exists only if a user has previously interacted with an article.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "article_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "article_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Fetch user information (profile, preferences) by user_id.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo  # User profile dictionary if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"User not found\"\n    }\nConstraints:\n    - The user_id must exist in the environment state.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "mark_article_as_read",
+      "description": "Sets or updates the read_status of the specified article for the specified user.\n\nArgs:\n    user_id (str): The user's unique identifier.\n    article_id (str): The article's unique identifier.\n\nReturns:\n    dict: \n        - { \"success\": True, \"message\": \"Article marked as read for user <user_id>\" }\n        - { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - User must exist.\n    - Article must exist and be active (if \"active\" flag exists, must be True).\n    - Article must link to an existing and active feed.\n    - Creates ArticleUserState if it doesn't exist. Updates otherwise.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "article_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "article_id"
+        ]
+      }
+    },
+    {
+      "name": "bookmark_article",
+      "description": "Mark or unmark an article as bookmarked by a user.\n\nArgs:\n    user_id (str): The _id of the user performing the operation.\n    article_id (str): The article to modify the bookmark state for.\n    bookmarked (bool): True to mark as bookmarked, False to unmark.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"message\": \"Bookmark state updated\"\n        }\n    or\n        {\n            \"success\": False,\n            \"error\": <reason>\n        }\n\nConstraints:\n    - User and Article must exist.\n    - Operates only on active articles (if an 'active' attribute exists for articles and it's False, treat as not found/inactive).\n    - ArticleUserState is created if not present.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "article_id": {
+            "type": "string"
+          },
+          "bookmarked": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "user_id",
+          "article_id",
+          "bookmarked"
+        ]
+      }
+    },
+    {
+      "name": "update_feed_active_status",
+      "description": "Change a feed's active status (activate, deactivate, or \"delete\" feed).\n\nArgs:\n    feed_id (str): The unique identifier of the feed to modify.\n    active (bool): True to activate, False to deactivate/delete.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Feed <feed_id> set to active/inactive.\" }\n        On failure: { \"success\": False, \"error\": \"Feed not found\" }\n\nConstraints:\n    - Only existing feeds can have their status changed.\n    - If 'active' field does not exist in FeedInfo, it will be created/added.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "feed_id": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "feed_id",
+          "active"
+        ]
+      }
+    },
+    {
+      "name": "update_article_active_status",
+      "description": "Change (set) an article's active status (activate or deactivate/delete).\n\nArgs:\n    article_id (str): The unique identifier of the article to update.\n    active (bool): Desired active status (True = active/present, False = deactivated/deleted).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Article active status updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Article must exist.\n    - Status change is idempotent (setting to current value is still a success).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "article_id": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "article_id",
+          "active"
+        ]
+      }
+    },
+    {
+      "name": "add_new_feed",
+      "description": "Add a newly discovered feed to the active feeds list.\n\nArgs:\n    feed_id (str): Unique identifier for the feed.\n    title (str): Feed title.\n    description (str): Feed description.\n    url (str): Feed url.\n    last_updated (str): ISO timestamp string representing last update time.\n\nReturns:\n    dict: \n     - On success: { \"success\": True, \"message\": \"Feed added.\" }\n     - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - feed_id must be unique (no duplicate feeds).\n    - All fields must be present (non-empty).\n    - All feeds are considered active by being present in self.feeds.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "feed_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "last_updated": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "feed_id",
+          "title",
+          "description",
+          "url",
+          "last_updated"
+        ]
+      }
+    },
+    {
+      "name": "add_new_article",
+      "description": "Add a new article under an existing, active feed.\n\nArgs:\n    article_id (str): Unique article ID (must not already exist).\n    feed_id (str): Existing feed ID (must exist and be active).\n    title (str): Article title.\n    content (str): Article content/body.\n    publication_date (str): Publication timestamp, ISO format.\n    url (str): Article URL.\n    author (str): Article author.\n\nReturns:\n    dict: On success:\n        { \"success\": True, \"message\": \"Article added under feed_id <feed_id>.\" }\n    On failure (feed does not exist, inactive, or article_id already exists):\n        { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Article must have unique article_id.\n    - Article must be linked to an existing, active feed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "article_id": {
+            "type": "string"
+          },
+          "feed_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "publication_date": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "article_id",
+          "feed_id",
+          "title",
+          "content",
+          "publication_date",
+          "url",
+          "author"
+        ]
+      }
+    },
+    {
+      "name": "update_user_preferences",
+      "description": "Update the preference configuration for a given user.\n\nArgs:\n    user_id (str): ID of the user whose preferences to update\n    preferences (dict): New preferences configuration to assign (replaces old preferences)\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"User preferences updated\" }\n        On failure:\n            { \"success\": False, \"error\": str }\n\nConstraints:\n    - User must exist\n    - Preferences must be a dict",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "preferences": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "user_id",
+          "preferences"
+        ]
+      }
+    },
+    {
+      "name": "delete_article_user_state",
+      "description": "Remove a user's ArticleUserState entry for a given article (removes read/bookmarked state).\n\nArgs:\n    user_id (str): The user identifier.\n    article_id (str): The article identifier.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Article user state deleted.\" }\n        - On failure:\n            - If user or article not found: { \"success\": False, \"error\": \"User or article does not exist.\" }\n            - If no ArticleUserState entry for the (user, article) pair: \n                { \"success\": False, \"error\": \"No article user state found for the specified user and article.\" }\nConstraints:\n    - ArticleUserState exists only if a user has interacted with an article.\n    - No effect if trying to delete a nonexistent entry, except error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "article_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "article_id"
+        ]
+      }
+    }
+  ]
+}

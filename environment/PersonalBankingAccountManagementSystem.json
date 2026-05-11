@@ -1,0 +1,684 @@
+{
+  "env_name": "PersonalBankingAccountManagementSystem",
+  "description": "A personal banking account management system manages individual user profiles, account details, transaction histories, and recurring payment schedules. It maintains stateful records of scheduled and completed financial activities, allowing users to view, query, and manage their personal payments and account balances. The system typically supports account-related operations such as initiating payments, tracking payment status, and generating reports for specific periods.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "contact_info",
+          "account_id"
+        ]
+      }
+    },
+    "accounts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "account_type": {
+            "type": "string"
+          },
+          "balance": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "user_id",
+          "account_type",
+          "balance",
+          "status"
+        ]
+      }
+    },
+    "recurring_payments": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "recurring_payment_id": {
+            "type": "string"
+          },
+          "account_id": {
+            "type": "string"
+          },
+          "payee": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "frequency": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "recurring_payment_id",
+          "account_id",
+          "payee",
+          "amount",
+          "start_date",
+          "frequency",
+          "end_date",
+          "status"
+        ]
+      }
+    },
+    "transactions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "account_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "recurring_payment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "account_id",
+          "date",
+          "amount",
+          "type",
+          "status",
+          "recurring_payment_id"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_name": [
+      "users"
+    ],
+    "get_user_accounts": [
+      "accounts",
+      "users"
+    ],
+    "get_account_by_id": [
+      "accounts"
+    ],
+    "list_recurring_payments_for_account": [
+      "accounts",
+      "recurring_payments"
+    ],
+    "list_recurring_payments_for_period": [
+      "accounts",
+      "recurring_payments"
+    ],
+    "get_recurring_payment_by_id": [
+      "recurring_payments"
+    ],
+    "list_transactions_for_recurring_payment": [
+      "recurring_payments",
+      "transactions"
+    ],
+    "list_transactions_for_account_in_period": [
+      "accounts",
+      "transactions"
+    ],
+    "get_transaction_status": [
+      "transactions"
+    ],
+    "get_account_balance": [
+      "accounts"
+    ],
+    "get_account_status": [
+      "accounts"
+    ],
+    "list_user_recurring_payments": [
+      "accounts",
+      "recurring_payments",
+      "users"
+    ],
+    "get_transaction_by_id": [
+      "transactions"
+    ],
+    "pause_recurring_payment": [
+      "recurring_payments"
+    ],
+    "resume_recurring_payment": [
+      "recurring_payments"
+    ],
+    "cancel_recurring_payment": [
+      "accounts",
+      "recurring_payments"
+    ],
+    "update_account_balance": [
+      "accounts"
+    ],
+    "add_transaction": [
+      "accounts",
+      "recurring_payments",
+      "transactions"
+    ],
+    "update_transaction_status": [
+      "transactions"
+    ],
+    "create_recurring_payment": [
+      "accounts",
+      "recurring_payments"
+    ],
+    "edit_recurring_payment": [
+      "accounts",
+      "recurring_payments"
+    ],
+    "delete_transaction": [
+      "transactions"
+    ],
+    "restore_transaction": [
+      "accounts",
+      "transactions"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_name",
+      "description": "Retrieve user profile information (including internal user ID) by name.\n\nArgs:\n    name (str): The user's name to search for.\n\nReturns:\n    dict: \n        - If user(s) found: {\n            \"success\": True,\n            \"data\": List[UserInfo]  # list of user info dict(s) with that name\n          }\n        - If not found: {\n            \"success\": False,\n            \"error\": \"User not found\"\n          }\n\nNotes:\n    - Name does not have to be unique; returns all matching users.\n    - Returns an empty list if no user found.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_user_accounts",
+      "description": "Retrieve all accounts associated with a specific user.\n\nArgs:\n    user_id (str): The unique user identifier whose accounts are to be retrieved.\n\nReturns:\n    dict:\n      - On success: {\"success\": True, \"data\": List[AccountInfo]} (may be empty if no accounts)\n      - On error: {\"success\": False, \"error\": str} (if user does not exist)\n\nConstraints:\n    - User must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_account_by_id",
+      "description": "Retrieve details for a specific account by account_id.\n\nArgs:\n    account_id (str): Unique identifier for the account.\n\nReturns:\n    dict:\n        - If found: { \"success\": True, \"data\": AccountInfo }\n        - If not found: { \"success\": False, \"error\": \"Account not found\" }\n\nConstraints:\n    - account_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      }
+    },
+    {
+      "name": "list_recurring_payments_for_account",
+      "description": "List all recurring payments (active/inactive) for a particular account.\n\nArgs:\n    account_id (str): The identifier of the account.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RecurringPaymentInfo], # may be empty if none\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str # describes why, e.g., \"Account does not exist\"\n    }\n\nConstraints:\n    - The account must exist in the system.\n    - No status filtering is performed (all recurring payments for this account are included).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      }
+    },
+    {
+      "name": "list_recurring_payments_for_period",
+      "description": "List all recurring payments linked to a particular account of a user that overlap with a given date range.\n\nArgs:\n    user_id (str): The requesting user's ID (for access control).\n    account_id (str): The account to filter recurring payments by.\n    start_date (str): The (inclusive) start of the period in ISO 8601 format (e.g., '2024-01-01').\n    end_date (str): The (inclusive) end of the period in ISO 8601 format.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"data\": List[RecurringPaymentInfo]}\n        - On failure: {\"success\": False, \"error\": str}\n\nConstraints:\n    - Only allow if user_id owns the account_id.\n    - Return only those recurring payments whose schedule period overlaps with [start_date, end_date].",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "account_id": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "account_id",
+          "start_date",
+          "end_date"
+        ]
+      }
+    },
+    {
+      "name": "get_recurring_payment_by_id",
+      "description": "Retrieve details about a particular recurring payment by its unique identifier.\n\nArgs:\n    recurring_payment_id (str): The ID of the recurring payment to retrieve.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": RecurringPaymentInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., \"Recurring payment not found\"\n    }\n\nNotes:\n    - Does not check user authorization. Access control should be handled at a higher layer if needed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "recurring_payment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "recurring_payment_id"
+        ]
+      }
+    },
+    {
+      "name": "list_transactions_for_recurring_payment",
+      "description": "List all transactions generated by a specified recurring payment.\n\nArgs:\n    recurring_payment_id (str): The identifier of the recurring payment.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TransactionInfo],  # List of all transactions for this recurring payment\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If recurring_payment_id not found\n    }\n\nConstraints:\n    - recurring_payment_id must exist in the system.\n    - Returns all transactions with that recurring_payment_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "recurring_payment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "recurring_payment_id"
+        ]
+      }
+    },
+    {
+      "name": "list_transactions_for_account_in_period",
+      "description": "List all transactions for a given account within the specified date range (inclusive).\n\nArgs:\n    account_id (str): The target account's ID.\n    start_date (str): Start of date period, in 'YYYY-MM-DD' format (inclusive).\n    end_date (str): End of date period, in 'YYYY-MM-DD' format (inclusive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TransactionInfo],  # List of matching transactions\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - The account must exist.\n    - Dates are string-compared (assume ISO 8601 format 'YYYY-MM-DD').",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "start_date",
+          "end_date"
+        ]
+      }
+    },
+    {
+      "name": "get_transaction_status",
+      "description": "Retrieve the status (such as cleared, pending, failed, etc.) of a transaction, by its unique ID.\n\nArgs:\n    transaction_id (str): The identifier of the transaction.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": {\n                \"transaction_id\": str,\n                \"status\": str\n            }\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str\n        }\nConstraints:\n    - The transaction must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id"
+        ]
+      }
+    },
+    {
+      "name": "get_account_balance",
+      "description": "Retrieve the current balance for a specific account.\n\nArgs:\n    account_id (str): The unique identifier of the account.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True,\n            \"data\": float,  # current account balance\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": str  # description of the problem\n        }\n\nConstraints:\n    - The account_id must exist in the banking system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      }
+    },
+    {
+      "name": "get_account_status",
+      "description": "Get the status (active/suspended/closed/etc.) of a specific account.\n\nArgs:\n    account_id (str): The unique identifier of the account.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": {\n                \"account_id\": str,\n                \"status\": str\n            }\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": str\n        }\nConstraints:\n    - The account must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      }
+    },
+    {
+      "name": "list_user_recurring_payments",
+      "description": "List all recurring payments configured by the user across all user accounts.\n\nArgs:\n    user_id (str): The user's unique identifier (_id).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RecurringPaymentInfo],  # All recurring payments for user's accounts.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # User not found.\n    }\n\nConstraints:\n    - Users can only view recurring payments for their own accounts.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_transaction_by_id",
+      "description": "Get the details of a single transaction using its transaction ID.\n\nArgs:\n    transaction_id (str): The unique transaction identifier.\n\nReturns:\n    dict:\n        - success: True, and 'data' with TransactionInfo if found.\n        - success: False, and 'error' if not found.\n\nConstraints:\n    - No user/account permission checks are applied in this method.\n    - Returns only if the transaction exists.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id"
+        ]
+      }
+    },
+    {
+      "name": "pause_recurring_payment",
+      "description": "Freeze or pause an active recurring payment schedule.\n\nArgs:\n    recurring_payment_id (str): The ID of the recurring payment to pause.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Recurring payment paused successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Recurring payment not found.\" | \"Recurring payment is not active and cannot be paused.\"\n    }\n\nConstraints:\n    - Only recurring payments with status 'active' may be paused.\n    - Paused recurring payments will not generate new transactions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "recurring_payment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "recurring_payment_id"
+        ]
+      }
+    },
+    {
+      "name": "resume_recurring_payment",
+      "description": "Resume a previously paused recurring payment schedule.\n\nArgs:\n    recurring_payment_id (str): The ID of the recurring payment to resume.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"message\": \"Recurring payment <id> resumed.\"}\n        - On failure: {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - Recurring payment must exist.\n    - Recurring payment must be in 'paused' status to be resumed.\n    - Cannot resume if already active or if cancelled/terminated.\n\nNotes:\n    - Does not check user ownership; assumes operation is invoked with appropriate permissions/context.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "recurring_payment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "recurring_payment_id"
+        ]
+      }
+    },
+    {
+      "name": "cancel_recurring_payment",
+      "description": "Permanently cancel an active recurring payment, if owned by the user.\n\nArgs:\n    user_id (str): The ID of the user requesting cancellation.\n    recurring_payment_id (str): The ID of the recurring payment to cancel.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Recurring payment canceled successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - User can only cancel their own recurring payments (matching their account).\n    - Only \"active\" recurring payments can be cancelled.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "recurring_payment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "recurring_payment_id"
+        ]
+      }
+    },
+    {
+      "name": "update_account_balance",
+      "description": "Adjust the balance for a specific account by a specified amount (can be positive or negative).\n\nArgs:\n    account_id (str): The account to update.\n    amount_delta (float): The amount to change the balance by (positive = credit, negative = debit).\n    initiator_user_id (str): ID of the user attempting the operation (must be the account owner).\n\nReturns:\n    dict: \n        { \"success\": True, \"message\": \"Balance updated. New balance: X.XX\" }\n        or\n        { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - Only the account's owner may adjust this account's balance.\n    - Balance cannot go below zero (unless an overdraft limit is implemented).\n    - Account must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "amount_delta": {
+            "type": "number"
+          },
+          "initiator_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "amount_delta",
+          "initiator_user_id"
+        ]
+      }
+    },
+    {
+      "name": "add_transaction",
+      "description": "Manually add a new transaction (admin or system-initiated).\n\nArgs:\n    transaction_id (str): Unique ID for the transaction.\n    account_id (str): The account to which the transaction applies.\n    date (str): Transaction date in ISO format.\n    amount (float): Transaction amount (positive value).\n    type (str): \"debit\" or \"credit\".\n    status (str): Status of transaction (\"cleared\", \"pending\", etc.).\n    recurring_payment_id (Optional[str]): Link to a recurring payment if applicable.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Transaction <id> added.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<error message>\"\n    }\n\nConstraints:\n    - Transaction ID must be unique.\n    - Account must exist.\n    - If recurring_payment_id is provided, it must exist.\n    - For debits, account balance cannot go below zero (no overdraft allowed).\n    - Amount must be positive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "account_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "recurring_payment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "account_id",
+          "date",
+          "amount",
+          "type",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "update_transaction_status",
+      "description": "Update the status of a transaction (e.g., from pending to cleared or failed).\n\nArgs:\n    transaction_id (str): The unique identifier for the transaction to update.\n    new_status (str): The new desired status (\"pending\", \"cleared\", \"failed\", etc.)\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Transaction status updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason for failure\"\n    }\n\nConstraints:\n    - Transaction must exist in self.transactions.\n    - The new status should be within the allowed status set [\"pending\", \"cleared\", \"failed\"].\n    - If status is already the desired new_status, still report success but state so.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "create_recurring_payment",
+      "description": "Add a new recurring payment schedule to an account.\n\nArgs:\n    acting_user_id (str): The _id of the user attempting to create the recurring payment.\n    account_id (str): The ID of the account from which the payment will be made.\n    payee (str): The recipient of the recurring payment.\n    amount (float): The recurring payment amount (must be positive).\n    start_date (str): The starting date for the schedule (format: 'YYYY-MM-DD').\n    frequency (str): The payment recurrence frequency (e.g., 'monthly', 'weekly').\n    end_date (str): The end date for the recurrence (format: 'YYYY-MM-DD').\n\nReturns:\n    dict: \n        On success: \n            {\n                \"success\": True,\n                \"message\": \"Recurring payment created successfully\",\n                \"recurring_payment_id\": <generated_id>\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": <error_reason>\n            }\n\nConstraints:\n    - The user may only create recurring payments on their own accounts.\n    - Account must be active.\n    - Amount must be positive.\n    - start_date must not be after end_date.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "acting_user_id": {
+            "type": "string"
+          },
+          "account_id": {
+            "type": "string"
+          },
+          "payee": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "frequency": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "acting_user_id",
+          "account_id",
+          "payee",
+          "amount",
+          "start_date",
+          "frequency",
+          "end_date"
+        ]
+      }
+    },
+    {
+      "name": "edit_recurring_payment",
+      "description": "Modify details of an existing recurring payment (amount, payee, schedule, etc.).\nOnly the user that owns the account may edit their associated recurring payments.\n\nArgs:\n    recurring_payment_id (str): The unique ID of the recurring payment to be edited.\n    user_id (str): User ID requesting the edit (for permission check).\n    amount (float, optional): New payment amount (must be positive if provided).\n    payee (str, optional): New payee name/identifier.\n    start_date (str, optional): New start date (ISO format).\n    frequency (str, optional): New frequency (e.g., 'monthly', 'weekly').\n    end_date (str, optional): New end date (ISO format).\n    status (str, optional): New status (e.g., 'active', 'paused', 'cancelled').\n\nReturns:\n    dict:\n        - success: True/False\n        - message: (on success)\n        - error: Reason for failure (on error)\n\nConstraints:\n    - Only the user who owns the associated account may edit this recurring payment.\n    - amount, if given, must be positive.\n    - start_date, if both given, should not be after end_date.\n    - recurring payment must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "recurring_payment_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "payee": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "frequency": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "recurring_payment_id",
+          "user_id",
+          "amount",
+          "payee",
+          "start_date",
+          "frequency",
+          "end_date",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "delete_transaction",
+      "description": "Remove a transaction record, identified by its transaction_id.\n\nArgs:\n    transaction_id (str): The unique identifier for the transaction to be deleted.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"message\": \"Transaction <id> deleted.\"}\n        On failure:\n            {\"success\": False, \"error\": \"Transaction does not exist.\"}\n\nConstraints:\n    - Only an admin may invoke this operation (permission check not performed here).\n    - If the transaction does not exist, no deletion is performed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id"
+        ]
+      }
+    },
+    {
+      "name": "restore_transaction",
+      "description": "Restore a deleted (soft-deleted) transaction if recovery is allowed.\n\nArgs:\n    transaction_id (str): Unique ID of the transaction to restore.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Transaction <id> restored.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message describing the failure reason.\n    }\n\nConstraints:\n    - Transaction must exist with a status indicating it was deleted (e.g., \"deleted\").\n    - Should not restore if transaction status is not \"deleted\".\n    - Associated account must still exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id"
+        ]
+      }
+    }
+  ]
+}

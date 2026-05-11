@@ -1,0 +1,571 @@
+{
+  "env_name": "EsportsTournamentManagementSystem",
+  "description": "An esports tournament management system maintains comprehensive records for gaming competitions, including tournament details, participant information, schedules, and branding assets such as logos. It supports operations like querying tournaments by ID, uploading and retrieving images, and organizing event metadata. Such platforms are widely used in the gaming industry to facilitate efficient event coordination and media management.",
+  "initial_parameter_schema": {
+    "tournaments": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "tournament_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "logo_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "tournament_id",
+          "name",
+          "start_date",
+          "end_date",
+          "location",
+          "metadata",
+          "logo_id"
+        ]
+      }
+    },
+    "logos": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "logo_id": {
+            "type": "string"
+          },
+          "image_data": {
+            "type": "string"
+          },
+          "file_type": {
+            "type": "string"
+          },
+          "uploaded_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "logo_id",
+          "image_data",
+          "file_type",
+          "uploaded_at"
+        ]
+      }
+    },
+    "participants": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "participant_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "team_name": {
+            "type": "string"
+          },
+          "tournament_id": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "schedules": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          },
+          "tournament_id": {
+            "type": "string"
+          },
+          "match_times": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "bracket_structure": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "schedule_id",
+          "tournament_id",
+          "match_times",
+          "bracket_structure"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_tournament_by_id": [
+      "tournaments"
+    ],
+    "get_logo_id_for_tournament": [
+      "tournaments"
+    ],
+    "get_logo_by_id": [
+      "logos"
+    ],
+    "list_tournaments": [
+      "tournaments"
+    ],
+    "list_logos": [
+      "logos"
+    ],
+    "get_schedule_by_tournament_id": [
+      "schedules",
+      "tournaments"
+    ],
+    "list_participants_by_tournament": [
+      "participants",
+      "tournaments"
+    ],
+    "get_participant_by_id": [
+      "participants"
+    ],
+    "upload_logo": [
+      "logos"
+    ],
+    "link_logo_to_tournament": [
+      "logos",
+      "tournaments"
+    ],
+    "create_tournament": [
+      "logos",
+      "tournaments"
+    ],
+    "update_tournament_info": [
+      "tournaments"
+    ],
+    "add_participant": [
+      "participants",
+      "tournaments"
+    ],
+    "update_participant_info": [
+      "participants"
+    ],
+    "create_or_update_schedule": [
+      "schedules",
+      "tournaments"
+    ],
+    "remove_logo_from_tournament": [
+      "tournaments"
+    ],
+    "delete_logo": [
+      "logos",
+      "tournaments"
+    ],
+    "delete_tournament": [
+      "participants",
+      "schedules",
+      "tournaments"
+    ],
+    "delete_participant": [
+      "participants"
+    ],
+    "delete_schedule": [
+      "schedules"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_tournament_by_id",
+      "description": "Retrieve TournamentInfo details for the given tournament_id.\n\nArgs:\n    tournament_id (str): Unique tournament identifier.\n\nReturns:\n    dict: \n    - On success: { \"success\": True, \"data\": TournamentInfo }\n    - On failure: { \"success\": False, \"error\": \"Tournament not found\" }\n\nConstraints:\n    - tournament_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tournament_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tournament_id"
+        ]
+      }
+    },
+    {
+      "name": "get_logo_id_for_tournament",
+      "description": "Retrieve the logo_id associated with a specific tournament_id.\n\nArgs:\n    tournament_id (str): The ID of the tournament.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": str or None  # logo_id if exists, or None if no logo linked\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., \"Tournament does not exist\"\n    }\n\nConstraints:\n    - Tournament ID must exist in the system.\n    - Each tournament may have at most one primary logo associated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tournament_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tournament_id"
+        ]
+      }
+    },
+    {
+      "name": "get_logo_by_id",
+      "description": "Retrieve logo metadata (LogoInfo) for the specified logo_id.\n\nArgs:\n    logo_id (str): Unique identifier for the logo asset.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": LogoInfo  # logo metadata,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # error description, e.g., if logo_id does not exist.\n    }\n\nConstraints:\n    - The specified logo_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "logo_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "logo_id"
+        ]
+      }
+    },
+    {
+      "name": "list_tournaments",
+      "description": "List all tournaments and their basic info.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TournamentInfo],  # A list of tournament objects (empty if none)\n    }\n\nConstraints:\n    - No constraints apply for listing; all tournaments in the system are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_logos",
+      "description": "Lists all logo (branding asset) records available in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[LogoInfo]  # List of all logo info records (may be empty)\n    }\nConstraints:\n    - No input required.\n    - Always succeeds (returns all logos or empty list).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_schedule_by_tournament_id",
+      "description": "Retrieve schedule and bracket information for a specified tournament.\n\nArgs:\n    tournament_id (str): Unique identifier for the tournament.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": ScheduleInfo\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Error message\n            }\n\nConstraints:\n    - tournament_id must exist.\n    - Schedule must exist for the given tournament_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tournament_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tournament_id"
+        ]
+      }
+    },
+    {
+      "name": "list_participants_by_tournament",
+      "description": "Get all participants for a specific tournament.\n\nArgs:\n    tournament_id (str): The unique identifier of the tournament.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ParticipantInfo]  # List (possibly empty) of all participants for that tournament.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description if the tournament does not exist.\n    }\n\nConstraints:\n    - Tournament must exist.\n    - Participants are filtered by matching tournament_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tournament_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tournament_id"
+        ]
+      }
+    },
+    {
+      "name": "get_participant_by_id",
+      "description": "Retrieve participant information given a participant_id.\n\nArgs:\n    participant_id (str): The unique identifier for the participant.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"data\": ParticipantInfo }\n        On error (not found):\n            { \"success\": False, \"error\": \"Participant not found\" }\nConstraints:\n    - The participant_id must exist in the self.participants dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "participant_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "participant_id"
+        ]
+      }
+    },
+    {
+      "name": "upload_logo",
+      "description": "Add a new logo asset (image_data, file_type) to the system.\n\nArgs:\n    image_data (str): The content, URL, or file path of the logo image.\n    file_type (str): The file type of the logo (e.g., 'png', 'jpg').\n\nReturns:\n    dict: \n    On success:\n      {\n        \"success\": True,\n        \"message\": \"Logo uploaded successfully.\",\n        \"logo_id\": str  # The unique id of the uploaded logo\n      }\n    On failure:\n      {\n        \"success\": False,\n        \"error\": str  # Description of the error\n      }\n\nConstraints:\n  - Both image_data and file_type must be non-empty.\n  - logo_id must be unique in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "image_data": {
+            "type": "string"
+          },
+          "file_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "image_data",
+          "file_type"
+        ]
+      }
+    },
+    {
+      "name": "link_logo_to_tournament",
+      "description": "Associate an existing logo with a tournament, replacing any prior association.\n\nArgs:\n    tournament_id (str): The tournament to attach the logo.\n    logo_id (str): The logo to be linked as branding asset.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Logo {logo_id} linked to tournament {tournament_id}.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - Tournament must exist.\n    - Logo must exist and be uploaded already.\n    - Each tournament may have at most one primary logo (this will overwrite any previous).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tournament_id": {
+            "type": "string"
+          },
+          "logo_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tournament_id",
+          "logo_id"
+        ]
+      }
+    },
+    {
+      "name": "create_tournament",
+      "description": "Add a new tournament record with the required fields.\n\nArgs:\n    tournament_id (str): Unique tournament identifier.\n    name (str): Tournament name.\n    start_date (str): Tournament start date (format: YYYY-MM-DD, ISO, etc.).\n    end_date (str): Tournament end date.\n    location (str): Tournament venue/location.\n    metadata (dict): Additional event metadata.\n    logo_id (Optional[str], default=None): Optionally associate a logo (must already exist).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Tournament created successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - Tournament ID must be unique.\n    - If logo_id is provided, it must exist in the branding assets (logos).\n    - At creation, no primary logo is required.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tournament_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "logo_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tournament_id"
+        ]
+      }
+    },
+    {
+      "name": "update_tournament_info",
+      "description": "Modify an existing tournament's metadata.\n\nArgs:\n    tournament_id (str): ID of the tournament to modify.\n    name (str, optional): New name for the tournament.\n    start_date (str, optional): New start date.\n    end_date (str, optional): New end date.\n    location (str, optional): New location.\n    metadata (dict, optional): New metadata dictionary (replacing existing).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Tournament info updated for <tournament_id>\"\n    } on success,\n    or {\n        \"success\": False,\n        \"error\": <error_reason>\n    } on error.\n\nConstraints:\n    - Tournament must exist.\n    - Only allowed fields (`name`, `start_date`, `end_date`, `location`, `metadata`) may be updated.\n    - `tournament_id` is immutable.\n    - If no updatable fields are provided, update is a no-op but still \"successful\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tournament_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "tournament_id",
+          "name",
+          "start_date",
+          "end_date",
+          "location",
+          "metadata"
+        ]
+      }
+    },
+    {
+      "name": "add_participant",
+      "description": "Register a new participant to a tournament.\n\nArgs:\n    participant_id (str): Unique identifier for the participant.\n    name (str): Name of the participant.\n    tournament_id (str): ID of the tournament the participant will join. Must exist.\n    role (str): Participant's role in the tournament.\n    team_name (Optional[str]): Team name (optional).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Participant <participant_id> added to tournament <tournament_id>.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - participant_id must be unique.\n    - tournament_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "participant_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "tournament_id": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "team_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "participant_id",
+          "name",
+          "tournament_id",
+          "role"
+        ]
+      }
+    },
+    {
+      "name": "update_participant_info",
+      "description": "Update the details for a participant: name, role, team_name.\n\nArgs:\n    participant_id (str): The participant's unique ID.\n    name (Optional[str]): New name (if updating).\n    role (Optional[str]): New role (if updating).\n    team_name (Optional[str]): New team name (if updating; can be set to None for no team).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Participant info updated for participant_id <id>\"\n    } or {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - Only provided fields are updated.\n    - Participant must exist.\n    - At least one updatable field should be provided.\n    - Does not update participant_id or tournament_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "participant_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "team_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "participant_id"
+        ]
+      }
+    },
+    {
+      "name": "create_or_update_schedule",
+      "description": "Create a new schedule or update an existing schedule for a tournament.\n\nArgs:\n    schedule_id (str): Identifier for the schedule. Unique if creating new.\n    tournament_id (str): The tournament's unique identifier (must exist).\n    match_times (List[str]): List of match time strings.\n    bracket_structure (Dict[str, Any]): Dictionary for bracket organization.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": description\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": error description\n    }\n\nConstraints:\n    - The referenced tournament_id must exist.\n    - schedule_id must be unique if creating new.\n    - schedule_id may be updated if it exists.\n    - match_times must be a list; bracket_structure must be a dict.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          },
+          "tournament_id": {
+            "type": "string"
+          },
+          "match_times": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "bracket_structure": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "schedule_id",
+          "tournament_id",
+          "match_times",
+          "bracket_structure"
+        ]
+      }
+    },
+    {
+      "name": "remove_logo_from_tournament",
+      "description": "Unlink/remove the logo association from a specified tournament.\n\nArgs:\n    tournament_id (str): The unique identifier for the tournament.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Logo unlinked from tournament.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Tournament does not exist.\"\n    }\n\nConstraints:\n    - Tournament must exist.\n    - The logo itself is not deleted, only the association (logo_id) is unset in the tournament.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tournament_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tournament_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_logo",
+      "description": "Remove a logo asset from the system if it is not used (not linked to any tournament).\n\nArgs:\n    logo_id (str): The unique identifier of the logo to be deleted.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Logo {logo_id} deleted from the system.\"\n            }\n        On failure (logo in use or not found):\n            {\n                \"success\": False,\n                \"error\": <reason>\n            }\nConstraints:\n    - Logo must exist in the system.\n    - Logo must not be linked as the primary logo (`logo_id`) of any tournament.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "logo_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "logo_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_tournament",
+      "description": "Permanently remove a tournament from the system, including its references in participants and schedules.\n\nArgs:\n    tournament_id (str): Unique tournament ID to be deleted.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Tournament <id> and all its references have been removed\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Reason why deletion failed\n    }\n\nConstraints & Details:\n    - Tournament must exist to be deleted.\n    - All participants and schedules referencing this tournament will be removed.\n    - The linked logo asset will NOT be deleted from the system, only the association.\n    - Leaves logo asset for possible re-use elsewhere.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tournament_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tournament_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_participant",
+      "description": "Remove a participant from the tournament system by their participant_id.\n\nArgs:\n    participant_id (str): The unique identifier for the participant to be removed.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Participant <participant_id> removed from tournament.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Participant <participant_id> does not exist.\"\n            }\n\nConstraints:\n    - The participant must exist in the system to be removed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "participant_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "participant_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_schedule",
+      "description": "Delete a tournament schedule by its schedule_id.\n\nArgs:\n    schedule_id (str): The unique identifier of the schedule to delete.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Schedule deleted successfully\" }\n        On failure: { \"success\": False, \"error\": \"Schedule not found\" }\n\nConstraints:\n    - The schedule must exist to be deleted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schedule_id"
+        ]
+      }
+    }
+  ]
+}

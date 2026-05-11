@@ -1,0 +1,499 @@
+{
+  "env_name": "AutonomousVehicleFleetManagementSystem",
+  "description": "An autonomous vehicle fleet management system enables operators to monitor, control, and report on a group of autonomous vehicles from a centralized interface. The system maintains state information on each vehicle, such as current status, operational commands issued, battery levels, and unique identifiers. Common operations include starting or stopping vehicles, tracking performance metrics, and querying resource levels for informed decision-making.",
+  "initial_parameter_schema": {
+    "vehicles": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "battery_level": {
+            "type": "number"
+          },
+          "last_command": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "performance_metric": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "vehicle_id",
+          "status",
+          "battery_level",
+          "last_command",
+          "location",
+          "performance_metric"
+        ]
+      }
+    },
+    "command_logs": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "command_id": {
+            "type": "string"
+          },
+          "vehicle_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "command_type": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "issued_by": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "command_id",
+          "vehicle_ids",
+          "command_type",
+          "timestamp",
+          "issued_by",
+          "outcome"
+        ]
+      }
+    },
+    "fleet": {
+      "type": "object",
+      "properties": {
+        "list_of_vehicle_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "fleet_status": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_vehicle_by_id": [
+      "vehicles"
+    ],
+    "get_vehicle_status": [
+      "vehicles"
+    ],
+    "get_vehicle_battery_level": [
+      "vehicles"
+    ],
+    "list_all_vehicles": [
+      "vehicles"
+    ],
+    "list_vehicles_by_status": [
+      "vehicles"
+    ],
+    "get_fleet_info": [
+      "fleet"
+    ],
+    "get_vehicle_performance_metric": [
+      "vehicles"
+    ],
+    "get_vehicle_location": [
+      "vehicles"
+    ],
+    "get_commands_for_vehicle": [
+      "command_logs",
+      "vehicles"
+    ],
+    "get_command_log_by_id": [
+      "command_logs"
+    ],
+    "start_vehicle": [
+      "command_logs",
+      "vehicles"
+    ],
+    "stop_vehicle": [
+      "command_logs",
+      "vehicles"
+    ],
+    "batch_start_vehicles": [
+      "command_logs",
+      "vehicles"
+    ],
+    "update_vehicle_battery_level": [
+      "vehicles"
+    ],
+    "log_command": [
+      "command_logs",
+      "vehicles"
+    ],
+    "update_vehicle_performance_metric": [
+      "vehicles"
+    ],
+    "update_vehicle_location": [
+      "vehicles"
+    ],
+    "add_vehicle_to_fleet": [
+      "fleet",
+      "vehicles"
+    ],
+    "remove_vehicle_from_fleet": [
+      "fleet"
+    ],
+    "set_fleet_status": [
+      "fleet"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_vehicle_by_id",
+      "description": "Retrieve all operational and resource information for a given vehicle.\n\nArgs:\n    vehicle_id (str): The ID of the vehicle to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": VehicleInfo  # All fields for the vehicle\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason vehicle could not be retrieved (e.g., does not exist)\n    }\n\nConstraints:\n    - The vehicle_id must exist in the vehicle registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vehicle_id"
+        ]
+      }
+    },
+    {
+      "name": "get_vehicle_status",
+      "description": "Get the current operational status (\"started\", \"stopped\") of a specific vehicle.\n\nArgs:\n    vehicle_id (str): Unique ID of the vehicle whose status is being queried.\n\nReturns:\n    dict: \n     - On success: { \"success\": True, \"data\": <status: str> }\n     - On failure: { \"success\": False, \"error\": \"Vehicle not found\" }\n\nConstraints:\n    - The vehicle_id must exist in the registry (self.vehicles).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vehicle_id"
+        ]
+      }
+    },
+    {
+      "name": "get_vehicle_battery_level",
+      "description": "Query the current battery level of a specific vehicle.\n\nArgs:\n    vehicle_id (str): The unique identifier of the vehicle.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": float  # The current battery level of the vehicle\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Error message if the vehicle does not exist\n        }\n\nConstraints:\n    - The vehicle_id must correspond to an existing vehicle in the registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vehicle_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_vehicles",
+      "description": "Retrieve all vehicles currently under management in the active fleet composition.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[VehicleInfo]  # List of all vehicle records currently in the active fleet (may be empty)\n    }\n\nConstraints:\n    - If no explicit fleet composition has been configured, all registered vehicles are treated as the active fleet.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_vehicles_by_status",
+      "description": "List all vehicles in the active fleet composition with a specified operational status.\n\nArgs:\n    status (str): The target status string to filter vehicles by (e.g., \"started\", \"stopped\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[VehicleInfo]  # List of matching active-fleet vehicles, possibly empty\n    }\nNotes:\n    - If no vehicles match, 'data' is an empty list; the call is still considered successful.\n    - No error is returned for unknown statuses; simply no vehicles are found.\n    - Vehicles removed from the fleet are excluded from this query.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "get_fleet_info",
+      "description": "Get a summary of the active fleet: all vehicle_ids currently in the fleet composition and the optional fleet status.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"list_of_vehicle_ids\": List[str],    # vehicle IDs currently in the active fleet\n            \"fleet_status\": Optional[str],       # fleet status or None\n        }\n    }\n    On error (should not normally occur):\n    {\n        \"success\": False,\n        \"error\": str\n    }\nNotes:\n    - If no explicit fleet composition has been configured, all registered vehicles are treated as the active fleet.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_vehicle_performance_metric",
+      "description": "Query the performance metric for a specific vehicle.\n\nArgs:\n    vehicle_id (str): The unique identifier of the vehicle.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": float  # Performance metric value\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Vehicle not found\"\n            }\n\nConstraints:\n    - The vehicle must exist in the registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vehicle_id"
+        ]
+      }
+    },
+    {
+      "name": "get_vehicle_location",
+      "description": "Get the last known location of a vehicle by its vehicle_id.\n\nArgs:\n    vehicle_id (str): The unique identifier of the vehicle.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"data\": <location: str> }\n        - On failure: { \"success\": False, \"error\": \"Vehicle not found\" }\n\nConstraints:\n    - The vehicle_id must exist in the vehicles registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vehicle_id"
+        ]
+      }
+    },
+    {
+      "name": "get_commands_for_vehicle",
+      "description": "Retrieve all command log entries pertaining to a specific vehicle,\nincluding timestamps and outcomes.\n\nArgs:\n    vehicle_id (str): The unique identifier of the vehicle.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CommandLogEntry]  # May be empty if no commands found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g., vehicle does not exist\n    }\n\nConstraints:\n    - The specified vehicle_id must exist in the vehicle registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vehicle_id"
+        ]
+      }
+    },
+    {
+      "name": "get_command_log_by_id",
+      "description": "Fetch details of a single command log entry via command_id.\n\nArgs:\n    command_id (str): Unique identifier of the command log entry.\n\nReturns:\n    dict:\n        - If found: { \"success\": True, \"data\": CommandLogEntry }\n        - If not found: { \"success\": False, \"error\": \"Command log entry not found\" }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "command_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "command_id"
+        ]
+      }
+    },
+    {
+      "name": "start_vehicle",
+      "description": "Change a vehicle's status to \"started\" if it is currently \"stopped\", update battery, and log the operation.\n\nArgs:\n    vehicle_id (str): The unique identifier of the vehicle to be started.\n    issued_by (str): Identifier or username for the command issuer (used in logging).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Vehicle <vehicle_id> started.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Vehicle must exist in the self.vehicles registry.\n    - Vehicle must be part of the active fleet composition.\n    - Vehicle status can only transition to \"started\" if currently \"stopped\".\n    - Battery level must be updated before and after the operation.\n    - Operation must be logged with a timestamp and vehicle_ids.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string"
+          },
+          "issued_by": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vehicle_id",
+          "issued_by"
+        ]
+      }
+    },
+    {
+      "name": "stop_vehicle",
+      "description": "Change a vehicle's status to \"stopped\" if it is currently \"started\".\nUpdate battery level (to represent immediate measurement, can be expanded), set last_command, and log operation.\n\nArgs:\n    vehicle_id (str): The unique identifier of the vehicle to stop.\n    issued_by (str): Identifier of the operator issuing the command.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"message\": \"Vehicle <vehicle_id> stopped and logged successfully\"\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - Vehicle must exist.\n    - Vehicle must be in \"started\" state.\n    - Battery level must be up-to-date (here, simulated as unchanged or refreshed).\n    - Command must be logged with current timestamp and all appropriate fields.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string"
+          },
+          "issued_by": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vehicle_id",
+          "issued_by"
+        ]
+      }
+    },
+    {
+      "name": "batch_start_vehicles",
+      "description": "Start multiple vehicles in a single operation.\n\nArgs:\n    vehicle_ids (List[str]): List of vehicle IDs to be started.\n    issued_by (str): User or system issuing the command.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Vehicles successfully started: [id1, id2, ...]\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason including vehicle_ids which failed validation\"\n    }\n\nConstraints:\n    - Vehicles must exist in the registry.\n    - Vehicles must be part of the active fleet composition.\n    - Each vehicle status must be \"stopped\" to be started.\n    - Battery levels must be accurate before and after (simulate a battery drop, e.g., -0.5% for start).\n    - All started vehicles must be logged in a command log entry.\n    - Operation is atomic: if any vehicle fails (not found, not in active fleet, or not stopped), none are started.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "issued_by": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vehicle_ids",
+          "issued_by"
+        ]
+      }
+    },
+    {
+      "name": "update_vehicle_battery_level",
+      "description": "Refresh or set the battery level of the specified vehicle to a new reading.\n\nArgs:\n    vehicle_id (str): The ID of the vehicle to update.\n    new_battery_level (float): The new battery level to set (should be non-negative).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Battery level updated for vehicle <vehicle_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - vehicle_id must be present in the vehicle registry.\n    - Battery level must be non-negative.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string"
+          },
+          "new_battery_level": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "vehicle_id",
+          "new_battery_level"
+        ]
+      }
+    },
+    {
+      "name": "log_command",
+      "description": "Create and store a new command log entry.\n\nArgs:\n    command_id (str): Unique identifier for the command log entry.\n    vehicle_ids (List[str]): List of vehicle IDs this command was issued to.\n    command_type (str): Command type, e.g. 'start', 'stop'.\n    timestamp (str): Timestamp of command issuance.\n    issued_by (str): Identifier for who issued the command.\n    outcome (str): Outcome/result of the command.\n\nReturns:\n    dict: {\n        'success': True,\n        'message': str  # Confirmation message\n    }\n    or\n    {\n        'success': False,\n        'error': str  # Description of error\n    }\n\nConstraints:\n    - command_id must be unique (not already in log)\n    - All vehicle_ids must exist in self.vehicles\n    - vehicle_ids must not be empty",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "command_id": {
+            "type": "string"
+          },
+          "vehicle_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "command_type": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "issued_by": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "command_id",
+          "vehicle_ids",
+          "command_type",
+          "timestamp",
+          "issued_by",
+          "outcome"
+        ]
+      }
+    },
+    {
+      "name": "update_vehicle_performance_metric",
+      "description": "Record new performance metric data for a given vehicle.\n\nArgs:\n    vehicle_id (str): Unique identifier of the vehicle whose metric should be updated.\n    new_metric (float): New performance metric value.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Performance metric updated for vehicle <vehicle_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason (e.g., vehicle does not exist, invalid metric)\"\n    }\n\nConstraints:\n    - vehicle_id must exist in self.vehicles.\n    - new_metric should be a valid number (float/int).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string"
+          },
+          "new_metric": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "vehicle_id",
+          "new_metric"
+        ]
+      }
+    },
+    {
+      "name": "update_vehicle_location",
+      "description": "Set or update the location attribute for a given vehicle.\n\nArgs:\n    vehicle_id (str): The unique identifier of the vehicle to update.\n    location (str): The new location (coordinate or descriptor string).\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Vehicle location updated.\" }\n        On failure:\n            { \"success\": False, \"error\": \"Vehicle does not exist.\" }\n\nConstraints:\n    - Vehicle with vehicle_id must exist in the registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vehicle_id",
+          "location"
+        ]
+      }
+    },
+    {
+      "name": "add_vehicle_to_fleet",
+      "description": "Add a new vehicle to the managed fleet, modifying list_of_vehicle_ids.\n\nArgs:\n    vehicle_id (str): The unique identifier of the vehicle to add.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Vehicle <vehicle_id> added to fleet\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The vehicle_id must exist in self.vehicles (registry).\n    - The vehicle_id must not already be in the fleet.\n    - Duplicates are NOT allowed in list_of_vehicle_ids.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vehicle_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_vehicle_from_fleet",
+      "description": "Remove a vehicle from the managed fleet.\n\nArgs:\n    vehicle_id (str): The identifier of the vehicle to remove from the fleet.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Vehicle <vehicle_id> removed from fleet.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Vehicle <vehicle_id> is not in the fleet.\"\n    }\n\nConstraints:\n    - The vehicle_id must currently be present in the fleet's list_of_vehicle_ids.\n    - Removing a vehicle immediately excludes it from fleet-level list queries and prevents future start/start-batch commands unless it is added back.\n    - No action if vehicle_id is not part of the fleet (return error).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vehicle_id"
+        ]
+      }
+    },
+    {
+      "name": "set_fleet_status",
+      "description": "Set or update the optional global fleet_status for the group.\n\nArgs:\n    fleet_status (str): The status string to set for the fleet.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Fleet status updated to <fleet_status>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Input `fleet_status` must be a non-empty string.\n    - Updates the singleton self.fleet[\"fleet_status\"] value.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fleet_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fleet_status"
+        ]
+      }
+    }
+  ]
+}

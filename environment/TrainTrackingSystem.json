@@ -1,0 +1,545 @@
+{
+  "env_name": "TrainTrackingSystem",
+  "description": "A Train Tracking System maintains up-to-date records of trains’ real-time locations, schedules, and operational statuses across a transportation network. It supports operations such as querying current positions by route or train ID and logs timestamps to enable accurate tracking and reporting. This environment is used by railway operators, administrators, and passengers seeking live transit information.",
+  "initial_parameter_schema": {
+    "trains": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string"
+          },
+          "route_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "current_location_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "train_id",
+          "route_id",
+          "status",
+          "current_location_id"
+        ]
+      }
+    },
+    "locations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "timestamp": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "location_id",
+          "latitude",
+          "longitude",
+          "timestamp"
+        ]
+      }
+    },
+    "routes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "route_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "schedule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "route_id",
+          "name",
+          "schedule_id"
+        ]
+      }
+    },
+    "schedules": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          },
+          "stops": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "planned_time": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "schedule_id",
+          "stops",
+          "planned_time"
+        ]
+      }
+    },
+    "train_location_history": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "tool_state_dependencies": {
+    "get_trains_by_route": [
+      "routes",
+      "trains"
+    ],
+    "get_train_by_id": [
+      "trains"
+    ],
+    "get_route_by_id": [
+      "routes"
+    ],
+    "get_current_location_of_train": [
+      "trains"
+    ],
+    "get_location_by_id": [
+      "locations"
+    ],
+    "get_route_schedule": [
+      "routes",
+      "schedules"
+    ],
+    "get_train_status": [
+      "trains"
+    ],
+    "get_location_history_for_train": [
+      "locations",
+      "train_location_history",
+      "trains"
+    ],
+    "list_all_routes": [
+      "routes"
+    ],
+    "list_all_trains": [
+      "trains"
+    ],
+    "update_train_location": [
+      "locations",
+      "trains"
+    ],
+    "add_location_record": [
+      "locations",
+      "trains"
+    ],
+    "assign_train_to_route": [
+      "routes",
+      "trains"
+    ],
+    "add_route": [
+      "routes",
+      "schedules"
+    ],
+    "add_schedule": [
+      "schedules"
+    ],
+    "update_train_status": [
+      "trains"
+    ],
+    "update_schedule_for_route": [
+      "routes",
+      "schedules"
+    ],
+    "remove_train": [
+      "trains"
+    ],
+    "remove_route": [
+      "routes",
+      "trains"
+    ],
+    "remove_location_record": [
+      "locations",
+      "trains"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_trains_by_route",
+      "description": "Retrieve all trains currently assigned to a specific route by route_id.\n\nArgs:\n    route_id (str): The route identifier for which to list all assigned trains.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TrainInfo]  # All TrainInfo dicts where route_id matches\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description\n    }\n\nConstraints:\n    - The given route_id must exist in the system.\n    - If no trains are assigned to this route, result will be an empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "route_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "route_id"
+        ]
+      }
+    },
+    {
+      "name": "get_train_by_id",
+      "description": "Retrieve details of a specific train using its train_id.\n\nArgs:\n    train_id (str): The unique identifier for the train.\n\nReturns:\n    dict: On success,\n        {\n            \"success\": True,\n            \"data\": TrainInfo  # Details of the train\n        }\n    On failure,\n        {\n            \"success\": False,\n            \"error\": str  # Error message, e.g., train not found\n        }\nConstraints:\n    - The train with the given train_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "train_id"
+        ]
+      }
+    },
+    {
+      "name": "get_route_by_id",
+      "description": "Retrieve details for a specific route by route_id.\n\nArgs:\n    route_id (str): The unique identifier for the route.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": RouteInfo  # Details of the requested route\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g., route not found\n    }\nConstraints:\n    - Route must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "route_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "route_id"
+        ]
+      }
+    },
+    {
+      "name": "get_current_location_of_train",
+      "description": "Retrieve the current location_id associated with the specified train.\n\nArgs:\n    train_id (str): The ID of the train whose location is to be retrieved.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": { \"current_location_id\": str }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - train_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "train_id"
+        ]
+      }
+    },
+    {
+      "name": "get_location_by_id",
+      "description": "Given a location_id, retrieve the location details (latitude, longitude, timestamp).\n\nArgs:\n    location_id (str): The unique identifier for the location record.\n\nReturns:\n    dict: \n      - On success: {\"success\": True, \"data\": LocationInfo}\n      - On failure: {\"success\": False, \"error\": str} (e.g., location_id does not exist)\n\nConstraints:\n    - The location_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      }
+    },
+    {
+      "name": "get_route_schedule",
+      "description": "Retrieve the schedule (planned stops and times) assigned to a specific route.\n\nArgs:\n    route_id (str): The unique ID of the route.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ScheduleInfo,  # If schedule found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,  # Reason for failure\n    }\n\nConstraints:\n    - route_id must exist in the system.\n    - schedule_id referenced by route must exist in self.schedules.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "route_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "route_id"
+        ]
+      }
+    },
+    {
+      "name": "get_train_status",
+      "description": "Retrieve the operational status (on time, delayed, out of service, etc.) of a train.\n\nArgs:\n    train_id (str): The unique identifier for the train.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"train_id\": str,\n            \"status\": str\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., \"Train not found\"\n    }\n\nConstraints:\n    - The specified train_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "train_id"
+        ]
+      }
+    },
+    {
+      "name": "get_location_history_for_train",
+      "description": "Retrieve the history/log of all known location records for a given train, ordered from oldest to newest.\n\nArgs:\n    train_id (str): ID of the train whose location history is to be retrieved.\n\nReturns:\n    dict:\n        - Success: {\n            \"success\": True,\n            \"data\": List[LocationInfo]  # May be empty if no history available.\n        }\n        - Failure: {\n            \"success\": False,\n            \"error\": str  # Reason for failure, e.g., train not found.\n        }\n\nConstraints:\n    - The train must exist in the system.\n    - Only location records that exist in self.locations are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "train_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_routes",
+      "description": "Return the complete list of all routes operated in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RouteInfo], # all RouteInfo entries, possibly empty if no routes are defined\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_all_trains",
+      "description": "Returns the complete list of all trains in the system with their route assignments.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TrainInfo],  # List of all trains (may be empty if none exist)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "update_train_location",
+      "description": "Update a train's current location by recording a new real-time location and referencing it.\n\nArgs:\n    train_id (str): Train to update.\n    latitude (float): New location latitude (-90 to 90).\n    longitude (float): New location longitude (-180 to 180).\n    timestamp (float): Unix timestamp of location record (must be non-negative and newest for this train).\n\nReturns:\n    dict:\n        success (bool): Whether the operation succeeded.\n        message (str): If successful, description and new location_id.\n        error (str): If failed, explanation of error.\n\nConstraints:\n    - Train must exist.\n    - Latitude must be between -90 and 90; longitude between -180 and 180.\n    - Timestamp must be non-negative and not older than previous location.\n    - A new LocationInfo is inserted and referenced by the train.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "timestamp": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "train_id",
+          "latitude",
+          "longitude",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "add_location_record",
+      "description": "Record a new location entry for a train, specifying latitude, longitude, and timestamp.\nUpdates the train's current_location_id to point to this new location.\n\nArgs:\n    train_id (str): ID of the train to update\n    latitude (float): Latitude of the location (should be in [-90, 90])\n    longitude (float): Longitude of the location (should be in [-180, 180])\n    timestamp (float): UNIX timestamp of the location reading\n\nReturns:\n    dict:\n        On success: {\n            \"success\": True,\n            \"message\": \"Location record added for train {train_id} (location_id: {location_id})\",\n            \"location_id\": str\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - train_id must exist in the system\n    - latitude/longitude/timestamp must be valid types\n    - Updates train's current_location_id to new location",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "timestamp": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "train_id",
+          "latitude",
+          "longitude",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "assign_train_to_route",
+      "description": "Assign a train to a valid route, updating the train's route_id.\n\nArgs:\n    train_id (str): The ID of the train to assign.\n    route_id (str): The ID of the route to assign the train to.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Train <train_id> assigned to route <route_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The train and the route must both already exist in the system.\n    - Updates the train's route_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string"
+          },
+          "route_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "train_id",
+          "route_id"
+        ]
+      }
+    },
+    {
+      "name": "add_route",
+      "description": "Add a new route to the system.\n\nArgs:\n    route_id (str): Unique identifier for the new route.\n    name (str): Human-readable/official name for the route.\n    schedule_id (str): The ID of the existing schedule to associate.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Route <route_id> added successfully.\"\n    }\n    OR\n    dict: {\n        \"success\": False,\n        \"error\": <error message>\n    }\n\nConstraints:\n    - route_id must not already exist.\n    - schedule_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "route_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "schedule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "route_id",
+          "name",
+          "schedule_id"
+        ]
+      }
+    },
+    {
+      "name": "add_schedule",
+      "description": "Create a new schedule in the system with a unique schedule_id, a list of stops, and corresponding planned times.\n\nArgs:\n    schedule_id (str): Unique identifier for the schedule.\n    stops (list[str]): List of stop identifiers.\n    planned_time (list[str]): List of planned times for each stop.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Schedule <schedule_id> created.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure.\"\n    }\n\nConstraints:\n    - schedule_id must not already exist.\n    - stops and planned_time must be lists of equal non-zero length.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          },
+          "stops": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "planned_time": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "schedule_id",
+          "stops",
+          "planned_time"
+        ]
+      }
+    },
+    {
+      "name": "update_train_status",
+      "description": "Change a train's operational status (e.g., from \"on time\" to \"delayed\").\n\nArgs:\n    train_id (str): ID of the train to update status for.\n    new_status (str): The new operational status for the train.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Confirmation message if status update is successful\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g., train not found)\n    }\n\nConstraints:\n    - train_id must exist in self.trains.\n    - Status string can be any value. No restriction enforced here.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "train_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "update_schedule_for_route",
+      "description": "Update the schedule assignment for a route.\n\nArgs:\n    route_id (str): The ID of the route to update.\n    schedule_id (str): The ID of the new schedule to assign to the route.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True, \n            \"message\": \"Schedule updated for route <route_id>.\"\n        }\n        On failure: {\n            \"success\": False, \n            \"error\": <error description>\n        }\n\nConstraints:\n    - The given route_id must exist in the system.\n    - The given schedule_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "route_id": {
+            "type": "string"
+          },
+          "schedule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "route_id",
+          "schedule_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_train",
+      "description": "Remove a train from service and from the system registry.\n\nArgs:\n    train_id (str): Unique ID of the train to be removed.\n\nReturns:\n    dict:\n        { \"success\": True, \"message\": \"Train <train_id> removed from system registry.\" }\n        or\n        { \"success\": False, \"error\": \"Train does not exist.\" }\n\nConstraints:\n    - The train must exist in the system registry.\n    - This operation does not affect location history or schedules;\n      it only removes the train from the train registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "train_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_route",
+      "description": "Remove a route from the system if no trains are assigned to it.\n\nArgs:\n    route_id (str): The route ID to remove.\n\nReturns:\n    dict:\n        - success=True and message on success.\n        - success=False and error on failure (nonexistent route or route has dependent trains).\n\nConstraints:\n    - Cannot remove route if any train is assigned to it.\n    - Route must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "route_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "route_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_location_record",
+      "description": "Remove a location record from the system, ensuring no train currently references it.\n\nArgs:\n    location_id (str): The identifier of the location record to remove.\n\nReturns:\n    dict:\n        - {\"success\": True, \"message\": \"Location record <location_id> removed.\"}\n        - {\"success\": False, \"error\": \"<error message>\"}\n\nConstraints:\n    - The provided location_id must exist in the system.\n    - The location record can only be removed if it is not referenced by any train's current_location_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      }
+    }
+  ]
+}

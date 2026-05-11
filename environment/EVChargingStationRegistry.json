@@ -1,0 +1,520 @@
+{
+  "env_name": "EVChargingStationRegistry",
+  "description": "An Electric Vehicle Charging Station Registry is a database-driven environment that maintains up-to-date information about charging station locations, capacities, operators, and technical specifications. It allows users and operators to query by geographic coordinates, station IDs, and other criteria to retrieve or validate station details. This environment supports real-time updates, bulk imports, and data validation, serving as a foundation for public access maps and operator network management.",
+  "initial_parameter_schema": {
+    "charging_stations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "station_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "address": {
+            "type": "string"
+          },
+          "operator_id": {
+            "type": "string"
+          },
+          "capacity": {
+            "type": "integer"
+          },
+          "technical_specifications": {
+            "type": "object",
+            "properties": {
+              "connector_types": {
+                "type": "array"
+              },
+              "charging_power_kw": {
+                "type": "number"
+              },
+              "protocol": {
+                "type": "string"
+              }
+            }
+          },
+          "status": {
+            "type": "string"
+          },
+          "last_updated": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "station_id",
+          "name",
+          "latitude",
+          "longitude",
+          "address",
+          "operator_id",
+          "capacity",
+          "technical_specifications",
+          "status",
+          "last_updated"
+        ]
+      }
+    },
+    "operators": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "operator_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "network_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "operator_id",
+          "name",
+          "contact_info",
+          "network_name"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_charging_station_by_id": [
+      "charging_stations"
+    ],
+    "search_charging_stations_by_coordinates": [
+      "charging_stations"
+    ],
+    "list_charging_stations_by_operator": [
+      "charging_stations",
+      "operators"
+    ],
+    "get_charging_station_status": [
+      "charging_stations"
+    ],
+    "get_technical_specifications": [
+      "charging_stations"
+    ],
+    "get_operator_info": [
+      "operators"
+    ],
+    "list_all_charging_stations": [
+      "charging_stations"
+    ],
+    "validate_station_operator_reference": [
+      "charging_stations",
+      "operators"
+    ],
+    "check_coordinates_validity": [],
+    "add_charging_station": [
+      "charging_stations",
+      "operators"
+    ],
+    "update_charging_station_details": [
+      "charging_stations",
+      "operators"
+    ],
+    "delete_charging_station": [
+      "charging_stations"
+    ],
+    "add_operator": [
+      "operators"
+    ],
+    "update_operator_info": [
+      "operators"
+    ],
+    "bulk_import_stations": [
+      "charging_stations",
+      "operators"
+    ],
+    "update_charging_station_status": [
+      "charging_stations"
+    ],
+    "correct_station_coordinates": [
+      "charging_stations"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_charging_station_by_id",
+      "description": "Retrieve the complete details of a charging station using its unique station_id.\n\nArgs:\n    station_id (str): The unique identifier of the charging station.\n\nReturns:\n    dict:\n        - If found: {\"success\": True, \"data\": ChargingStationInfo}\n        - If not found: {\"success\": False, \"error\": \"Charging station with this ID does not exist.\"}\n\nConstraints:\n    - Each station_id must be unique (guaranteed by registry design).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "station_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "station_id"
+        ]
+      }
+    },
+    {
+      "name": "search_charging_stations_by_coordinates",
+      "description": "Find charging stations by exact latitude/longitude or within a geographic radius.\n\nArgs:\n    latitude (float): Latitude of the point to search (must be between -90 and 90).\n    longitude (float): Longitude of the point to search (must be between -180 and 180).\n    radius_km (Optional[float]): Optional. Radius (in kilometers) to search for stations.\n        If provided and >=0, finds all stations within the radius.\n        If None, only stations with exact coordinates will be matched.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ChargingStationInfo],  # May be empty list if no match.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of error\n    }\n\nConstraints:\n    - Latitude must be in [-90, 90]; longitude in [-180, 180].\n    - If radius_km is provided, it must be non-negative.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "radius_km": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude"
+        ]
+      }
+    },
+    {
+      "name": "list_charging_stations_by_operator",
+      "description": "Retrieve all charging stations managed by the specified operator.\n\nArgs:\n    operator_id (str): Unique identifier of the operator.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ChargingStationInfo]  # Charging stations managed by the operator (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Explanation (e.g., operator does not exist)\n    }\nConstraints:\n    - operator_id must reference a valid Operator in the registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "operator_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "operator_id"
+        ]
+      }
+    },
+    {
+      "name": "get_charging_station_status",
+      "description": "Query the operational status of a charging station.\n\nArgs:\n    station_id (str): The unique identifier for the charging station.\n\nReturns:\n    dict:\n        success: True and data dict with station_id and status if found,\n                 or\n        success: False and error message if not found.\n\nConstraints:\n    - station_id must exist in the registry.\n    - Only queries the status; result comes from the controlled vocabulary set in the data.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "station_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "station_id"
+        ]
+      }
+    },
+    {
+      "name": "get_technical_specifications",
+      "description": "Retrieve the technical specifications of the specified charging station.\n\nArgs:\n    station_id (str): The unique identifier of the charging station.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": TechnicalSpecifications  # May be empty dict if no specs.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g. charging station not found\n    }\n\nConstraints:\n    - The charging station referenced by station_id must exist in the registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "station_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "station_id"
+        ]
+      }
+    },
+    {
+      "name": "get_operator_info",
+      "description": "Retrieve full information about an operator using operator_id.\n\nArgs:\n    operator_id (str): The unique identifier of the operator.\n\nReturns:\n    dict: \n      - On success: { \"success\": True, \"data\": OperatorInfo }\n      - On failure: { \"success\": False, \"error\": \"Operator not found\" }\n\nConstraints:\n    - The operator_id must exist in the operator registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "operator_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "operator_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_charging_stations",
+      "description": "Retrieve all charging stations currently registered in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ChargingStationInfo]  # List with all charging stations (empty if none)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "validate_station_operator_reference",
+      "description": "Verify that the given charging station's operator_id corresponds to a valid operator.\n\nArgs:\n    station_id (str): The unique identifier for the charging station.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"station_id\": str,\n            \"operator_id\": str,\n            \"operator_valid\": bool,\n            \"operator_info\": OperatorInfo | None,\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of what went wrong\n    }\n\nConstraints:\n    - The charging station must exist.\n    - The operator_id must exist among operators for the reference to be valid.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "station_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "station_id"
+        ]
+      }
+    },
+    {
+      "name": "check_coordinates_validity",
+      "description": "Validate if provided latitude/longitude values are syntactically and geographically correct.\n\nArgs:\n    latitude (Any): The latitude value to validate.\n    longitude (Any): The longitude value to validate.\n\nReturns:\n    dict: \n      - {\"success\": True, \"valid\": True} if both are valid.\n      - {\"success\": True, \"valid\": False, \"error\": \"...\"} if syntax or range is invalid.\n      - {\"success\": False, \"error\": \"...\"} if unable to parse as float.\n\nConstraints:\n    - Latitude must be within [-90, 90].\n    - Longitude must be within [-180, 180].\n    - Both values must be numbers.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "latitude": {},
+          "longitude": {}
+        },
+        "required": [
+          "latitude",
+          "longitude"
+        ]
+      }
+    },
+    {
+      "name": "add_charging_station",
+      "description": "Add a new charging station entry to the registry.\n\nArgs:\n    station_id (str): Unique identifier for the station.\n    name (str): Name of the charging station.\n    latitude (float): Station latitude, must be between -90 and 90.\n    longitude (float): Station longitude, must be between -180 and 180.\n    address (str): Physical address.\n    operator_id (str): ID of the operator (must exist).\n    capacity (int): Number of available charging points, non-negative.\n    technical_specifications (dict): Specs describing hardware, protocol, etc.\n    status (str): Operational status ('active', 'inactive', or 'maintenance').\n    last_updated (str): Timestamp in ISO 8601 or standard string format.\n\nReturns:\n    dict: { \"success\": True, \"message\": \"...\"}\n          { \"success\": False, \"error\": \"...\"}\n\nConstraints:\n    - station_id must be unique.\n    - latitude & longitude must be within valid ranges.\n    - capacity >= 0.\n    - operator_id must be present in operators.\n    - status must be one of ['active', 'inactive', 'maintenance'].",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "station_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "address": {
+            "type": "string"
+          },
+          "operator_id": {
+            "type": "string"
+          },
+          "capacity": {
+            "type": "integer"
+          },
+          "technical_specifications": {
+            "type": "object"
+          },
+          "status": {
+            "type": "string"
+          },
+          "last_updated": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "station_id",
+          "name",
+          "latitude",
+          "longitude",
+          "address",
+          "operator_id",
+          "capacity",
+          "technical_specifications",
+          "status",
+          "last_updated"
+        ]
+      }
+    },
+    {
+      "name": "update_charging_station_details",
+      "description": "Modify details of an existing charging station specified by station_id.\n\nArgs:\n    station_id (str): Unique identifier for the charging station.\n    name (str, optional): New station name.\n    latitude (float, optional): New latitude (-90 to 90).\n    longitude (float, optional): New longitude (-180 to 180).\n    address (str, optional): New address.\n    operator_id (str, optional): ID of new operator (must exist).\n    capacity (int, optional): New capacity (non-negative).\n    technical_specifications (dict, optional): New technical specs dict.\n    status (str, optional): New operational status ('active', 'inactive', 'maintenance').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Charging station details updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - station_id must exist.\n    - latitude and longitude must be within valid ranges if provided.\n    - status must be one of allowed values.\n    - capacity, if provided, must be non-negative integer.\n    - operator_id, if provided, must already exist.\n    - technical_specifications, if provided, must be a dict.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "station_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "address": {
+            "type": "string"
+          },
+          "operator_id": {
+            "type": "string"
+          },
+          "capacity": {
+            "type": "integer"
+          },
+          "technical_specifications": {
+            "type": "object"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "station_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_charging_station",
+      "description": "Remove a charging station from the registry.\n\nArgs:\n    station_id (str): The unique identifier of the charging station to remove.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True,\n            \"message\": \"Charging station {station_id} deleted from registry.\"\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": \"Charging station not found.\"\n        }\n\nConstraints:\n    - The station_id must exist in the registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "station_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "station_id"
+        ]
+      }
+    },
+    {
+      "name": "add_operator",
+      "description": "Add a new operator to the registry.\n\nArgs:\n    operator_id (str): Unique identifier for the operator.\n    name (str): Operator's name.\n    contact_info (str): Contact information for the operator.\n    network_name (str): Name of the operator's network.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Operator added successfully.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"<reason>\"\n            }\n\nConstraints:\n    - operator_id must be unique (not already in the registry).\n    - All fields must be non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "operator_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "network_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "operator_id"
+        ]
+      }
+    },
+    {
+      "name": "update_operator_info",
+      "description": "Modify the information for a registered operator.\n\nArgs:\n    operator_id (str): ID of the operator to update.\n    name (str, optional): New name for the operator.\n    contact_info (str, optional): New contact info.\n    network_name (str, optional): New network name.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Operator info for <id> updated.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - operator_id must exist in the registry.\n    - At least one field to update must be provided.\n    - Updated fields must be non-empty strings (if given).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "operator_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "network_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "operator_id"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "name"
+            ]
+          },
+          {
+            "required": [
+              "contact_info"
+            ]
+          },
+          {
+            "required": [
+              "network_name"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "bulk_import_stations",
+      "description": "Add or update multiple charging station entries at once, performing batch validation. \nThe operation is atomic: no station will be changed unless all entries pass validation.\n\nArgs:\n    stations (list[dict]): List of ChargingStationInfo dictionaries to import (add or update).\n\nReturns:\n    dict:\n        On success: \n            {\n                \"success\": True,\n                \"message\": \"<N> stations imported/updated successfully\"\n            }\n        On failure (no stations modified):\n            {\n                \"success\": False,\n                \"error\": [\n                    {\n                        \"station_id\": <station_id or '(missing)'>,\n                        \"issues\": [ ... list of error messages ... ]\n                    },\n                    ...\n                ]\n            }\n\nConstraints:\n  - No duplicate station_id in the input.\n  - Each station must have:\n      - valid unique station_id\n      - latitude in [-90, 90]\n      - longitude in [-180, 180]\n      - existing operator_id\n      - status in {'active', 'inactive', 'maintenance'}\n      - non-negative integer capacity",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stations": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "required": [
+          "stations"
+        ]
+      }
+    },
+    {
+      "name": "update_charging_station_status",
+      "description": "Change the status of a charging station to a new allowed value ('active', 'maintenance', 'inactive').\n\nArgs:\n    station_id (str): The unique ID of the charging station to update.\n    new_status (str): The new status to set. Must be one of 'active', 'inactive', 'maintenance'.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Station status updated.\" }\n        - On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Station must exist in the registry.\n    - new_status must be a value from the allowed controlled vocabulary.\n    - last_updated field is set to the current time in ISO format.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "station_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "station_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "correct_station_coordinates",
+      "description": "Adjust latitude/longitude for an existing station, ensuring new values are valid and do not conflict unless explicitly allowed.\n\nArgs:\n    station_id (str): The ID of the charging station to update.\n    new_latitude (float): The new latitude (must be between -90 and 90).\n    new_longitude (float): The new longitude (must be between -180 and 180).\n    allow_duplicate_location (bool): If True, allows updating to coordinates already used by another station (default: False).\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Coordinates updated for station <station_id>.\" }\n        - On error: { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - The station_id must exist in the registry.\n    - Latitude must be between -90 and 90.\n    - Longitude must be between -180 and 180.\n    - If allow_duplicate_location is False, cannot duplicate coordinates of another station.\n    - On update, 'last_updated' will be set to current ISO timestamp.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "station_id": {
+            "type": "string"
+          },
+          "new_latitude": {
+            "type": "number"
+          },
+          "new_longitude": {
+            "type": "number"
+          },
+          "allow_duplicate_location": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "station_id",
+          "new_latitude",
+          "new_longitude"
+        ]
+      }
+    }
+  ]
+}

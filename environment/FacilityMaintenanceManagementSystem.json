@@ -1,0 +1,554 @@
+{
+  "env_name": "FacilityMaintenanceManagementSystem",
+  "description": "A facility maintenance management system is designed to coordinate and record the upkeep of physical assets such as buildings, equipment, and amenities. It maintains stateful records of scheduled and completed tasks, associated timestamps, responsible personnel, and the condition of facilities. Users can log maintenance events, review activity histories, and query the status of specific work to ensure operational standards are met.",
+  "initial_parameter_schema": {
+    "facilities": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "facility_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "current_condition": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "facility_id",
+          "name",
+          "type",
+          "location",
+          "current_condition"
+        ]
+      }
+    },
+    "maintenance_tasks": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          },
+          "facility_id": {
+            "type": "string"
+          },
+          "task_type": {
+            "type": "string"
+          },
+          "scheduled_time": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "assigned_personnel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "facility_id",
+          "task_type",
+          "scheduled_time",
+          "status",
+          "assigned_personnel_id"
+        ]
+      }
+    },
+    "maintenance_events": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "task_id": {
+            "type": "string"
+          },
+          "facility_id": {
+            "type": "string"
+          },
+          "completed_time": {
+            "type": "string"
+          },
+          "performed_by_personnel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "task_id",
+          "facility_id",
+          "completed_time",
+          "performed_by_personnel_id"
+        ]
+      }
+    },
+    "personnel": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "personnel_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "availability_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "personnel_id",
+          "name",
+          "role",
+          "availability_status"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_facility_by_name": [
+      "facilities"
+    ],
+    "list_facilities_by_type": [
+      "facilities"
+    ],
+    "get_facility_by_id": [
+      "facilities"
+    ],
+    "list_tasks_for_facility": [
+      "facilities",
+      "maintenance_tasks"
+    ],
+    "filter_tasks_by_type_and_time": [
+      "facilities",
+      "maintenance_tasks"
+    ],
+    "get_task_by_id": [
+      "maintenance_tasks"
+    ],
+    "list_events_for_task": [
+      "maintenance_events",
+      "maintenance_tasks"
+    ],
+    "filter_events_by_time": [
+      "maintenance_events"
+    ],
+    "get_event_by_id": [
+      "maintenance_events"
+    ],
+    "list_tasks_assigned_to_personnel": [
+      "maintenance_tasks",
+      "personnel"
+    ],
+    "get_personnel_by_id": [
+      "personnel"
+    ],
+    "check_personnel_availability": [
+      "personnel"
+    ],
+    "create_maintenance_task": [
+      "facilities",
+      "maintenance_tasks",
+      "personnel"
+    ],
+    "assign_personnel_to_task": [
+      "maintenance_tasks",
+      "personnel"
+    ],
+    "update_task_status": [
+      "maintenance_tasks"
+    ],
+    "record_maintenance_event": [
+      "facilities",
+      "maintenance_events",
+      "maintenance_tasks",
+      "personnel"
+    ],
+    "update_facility_condition": [
+      "facilities"
+    ],
+    "update_personnel_availability_status": [
+      "personnel"
+    ],
+    "delete_maintenance_task": [
+      "maintenance_events",
+      "maintenance_tasks"
+    ],
+    "delete_maintenance_event": [
+      "maintenance_events"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_facility_by_name",
+      "description": "Retrieve detailed info for a facility using its name.\n\nArgs:\n    name (str): The name of the facility to search for (e.g., 'swimming pool').\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": FacilityInfo,   # facility details if found\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str            # reason, e.g., \"Facility not found\"\n        }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "list_facilities_by_type",
+      "description": "Retrieve all facilities with the given type.\n\nArgs:\n    facility_type (str): The facility type to filter by (e.g. 'building', 'pool', 'equipment').\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[FacilityInfo]  # All matching facilities; possibly empty\n        }\n\nConstraints:\n    - No constraints other than matching 'type' field.\n    - If no facilities found, \"data\" will be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "facility_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "facility_type"
+        ]
+      }
+    },
+    {
+      "name": "get_facility_by_id",
+      "description": "Retrieve facility information using its unique ID.\n\nArgs:\n    facility_id (str): The unique identifier of the facility to retrieve.\n\nReturns:\n    dict: \n        If found:\n            {\n                \"success\": True,\n                \"data\": FacilityInfo  # All details of the facility\n            }\n        If not found:\n            {\n                \"success\": False,\n                \"error\": \"Facility not found\"\n            }\n\nConstraints:\n    - Facility must exist in the system (lookup by facility_id).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "facility_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "facility_id"
+        ]
+      }
+    },
+    {
+      "name": "list_tasks_for_facility",
+      "description": "List all maintenance tasks (scheduled or completed) for a specific facility.\n\nArgs:\n    facility_id (str): The ID of the facility whose tasks are to be listed.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[MaintenanceTaskInfo],  # List of tasks for this facility (possibly empty)\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason for failure (e.g., facility not found)\n            }\n\nConstraints:\n    - The specified facility_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "facility_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "facility_id"
+        ]
+      }
+    },
+    {
+      "name": "filter_tasks_by_type_and_time",
+      "description": "Filter MaintenanceTasks for a facility by task_type and scheduled_time window.\n\nArgs:\n    facility_id (str): The ID of the facility to filter tasks for.\n    task_type (str): The task type to match (exact string match).\n    scheduled_time_range (tuple): (start_time, end_time) as ISO8601 strings.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[MaintenanceTaskInfo],  # List may be empty\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Reason for failure\n        }\n\nConstraints:\n    - facility_id must reference an existing Facility.\n    - start_time must be less than or equal to end_time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "facility_id": {
+            "type": "string"
+          },
+          "task_type": {
+            "type": "string"
+          },
+          "scheduled_time_range": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 2,
+            "maxItems": 2
+          }
+        },
+        "required": [
+          "facility_id",
+          "task_type",
+          "scheduled_time_range"
+        ]
+      }
+    },
+    {
+      "name": "get_task_by_id",
+      "description": "Retrieve detailed info for a maintenance task given its task_id.\n\nArgs:\n    task_id (str): The unique identifier of the maintenance task.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": MaintenanceTaskInfo,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Task not found\"\n    }\n\nConstraints:\n    - The task_id must exist in the maintenance_tasks record.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id"
+        ]
+      }
+    },
+    {
+      "name": "list_events_for_task",
+      "description": "Retrieve all maintenance events linked to a particular maintenance task.\n\nArgs:\n    task_id (str): The ID of the maintenance task.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MaintenanceEventInfo]  # List of event info (empty if none found)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., task does not exist\n    }\n\nConstraints:\n    - Fails if task_id does not exist in current maintenance tasks.\n    - Otherwise, returns all events linked to the given task.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id"
+        ]
+      }
+    },
+    {
+      "name": "filter_events_by_time",
+      "description": "Retrieve maintenance events whose completed_time matches the specified timestamp.\n\nArgs:\n    completed_time (str): The completion timestamp to match (exact value).\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": List[MaintenanceEventInfo]  # List may be empty if no events match\n            }\n        - On error:\n            {\n                \"success\": False,\n                \"error\": str  # Description of validation error\n            }\nConstraints:\n    - completed_time must be provided and non-empty.\n    - Returns only exact matches on completed_time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "completed_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "completed_time"
+        ]
+      }
+    },
+    {
+      "name": "get_event_by_id",
+      "description": "Retrieve details for a specific maintenance event using its event_id.\n\nArgs:\n    event_id (str): Unique identifier for the MaintenanceEvent.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": MaintenanceEventInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"MaintenanceEvent not found\"\n    }\n\nConstraints:\n    - Returns full MaintenanceEventInfo if found.\n    - If no such event exists, returns a failure with error message.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "list_tasks_assigned_to_personnel",
+      "description": "Find all maintenance tasks assigned to a specific personnel.\n\nArgs:\n    personnel_id (str): The unique ID of the personnel.\n\nReturns:\n    dict:\n      - success: True/False\n      - data: List of MaintenanceTaskInfo assigned to this personnel (if success)\n      - error: Error message (if failure)\n\nConstraints:\n    - personnel_id must exist in the personnel database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "personnel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "personnel_id"
+        ]
+      }
+    },
+    {
+      "name": "get_personnel_by_id",
+      "description": "Retrieve detailed info for a personnel/staff member by their unique ID.\n\nArgs:\n    personnel_id (str): The unique identifier for the personnel.\n\nReturns:\n    dict:\n        Success: {\n            \"success\": True,\n            \"data\": PersonnelInfo\n        }\n        Failure: {\n            \"success\": False,\n            \"error\": \"Personnel ID not found\"\n        }\nConstraints:\n    - The provided personnel_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "personnel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "personnel_id"
+        ]
+      }
+    },
+    {
+      "name": "check_personnel_availability",
+      "description": "Check and return the current availability status of a staff member.\n\nArgs:\n    personnel_id (str): The ID of the personnel to check.\n\nReturns:\n    dict: \n        - If personnel exists: { \"success\": True, \"data\": <availability_status (str)> }\n        - If not found: { \"success\": False, \"error\": \"Personnel not found\" }\n\nConstraints:\n    - personnel_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "personnel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "personnel_id"
+        ]
+      }
+    },
+    {
+      "name": "create_maintenance_task",
+      "description": "Schedule a new maintenance task for a facility.\n\nArgs:\n    task_id (str): Unique identifier for the maintenance task.\n    facility_id (str): Facility to assign the task to.\n    task_type (str): Type of maintenance work.\n    scheduled_time (str): Scheduled date/time for the task.\n    assigned_personnel_id (str): Personnel to assign.\n\nReturns:\n    dict:\n        { \"success\": True, \"message\": \"Maintenance task created.\" }\n        or\n        { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Facility must exist.\n    - Personnel must exist and be \"available\".\n    - MaintenanceTask ID must be unique.\n    - Only available personnel can be assigned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          },
+          "facility_id": {
+            "type": "string"
+          },
+          "task_type": {
+            "type": "string"
+          },
+          "scheduled_time": {
+            "type": "string"
+          },
+          "assigned_personnel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "facility_id",
+          "task_type",
+          "scheduled_time",
+          "assigned_personnel_id"
+        ]
+      }
+    },
+    {
+      "name": "assign_personnel_to_task",
+      "description": "Assign or re-assign available personnel to a scheduled maintenance task.\n\nArgs:\n    task_id (str): The ID of the maintenance task.\n    personnel_id (str): The ID of the personnel to assign.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Personnel <id> assigned to task <id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Both task and personnel must exist.\n    - Personnel must have availability_status 'available'.\n    - (Recommended) Task status should be 'scheduled' to allow (re-)assignment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          },
+          "personnel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "personnel_id"
+        ]
+      }
+    },
+    {
+      "name": "update_task_status",
+      "description": "Change the status of a maintenance task.\n\nArgs:\n    task_id (str): The identifier of the maintenance task.\n    new_status (str): The status to set (e.g., \"scheduled\", \"in progress\", \"completed\").\n\nReturns:\n    dict:\n        { \"success\": True, \"message\": \"Task status updated successfully\" }\n        or\n        { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The specified task_id must exist in the system.\n    - Status should be a recognized status string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "record_maintenance_event",
+      "description": "Log the completion of a maintenance task as a MaintenanceEvent,\nlinked to the related facility and personnel.\n\nArgs:\n    task_id (str): ID of the MaintenanceTask being completed.\n    performed_by_personnel_id (str): ID of Personnel performing the task.\n    completed_time (str): Completion timestamp (ISO or Unix string).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Maintenance event recorded for task <task_id> (event_id: <event_id>)\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason for failure\"\n    }\n\nConstraints:\n    - MaintenanceEvent can only be created for scheduled MaintenanceTasks.\n    - Task must reference valid Facility.\n    - Personnel must match assigned_personnel_id in the task.\n    - Each event is associated with exactly one task and one facility.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          },
+          "performed_by_personnel_id": {
+            "type": "string"
+          },
+          "completed_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "performed_by_personnel_id",
+          "completed_time"
+        ]
+      }
+    },
+    {
+      "name": "update_facility_condition",
+      "description": "Change the current_condition attribute of a facility.\n\nArgs:\n    facility_id (str): The unique identifier of the facility to update.\n    new_condition (str): The new condition description for the facility.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Facility condition updated.\"\n    } on success,\n    {\n        \"success\": False,\n        \"error\": \"Facility does not exist.\"\n    } if the facility_id is not in the system.\n\nConstraints:\n    - Facility must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "facility_id": {
+            "type": "string"
+          },
+          "new_condition": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "facility_id",
+          "new_condition"
+        ]
+      }
+    },
+    {
+      "name": "update_personnel_availability_status",
+      "description": "Set or update the availability status of a staff member.\n\nArgs:\n    personnel_id (str): The unique ID of the personnel whose availability is to be updated.\n    new_status (str): The new availability status value.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Personnel availability status updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Personnel not found.\"\n    }\n\nConstraints:\n    - The given personnel_id must exist in the personnel records.\n    - No restrictions on new_status value are imposed by the system rules.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "personnel_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "personnel_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "delete_maintenance_task",
+      "description": "Remove a scheduled or incomplete maintenance task from the system.\n\nArgs:\n    task_id (str): Unique identifier of the maintenance task.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Maintenance task <task_id> deleted successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason for failure\"\n    }\n\nConstraints:\n    - Task must exist.\n    - Cannot delete task if a MaintenanceEvent references it (i.e., it is completed).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_maintenance_event",
+      "description": "Remove a maintenance event by its event_id.\n\nArgs:\n    event_id (str): Unique identifier of the maintenance event to be removed.\n\nReturns:\n    dict: \n        - On success: \n            {\"success\": True, \"message\": \"Maintenance event <event_id> deleted.\"}\n        - On failure: \n            {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - The event must exist.\n    - Deletion is for record correction and is allowed, but does not update linked task/facility automatically.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    }
+  ]
+}

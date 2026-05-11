@@ -1,0 +1,365 @@
+{
+  "env_name": "SmartHomeSecuritySystem",
+  "description": "A smart home security system integrates multiple security devices, such as alarms, sensors, and cameras, into a centralized platform that monitors and controls access and safety within a residence. It maintains the operational state of various components, including arming/disarming modes, alert settings, and device statuses, allowing users to manage their home's security remotely or on-site. The system supports real-time status checks, configuration updates, and event-driven alerts to ensure comprehensive protection and convenience.",
+  "initial_parameter_schema": {
+    "security_systems": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "system_id": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "alert_settings": {
+            "type": "object"
+          },
+          "last_updated": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "system_id",
+          "mode",
+          "alert_settings",
+          "last_updated",
+          "location"
+        ]
+      }
+    },
+    "devices": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "operational_state": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id",
+          "type",
+          "status",
+          "operational_state",
+          "location"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "privileges": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "preferences": {
+            "type": "object"
+          },
+          "last_login": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "privileges",
+          "preferences",
+          "last_login"
+        ]
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "affected_device_id": {
+            "type": "string"
+          },
+          "resolved_state": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "event_type",
+          "resolved_state"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_info": [
+      "users"
+    ],
+    "check_user_privileges": [
+      "users"
+    ],
+    "get_security_system_status": [
+      "security_systems"
+    ],
+    "get_devices_by_type": [
+      "devices"
+    ],
+    "get_device_status": [
+      "devices"
+    ],
+    "get_event_log": [
+      "events"
+    ],
+    "get_alert_settings": [
+      "security_systems"
+    ],
+    "set_security_system_mode": [
+      "devices",
+      "events",
+      "security_systems",
+      "users"
+    ],
+    "update_alert_settings": [
+      "events",
+      "security_systems",
+      "users"
+    ],
+    "log_event": [
+      "devices",
+      "events"
+    ],
+    "update_device_status": [
+      "devices",
+      "events"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_info",
+      "description": "Retrieve user information (privileges, preferences, last login) by user_id.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: \n      - If successful: {\n            \"success\": True,\n            \"data\": UserInfo\n        }\n      - If user not found: {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - The user_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "check_user_privileges",
+      "description": "Determine the specific system control privileges of a user.\n\nArgs:\n    user_id (str): Unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str]  # The list of privilege strings (empty list possible)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message, e.g., user not found\n    }\n\nConstraints:\n    - No authorization required (query only).\n    - Returns all privileges associated with the user_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_security_system_status",
+      "description": "Fetch the current mode (armed/disarmed) and alert settings of the given home security system.\n\nArgs:\n    system_id (str): The unique identifier for the security system.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"mode\": str,            # 'armed' or 'disarmed'\n                    \"alert_settings\": dict  # Alert settings data\n                }\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason for failure (e.g., system not found)\n            }\nConstraints:\n    - The specified system_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "system_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "system_id"
+        ]
+      }
+    },
+    {
+      "name": "get_devices_by_type",
+      "description": "List all devices of a specified type (e.g., all alarms or all sensors) including their\nstatus and operational state.\n\nArgs:\n    device_type (str): The type of device to filter by ('alarm', 'sensor', 'camera', etc.)\n\nReturns:\n    dict:\n        - success (bool): Operation was successful.\n        - data (List[DeviceInfo]): List of devices matching the given type (may be empty).\n        - error (str, optional): Reason for failure if unsuccessful.\n\nConstraints:\n    - device_type must be a non-empty string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_type"
+        ]
+      }
+    },
+    {
+      "name": "get_device_status",
+      "description": "Obtain detailed status and operational state for a specific device.\n\nArgs:\n    device_id (str): The unique identifier of the device.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": DeviceInfo,   # Device metadata including status and operational state\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g., \"Device not found\"\n    }\n\nConstraints:\n    - The device must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id"
+        ]
+      }
+    },
+    {
+      "name": "get_event_log",
+      "description": "Retrieve the complete log/history of security events and state changes.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[EventInfo],  # List of all event log entries (possibly empty)\n    }\n\nConstraints:\n    - No filters, all events in system are returned.\n    - Event log must be maintained for all state changes.\n    - No permissions required to view event log.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_alert_settings",
+      "description": "Query the current alert settings/thresholds configured in the specified security system.\n\nArgs:\n    system_id (str): The identifier for the security system to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": dict  # The alert_settings dictionary for this system\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason (e.g., 'Security system not found')\n    }\n\nConstraints:\n    - The specified security system must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "system_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "system_id"
+        ]
+      }
+    },
+    {
+      "name": "set_security_system_mode",
+      "description": "Change the mode (armed/disarmed) of the security system if the user is authorized and devices are operable.\n\nArgs:\n    system_id (str): Identifier of the target security system.\n    user_id (str): Identifier of the requesting user.\n    new_mode (str): Desired mode, either 'armed' or 'disarmed'.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Only authorized users (requiring 'set_mode' privilege) may change the mode.\n    - To arm, all devices of type 'alarm' must be active and operable.\n    - System logs all mode changes as events.\n    - Valid modes: 'armed', 'disarmed'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "system_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "new_mode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "system_id",
+          "user_id",
+          "new_mode"
+        ]
+      }
+    },
+    {
+      "name": "update_alert_settings",
+      "description": "Update the alert threshold/configuration for the security system (e.g., motion sensitivity, alarm delay).\n\nArgs:\n    system_id (str): ID of the target security system to update.\n    new_settings (dict): New alert settings to apply.\n    user_id (str): User performing the update (must have proper privileges).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Alert settings updated for system X.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure\"\n    }\n\nConstraints:\n    - Only authorized users ('admin' or 'configure_alerts') may update alert settings.\n    - System's 'last_updated' must be set to current time.\n    - Action is logged in self.events.\n    - Security system and user must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "system_id": {
+            "type": "string"
+          },
+          "new_settings": {
+            "type": "object"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "system_id",
+          "new_settings",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "log_event",
+      "description": "Record an event/state change (e.g., mode changes, device triggers, config changes) in the event history.\n\nArgs:\n    event_id (str): Unique identifier for the event. Must not duplicate existing events.\n    timestamp (str): Time of the event (e.g., ISO8601).\n    event_type (str): Nature/type of event (e.g., 'armed', 'device_triggered', etc.).\n    affected_device_id (str): Device affected; if not relevant, pass an empty string.\n    resolved_state (str): The resolution or resulting state (e.g., 'resolved', 'pending', etc.).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Event logged successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <error_reason>\n    }\n\nConstraints:\n    - event_id must be unique in the event log.\n    - If affected_device_id is given (non-empty), the device must exist.\n    - All fields are required (except affected_device_id, which can be empty if N/A).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "affected_device_id": {
+            "type": "string"
+          },
+          "resolved_state": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "event_type",
+          "affected_device_id",
+          "resolved_state"
+        ]
+      }
+    },
+    {
+      "name": "update_device_status",
+      "description": "Change the operational status (active/inactive) and/or state of a specified device.\n\nArgs:\n    device_id (str): The unique identifier of the device to update.\n    status (str, optional): The new device status (\"active\"/\"inactive\"). If None, status is not changed.\n    operational_state (str, optional): New operational state value. If None, state is not changed.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Device status/state updated.\" }\n        On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Device must exist.\n    - At least one of 'status' or 'operational_state' must be provided.\n    - Status must be 'active' or 'inactive' if provided.\n    - All changes are logged in the event history (self.events).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "operational_state": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id"
+        ]
+      }
+    }
+  ]
+}

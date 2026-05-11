@@ -1,0 +1,535 @@
+{
+  "env_name": "ChatbotManagementPlatform",
+  "description": "A chatbot management platform is a structured software system designed to oversee multiple conversational bots, their configurations, and the chat logs generated in client interactions. It maintains persistent state for bot profiles, client associations, and historical session data, allowing for auditing, analytics, and operational review. The platform supports a variety of operations including bot metadata management, session retrieval, and filtering by bot or client.",
+  "initial_parameter_schema": {
+    "bots": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "bot_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "configuration": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "bot_id",
+          "name",
+          "metadata",
+          "configuration"
+        ]
+      }
+    },
+    "clients": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "organization": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id",
+          "name",
+          "organization",
+          "contact_info"
+        ]
+      }
+    },
+    "sessions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "bot_id": {
+            "type": "string"
+          },
+          "client_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "transcript": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "bot_id",
+          "client_id",
+          "start_time",
+          "end_time",
+          "transcript"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_bot_by_id": [
+      "bots"
+    ],
+    "get_bots_by_name": [
+      "bots"
+    ],
+    "list_all_bots": [
+      "bots"
+    ],
+    "get_client_by_id": [
+      "clients"
+    ],
+    "get_clients_by_name": [
+      "clients"
+    ],
+    "get_clients_by_organization": [
+      "clients"
+    ],
+    "list_all_clients": [
+      "clients"
+    ],
+    "get_session_by_id": [
+      "sessions"
+    ],
+    "get_sessions_by_bot_id": [
+      "bots",
+      "sessions"
+    ],
+    "get_sessions_by_client_id": [
+      "clients",
+      "sessions"
+    ],
+    "get_sessions_by_bot_and_client": [
+      "bots",
+      "clients",
+      "sessions"
+    ],
+    "get_sessions_by_bot_name_and_client_name": [
+      "bots",
+      "clients",
+      "sessions"
+    ],
+    "get_session_transcript": [
+      "sessions"
+    ],
+    "filter_sessions_by_time_range": [
+      "bots",
+      "clients",
+      "sessions"
+    ],
+    "get_session_count_by_bot_or_client": [
+      "bots",
+      "clients",
+      "sessions"
+    ],
+    "add_bot": [
+      "bots"
+    ],
+    "update_bot_metadata": [
+      "bots"
+    ],
+    "register_new_client": [
+      "clients"
+    ],
+    "update_client_info": [
+      "clients"
+    ],
+    "create_chat_session": [
+      "bots",
+      "clients",
+      "sessions"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_bot_by_id",
+      "description": "Retrieve complete details (metadata, configuration, and identity fields) for a bot using its unique bot_id.\n\nArgs:\n    bot_id (str): The unique identifier for the bot.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": BotInfo,  # Complete information for the bot\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If the bot_id does not exist\n    }\nConstraints:\n    - bot_id must be unique and present in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bot_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bot_id"
+        ]
+      }
+    },
+    {
+      "name": "get_bots_by_name",
+      "description": "Retrieve all bot metadata whose names exactly match a given string.\n\nArgs:\n    name (str): The bot name to match (case-sensitive, exact match).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BotInfo]   # List of bots with the matching name; may be empty if no matches\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str            # Description of the error (e.g., invalid input)\n    }\n\nConstraints:\n    - Bot names are not unique; may return multiple bots.\n    - Input `name` must be a non-empty string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "list_all_bots",
+      "description": "List all chatbot profiles and their metadata on the platform.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BotInfo],  # List of all bots (may be empty if none exist)\n    }\nConstraints:\n    - None. All bots in the system are included.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_client_by_id",
+      "description": "Retrieve complete client details by client_id.\n\nArgs:\n    client_id (str): The unique identifier for the client.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ClientInfo  # Client information dictionary\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description if client not found\n    }\n\nConstraints:\n    - The provided client_id must exist in the platform's clients.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id"
+        ]
+      }
+    },
+    {
+      "name": "get_clients_by_name",
+      "description": "Retrieve all client(s) whose name exactly matches the provided string.\n\nArgs:\n    name (str): The name of the client(s) to match (exact).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ClientInfo]  # List of all clients with the matching name, can be empty\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_clients_by_organization",
+      "description": "Fetch all clients whose 'organization' attribute matches the specified string.\n\nArgs:\n    organization (str): The organization name to filter clients by.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": List[ClientInfo],  # All clients with matching organization (may be empty)\n        }\n\nNotes:\n    - This is a filter; no error is reported if there are no matches.\n    - Client 'organization' matching is case-sensitive (exact match).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization"
+        ]
+      }
+    },
+    {
+      "name": "list_all_clients",
+      "description": "List all client accounts and their associated details.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ClientInfo]  # All client profiles (may be empty if none registered)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_session_by_id",
+      "description": "Fetch full information (including transcript) for a chat session given its session_id.\n\nArgs:\n    session_id (str): The unique identifier of the chat session.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"data\": ChatSessionInfo }\n        On failure: { \"success\": False, \"error\": \"Session not found\" }\n\nConstraints:\n    - session_id must exist in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "get_sessions_by_bot_id",
+      "description": "Retrieve all chat sessions associated with a particular bot (by bot_id).\n\nArgs:\n    bot_id (str): The unique identifier of the bot.\n\nReturns:\n    dict:\n        On success: {\n            \"success\": True,\n            \"data\": List[ChatSessionInfo],  # List of sessions (may be empty)\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": str  # e.g., \"Bot not found\"\n        }\n\nConstraints:\n    - bot_id must exist in self.bots.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bot_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bot_id"
+        ]
+      }
+    },
+    {
+      "name": "get_sessions_by_client_id",
+      "description": "Retrieve all chat sessions involving a particular client (by client_id).\n\nArgs:\n    client_id (str): The unique identifier for the client.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ChatSessionInfo],  # May be empty if no sessions for this client.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if client_id not found.\n    }\n\nConstraints:\n    - client_id must exist on the platform.\n    - Every ChatSession returned is guaranteed to have a valid client_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id"
+        ]
+      }
+    },
+    {
+      "name": "get_sessions_by_bot_and_client",
+      "description": "Retrieve all chat sessions involving a specific bot and client.\n\nArgs:\n    bot_id (str): Unique identifier of the bot.\n    client_id (str): Unique identifier of the client.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[ChatSessionInfo]  # All chat sessions where both IDs match.\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Reason for failure: missing bot or client.\n        }\n\nConstraints:\n    - `bot_id` must exist in the platform.\n    - `client_id` must exist in the platform.\n    - Returns all matching sessions (may be an empty list).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bot_id": {
+            "type": "string"
+          },
+          "client_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bot_id",
+          "client_id"
+        ]
+      }
+    },
+    {
+      "name": "get_sessions_by_bot_name_and_client_name",
+      "description": "Retrieve all chat sessions involving bots with the given name and clients with the given name.\nIf names are not unique, sessions involving any matching bot and any matching client are included.\n\nArgs:\n    bot_name (str): Name of the bot(s)\n    client_name (str): Name of the client(s)\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ChatSessionInfo],  # May be empty if no matched sessions\n    }\n\nNotes:\n    - Bot and client names are not unique; matches all bots/clients with the given names.\n    - No error if no such bot/client is found (returns empty list).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bot_name": {
+            "type": "string"
+          },
+          "client_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bot_name",
+          "client_name"
+        ]
+      }
+    },
+    {
+      "name": "get_session_transcript",
+      "description": "Retrieve the chat transcript for a given session_id.\n\nArgs:\n    session_id (str): The unique identifier of the chat session.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": str  # The transcript of the session (possibly empty if no messages)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of why retrieval failed (e.g. session_id not found)\n    }\n\nConstraints:\n    - session_id must refer to an existing ChatSession.\n    - Chat transcripts are always present for a valid session (may be empty).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "filter_sessions_by_time_range",
+      "description": "List chat sessions that occurred within (overlapping) the specified time interval.\nOptionally filter by bot_id and/or client_id.\n\nArgs:\n    start_time (str): Lower bound (inclusive) for session times (ISO format string).\n    end_time (str): Upper bound (inclusive) for session times (ISO format string).\n    bot_id (str, optional): If set, only sessions for this bot.\n    client_id (str, optional): If set, only sessions for this client.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ChatSessionInfo]  # Matching chat sessions\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - start_time must not be greater than end_time.\n    - If specified, bot_id/client_id must exist.\n    - Sessions are returned if their [start_time, end_time] overlap with the query interval.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "bot_id": {
+            "type": "string"
+          },
+          "client_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "start_time",
+          "end_time"
+        ]
+      }
+    },
+    {
+      "name": "get_session_count_by_bot_or_client",
+      "description": "Return a count of chat sessions filtered by bot_id and/or client_id.\n\nArgs:\n    bot_id (str, optional): If provided, count only sessions for this bot.\n    client_id (str, optional): If provided, count only sessions associated with this client.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\"count\": int}  # Count of matching sessions\n    }\n    or\n    dict: {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - If bot_id is provided, it must exist in the system.\n    - If client_id is provided, it must exist in the system.\n    - If both are None, count all sessions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bot_id": {
+            "type": "string"
+          },
+          "client_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+        ]
+      }
+    },
+    {
+      "name": "add_bot",
+      "description": "Register a new bot with given bot_id, name, metadata, and configuration.\n\nArgs:\n    bot_id (str): Unique identifier for the bot (must not duplicate existing bot_id).\n    name (str): Bot name (not required to be unique).\n    metadata (dict): Metadata for the bot.\n    configuration (dict): Configuration for the bot.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Bot added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (duplicate bot_id)\n    }\n\nConstraints:\n    - `bot_id` must be unique across all bots in the platform.\n    - Names do not need to be unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bot_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "configuration": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "bot_id",
+          "name",
+          "metadata",
+          "configuration"
+        ]
+      }
+    },
+    {
+      "name": "update_bot_metadata",
+      "description": "Update the metadata and/or configuration of an existing bot profile.\n\nArgs:\n    bot_id (str): Unique identifier of the bot to update.\n    metadata (dict, optional): New metadata dict to assign to the bot. If not provided, metadata is unchanged.\n    configuration (dict, optional): New configuration dict to assign. If not provided, configuration is unchanged.\n\nReturns:\n    dict: \n        - {\"success\": True, \"message\": \"Bot metadata/configuration updated.\"} on success.\n        - {\"success\": False, \"error\": \"...\"} on failure (e.g., bot not found, invalid input).\n\nConstraints:\n    - bot_id must exist (must be a valid bot).\n    - At least one of metadata or configuration must be provided.\n    - Provided metadata/configuration must be dicts if provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bot_id": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "configuration": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "bot_id"
+        ]
+      }
+    },
+    {
+      "name": "register_new_client",
+      "description": "Add a new client account with organizational and contact info.\n\nArgs:\n    client_id (str): Unique client identifier. Must not already exist.\n    name (str): Client's name.\n    organization (str): Client's organization.\n    contact_info (str): Contact details for the client.\n\nReturns:\n    dict:\n        - success: True and message on successful registration.\n        - success: False and error message on failure (e.g., duplicate client_id).\n\nConstraints:\n    - client_id must be unique in the platform.\n    - All fields are required.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "organization": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id"
+        ]
+      }
+    },
+    {
+      "name": "update_client_info",
+      "description": "Modify existing client details. Only fields provided (not None) will be updated.\n\nArgs:\n    client_id (str): Unique client identifier.\n    name (str, optional): New name for the client.\n    organization (str, optional): New organization for the client.\n    contact_info (str, optional): New contact info for the client.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Client info updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Client not found.\" or other error string\n    }\n\nConstraints:\n    - client_id must exist.\n    - Only provided (non-None) fields are updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "organization": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id",
+          "name",
+          "organization",
+          "contact_info"
+        ]
+      }
+    },
+    {
+      "name": "create_chat_session",
+      "description": "Log a new chat session, associating it with a valid bot and client, and storing transcript.\n\nArgs:\n    session_id (str): Unique identifier for this session.\n    bot_id (str): ID of the bot for this session (must exist).\n    client_id (str): ID of the client for this session (must exist).\n    start_time (str): Session start time (e.g., ISO format).\n    end_time (str): Session end time (e.g., ISO format).\n    transcript (str): The text of the conversation.\n\nReturns:\n    dict: \n        Success: {\"success\": True, \"message\": \"Chat session logged successfully\"}\n        Failure: {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - session_id must be unique.\n    - bot_id and client_id must exist.\n    - Deletion of chat sessions is not permitted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "bot_id": {
+            "type": "string"
+          },
+          "client_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "transcript": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "bot_id",
+          "client_id",
+          "start_time",
+          "end_time",
+          "transcript"
+        ]
+      }
+    }
+  ]
+}

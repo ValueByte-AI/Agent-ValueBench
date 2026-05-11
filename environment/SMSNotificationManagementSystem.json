@@ -1,0 +1,606 @@
+{
+  "env_name": "SMSNotificationManagementSystem",
+  "description": "An SMS Notification Management System enables organizations to send text messages to customers, employees, or users and to monitor the status of these messages. It maintains records of recipients, message content, timestamps, delivery reports, and unique request identifiers for tracking and querying purposes. The system supports batched sending, status retrieval, and often integrates with customer databases and external SMS gateway services.",
+  "initial_parameter_schema": {
+    "customers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "phone_number": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "name",
+          "phone_number",
+          "status"
+        ]
+      }
+    },
+    "sms_messages": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "sender_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id",
+          "request_id",
+          "content",
+          "created_at",
+          "sender_id"
+        ]
+      }
+    },
+    "sms_deliveries": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "delivery_id": {
+            "type": "string"
+          },
+          "message_id": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "phone_number": {
+            "type": "string"
+          },
+          "delivery_status": {
+            "type": "string"
+          },
+          "sent_at": {
+            "type": "string"
+          },
+          "delivered_at": {
+            "type": "string"
+          },
+          "gateway_response": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "delivery_id",
+          "message_id",
+          "customer_id",
+          "phone_number",
+          "delivery_status",
+          "sent_at",
+          "delivered_at",
+          "gateway_response"
+        ]
+      }
+    },
+    "sms_gateways": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "gateway_id": {
+            "type": "string"
+          },
+          "provider_name": {
+            "type": "string"
+          },
+          "api_endpoint": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "gateway_id",
+          "provider_name",
+          "api_endpoint",
+          "status"
+        ]
+      }
+    },
+    "validate_phone_number": {
+      "type": "string"
+    }
+  },
+  "tool_state_dependencies": {
+    "list_all_customers": [
+      "customers"
+    ],
+    "get_customer_by_id": [
+      "customers"
+    ],
+    "get_active_customers": [
+      "customers"
+    ],
+    "validate_phone_number": [
+      "customers"
+    ],
+    "list_all_sms_messages": [
+      "sms_messages"
+    ],
+    "get_sms_message_by_id": [
+      "sms_messages"
+    ],
+    "get_sms_messages_by_request_id": [
+      "sms_messages"
+    ],
+    "list_sms_deliveries_by_message_id": [
+      "sms_deliveries",
+      "sms_messages"
+    ],
+    "list_sms_deliveries_by_request_id": [
+      "sms_deliveries",
+      "sms_messages"
+    ],
+    "get_delivery_status_by_delivery_id": [
+      "sms_deliveries"
+    ],
+    "get_overall_delivery_status_by_request_id": [
+      "sms_deliveries",
+      "sms_messages"
+    ],
+    "list_active_gateways": [
+      "sms_gateways"
+    ],
+    "get_gateway_by_id": [
+      "sms_gateways"
+    ],
+    "check_gateway_status": [
+      "sms_gateways"
+    ],
+    "create_sms_message": [
+      "sms_messages"
+    ],
+    "create_batch_sms_deliveries": [
+      "customers",
+      "sms_deliveries",
+      "sms_messages"
+    ],
+    "trigger_sms_send": [
+      "customers",
+      "sms_deliveries",
+      "sms_gateways"
+    ],
+    "update_delivery_status": [
+      "sms_deliveries"
+    ],
+    "add_new_customer": [
+      "customers",
+      "validate_phone_number"
+    ],
+    "update_customer_status": [
+      "customers"
+    ],
+    "add_sms_gateway": [
+      "sms_gateways"
+    ],
+    "update_gateway_status": [
+      "sms_gateways"
+    ],
+    "retry_failed_deliveries": [
+      "customers",
+      "sms_deliveries",
+      "sms_gateways"
+    ],
+    "invalidate_phone_number": [
+      "customers"
+    ]
+  },
+  "tools": [
+    {
+      "name": "list_all_customers",
+      "description": "Retrieve all registered customers.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CustomerInfo],  # List of all customers (can be empty if none registered)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_customer_by_id",
+      "description": "Get details of a customer using their customer_id.\n\nArgs:\n    customer_id (str): Unique identifier of the customer.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True,\n            \"data\": CustomerInfo\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": \"Customer not found\"\n        }\nConstraints:\n    - The customer_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "get_active_customers",
+      "description": "Retrieve all customers whose status is exactly 'active'.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CustomerInfo],  # List of active customers. Empty if none.\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "validate_phone_number",
+      "description": "Check if a given phone number is valid in format and unique among all customers.\n\nArgs:\n    phone_number (str): Phone number to check.\n\nReturns:\n    dict:\n      - success: True/False\n      - data: {\"is_valid\": bool, \"is_unique\": bool} (on success)\n      - error: str (on failure)\n\nConstraints:\n    - Format is considered valid if phone number follows pattern: optional \"+\" at start, then 8-15 digits.\n    - Uniqueness means no existing customer has this phone number.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "phone_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "phone_number"
+        ]
+      }
+    },
+    {
+      "name": "list_all_sms_messages",
+      "description": "Retrieves all SMSMessage records in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SMSMessageInfo],  # List of all SMSMessage records (could be empty)\n    }\n\nConstraints:\n    - None specific for this operation (read-only, no filtering).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_sms_message_by_id",
+      "description": "Retrieve the details of an SMSMessage given its unique message_id.\n\nArgs:\n    message_id (str): The unique identifier of the SMSMessage.\n\nReturns:\n    dict:\n        On success: {\n            \"success\": True,\n            \"data\": SMSMessageInfo\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": \"SMS message not found\"\n        }\nConstraints:\n    - The message_id must exist in the sms_messages mapping.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id"
+        ]
+      }
+    },
+    {
+      "name": "get_sms_messages_by_request_id",
+      "description": "List all SMSMessage records associated with the specified request_id.\n\nArgs:\n    request_id (str): The batch request identifier for filtering SMSMessage records.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SMSMessageInfo]  # List of SMSMessage records with given request_id (possibly empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Only in case of invalid input type\n    }\n\nConstraints:\n    - All messages with matching request_id are included in the result.\n    - If none found, returns an empty list (success).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id"
+        ]
+      }
+    },
+    {
+      "name": "list_sms_deliveries_by_message_id",
+      "description": "Retrieve all SMSDelivery records associated with the given message_id.\n\nArgs:\n    message_id (str): The unique ID of the SMSMessage for which delivery records are requested.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SMSDeliveryInfo],  # List of delivery records, empty list if none found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of error (e.g. message_id does not exist)\n    }\n\nConstraints:\n    - message_id must correspond to a valid SMSMessage.\n    - If no deliveries exist for a valid message_id, returns empty list with success=True.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id"
+        ]
+      }
+    },
+    {
+      "name": "list_sms_deliveries_by_request_id",
+      "description": "Retrieves all SMSDelivery records that are linked to all SMSMessage instances with the specified request_id.\n\nArgs:\n    request_id (str): The batch/request identifier to search for.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"data\": List[SMSDeliveryInfo]}\n        On failure (e.g., no messages matched):\n            {\"success\": False, \"error\": str}\nConstraints:\n    - The request_id must exist on at least one SMSMessage.\n    - Will return all SMSDeliveryInfo with their message_id matching any such message.\n    - Returns an empty list if no deliveries found for valid request_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id"
+        ]
+      }
+    },
+    {
+      "name": "get_delivery_status_by_delivery_id",
+      "description": "Retrieve the delivery_status and gateway_response for a specific SMSDelivery.\n\nArgs:\n    delivery_id (str): The unique identifier for the SMS delivery instance.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"delivery_status\": str,         # e.g. 'pending', 'delivered', etc.\n            \"gateway_response\": Optional[str], # Gateway feedback, if any\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g. 'Delivery ID does not exist'\n    }\n\nConstraints:\n    - The given delivery_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "delivery_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "delivery_id"
+        ]
+      }
+    },
+    {
+      "name": "get_overall_delivery_status_by_request_id",
+      "description": "Summarize delivery statuses for all SMSDeliveries associated with the given request_id.\n\nArgs:\n    request_id (str): The unique batch/request identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {<delivery_status>: <count>, ...},\n        \"total\": int  # total number of delivery records found for this request_id\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g. request_id not found\n    }\n\nConstraints:\n    - request_id must correspond to at least one SMSMessage.\n    - Reports zeroes if there are no deliveries, still a success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id"
+        ]
+      }
+    },
+    {
+      "name": "list_active_gateways",
+      "description": "Retrieve all SMS gateway services that are marked as 'active'.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SMSGatewayInfo],  # List of active gateway info dicts (empty if none found)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_gateway_by_id",
+      "description": "Retrieve SMS gateway details by gateway_id.\n\nArgs:\n    gateway_id (str): The unique identifier of the SMS gateway.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": SMSGatewayInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - gateway_id must exist in the sms_gateways mapping.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "gateway_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "gateway_id"
+        ]
+      }
+    },
+    {
+      "name": "check_gateway_status",
+      "description": "Query the operational status ('active', 'inactive', etc.) of a specific SMS gateway.\n\nArgs:\n    gateway_id (str): Unique identifier of the SMS gateway.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"gateway_id\": str,\n            \"status\": str  # e.g., 'active', 'inactive', or other status\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # explanation, e.g., gateway not found\n    }\n\nConstraints:\n    - The gateway_id must exist in the system to retrieve its status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "gateway_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "gateway_id"
+        ]
+      }
+    },
+    {
+      "name": "create_sms_message",
+      "description": "Create a new SMSMessage record for a batch of SMS sends.\n\nArgs:\n    request_id (str): Batch identifier for tracking.\n    content (str): Message content text.\n    created_at (str): ISO timestamp when this message is created.\n    sender_id (str): Identifier of the sender.\n\nReturns:\n    dict:\n     - On success:\n         {\n            \"success\": True,\n            \"message\": \"SMSMessage created\",\n            \"data\": SMSMessageInfo\n         }\n     - On failure:\n         {\n            \"success\": False,\n            \"error\": str\n         }\n\nConstraints:\n    - message_id must be unique within sms_messages.\n    - All arguments required and must be non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "sender_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "content",
+          "created_at",
+          "sender_id"
+        ]
+      }
+    },
+    {
+      "name": "create_batch_sms_deliveries",
+      "description": "Create SMSDelivery records for batch sending of a message to multiple customers.\n\nArgs:\n    message_id (str): The ID of the SMSMessage to send.\n    customer_ids (List[str]): The list of customer IDs to receive the message.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SMSDeliveryInfo],  # List of newly created delivery records\n        \"invalid_customers\": List[str], # List of customer_ids not processed (inactive or not found)\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Error message\n    }\n\nConstraints:\n    - Only customers with \"active\" status will receive deliveries.\n    - The message_id must exist.\n    - Each delivery_id must be unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "customer_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "message_id",
+          "customer_ids"
+        ]
+      }
+    },
+    {
+      "name": "trigger_sms_send",
+      "description": "Initiate the sending of specified SMSDeliveries: updates their status from 'pending' to 'sent'\n(if possible), sets the sent_at field (to current UTC ISO timestamp), and records gateway_response.\n\nArgs:\n    delivery_ids (list[str]): List of SMSDelivery delivery_ids to trigger sending for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": f\"Triggered sending for N deliveries.\",\n        \"details\": {\n            \"sent\": [<delivery_id>, ...],\n            \"skipped\": {\n                <delivery_id>: <reason string>,  # Ineligible or failed reasons\n                ...\n            }\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Only deliveries with status 'pending' can be triggered.\n    - Delivery's customer must be 'active'.\n    - There must be at least one gateway in 'active' status.\n    - Updates: set sent_at timestamp and set delivery_status to 'sent'. Optionally, add sample gateway_response.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "delivery_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "delivery_ids"
+        ]
+      }
+    },
+    {
+      "name": "update_delivery_status",
+      "description": "Update the delivery_status of a SMSDelivery.\n\nArgs:\n    delivery_id (str): The ID of the delivery record to update.\n    new_status (str): The new delivery status ('pending', 'sent', 'delivered', 'failed').\n    gateway_response (Optional[str]): Optional gateway system feedback to log.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Delivery status updated for delivery_id=...\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\":  \"reason\"\n    }\n\nConstraints:\n    - delivery_id must exist in the system.\n    - new_status must be one of: 'pending', 'sent', 'delivered', 'failed'.\n    - Timestamps: if new_status is 'sent', update sent_at; if 'delivered', update delivered_at.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "delivery_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          },
+          "gateway_response": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "delivery_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "add_new_customer",
+      "description": "Register a new customer with validated phone number.\n\nArgs:\n    customer_id (str): Unique ID for the customer.\n    name (str): Name of the customer.\n    phone_number (str): Customer's phone number to validate.\n\nReturns:\n    dict: Success or error message.\n        - On success: { \"success\": True, \"message\": \"Customer added successfully\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - customer_id must be unique.\n    - phone_number must pass validation and not already be assigned to another customer.\n    - status is set to 'active' by default upon creation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "phone_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "name",
+          "phone_number"
+        ]
+      }
+    },
+    {
+      "name": "update_customer_status",
+      "description": "Change the status of a customer to 'active' or 'inactive'.\n\nArgs:\n    customer_id (str): The unique identifier for the customer.\n    new_status (str): The new status to set ('active' or 'inactive').\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Customer status updated\" }\n        - On error: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Only updates existing customers.\n    - Only allows status values 'active' or 'inactive'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "add_sms_gateway",
+      "description": "Add/register a new SMS gateway into the system.\n\nArgs:\n    gateway_id (str): Unique identifier for the gateway.\n    provider_name (str): Name of the gateway provider.\n    api_endpoint (str): The API endpoint of the gateway.\n    status (str): Status of the gateway ('active' or 'inactive' expected).\n\nReturns:\n    dict: \n        On success:\n            {\"success\": True, \"message\": \"Gateway <gateway_id> added.\"}\n        On failure:\n            {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - gateway_id must be unique.\n    - status should be 'active' or 'inactive'.\n    - All parameters must be non-empty strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "gateway_id": {
+            "type": "string"
+          },
+          "provider_name": {
+            "type": "string"
+          },
+          "api_endpoint": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "gateway_id",
+          "provider_name",
+          "api_endpoint",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "update_gateway_status",
+      "description": "Change the operational status of a given SMS gateway.\n\nArgs:\n    gateway_id (str): Identifier of the SMS gateway to update.\n    new_status (str): The new status to set ('active' or 'inactive').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Gateway status updated from <old> to <new>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure\"\n    }\n\nConstraints:\n    - The SMS gateway must exist.\n    - Status should typically be 'active' or 'inactive'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "gateway_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "gateway_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "retry_failed_deliveries",
+      "description": "Attempt re-sending of all SMSDelivery records with 'failed' delivery_status,\npossibly using alternate gateways.\n\nReturns:\n    dict: {\n        'success': True,\n        'message': str,\n        'retried_delivery_ids': List[str],    # IDs of deliveries retried\n        'skipped_delivery_ids': List[str],    # IDs of failed deliveries not retried (with reasons)\n        'details': Dict[str, str]             # delivery_id → reason for skipped (or 'retried')\n    }\n    or\n    {\n        'success': False,\n        'error': str\n    }\nConstraints:\n    - Only retry deliveries where customer is still active.\n    - Only retry if there is at least one SMS gateway active.\n    - Simulates resending: delivery_status set to 'pending', gateway_response cleared.\n    - If possible, assign a different (random) active gateway (simulate this by adding gateway_response note).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "invalidate_phone_number",
+      "description": "Invalidate a phone number in the system: for any customer associated with this phone number,\nmark them as 'inactive'. If no customer has this phone number, report accordingly.\nDoes not affect SMSDelivery history entries.\n\nArgs:\n    phone_number (str): The phone number to be invalidated.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Phone number <X> invalidated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Only affects customers with matching phone_number.\n    - Sets their 'status' attribute to 'inactive'.\n    - If no such customer exists, returns an error.\n    - Delivery records are left untouched for traceability.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "phone_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "phone_number"
+        ]
+      }
+    }
+  ]
+}

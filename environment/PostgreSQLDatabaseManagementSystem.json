@@ -1,0 +1,478 @@
+{
+  "env_name": "PostgreSQLDatabaseManagementSystem",
+  "description": "A PostgreSQL database management system provides structured storage of data within databases, which are further organized into schemas containing tables, views, and other objects. It maintains stateful information about schema existence, object relationships, and data constraints. Typical operations include creating, modifying, deleting, and querying schemas, as well as managing users and permissions.",
+  "initial_parameter_schema": {
+    "databases": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "database_id": {
+            "type": "string"
+          },
+          "database_name": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "creation_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "database_id",
+          "database_name",
+          "owner",
+          "creation_date"
+        ]
+      }
+    },
+    "schemas": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "schema_id": {
+            "type": "string"
+          },
+          "schema_name": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "creation_date": {
+            "type": "string"
+          },
+          "parent_database_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_id",
+          "schema_name",
+          "owner",
+          "creation_date",
+          "parent_database_id"
+        ]
+      }
+    },
+    "objects": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "object_id": {
+            "type": "string"
+          },
+          "object_name": {
+            "type": "string"
+          },
+          "object_type": {
+            "type": "string"
+          },
+          "schema_id": {
+            "type": "string"
+          },
+          "definition": {
+            "type": "string"
+          },
+          "dependencies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "object_id",
+          "object_name",
+          "object_type",
+          "schema_id",
+          "definition",
+          "dependencies"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "privileges": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "user_id",
+          "username",
+          "roles",
+          "privileges"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_database_by_name": [
+      "databases"
+    ],
+    "get_database_by_id": [
+      "databases"
+    ],
+    "check_database_exists": [
+      "databases"
+    ],
+    "list_schemas_in_database": [
+      "databases",
+      "schemas"
+    ],
+    "get_schema_by_name": [
+      "databases",
+      "schemas"
+    ],
+    "get_schema_by_id": [
+      "schemas"
+    ],
+    "get_schema_objects": [
+      "objects",
+      "schemas"
+    ],
+    "get_object_dependencies": [
+      "objects"
+    ],
+    "check_user_privileges_on_schema": [
+      "schemas",
+      "users"
+    ],
+    "get_user_by_username": [
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "delete_schema": [
+      "databases",
+      "objects",
+      "schemas",
+      "users"
+    ],
+    "delete_schema_with_cascade": [
+      "databases",
+      "objects",
+      "schemas",
+      "users"
+    ],
+    "clear_schema_contents": [
+      "databases",
+      "objects",
+      "schemas",
+      "users"
+    ],
+    "remove_object": [
+      "objects",
+      "schemas"
+    ],
+    "revoke_schema_privileges_from_user": [
+      "schemas",
+      "users"
+    ],
+    "cleanup_orphaned_dependencies": [
+      "objects"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_database_by_name",
+      "description": "Retrieve information about a database by its name.\n\nArgs:\n    database_name (str): The name of the database to retrieve.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": DatabaseInfo  # Info dictionary for the database\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"Database not found\"\n    }\n\nConstraints:\n    - Database names are unique.\n    - The database must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "database_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "database_name"
+        ]
+      }
+    },
+    {
+      "name": "get_database_by_id",
+      "description": "Retrieve database info by its unique id.\n\nArgs:\n    database_id (str): The unique identifier of the database.\n\nReturns:\n    dict: \n        - On success:\n            {\n                \"success\": True,\n                \"data\": DatabaseInfo\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": \"Database ID not found\"\n            }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "database_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "database_id"
+        ]
+      }
+    },
+    {
+      "name": "check_database_exists",
+      "description": "Check if a database (by name or id) exists and is accessible.\n\nArgs:\n    database_id (str, optional): The database's unique id.\n    database_name (str, optional): The database's name.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"database_id\": str,\n                    \"database_name\": str\n                }\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str\n            }\n\nConstraints:\n    - At least one of database_id or database_name must be specified.\n    - If both are specified, they must refer to the same database.\n    - Only considers in-memory 'accessible' databases (those present in self.databases).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "database_id": {
+            "type": "string"
+          },
+          "database_name": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "list_schemas_in_database",
+      "description": "List all schemas contained within the specified database.\n\nArgs:\n    database_id (str): The unique ID of the database.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SchemaInfo],  # All schemas within the database, empty list if none\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If the database does not exist\n    }\n\nConstraints:\n    - The database with database_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "database_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "database_id"
+        ]
+      }
+    },
+    {
+      "name": "get_schema_by_name",
+      "description": "Retrieve schema information by name within the specified database.\n\nArgs:\n    database_name (str): Name of the database containing the schema.\n    schema_name (str): Name of the schema to retrieve.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": SchemaInfo\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str\n        }\nConstraints:\n    - The database must exist by the given name.\n    - The schema name must exist and be unique within that database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "database_name": {
+            "type": "string"
+          },
+          "schema_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "database_name",
+          "schema_name"
+        ]
+      }
+    },
+    {
+      "name": "get_schema_by_id",
+      "description": "Retrieve schema metadata by its unique schema_id.\n\nArgs:\n    schema_id (str): The unique identifier of the schema to query.\n\nReturns:\n    dict:\n        - { \"success\": True, \"data\": SchemaInfo } if found.\n        - { \"success\": False, \"error\": \"Schema not found\" } if not present.\n\nConstraints:\n    - No privilege or dependency checks; this is purely informational.\n    - schema_id must be present in self.schemas.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schema_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_id"
+        ]
+      }
+    },
+    {
+      "name": "get_schema_objects",
+      "description": "List all objects (tables, views, etc.) contained in a schema.\n\nArgs:\n    schema_id (str): The ID of the schema whose objects are to be listed.\n\nReturns:\n    dict:\n        - Success: { \"success\": True, \"data\": List[ObjectInfo] }\n        - Failure: { \"success\": False, \"error\": \"Schema does not exist\" }\n\nConstraints:\n    - The provided schema_id must exist in self.schemas.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schema_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_id"
+        ]
+      }
+    },
+    {
+      "name": "get_object_dependencies",
+      "description": "For a given object or set of object IDs, list all other objects (including outside the schema) that depend on them.\n\nArgs:\n    object_ids (List[str]): List of object_id(s) to check for dependencies.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            <object_id>: [ObjectInfo, ...],  # Objects that depend on given object_id\n            ...\n        }\n    }\n    If no such object is found for an object_id, the value is an empty list.\n\n    Example:\n        {\n            \"success\": True,\n            \"data\": {\n                \"obj1\": [<ObjectInfo1>, <ObjectInfo2>], \n                \"obj2\": []\n            }\n        }\nConstraints:\n    - No permissions or existence requirements (missing object_ids return empty dependent lists).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "object_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "object_ids"
+        ]
+      }
+    },
+    {
+      "name": "check_user_privileges_on_schema",
+      "description": "Check whether a specific user has the privilege (schema owner or superuser) \nto delete a given schema.\n\nArgs:\n    user_id (str): The user ID or username to check.\n    schema_id (str): The schema ID to check privileges for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"has_privilege\": bool\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Only the schema owner or a user with \"superuser\" privileges may delete the schema.\n    - Owner matching accepts schemas that store the owner as either the user's ID or username.\n    - Both user and schema must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "schema_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "schema_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_username",
+      "description": "Retrieve user information by username.\n\nArgs:\n    username (str): The username to look up.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": UserInfo    # User's full information.\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": str        # \"User not found\"\n            }\n\nConstraints:\n    - Username is assumed to be unique.\n    - Returns error if user does not exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user information by user ID.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo  # Full info dict for the user\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message, e.g. if user is not found\n    }\n\nConstraints:\n    - The user_id must exist in the environment's users.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_schema",
+      "description": "Delete a schema if no dependent objects outside the schema exist.\nAll objects contained in the schema are also deleted.\n\nArgs:\n    schema_id (str): The unique identifier of the schema to be deleted.\n    user_id (str): The ID or username of the user requesting this operation.\n\nReturns:\n    dict:\n        success: True and a message if deletion was successful.\n        success: False and an error message otherwise.\n\nConstraints:\n    - The database and schema must exist.\n    - Only the schema owner or a user with 'superuser' role may delete the schema.\n    - Owner matching accepts schemas that store the owner as either the user's ID or username.\n    - The schema can be deleted ONLY if no objects outside the schema have dependencies on its contained objects.\n    - All objects within the schema are deleted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schema_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_schema_with_cascade",
+      "description": "Force-delete a schema and all its contained objects, ignoring their dependencies (CASCADE behavior).\n\nArgs:\n    schema_id (str): ID of the schema to delete.\n    user_id (str): ID or username of the user requesting the deletion.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Schema and all contained objects deleted (CASCADE).\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - The schema and parent database must exist.\n    - Only the schema owner or a user with the 'superuser' role may delete the schema.\n    - Owner matching accepts schemas that store the owner as either the user's ID or username.\n    - CASCADE removes both objects inside the schema and external objects that depend on them, recursively.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schema_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "clear_schema_contents",
+      "description": "Remove every object contained in a schema while preserving the schema itself.\nExternal dependent objects are not deleted; any dependency references they hold to removed schema objects are detached as part of the operation.\n\nArgs:\n    schema_id (str): ID of the schema whose contents should be cleared.\n    user_id (str): ID or username of the user requesting the operation.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": str,\n                \"details\": {\n                    \"objects_removed\": int,\n                    \"external_objects_detached\": int\n                }\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str\n            }\n\nConstraints:\n    - The schema and parent database must exist.\n    - Only the schema owner or a user with the 'superuser' role may clear it.\n    - The schema itself is preserved.\n    - External objects are preserved; their dependency lists are detached from removed schema objects so the schema can be emptied safely in this simplified environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schema_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_object",
+      "description": "Delete a specific object (table, view, etc.) from a schema.\n\nArgs:\n    object_id (str): The unique identifier of the object to delete.\n\nReturns:\n    dict: \n        { \"success\": True, \"message\": \"Object <object_name> deleted from schema <schema_name>.\" }\n        or\n        { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - The object must exist.\n    - No other object may depend on this object (i.e., this object's ID is not in any ObjectInfo.dependencies).\n    - If some object depends on this object, deletion is not permitted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "object_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "object_id"
+        ]
+      }
+    },
+    {
+      "name": "revoke_schema_privileges_from_user",
+      "description": "Revoke all of a user's privileges on a specific schema.\n\nArgs:\n    schema_id (str): The ID of the schema whose privileges are to be revoked.\n    user_id (str): The ID or username of the user from whom to revoke privileges.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"message\": \"Revoked N privileges from user <username> on schema <schema_name>.\"\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": \"<reason>\"\n        }\n\nConstraints:\n- The schema and user must exist.\n- Only privileges referring to this schema will be removed from the user.\n- Common privilege encodings are recognized, including exact schema IDs/names, schema-prefixed tokens, and schema:<schema>:<privilege> strings.\n- If there are no privileges to revoke, this is still considered success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schema_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "cleanup_orphaned_dependencies",
+      "description": "Remove/correct dependency references from objects that depended on deleted objects.\nFor each object, remove from its dependencies any object_id that no longer exists in self.objects.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Orphaned dependencies cleaned up from N objects.\"\n    }\n\nConstraints:\n    - This operation is idempotent and non-failing.\n    - Only dependencies on missing (deleted) objects are removed.\n    - No additional privilege checks are needed.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    }
+  ]
+}

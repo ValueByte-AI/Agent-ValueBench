@@ -1,0 +1,601 @@
+{
+  "env_name": "SlackWorkspace",
+  "description": "A Slack workspace is a collaboration platform where users communicate in real time within channels organized by topics, teams, or functions. It maintains stateful records of channels, messages, users, and attachments, supporting operations like posting, editing, deleting messages, and managing channel memberships. Slack is widely used for both professional and community discussions and allows for the sharing of announcements, advertisements, and interactive content.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "rol": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "display_name",
+          "email",
+          "status",
+          "rol"
+        ]
+      }
+    },
+    "channels": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "topic": {
+            "type": "string"
+          },
+          "is_private": {
+            "type": "boolean"
+          },
+          "member_user_id": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "channel_id",
+          "name",
+          "topic",
+          "is_private",
+          "member_user_id"
+        ]
+      }
+    },
+    "messages": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "channel_id": {
+            "type": "string"
+          },
+          "sender_user_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "edited_timestamp": {
+            "type": "string"
+          },
+          "deleted": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "message_id",
+          "channel_id",
+          "sender_user_id",
+          "timestamp",
+          "content",
+          "attachments",
+          "edited_timestamp",
+          "deleted"
+        ]
+      }
+    },
+    "attachments": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "attachment_id": {
+            "type": "string"
+          },
+          "message_id": {
+            "type": "string"
+          },
+          "file_type": {
+            "type": "string"
+          },
+          "file_url": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "attachment_id",
+          "message_id",
+          "file_type",
+          "file_url",
+          "metadata"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_channel_by_name": [
+      "channels"
+    ],
+    "get_channel_info": [
+      "channels"
+    ],
+    "is_user_channel_member": [
+      "channels",
+      "users"
+    ],
+    "get_channel_members": [
+      "channels"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_user_by_name": [
+      "users"
+    ],
+    "get_channel_messages": [
+      "channels",
+      "messages"
+    ],
+    "get_message_by_id": [
+      "messages"
+    ],
+    "get_attachment_by_id": [
+      "attachments"
+    ],
+    "list_channel_names": [
+      "channels"
+    ],
+    "send_message": [
+      "attachments",
+      "channels",
+      "messages",
+      "users"
+    ],
+    "edit_message": [
+      "messages",
+      "users"
+    ],
+    "delete_message": [
+      "messages",
+      "users"
+    ],
+    "add_user_to_channel": [
+      "channels",
+      "users"
+    ],
+    "remove_user_from_channel": [
+      "channels",
+      "users"
+    ],
+    "create_channel": [
+      "channels",
+      "users"
+    ],
+    "upload_attachment": [
+      "attachments",
+      "messages"
+    ],
+    "associate_attachment_to_message": [
+      "attachments",
+      "messages"
+    ],
+    "change_channel_privacy": [
+      "channels"
+    ],
+    "rename_channel": [
+      "channels"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_channel_by_name",
+      "description": "Retrieve full channel details by channel name.\n\nArgs:\n    name (str): The name of the channel to retrieve.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ChannelInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g., not found)\n    }\n\nConstraints:\n    - Channel names are assumed to be unique.\n    - No privacy or membership check is performed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_channel_info",
+      "description": "Retrieve the full information for a channel by its channel_id.\n\nArgs:\n    channel_id (str): Unique identifier of the channel.\n\nReturns:\n    dict:\n      - If channel exists:\n        {\n            \"success\": True,\n            \"data\": ChannelInfo  # Complete info about the channel\n        }\n      - If not found:\n        {\n            \"success\": False,\n            \"error\": \"Channel not found\"\n        }\n\nConstraints:\n    - Checks only for existence of the channel with given channel_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id"
+        ]
+      }
+    },
+    {
+      "name": "is_user_channel_member",
+      "description": "Check if a user is a member of a specific Slack channel.\n\nArgs:\n    user_id (str): The user ID to check.\n    channel_id (str): The channel ID to check.\n\nReturns:\n    dict: \n        On success:\n            { \"success\": True, \"data\": bool }  # True if member, False if not\n        On failure (user or channel does not exist):\n            { \"success\": False, \"error\": \"<error message>\" }\n\nConstraints:\n    - Both user and channel must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "channel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "channel_id"
+        ]
+      }
+    },
+    {
+      "name": "get_channel_members",
+      "description": "List all user IDs of members in the specified channel.\n\nArgs:\n    channel_id (str): The unique identifier for the Slack channel.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str],      # List of member user IDs (may be empty)\n    } \n    or \n    {\n        \"success\": False,\n        \"error\": str            # Error message if channel does not exist\n    }\n\nConstraints:\n    - The specified channel must exist in the workspace.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve details for the specified user given their user_id.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n\nReturns:\n    dict:\n        If user exists:\n            { \"success\": True, \"data\": UserInfo }\n        If not found:\n            { \"success\": False, \"error\": \"User not found\" }\n\nConstraints:\n    - user_id must exist in the workspace.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_name",
+      "description": "Retrieve user details via exact username (not display_name).\n\nArgs:\n    name (str): The username (not display name) to search for.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"data\": UserInfo }\n        On failure:\n            { \"success\": False, \"error\": \"User not found\" }\nConstraints:\n    - Performs an exact match on the 'name' field.\n    - If more than one user has the same name (unexpected), returns the first found.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_channel_messages",
+      "description": "List all (non-deleted) messages in a specific channel, ordered by timestamp.\n\nArgs:\n    channel_id (str): The unique identifier of the channel.\n    order (str, optional): 'asc' (default) for ascending timestamp order, \n                           'desc' for descending.\n\nReturns:\n    dict: \n        On success:\n        { \"success\": True, \"data\": List[MessageInfo] }\n        On error:\n        { \"success\": False, \"error\": \"Channel does not exist\" }\n\nConstraints:\n    - The channel must exist.\n    - Only non-deleted messages are listed.\n    - Messages are ordered by their timestamp.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          },
+          "order": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id"
+        ]
+      }
+    },
+    {
+      "name": "get_message_by_id",
+      "description": "Retrieve the full details of a specific message by its message_id.\n\nArgs:\n    message_id (str): The unique identifier for the message.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": MessageInfo   # If message is found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Message not found\"  # If no such message exists\n    }\n\nConstraints:\n    - No permissions are checked; any message may be queried by ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id"
+        ]
+      }
+    },
+    {
+      "name": "get_attachment_by_id",
+      "description": "Retrieve information for a given attachment by its attachment_id.\n\nArgs:\n    attachment_id (str): The unique ID of the attachment.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": AttachmentInfo  # The attachment metadata.\n            }\n        On failure (attachment not found):\n            {\n                \"success\": False,\n                \"error\": \"Attachment not found\"\n            }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "attachment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "attachment_id"
+        ]
+      }
+    },
+    {
+      "name": "list_channel_names",
+      "description": "Retrieve the names of all channels in the workspace.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str],  # List of channel names. May be empty if no channels exist.\n    }\n\nConstraints:\n    - No input required.\n    - No special permissions required.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "send_message",
+      "description": "Post a new message to a channel as a user.\n\nArgs:\n    channel_id (str): ID of the target channel.\n    sender_user_id (str): ID of the user posting.\n    content (str): Message text.\n    attachments (List[str], optional): List of valid attachment IDs.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Message posted\",\n        \"message_id\": str,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Channel and user must exist.\n    - User must be a member of the channel.\n    - Attachments must exist if provided.\n    - At least one of content or attachments must be non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          },
+          "sender_user_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "channel_id",
+          "sender_user_id",
+          "content"
+        ]
+      }
+    },
+    {
+      "name": "edit_message",
+      "description": "Edit an existing message's content and edited_timestamp.\n\nArgs:\n    message_id (str): The message to edit.\n    editor_user_id (str): The user attempting the edit.\n    new_content (str): New text content for the message.\n    edited_timestamp (str): Timestamp for the edit operation.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Message edited successfully.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": <reason>\n            }\n\nConstraints:\n    - Only the sender of the message or admin users may edit the message.\n    - Editing a deleted message is not allowed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "editor_user_id": {
+            "type": "string"
+          },
+          "new_content": {
+            "type": "string"
+          },
+          "edited_timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id",
+          "editor_user_id",
+          "new_content",
+          "edited_timestamp"
+        ]
+      }
+    },
+    {
+      "name": "delete_message",
+      "description": "Mark a message as deleted (soft delete) if requested by its sender or by an admin.\n\nArgs:\n    message_id (str): The ID of the message to delete.\n    user_id (str): The ID of the user requesting the delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Message marked as deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Error description\"\n    }\n\nConstraints:\n    - Only the sender of the message or users with 'admin' role may delete the message.\n    - If the message does not exist or is already deleted, return an appropriate error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "add_user_to_channel",
+      "description": "Adds the specified user to the member list of the specified channel,\nfollowing channel membership and privacy constraints.\n\nArgs:\n    user_id (str): The user ID of the user to add.\n    channel_id (str): The channel ID to which the user is to be added.\n\nReturns:\n    dict:\n        If successful:\n            { \"success\": True, \"message\": \"User <user_id> added to channel <channel_id>\" }\n        If failed:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Both user and channel must exist.\n    - User must not already be a member of the channel.\n    - Channel privacy may restrict admission, but without a requesting user/role,\n      only membership and existence checks are enforced.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "channel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "channel_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_user_from_channel",
+      "description": "Remove a user from a channel's membership list.\n\nArgs:\n    channel_id (str): The ID of the channel.\n    user_id (str): The ID of the user to remove.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"User <user_id> removed from channel <channel_id>.\" }\n        On error: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The channel must exist.\n    - The user must exist.\n    - The user must currently be a member of the channel.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "create_channel",
+      "description": "Create a new channel in the workspace with the given name, topic, privacy setting, and members.\n\nArgs:\n    name (str): The channel's display name (must be unique).\n    topic (str): Description or topic for the channel.\n    is_private (bool): If True, channel is private.\n    member_user_ids (List[str]): List of user IDs to be added as members.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Channel created with channel_id <id>\" }\n        On failure: { \"success\": False, \"error\": \"<description>\" }\n\nConstraints:\n    - Channel name must be unique.\n    - All user IDs in member_user_ids must exist in workspace.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "topic": {
+            "type": "string"
+          },
+          "is_private": {
+            "type": "boolean"
+          },
+          "member_user_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "topic",
+          "is_private",
+          "member_user_ids"
+        ]
+      }
+    },
+    {
+      "name": "upload_attachment",
+      "description": "Add an attachment (file or rich media) to the workspace for later association with a message.\n\nArgs:\n    file_type (str): The type of the file (e.g., 'image', 'pdf', 'video').\n    file_url (str): The URL or path to the file.\n    metadata (dict): Additional metadata about the attachment.\n    message_id (str, optional): The ID of the message to associate with, or None.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True,\n            \"message\": \"Attachment uploaded\",\n            \"attachment_id\": <new_attachment_id>\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": \"reason\"\n        }\n\nConstraints:\n    - file_type and file_url must be non-empty strings.\n    - metadata must be a dict.\n    - If message_id is provided, it must reference an existing message.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_type": {
+            "type": "string"
+          },
+          "file_url": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_type",
+          "file_url",
+          "metadata"
+        ]
+      }
+    },
+    {
+      "name": "associate_attachment_to_message",
+      "description": "Link an existing attachment to a designated message.\n\nArgs:\n    attachment_id (str): The ID of the attachment to link.\n    message_id (str): The ID of the message to link the attachment to.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Attachment associated with message.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (attachment/message not found, already associated, etc.)\n    }\n\nConstraints:\n    - Both message and attachment must exist.\n    - Attachment can only be associated with one message at a time.\n    - No duplicate attachment IDs in a message's attachments list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "attachment_id": {
+            "type": "string"
+          },
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "attachment_id",
+          "message_id"
+        ]
+      }
+    },
+    {
+      "name": "change_channel_privacy",
+      "description": "Set the privacy flag (public/private) for a specific channel.\n\nArgs:\n    channel_id (str): The ID of the channel to update.\n    is_private (bool): The desired privacy setting (True for private, False for public).\n\nReturns:\n    dict: On success,\n        {\n            \"success\": True,\n            \"message\": \"Channel privacy set to <public/private> for channel <channel_id>\"\n        }\n        On failure,\n        {\n            \"success\": False,\n            \"error\": \"Channel does not exist\"\n        }\n\nConstraints:\n    - Channel must exist in the workspace.\n    - This operation does not check user permissions (admin/owner) as per operation description.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          },
+          "is_private": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "channel_id",
+          "is_private"
+        ]
+      }
+    },
+    {
+      "name": "rename_channel",
+      "description": "Change the name of a channel.\n\nArgs:\n    channel_id (str): The identifier of the channel to be renamed.\n    new_name (str): The intended new unique channel name.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # e.g., \"Channel renamed to <new_name>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of error (e.g., channel does not exist, name taken)\n    }\n\nConstraints:\n    - Channel must exist.\n    - New name must be non-empty and unique among all channels.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          },
+          "new_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id",
+          "new_name"
+        ]
+      }
+    }
+  ]
+}

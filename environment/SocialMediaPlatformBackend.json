@@ -1,0 +1,827 @@
+{
+  "env_name": "SocialMediaPlatformBackend",
+  "description": "A social media platform backend manages users, posts, comments, and their relationships in a persistent, queryable environment. It supports operations such as creating content, sorting and filtering posts and comments by various criteria, and providing multilingual experiences. The backend maintains metadata, access controls, and interaction data, facilitating dynamic presentation and content moderation across a large user base.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "preferred_language": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          },
+          "permission": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "display_name",
+          "preferred_language",
+          "account_status",
+          "permission"
+        ]
+      }
+    },
+    "posts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "post_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "post_id",
+          "user_id",
+          "content",
+          "created_at",
+          "language",
+          "visibility",
+          "status",
+          "metadata"
+        ]
+      }
+    },
+    "comments": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "comment_id": {
+            "type": "string"
+          },
+          "post_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "comment_id",
+          "post_id",
+          "user_id",
+          "content",
+          "created_at",
+          "language",
+          "status",
+          "metadata"
+        ]
+      }
+    },
+    "comment_interactions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "comment_id": {
+              "type": "string"
+            },
+            "user_id": {
+              "type": "string"
+            },
+            "interaction_type": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "comment_id",
+            "user_id",
+            "interaction_type",
+            "timestamp"
+          ]
+        }
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_post_by_id": [
+      "posts"
+    ],
+    "list_posts_by_user": [
+      "posts",
+      "users"
+    ],
+    "filter_posts_by_language": [
+      "posts"
+    ],
+    "filter_posts_by_visibility": [
+      "posts"
+    ],
+    "get_comments_by_post_id": [
+      "comments",
+      "posts"
+    ],
+    "filter_comments_by_language": [
+      "comments"
+    ],
+    "filter_comments_by_status": [
+      "comments"
+    ],
+    "sort_comments_by_new": [
+      "comments",
+      "posts"
+    ],
+    "count_comment_interactions": [
+      "comment_interactions",
+      "comments"
+    ],
+    "sort_comments_by_top": [
+      "comment_interactions",
+      "comments",
+      "posts"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "check_user_permission_for_post": [
+      "posts",
+      "users"
+    ],
+    "check_user_permission_for_comment": [
+      "comments",
+      "posts",
+      "users"
+    ],
+    "get_comment_by_id": [
+      "comments"
+    ],
+    "get_comments_for_post_sorted_and_filtered": [
+      "comment_interactions",
+      "comments",
+      "posts"
+    ],
+    "get_comment_interactions": [
+      "comment_interactions",
+      "comments"
+    ],
+    "create_post": [
+      "posts",
+      "users"
+    ],
+    "update_post_visibility": [
+      "posts"
+    ],
+    "update_post_status": [
+      "posts"
+    ],
+    "delete_post": [
+      "comment_interactions",
+      "comments",
+      "posts"
+    ],
+    "create_comment": [
+      "comment_interactions",
+      "comments",
+      "posts",
+      "users"
+    ],
+    "update_comment_status": [
+      "comments"
+    ],
+    "update_comment_language": [
+      "comments"
+    ],
+    "delete_comment": [
+      "comment_interactions",
+      "comments",
+      "users"
+    ],
+    "add_comment_interaction": [
+      "comment_interactions",
+      "comments",
+      "users"
+    ],
+    "remove_comment_interaction": [
+      "comment_interactions",
+      "comments"
+    ],
+    "update_comment_metadata": [
+      "comments"
+    ],
+    "update_post_metadata": [
+      "posts"
+    ],
+    "ban_user": [
+      "users"
+    ],
+    "change_user_permissions": [
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_post_by_id",
+      "description": "Retrieve all details of a post given its post_id.\n\nArgs:\n    post_id (str): The unique identifier of the post.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": PostInfo  # All attributes of the post, if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g., post not found\n    }\n\nConstraints:\n    - Returns all post details if found, including visibility and language.\n    - No user access or visibility checks are performed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "post_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "post_id"
+        ]
+      }
+    },
+    {
+      "name": "list_posts_by_user",
+      "description": "List all posts created by a specific user.\n\nArgs:\n    user_id (str): The ID of the user whose posts are listed.\n\nReturns:\n    dict:\n        - \"success\": True and \"data\": list of PostInfo for all posts by this user (empty list if none).\n        - \"success\": False and \"error\": error message if the user does not exist.\n\nConstraints:\n    - user_id must exist in self.users.\n    - Returns all posts by the user, without filtering for status, visibility, or language.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "filter_posts_by_language",
+      "description": "Return all posts in the specified language.\n\nArgs:\n    language (str): The language code to filter posts by.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PostInfo],  # List of posts in the requested language\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g., invalid language)\n    }\n\nConstraints:\n    - Only posts with PostInfo['language'] == language are returned.\n    - Returns an empty list if no posts match.\n    - If language is empty or None, returns error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "language": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "language"
+        ]
+      }
+    },
+    {
+      "name": "filter_posts_by_visibility",
+      "description": "Return all posts matching the specified visibility level.\n\nArgs:\n    visibility (str): The visibility level to filter posts by ('public', 'private', etc.)\n\nReturns:\n    dict:\n        success (bool): True if query is successful.\n        data (List[PostInfo]): List of PostInfo objects with the specified visibility.\n\nNotes:\n    - If no posts match the given visibility, returns an empty data list.\n    - No error is returned for an unknown visibility value; the result is just empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "visibility": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "visibility"
+        ]
+      }
+    },
+    {
+      "name": "get_comments_by_post_id",
+      "description": "Retrieve all comments (with full metadata) associated with a given post_id.\n\nArgs:\n    post_id (str): The ID of the post whose comments are to be retrieved.\n\nReturns:\n    dict: \n        - If post_id exists:\n            { \"success\": True, \"data\": List[CommentInfo] }\n        - If post_id does not exist:\n            { \"success\": False, \"error\": \"Post does not exist\" }\n\nConstraints:\n    - The post_id must exist in the system.\n    - No filtering on comment status or language is performed — all comments with matching post_id are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "post_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "post_id"
+        ]
+      }
+    },
+    {
+      "name": "filter_comments_by_language",
+      "description": "Filter given comments by the specified language.\n\nArgs:\n    comment_ids (list of str): List of comment IDs to filter.\n    language (str): The language code to filter by.\n\nReturns:\n    dict:\n        - success (bool): True if processed.\n        - data (list of CommentInfo): Comments (from input list) whose 'language' matches.\n        - error (str, optional): Error description if input is invalid.\n\nConstraints:\n    - Missing comment IDs in self.comments are ignored.\n    - No permissions or status constraints enforced.\n\nEdge cases:\n    - If input list is empty or no matches, success with empty data list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "comment_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "language": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "comment_ids",
+          "language"
+        ]
+      }
+    },
+    {
+      "name": "filter_comments_by_status",
+      "description": "Filter and return all comments with status 'visible' or 'approved'.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CommentInfo],  # List of comments (possibly empty)\n    }\n\nConstraints:\n    - Only comments where status == 'visible' or status == 'approved' are included.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "sort_comments_by_new",
+      "description": "Sort and retrieve all comments for a given post_id, including only comments with status 'visible' or 'approved',\nordered by created_at (newest first).\n\nArgs:\n    post_id (str): The ID of the post whose comments are to be sorted.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CommentInfo],  # Sorted (newest first), may be empty if no qualifying comments\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of failure (e.g., post_id not found)\n    }\n\nConstraints:\n    - Only comments with status 'visible' or 'approved' are considered.\n    - All comments sorted by created_at (descending).\n    - If post_id does not exist, return error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "post_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "post_id"
+        ]
+      }
+    },
+    {
+      "name": "count_comment_interactions",
+      "description": "Returns the count of each interaction type (like, dislike, report) for a given comment.\n\nArgs:\n    comment_id (str): The identifier of the comment.\n\nReturns:\n    dict:\n     - On success:\n         {\n             \"success\": True,\n             \"data\": {\"like\": int, \"dislike\": int, \"report\": int}\n         }\n     - On failure:\n         {\n             \"success\": False,\n             \"error\": \"Comment not found\"\n         }\n\nConstraints:\n    - The comment must exist.\n    - \"like\", \"dislike\", and \"report\" must appear in the result even if their counts are zero.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "comment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "comment_id"
+        ]
+      }
+    },
+    {
+      "name": "sort_comments_by_top",
+      "description": "Sort the comments of a post by their interaction metric (\"top\"/most liked).\n\nOnly comments with status 'visible' or 'approved' are included.\nThe result is sorted descending by the number of 'like' interactions.\n\nArgs:\n    post_id (str): The ID of the post whose comments are to be sorted.\n\nReturns:\n    dict: \n        - success: True\n          data: List[CommentInfo], sorted from most to least likes\n        - success: False, error: str (problem description)\n\nConstraints:\n    - Only comments with status 'visible' or 'approved' are shown.\n    - Sorting metric is the count of 'like' interactions per comment.\n    - If post_id does not exist, return an error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "post_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "post_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve all attributes of a user by user_id.\n\nArgs:\n    user_id (str): The unique ID of the user to look up.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo  # User attributes dictionary\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., \"User does not exist\"\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "check_user_permission_for_post",
+      "description": "Checks whether a user can access a post, based on permission and post visibility.\n\nArgs:\n    user_id (str): The user's unique identifier.\n    post_id (str): The post's unique identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"has_permission\": bool  # Whether the user may access the post.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description, if user or post not found.\n    }\n\nConstraints/Rules:\n    - Only users with required permission and account status can access posts with applicable visibility.\n    - Possible post visibility settings: 'public', 'private', and custom. Only 'public' supported by default for all users.\n    - Post author and admins can always access their posts.\n    - If user's account_status != 'active', deny access.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "post_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "post_id"
+        ]
+      }
+    },
+    {
+      "name": "check_user_permission_for_comment",
+      "description": "Verify whether a user can access a comment, based on the user's permission, \nthe comment's status, and the parent post's visibility.\n\nArgs:\n    user_id (str): ID of the user requesting access.\n    comment_id (str): ID of the comment to check access for.\n\nReturns:\n    dict: \n        - On entity lookup failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n        - On permission check (successfully checked):\n            { \"success\": True, \"permitted\": True }\n            or\n            { \"success\": True, \"permitted\": False, \"reason\": \"<reason>\" }\nConstraints:\n    - Only comments with status 'visible' or 'approved' can be viewed.\n    - Posts/comments must be accessible according to user permission and post visibility.\n    - User must exist and not have banned/inactive account status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "comment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "comment_id"
+        ]
+      }
+    },
+    {
+      "name": "get_comment_by_id",
+      "description": "Retrieve all information about a comment by its comment_id.\n\nArgs:\n    comment_id (str): The unique identifier of the comment.\n\nReturns:\n    dict: On success:\n              {\n                  \"success\": True,\n                  \"data\": CommentInfo  # The comment metadata dict\n              }\n          On failure (comment does not exist):\n              {\n                  \"success\": False,\n                  \"error\": \"Comment not found\"\n              }\n\nConstraints:\n    - No permission or status checking required; simply returns record if it exists.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "comment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "comment_id"
+        ]
+      }
+    },
+    {
+      "name": "get_comments_for_post_sorted_and_filtered",
+      "description": "Retrieve comments for a given post_id, filtered by status and language, and sorted by either 'new' or 'top'.\n\nArgs:\n    post_id (str): ID of the post whose comments to retrieve.\n    status (list, optional): List of allowed statuses ('visible', 'approved', etc.). Defaults to ['visible', 'approved'].\n    language (str, optional): Filter only comments with this language code.\n    sort_by (str): Either 'new' (most recent first), or 'top' (most likes/upvotes first).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CommentInfo]  # sorted, filtered list of comments\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # error reason\n    }\n\nConstraints/Rules:\n    - Comments must have a status accepted in the platform ('visible'/'approved') (either by default or as filtered).\n    - Language filtering matches comment[\"language\"].\n    - 'new': sort by 'created_at' (descending).\n    - 'top': sort by number of 'like' interactions (descending).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "post_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "language": {
+            "type": "string"
+          },
+          "sort_by": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "post_id"
+        ]
+      }
+    },
+    {
+      "name": "get_comment_interactions",
+      "description": "Retrieve the full list of interactions (like, dislike, report, etc.) associated with a specific comment.\n\nArgs:\n    comment_id (str): The unique identifier for the comment.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CommentInteractionInfo],  # May be empty if no interactions exist\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of error, e.g. comment does not exist\n    }\n\nConstraints:\n    - The comment must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "comment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "comment_id"
+        ]
+      }
+    },
+    {
+      "name": "create_post",
+      "description": "Add a new post for a user with given content, language, and visibility settings.\n\nArgs:\n    user_id (str): The ID of the user creating the post.\n    content (str): The content of the post.\n    language (str): The language code for the post.\n    visibility (str): The visibility setting of the post.\n    metadata (dict, optional): Additional metadata for the post.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Post created with post_id <post_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n  - user_id must refer to an existing, active (not banned/inactive) user\n  - Each post_id is unique (system-generated)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "user_id",
+          "content",
+          "language",
+          "visibility"
+        ]
+      }
+    },
+    {
+      "name": "update_post_visibility",
+      "description": "Change the visibility level of a post.\n\nArgs:\n    post_id (str): The unique identifier of the post to update.\n    new_visibility (str): The new visibility level (e.g., 'public', 'private', 'friends').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Post visibility updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Post not found\"\n    }\n\nConstraints:\n    - The post must exist.\n    - Visibility is updated directly; no permission or value checking required by spec.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "post_id": {
+            "type": "string"
+          },
+          "new_visibility": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "post_id",
+          "new_visibility"
+        ]
+      }
+    },
+    {
+      "name": "update_post_status",
+      "description": "Change the moderation status of a post.\n\nArgs:\n    post_id (str): The ID of the post whose status should be updated.\n    new_status (str): The new moderation status string (e.g., 'approved', 'removed', etc.).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Post status updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Post not found.\"\n    }\n\nConstraints:\n    - post_id must exist in the platform backend's posts.\n    - No explicit whitelist for status values (any string accepted).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "post_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "post_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "delete_post",
+      "description": "Remove a post (and its associated comments and comment interactions) from the backend.\n\nArgs:\n    post_id (str): The unique identifier of the post to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Success message on deletion,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - The post must exist.\n    - All associated comments and comment interactions for this post are also removed for consistency.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "post_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "post_id"
+        ]
+      }
+    },
+    {
+      "name": "create_comment",
+      "description": "Add a new comment to a post.\n\nArgs:\n    post_id (str): ID of the post to comment on. Must exist.\n    user_id (str): ID of the commenting user. Must exist and be allowed to comment.\n    content (str): Text content of the comment. Must not be empty.\n    language (str): Language of the comment (for localization).\n    metadata (dict, optional): Additional metadata for the comment.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Comment created\",\n        \"comment_id\": str\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The post must exist.\n    - The user must exist and not be banned.\n    - Comment content must not be empty.\n    - Each comment must have a unique comment_id.\n    - Set created_at to current time.\n    - Status is usually set to 'visible' by default.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "post_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "post_id",
+          "user_id",
+          "content",
+          "language"
+        ]
+      }
+    },
+    {
+      "name": "update_comment_status",
+      "description": "Change the moderation status of a specific comment.\n\nArgs:\n    comment_id (str): The unique identifier of the comment to update.\n    new_status (str): The new moderation status to set (e.g., 'approved', 'visible', 'hidden').\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Comment status updated.\" }\n        On failure: { \"success\": False, \"error\": <reason str> }\n\nConstraints:\n    - The comment must exist.\n    - (If applicable) The new_status should be a valid status string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "comment_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "comment_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "update_comment_language",
+      "description": "Change the language metadata of a comment.\n\nArgs:\n    comment_id (str): The ID of the comment to update.\n    new_language (str): The new language code to assign.\n\nReturns:\n    dict: \n        { \"success\": True, \"message\": \"Comment language updated\" }\n        or\n        { \"success\": False, \"error\": \"Comment not found\" }\n\nConstraints:\n    - Only updates if the comment exists.\n    - No permission or status checks for this backend operation.\n    - Updates both the `language` attribute and the 'language' in `metadata` if present.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "comment_id": {
+            "type": "string"
+          },
+          "new_language": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "comment_id",
+          "new_language"
+        ]
+      }
+    },
+    {
+      "name": "delete_comment",
+      "description": "Remove a comment, enforcing permission rules.\n\nArgs:\n    comment_id (str): ID of the comment to delete.\n    requesting_user_id (str): ID of the user requesting deletion.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Comment deleted.\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Only the author of the comment, or a user with 'moderator'/'admin' permission, can delete the comment.\n    - On delete, also remove all associated comment interactions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "comment_id": {
+            "type": "string"
+          },
+          "requesting_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "comment_id",
+          "requesting_user_id"
+        ]
+      }
+    },
+    {
+      "name": "add_comment_interaction",
+      "description": "Register an interaction (like, dislike, report) by a user on a comment.\n\nArgs:\n    comment_id (str): The ID of the comment to interact with.\n    user_id (str): ID of the user performing the action.\n    interaction_type (str): 'like', 'dislike', or 'report'.\n    timestamp (str): When the interaction is registered.\n\nReturns:\n    dict: \n        - { \"success\": True, \"message\": \"Interaction registered\" }\n        - { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Comment and user must exist.\n    - interaction_type must be one of 'like', 'dislike', 'report'.\n    - One 'like' or 'dislike' per user per comment; write/update.\n    - Multiple 'report' interactions allowed by same user on same comment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "comment_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "interaction_type": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "comment_id",
+          "user_id",
+          "interaction_type",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "remove_comment_interaction",
+      "description": "Remove a specific recorded interaction (like, dislike, report) from a comment by a user.\n\nArgs:\n    comment_id (str): ID of the comment whose interaction should be removed.\n    user_id (str): ID of the user whose interaction should be removed.\n    interaction_type (str): Type of interaction ('like', 'dislike', 'report').\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Interaction removed from comment.\" }\n        On failure: { \"success\": False, \"error\": str }\n\nConstraints:\n    - The comment is assumed to exist.\n    - The interaction must exist (performed by the user, on that comment, and of that type).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "comment_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "interaction_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "comment_id",
+          "user_id",
+          "interaction_type"
+        ]
+      }
+    },
+    {
+      "name": "update_comment_metadata",
+      "description": "Update or add metadata tags for a comment.\n\nArgs:\n    comment_id (str): The unique ID of the comment to update.\n    metadata_updates (dict): Key-value pairs to set/update in the comment's metadata.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Comment metadata updated.\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - comment_id must correspond to an existing comment.\n    - metadata_updates must be a dictionary.\n    - Updates will overwrite existing keys or add new ones in the metadata.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "comment_id": {
+            "type": "string"
+          },
+          "metadata_updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "comment_id",
+          "metadata_updates"
+        ]
+      }
+    },
+    {
+      "name": "update_post_metadata",
+      "description": "Add or update metadata tags for a specific post.\n\nArgs:\n    post_id (str): ID of the post whose metadata should be modified.\n    metadata_updates (dict): Dictionary of key-value pairs to add/update in the post's metadata.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Post metadata updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - The post must exist.\n    - Only updates existing/sets new metadata fields.\n    - No restrictions on the keys/values in metadata_updates.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "post_id": {
+            "type": "string"
+          },
+          "metadata_updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "post_id",
+          "metadata_updates"
+        ]
+      }
+    },
+    {
+      "name": "ban_user",
+      "description": "Change the account_status of a user to 'banned' or 'suspended'.\n\nArgs:\n    user_id (str): ID of the user to ban.\n    ban_type (str): Type of ban ('banned' or 'suspended').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\nConstraints:\n    - Only valid if user exists.\n    - ban_type must be 'banned' or 'suspended'.\n    - Updates the user's account_status field.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "ban_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "ban_type"
+        ]
+      }
+    },
+    {
+      "name": "change_user_permissions",
+      "description": "Update the permission level of a specified user.\n\nArgs:\n    user_id (str): The unique identifier of the user whose permission is to be updated.\n    new_permission (str): The new permission level to assign.\n\nReturns:\n    dict:\n        - On success:\n            { \"success\": True, \"message\": \"Permission updated for user <user_id>\" }\n        - On failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - The user with the given user_id must exist.\n    - The new_permission should be a non-empty string. Optionally, should match allowed permission values if known.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "new_permission": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "new_permission"
+        ]
+      }
+    }
+  ]
+}

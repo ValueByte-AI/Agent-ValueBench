@@ -1,0 +1,558 @@
+{
+  "env_name": "OnlineGameItemInventorySystem",
+  "description": "An online game item store and inventory system manages the acquisition and ownership of virtual items by players within a gaming ecosystem. It consists of player profiles, item catalogs, purchase records, and balances of various in-game currencies. The environment supports browsing, purchasing, and managing items, ensuring transactions are tracked and inventory is correctly updated for each player.",
+  "initial_parameter_schema": {
+    "players": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "profile_details": {
+            "type": "object"
+          },
+          "currency_balance": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          }
+        },
+        "required": [
+          "player_id",
+          "profile_details",
+          "currency_balance"
+        ]
+      }
+    },
+    "items": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "supported_game_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "price_per_currency": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "item_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_id",
+          "name",
+          "supported_game_ids",
+          "price_per_currency",
+          "item_type"
+        ]
+      }
+    },
+    "inventory": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "integer"
+        }
+      }
+    },
+    "purchase_records": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "purchase_id": {
+            "type": "string"
+          },
+          "player_id": {
+            "type": "string"
+          },
+          "item_id": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "currency_used": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "purchase_id",
+          "player_id",
+          "item_id",
+          "quantity",
+          "currency_used",
+          "timestamp"
+        ]
+      }
+    },
+    "games": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "game_id": {
+            "type": "string"
+          },
+          "game_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "game_id",
+          "game_name"
+        ]
+      }
+    },
+    "currencies": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "currency_name": {
+            "type": "string"
+          },
+          "conversion_rate_to_base": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "currency_name",
+          "conversion_rate_to_base"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_player_info": [
+      "players"
+    ],
+    "get_item_by_name": [
+      "items"
+    ],
+    "get_item_info": [
+      "items"
+    ],
+    "get_player_inventory": [
+      "inventory",
+      "players"
+    ],
+    "check_item_ownership": [
+      "inventory",
+      "items",
+      "players"
+    ],
+    "get_game_info": [
+      "games"
+    ],
+    "check_item_game_compatibility": [
+      "games",
+      "items"
+    ],
+    "get_currency_balance": [
+      "players"
+    ],
+    "get_item_price": [
+      "items"
+    ],
+    "get_currency_info": [
+      "currencies"
+    ],
+    "get_purchase_history": [
+      "items",
+      "players",
+      "purchase_records"
+    ],
+    "purchase_item": [
+      "currencies",
+      "games",
+      "inventory",
+      "items",
+      "players",
+      "purchase_records"
+    ],
+    "update_player_inventory": [
+      "inventory",
+      "items",
+      "players"
+    ],
+    "update_currency_balance": [
+      "currencies",
+      "players"
+    ],
+    "record_purchase": [
+      "currencies",
+      "items",
+      "players",
+      "purchase_records"
+    ],
+    "rollback_transaction": [
+      "inventory",
+      "items",
+      "players",
+      "purchase_records"
+    ],
+    "remove_item_from_inventory": [
+      "inventory",
+      "items",
+      "players"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_player_info",
+      "description": "Retrieve detailed information for a given player_id.\n\nArgs:\n    player_id (str): The unique player identifier to look up.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": PlayerInfo (dictionary with profile_details and currency_balance)\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Player not found\"\n            }\nConstraints:\n    - player_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id"
+        ]
+      }
+    },
+    {
+      "name": "get_item_by_name",
+      "description": "Find and return item information by the given item name.\n\nArgs:\n    item_name (str): The human-readable name of the item to search for.\n\nReturns:\n    dict:\n        - On success:\n            {\"success\": True, \"data\": <ItemInfo dict>}\n        - On failure:\n            {\"success\": False, \"error\": \"Item not found\"}\nConstraints:\n    - Name matching is case-sensitive.\n    - Returns the first match if multiple items share the same name.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_name"
+        ]
+      }
+    },
+    {
+      "name": "get_item_info",
+      "description": "Retrieve item information (including price and supported games) by item_id.\n\nArgs:\n    item_id (str): The unique identifier for the item.\n\nReturns:\n    dict: \n        - { \"success\": True, \"data\": ItemInfo } if item exists\n        - { \"success\": False, \"error\": str } if item does not exist\n\nConstraints:\n    - item_id must correspond to an item in the catalog.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_id"
+        ]
+      }
+    },
+    {
+      "name": "get_player_inventory",
+      "description": "List all items and their quantities owned by the specified player.\n\nArgs:\n    player_id (str): The unique identifier of the player.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": [ { \"item_id\": str, \"quantity\": int }, ... ]\n                  # List may be empty if no items are owned\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason (e.g. \"Player does not exist\")\n            }\nConstraints:\n    - Fails if player does not exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id"
+        ]
+      }
+    },
+    {
+      "name": "check_item_ownership",
+      "description": "Determine whether a player owns (and how many units of) a given item.\n\nArgs:\n    player_id (str): The unique identifier of the player.\n    item_id (str): The unique identifier of the item.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"owns\": bool,   # True if quantity > 0, else False\n                    \"quantity\": int # Number of this item owned by the player\n                }\n            }\n        On error:\n            {\n                \"success\": False,\n                \"error\": str     # Human-readable error message.\n            }\n\nConstraints:\n    - Returns quantity 0 and owns: False if player does not own this item.\n    - Returns error if player or item does not exist in system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "item_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id",
+          "item_id"
+        ]
+      }
+    },
+    {
+      "name": "get_game_info",
+      "description": "Retrieve details of a game by its game_id.\n\nArgs:\n    game_id (str): The unique identifier for the game.\n\nReturns:\n    dict:\n        - Success: { \"success\": True, \"data\": GameInfo }\n        - Failure: { \"success\": False, \"error\": str }\n\nConstraints:\n    - The game_id must exist in self.games.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "game_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "game_id"
+        ]
+      }
+    },
+    {
+      "name": "check_item_game_compatibility",
+      "description": "Check if a given item is compatible with the specified game.\n\nArgs:\n    item_id (str): The unique identifier for the item.\n    game_id (str): The unique identifier for the game.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": bool,  # True if compatible, False otherwise\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str,  # Description of error if item_id or game_id does not exist\n        }\nConstraints:\n    - item_id must reference a valid Item.\n    - game_id must reference a valid Game.\n    - Compatibility is determined by presence of game_id in ItemInfo['supported_game_ids'].",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string"
+          },
+          "game_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_id",
+          "game_id"
+        ]
+      }
+    },
+    {
+      "name": "get_currency_balance",
+      "description": "Query a player's current balance for a specific currency.\n\nArgs:\n    player_id (str): Unique identifier for the player.\n    currency_name (str): Name of the currency to query.\n\nReturns:\n    dict: \n      On success: {\n          \"success\": True,\n          \"data\": {\n              \"player_id\": str,\n              \"currency_name\": str,\n              \"balance\": float\n          }\n      }\n      On failure: {\n          \"success\": False,\n          \"error\": str\n      }\n\nConstraints:\n    - The player must exist.\n    - Returns 0 if the player has no balance entry for the specified currency.\n    - No permission constraints for this readonly operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "currency_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id",
+          "currency_name"
+        ]
+      }
+    },
+    {
+      "name": "get_item_price",
+      "description": "Look up the price of a specific item in a given currency.\n\nArgs:\n    item_id (str): ID of the item whose price is sought.\n    currency_name (str): The currency in which to display price.\n\nReturns:\n    dict:\n      - success: True and data = price (float or int) if found\n      - success: False and error = explanation if failure",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string"
+          },
+          "currency_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_id",
+          "currency_name"
+        ]
+      }
+    },
+    {
+      "name": "get_currency_info",
+      "description": "Retrieve definition and conversion info for a given currency.\n\nArgs:\n    currency_name (str): The name of the currency.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": CurrencyInfo  # Details including name and its conversion rate to base currency\n            }\n        On failure (e.g., not found):\n            {\n                \"success\": False,\n                \"error\": str  # Reason, e.g., currency does not exist\n            }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "currency_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "currency_name"
+        ]
+      }
+    },
+    {
+      "name": "get_purchase_history",
+      "description": "List all purchase records for a player, optionally filtered by item or game.\n\nArgs:\n    player_id (str): ID of the player whose purchase history is requested.\n    item_id (str, optional): Restrict to a specific item.\n    game_id (str, optional): Restrict to purchases of items compatible with this game.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PurchaseRecordInfo]  # All matched purchase records.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message\n    }\n\nConstraints:\n    - player_id must exist.\n    - If provided, item_id and game_id should filter results.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "item_id": {
+            "type": "string"
+          },
+          "game_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id"
+        ]
+      }
+    },
+    {
+      "name": "purchase_item",
+      "description": "Atomically purchase a specified item for a player:\n  - Checks item existence and compatibility with game (if given)\n  - Checks player existence and sufficient currency balance\n  - Prevents duplicate ownership for unique or restricted items\n  - Deducts currency, adds to inventory, and records transaction with timestamp\n\nArgs:\n    player_id (str): Player making the purchase.\n    item_id (str): Item to purchase.\n    currency_name (str): Currency to use for purchase.\n    quantity (int): Number of items to purchase (default 1).\n    game_id (Optional[str]): Game for which item compatibility is checked (if provided).\n\nReturns:\n    dict: \n        On success:\n          {\n            \"success\": True,\n            \"message\": \"...\",\n            \"purchase_id\": str,\n            \"remaining_balance\": float,\n            \"new_inventory_quantity\": int\n          }\n        On failure:\n          {\n            \"success\": False,\n            \"error\": str\n          }\n\nConstraints:\n    - Player, item, currency must exist.\n    - Quantity must be positive.\n    - Sufficient funds in player currency.\n    - No duplicate unique/restricted items.\n    - Item must be compatible with specified game (if game_id given).\n    - Transaction must be atomic.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "item_id": {
+            "type": "string"
+          },
+          "currency_name": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "game_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id",
+          "item_id",
+          "currency_name"
+        ]
+      }
+    },
+    {
+      "name": "update_player_inventory",
+      "description": "Add or adjust the quantity of an item owned by a player in their inventory.\n\nArgs:\n    player_id (str): The player's unique identifier.\n    item_id (str): The item's unique identifier.\n    quantity_change (int): The amount to change the quantity by (positive to add, negative to remove).\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Player inventory updated successfully.\" }\n        On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Player and item must exist.\n    - Cannot reduce item quantity below zero.\n    - If adding a new item: initialize in inventory if not present.\n    - If removal reduces quantity to zero: remove from inventory (optional, but not below zero).\n    - No duplicate entries per (player_id, item_id).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "item_id": {
+            "type": "string"
+          },
+          "quantity_change": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "player_id",
+          "item_id",
+          "quantity_change"
+        ]
+      }
+    },
+    {
+      "name": "update_currency_balance",
+      "description": "Add or deduct an amount from a player's currency balance.\n\nArgs:\n    player_id (str): The player's unique identifier.\n    currency_name (str): The name of the currency.\n    amount (float): Amount to add (positive) or deduct (negative).\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Player <player_id> currency <currency_name> balance updated to <new_balance>\" }\n        On failure:\n            { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Player and currency must exist.\n    - Player's balance in the currency cannot go negative.\n    - Zero-amount results in no-effect but returns success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "currency_name": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "player_id",
+          "currency_name",
+          "amount"
+        ]
+      }
+    },
+    {
+      "name": "record_purchase",
+      "description": "Create and store a new Purchase Record.\n\nArgs:\n    purchase_id (str): Unique identifier for the purchase record.\n    player_id (str): Player who made the purchase.\n    item_id (str): Item being purchased.\n    quantity (int): Number of items purchased (must be > 0).\n    currency_used (str): The in-game currency used in the purchase.\n    timestamp (str): ISO8601 or UNIX float time.\n\nReturns:\n    dict: \n     - On success: {\"success\": True, \"message\": \"Purchase record created and stored.\"}\n     - On failure: {\"success\": False, \"error\": \"reason\"}\n\nConstraints:\n    - purchase_id must be unique.\n    - player_id, item_id, and currency_used must exist.\n    - quantity must be positive.\n    - timestamp must be provided.\n    - Actual balance and inventory updates are handled elsewhere.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "purchase_id": {
+            "type": "string"
+          },
+          "player_id": {
+            "type": "string"
+          },
+          "item_id": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "currency_used": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "purchase_id",
+          "player_id",
+          "item_id",
+          "quantity",
+          "currency_used",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "rollback_transaction",
+      "description": "Undo a purchase (e.g., in case of error or insufficient atomicity—restores balances and inventory).\n\nArgs:\n    purchase_id (str): The unique ID of the purchase to rollback.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Purchase rollback successful.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure.\n    }\n\nConstraints:\n    - All changes (currency refund, inventory removal, and record deletion) must be applied atomically.\n    - If purchase record does not exist, failure.\n    - Cannot roll back if player doesn't have enough of the item to remove.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "purchase_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "purchase_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_item_from_inventory",
+      "description": "Delete or decrement an item in a player's inventory.\n\nArgs:\n    player_id (str): The player's ID to update inventory for.\n    item_id (str): The item ID to be removed or decremented.\n    quantity (int, optional): How many to remove (default: 1).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Item removed from inventory\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - player_id must exist and have the item in their inventory.\n    - Item's current quantity must be >= quantity to remove, and quantity must be positive.\n    - If quantity becomes zero after removal, remove the item entry for that player.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "item_id": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "player_id",
+          "item_id",
+          "quantity"
+        ]
+      }
+    }
+  ]
+}

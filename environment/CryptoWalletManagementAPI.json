@@ -1,0 +1,487 @@
+{
+  "env_name": "CryptoWalletManagementAPI",
+  "description": "A cryptocurrency wallet management API provides structured access to a system that tracks and controls digital wallets, supporting operations like querying wallet lists, inspecting transaction histories, and forwarding tokens. It maintains persistent records of wallet configurations, states, and associations with blockchain addresses. Common actions include listing wallets, paginating over collections, creating forwarding rules, and monitoring transaction activity.",
+  "initial_parameter_schema": {
+    "wallets": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "wallet_id": {
+            "type": "string"
+          },
+          "wallet_type": {
+            "type": "string"
+          },
+          "blockchain_address": {
+            "type": "string"
+          },
+          "configuration": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "wallet_id",
+          "wallet_type",
+          "blockchain_address",
+          "configuration",
+          "status",
+          "created_at",
+          "updated_at"
+        ]
+      }
+    },
+    "blockchain_addresses": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "blockchain_type": {
+            "type": "string"
+          },
+          "associated_wallet_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "address",
+          "blockchain_type",
+          "associated_wallet_id"
+        ]
+      }
+    },
+    "transactions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "wallet_id": {
+            "type": "string"
+          },
+          "from_address": {
+            "type": "string"
+          },
+          "to_address": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "token_type": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "wallet_id",
+          "from_address",
+          "to_address",
+          "amount",
+          "token_type",
+          "timestamp",
+          "status"
+        ]
+      }
+    },
+    "last_wallet_collection": {
+      "type": "object",
+      "properties": {
+        "total_count": {
+          "type": "integer"
+        },
+        "wallet_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "total_count",
+        "wallet_ids"
+      ]
+    }
+  },
+  "tool_state_dependencies": {
+    "list_wallets_paginated": [
+      "wallets",
+      "last_wallet_collection"
+    ],
+    "list_wallets_by_type_paginated": [
+      "wallets",
+      "last_wallet_collection"
+    ],
+    "get_wallet_by_id": [
+      "wallets"
+    ],
+    "get_wallets_by_type": [
+      "wallets"
+    ],
+    "get_wallet_status": [
+      "wallets"
+    ],
+    "get_blockchain_address_by_wallet": [
+      "blockchain_addresses",
+      "wallets"
+    ],
+    "get_wallet_by_blockchain_address": [
+      "blockchain_addresses",
+      "wallets"
+    ],
+    "get_transaction_history_by_wallet": [
+      "transactions",
+      "wallets"
+    ],
+    "get_wallet_collection_info": [
+      "last_wallet_collection"
+    ],
+    "create_wallet": [
+      "blockchain_addresses",
+      "last_wallet_collection",
+      "wallets"
+    ],
+    "update_wallet_status": [
+      "wallets"
+    ],
+    "update_wallet_configuration": [
+      "wallets"
+    ],
+    "assign_blockchain_address": [
+      "blockchain_addresses",
+      "wallets"
+    ],
+    "delete_wallet": [
+      "blockchain_addresses",
+      "last_wallet_collection",
+      "wallets"
+    ],
+    "add_transaction_record": [
+      "transactions",
+      "wallets"
+    ],
+    "remove_transaction_record": [
+      "transactions"
+    ]
+  },
+  "tools": [
+    {
+      "name": "list_wallets_paginated",
+      "description": "Retrieve a paginated list of all wallets using the specified limit and offset.\n\nArgs:\n    limit (int): Maximum number of wallets to include in the result (must be >= 0).\n    offset (int): Start index in the wallet list (must be >= 0).\n\nReturns:\n    dict: {\n        'success': True,\n        'data': WalletCollectionInfo (total_count, wallet_ids as ordered list for this page)\n    }\n    or\n    {\n        'success': False,\n        'error': str (error message)\n    }\n\nConstraints:\n    - The wallet list returned must respect the specified limit and offset for pagination.\n    - No wallet type filtering.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "limit",
+          "offset"
+        ]
+      }
+    },
+    {
+      "name": "list_wallets_by_type_paginated",
+      "description": "Retrieve a paginated list of wallets filtered by the specified wallet_type.\n\nArgs:\n    wallet_type (str): Filter wallets of this type (e.g., 'token forwarding').\n    limit (int): Maximum number of results to return (must be >= 0).\n    offset (int): Number of filtered (matching) results to skip (must be >= 0).\n\nReturns:\n    dict:\n    - On success:\n      {\n          \"success\": True,\n          \"data\": {\n              \"total_count\": int,      # Number of wallets matching wallet_type (before pagination)\n              \"wallets\": List[WalletInfo]  # The paginated list of matching wallets (may be empty)\n          }\n      }\n    - On failure (invalid input):\n      {\n          \"success\": False,\n          \"error\": str\n      }\n\nConstraints:\n    - Only wallets of the requested type are listed.\n    - Results must respect the specified limit and offset for pagination.\n    - Limit and offset must be non-negative integers.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "wallet_type": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "wallet_type",
+          "limit",
+          "offset"
+        ]
+      }
+    },
+    {
+      "name": "get_wallet_by_id",
+      "description": "Retrieve detailed information for a wallet given its unique wallet_id.\n\nArgs:\n    wallet_id (str): The unique identifier of the wallet.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": WalletInfo  # Wallet metadata info\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": \"Wallet with specified wallet_id does not exist.\"\n            }\n\nConstraints:\n    - wallet_id must exist in the wallet storage.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "wallet_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "wallet_id"
+        ]
+      }
+    },
+    {
+      "name": "get_wallets_by_type",
+      "description": "Retrieve all wallets of a specified wallet_type (no pagination).\n\nArgs:\n    wallet_type (str): The type of wallet to retrieve (e.g., \"token forwarding\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[WalletInfo]  # All wallets of given type (possibly empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If wallet_type parameter is missing/invalid\n    }\n\nConstraints:\n    - Only wallets where wallet_info[\"wallet_type\"] == wallet_type are included.\n    - No pagination; result list can be large.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "wallet_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "wallet_type"
+        ]
+      }
+    },
+    {
+      "name": "get_wallet_status",
+      "description": "Query the current status and configuration of a wallet.\n\nArgs:\n    wallet_id (str): The unique identifier of the wallet.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"status\": str,\n                    \"configuration\": str\n                }\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Error message, e.g. wallet not found\n            }\n\nConstraints:\n    - The specified wallet must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "wallet_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "wallet_id"
+        ]
+      }
+    },
+    {
+      "name": "get_blockchain_address_by_wallet",
+      "description": "Retrieve the blockchain address information associated with a specific wallet.\n\nArgs:\n    wallet_id (str): The unique ID of the wallet to query.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": BlockchainAddressInfo\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": <str>  # Reason: Wallet not found, or association missing\n            }\nConstraints:\n    - The wallet_id must correspond to an existing wallet.\n    - Each wallet can have at most one associated blockchain address.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "wallet_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "wallet_id"
+        ]
+      }
+    },
+    {
+      "name": "get_wallet_by_blockchain_address",
+      "description": "Find the wallet associated with a specified blockchain address.\n\nArgs:\n    blockchain_address (str): The blockchain address whose wallet should be retrieved.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": WalletInfo\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str\n        }\nConstraints:\n    - Each wallet must have a unique blockchain address.\n    - Address must exist in the system.\n    - The associated wallet_id must exist and point to a wallet.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "blockchain_address": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "blockchain_address"
+        ]
+      }
+    },
+    {
+      "name": "get_transaction_history_by_wallet",
+      "description": "Retrieve the list of transactions associated with the specified wallet.\n\nArgs:\n    wallet_id (str): The unique identifier of the wallet.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": List[TransactionInfo]  # Transactions (possibly empty)\n            }\n        - On error (wallet does not exist):\n            {\n                \"success\": False,\n                \"error\": \"Wallet not found\"\n            }\n\nConstraints:\n    - The wallet with the given wallet_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "wallet_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "wallet_id"
+        ]
+      }
+    },
+    {
+      "name": "get_wallet_collection_info",
+      "description": "Return metadata about the last wallet collection used for pagination/listing.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": WalletCollectionInfo  # {\"total_count\": int, \"wallet_ids\": List[str]}\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error\n    }\n\nConstraints:\n    - None specific; just returns metadata stored in-memory.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "create_wallet",
+      "description": "Create a new wallet with the specified type, configuration, and unique blockchain address.\n\nArgs:\n    wallet_type (str): The type of the wallet (e.g., 'token forwarding', etc.)\n    blockchain_address (str): The unique blockchain address to associate with this wallet.\n    configuration (str): Configuration information for the wallet.\n\nReturns:\n    dict: \n        Success:\n            {\n                \"success\": True,\n                \"message\": \"Wallet created\",\n                \"wallet_id\": <wallet_id>,\n                \"wallet_info\": <WalletInfo>\n            }\n        Failure:\n            {\n                \"success\": False,\n                \"error\": <error_message>\n            }\n\nConstraints:\n    - blockchain_address must be unique and not already used.\n    - Required fields must not be empty.\n    - Wallet status is set to 'active' by default.\n    - Timestamps ('created_at', 'updated_at') are auto-set to current time (as ISO8601 string).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "wallet_type": {
+            "type": "string"
+          },
+          "blockchain_address": {
+            "type": "string"
+          },
+          "configuration": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "wallet_type",
+          "blockchain_address",
+          "configuration"
+        ]
+      }
+    },
+    {
+      "name": "update_wallet_status",
+      "description": "Update the status of an existing wallet (e.g., active, enabled, disabled, archived).\n\nArgs:\n    wallet_id (str): The unique ID of the wallet whose status is to be updated.\n    status (str): The new status value. Allowed: \"active\", \"enabled\", \"disabled\", \"archived\". Both \"active\" and \"enabled\" represent an operational wallet state.\n\nReturns:\n    dict: Success or failure message.\n        - If success: {\n            \"success\": True,\n            \"message\": \"Wallet status updated successfully.\"\n          }\n        - If failure: {\n            \"success\": False,\n            \"error\": <error reason>\n          }\n\nConstraints:\n    - Only allows status to be set to \"active\", \"enabled\", \"disabled\", or \"archived\".\n    - The wallet identified by wallet_id must exist.\n    - Updates the wallet's 'status' and 'updated_at' fields.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "wallet_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "wallet_id",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "update_wallet_configuration",
+      "description": "Update the configuration details for an existing wallet.\n\nArgs:\n    wallet_id (str): Unique identifier of the wallet to update.\n    new_configuration (str): New configuration string to set.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Wallet configuration updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The wallet with wallet_id must exist.\n    - updated_at is set to the current time in ISO format after change.\n    - Wallet status and configuration must be consistent with supported API operations (not further specified).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "wallet_id": {
+            "type": "string"
+          },
+          "new_configuration": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "wallet_id",
+          "new_configuration"
+        ]
+      }
+    },
+    {
+      "name": "assign_blockchain_address",
+      "description": "Assign or update the blockchain address associated with a wallet, ensuring uniqueness.\n\nArgs:\n    wallet_id (str): The ID of the wallet to assign the address to.\n    address (str): The blockchain address to assign.\n    blockchain_type (str): The type of blockchain (e.g., \"Ethereum\").\n\nReturns:\n    dict: Success or error message.\n        - On success: { \"success\": True, \"message\": \"Assigned blockchain address X to wallet Y.\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The wallet must exist.\n    - The address must not already be assigned to a different wallet.\n    - Wallet <-> blockchain address association must be unique.\n    - Properly update both wallet and blockchain address entities.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "wallet_id": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "blockchain_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "wallet_id",
+          "address",
+          "blockchain_type"
+        ]
+      }
+    },
+    {
+      "name": "delete_wallet",
+      "description": "Delete an existing wallet (admin level), removing it from collections and releasing associated blockchain address.\n\nArgs:\n    wallet_id (str): The ID of the wallet to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Wallet deleted and address released\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Wallet does not exist\"\n    }\n\nConstraints:\n    - The wallet must exist.\n    - Remove wallet from wallets store, collections, and release associated address.\n    - The 'admin level' requirement is assumed handled at API layer (not enforced here).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "wallet_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "wallet_id"
+        ]
+      }
+    },
+    {
+      "name": "add_transaction_record",
+      "description": "Add a new transaction to a wallet's transaction history.\n\nArgs:\n    transaction_id (str): Unique identifier for the transaction.\n    wallet_id (str): Identifier of the wallet involved in the transaction.\n    from_address (str): Source blockchain address.\n    to_address (str): Destination blockchain address.\n    amount (float): Amount to transfer.\n    token_type (str): Kind of cryptocurrency/token.\n    timestamp (str): Timestamp (preferably ISO8601) of transaction.\n    status (str): Transaction status (e.g., \"pending\", \"completed\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Transaction record added to wallet <wallet_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\nConstraints:\n    - wallet_id must exist in self.wallets.\n    - transaction_id must be unique in self.transactions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "wallet_id": {
+            "type": "string"
+          },
+          "from_address": {
+            "type": "string"
+          },
+          "to_address": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "token_type": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "wallet_id",
+          "from_address",
+          "to_address",
+          "amount",
+          "token_type",
+          "timestamp",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "remove_transaction_record",
+      "description": "Remove a transaction from the wallet's transaction history (admin/debug action).\n\nArgs:\n    transaction_id (str): The unique identifier of the transaction to be removed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Transaction record removed successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Transaction record not found.\"\n    }\n\nConstraints:\n    - The transaction must exist; if not, the operation results in an error message.\n    - No side-effects or additional consistency actions are specified for this operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id"
+        ]
+      }
+    }
+  ]
+}

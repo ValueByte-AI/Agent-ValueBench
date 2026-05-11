@@ -1,0 +1,673 @@
+{
+  "env_name": "OnlineSportsBettingPlatform",
+  "description": "An online sports betting platform maintains and updates data for various sporting events, including matches, participant details, and available betting markets. It provides real-time odds offered by bookmakers like Bildbet and supports operations such as querying matches, retrieving odds, and processing bet placements. State is maintained for ongoing events, market odds, and betting histories, facilitating both individual and group wagering activities.",
+  "initial_parameter_schema": {
+    "matches": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          },
+          "sport_type": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "participant_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id",
+          "sport_type",
+          "start_time",
+          "participant_ids",
+          "status"
+        ]
+      }
+    },
+    "participants": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "participant_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "participant_id",
+          "name",
+          "type",
+          "country"
+        ]
+      }
+    },
+    "markets": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "market_id": {
+            "type": "string"
+          },
+          "match_id": {
+            "type": "string"
+          },
+          "market_type": {
+            "type": "string"
+          },
+          "bookmaker_id": {
+            "type": "string"
+          },
+          "odds": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "market_id",
+          "match_id",
+          "market_type",
+          "bookmaker_id",
+          "odds"
+        ]
+      }
+    },
+    "bookmakers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "bookmaker_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bookmaker_id",
+          "name"
+        ]
+      }
+    },
+    "bets": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "bet_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "match_id": {
+            "type": "string"
+          },
+          "market_id": {
+            "type": "string"
+          },
+          "odds": {
+            "type": "number"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bet_id",
+          "user_id",
+          "match_id",
+          "market_id",
+          "odds",
+          "amount",
+          "timestamp"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "name"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_bookmaker_by_name": [
+      "bookmakers"
+    ],
+    "list_matches": [
+      "matches"
+    ],
+    "list_matches_by_status": [
+      "matches"
+    ],
+    "get_match_by_id": [
+      "matches"
+    ],
+    "list_markets_by_bookmaker": [
+      "bookmakers",
+      "markets"
+    ],
+    "list_markets_for_match": [
+      "markets",
+      "matches"
+    ],
+    "get_market_by_id": [
+      "markets"
+    ],
+    "get_odds_for_market": [
+      "markets",
+      "matches"
+    ],
+    "get_participant_by_id": [
+      "participants"
+    ],
+    "list_participants_for_match": [
+      "matches",
+      "participants"
+    ],
+    "list_users": [
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "list_bets_by_user": [
+      "bets",
+      "users"
+    ],
+    "list_bets_for_match": [
+      "bets",
+      "matches"
+    ],
+    "place_bet": [
+      "bets",
+      "markets",
+      "matches",
+      "users"
+    ],
+    "cancel_bet": [
+      "bets",
+      "markets",
+      "matches"
+    ],
+    "update_odds_for_market": [
+      "bookmakers",
+      "markets"
+    ],
+    "add_market": [
+      "bookmakers",
+      "markets",
+      "matches"
+    ],
+    "update_match_status": [
+      "matches"
+    ],
+    "add_match": [
+      "matches",
+      "participants"
+    ],
+    "add_bookmaker": [
+      "bookmakers"
+    ],
+    "add_participant": [
+      "participants"
+    ],
+    "add_user": [
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_bookmaker_by_name",
+      "description": "Retrieve a bookmaker's information using its name.\n\nArgs:\n    name (str): The name of the bookmaker to find (e.g., \"Bildbet\").\n\nReturns:\n    dict:\n      - On success: {\"success\": True, \"data\": BookmakerInfo}\n      - On failure: {\"success\": False, \"error\": \"Bookmaker not found\"}\n\nConstraints:\n    - Match must be exact (case-sensitive).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "list_matches",
+      "description": "Retrieve information on all matches stored in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MatchInfo]  # List of all matches (may be empty if no matches exist)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_matches_by_status",
+      "description": "Retrieve all matches filtered by their live status (e.g. 'ongoing', 'upcoming').\n\nArgs:\n    status (str): The status to filter matches by. Example: \"ongoing\", \"upcoming\", \"finished\", etc.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MatchInfo],  # List of MatchInfo dicts with the given status (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error explanation (e.g., missing parameter)\n    }\n\nNotes:\n    - Returns empty list if no matches are found with the given status.\n    - No special permissions required.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "get_match_by_id",
+      "description": "Return all information about a given match.\n\nArgs:\n    match_id (str): The unique identifier of the match to look up.\n\nReturns:\n    dict: \n        On success:\n        {\n            \"success\": True,\n            \"data\": MatchInfo\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": \"Match not found\"\n        }\n\nConstraints:\n    - The match_id must exist in the system. No restrictions on status or other properties.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id"
+        ]
+      }
+    },
+    {
+      "name": "list_markets_by_bookmaker",
+      "description": "Retrieve all market entries being offered by a specific bookmaker.\n\nArgs:\n    bookmaker_id (str): The unique ID of the bookmaker.\n\nReturns:\n    dict:\n        - If the bookmaker exists:\n            {\n                \"success\": True,\n                \"data\": List[MarketInfo]  # All MarketInfo entries with the given bookmaker_id\n            }\n        - If the bookmaker does not exist:\n            {\n                \"success\": False,\n                \"error\": \"Bookmaker does not exist\"\n            }\n\nConstraints:\n    - bookmaker_id must exist in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bookmaker_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bookmaker_id"
+        ]
+      }
+    },
+    {
+      "name": "list_markets_for_match",
+      "description": "Retrieve all markets associated with a given match.\n\nArgs:\n    match_id (str): Unique identifier of the match.\n\nReturns:\n    dict:\n        If success:\n            {\n                \"success\": True,\n                \"data\": List[MarketInfo]  # List of associated markets, may be empty\n            }\n        If failure (e.g., match does not exist):\n            {\n                \"success\": False,\n                \"error\": \"Match does not exist\"\n            }\nConstraints:\n    - match_id must exist in self.matches",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id"
+        ]
+      }
+    },
+    {
+      "name": "get_market_by_id",
+      "description": "Retrieve detailed information for a specific betting market.\n\nArgs:\n    market_id (str): The unique identifier of the market.\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"data\": MarketInfo}\n        - On failure: {\"success\": False, \"error\": \"Market not found\"}\n\nConstraints:\n    - The market must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "market_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "market_id"
+        ]
+      }
+    },
+    {
+      "name": "get_odds_for_market",
+      "description": "Return the current odds for the specified market, only if its associated match is \"ongoing\" or \"upcoming\".\n\nArgs:\n    market_id (str): The ID of the market.\n\nReturns:\n    dict: \n     - On success: { \"success\": True, \"data\": { \"odds\": float } }\n     - On failure: { \"success\": False, \"error\": <error_reason> }\n\nConstraints:\n    - Market must exist.\n    - Associated match must exist.\n    - Match status must be \"ongoing\" or \"upcoming\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "market_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "market_id"
+        ]
+      }
+    },
+    {
+      "name": "get_participant_by_id",
+      "description": "Retrieve details (name, type, country) for a participant (team/player) given their participant_id.\n\nArgs:\n    participant_id (str): The unique ID of the participant.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ParticipantInfo  # Contains participant_id, name, type, country\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description such as \"Participant not found\"\n    }\n\nConstraints:\n    - The participant_id must exist in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "participant_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "participant_id"
+        ]
+      }
+    },
+    {
+      "name": "list_participants_for_match",
+      "description": "Get details for all participants in a specific match.\n\nArgs:\n    match_id (str): Unique identifier of the match.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[ParticipantInfo]  # Participants found in self.participants\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Reason for failure (e.g., match not found)\n        }\n\nConstraints:\n    - The provided match_id must exist in the system.\n    - Missing participant_ids (not present in self.participants) are ignored.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id"
+        ]
+      }
+    },
+    {
+      "name": "list_users",
+      "description": "List all user accounts in the platform.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[UserInfo],  # List of all user info records (may be empty)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve info for a particular user by user_id.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": UserInfo  # User information dict\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Error description if user_id not found\n        }\n\nConstraints:\n    - user_id must exist in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_bets_by_user",
+      "description": "Retrieve all bets placed by a specific user.\n\nArgs:\n    user_id (str): The ID of the user whose bets are to be listed.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[BetInfo],  # List of bets placed by the user (may be empty)\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": str  # Error description if user does not exist\n        }\n\nConstraints:\n    - The user must exist in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_bets_for_match",
+      "description": "Retrieve all bets placed on the specified match.\n\nArgs:\n    match_id (str): The unique identifier of the match.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BetInfo],  # List of bets placed on the match (can be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # reason for failure\n    }\n\nConstraints:\n    - The given match_id must exist in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id"
+        ]
+      }
+    },
+    {
+      "name": "place_bet",
+      "description": "Record a new bet for a user on a specific market with the chosen odds and wager amount.\n\nArgs:\n    user_id (str): The ID of the user placing the bet.\n    market_id (str): The ID of the market to bet on.\n    odds (float): The odds to lock in for the bet (must match market odds).\n    amount (float): The wager amount (must be positive).\n    timestamp (str): The time the bet is placed.\n\nReturns:\n    dict: Success or failure with reason. On success: {\"success\": True, \"message\": ..., \"bet_id\": ...}\n          On error: {\"success\": False, \"error\": ...}\n\nConstraints:\n    - user_id and market_id must exist.\n    - market's associated match must be \"upcoming\" or \"ongoing\".\n    - odds must match current market odds.\n    - amount must be positive.\n    - unique bet_id generated for the bet.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "market_id": {
+            "type": "string"
+          },
+          "odds": {
+            "type": "number"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "market_id",
+          "odds",
+          "amount",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "cancel_bet",
+      "description": "Cancel/void an existing bet if rules allow (e.g., before match starts or during live-betting).\n\nArgs:\n    bet_id (str): The Bet ID to cancel.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Bet <bet_id> canceled successfully.\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Bet must exist.\n    - The match associated with the bet must not have started (status == \"upcoming\"),\n      OR if the market type is \"live\", the match status must be \"ongoing\".\n    - Otherwise, cannot cancel.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bet_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bet_id"
+        ]
+      }
+    },
+    {
+      "name": "update_odds_for_market",
+      "description": "Update the offered odds for a specific market; this is a bookmaker-level operation.\n\nArgs:\n    market_id (str): The unique identifier for the market to update.\n    bookmaker_id (str): The unique identifier of the bookmaker (must match the market's bookmaker).\n    new_odds (float): The new odds value (must be > 0).\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Updated odds for market <market_id> (bookmaker <bookmaker_id>)\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"<description>\"\n            }\n\nConstraints:\n    - The market must exist.\n    - The bookmaker must exist.\n    - The specified market must be associated with the specified bookmaker.\n    - The new odds must be a positive float.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "market_id": {
+            "type": "string"
+          },
+          "bookmaker_id": {
+            "type": "string"
+          },
+          "new_odds": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "market_id",
+          "bookmaker_id",
+          "new_odds"
+        ]
+      }
+    },
+    {
+      "name": "add_market",
+      "description": "Add a new betting market to a match for a given bookmaker.\n\nArgs:\n    market_id (str): Unique identifier for the market (must not already exist).\n    match_id (str): The match that the market is for (must exist).\n    market_type (str): Type of betting market (e.g., winner, score).\n    bookmaker_id (str): Bookmaker providing this market (must exist).\n    odds (float): Odds for this market.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Market added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - market_id must be unique\n    - match_id must exist\n    - bookmaker_id must exist",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "market_id": {
+            "type": "string"
+          },
+          "match_id": {
+            "type": "string"
+          },
+          "market_type": {
+            "type": "string"
+          },
+          "bookmaker_id": {
+            "type": "string"
+          },
+          "odds": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "market_id",
+          "match_id",
+          "market_type",
+          "bookmaker_id",
+          "odds"
+        ]
+      }
+    },
+    {
+      "name": "update_match_status",
+      "description": "Change the status (e.g., from \"upcoming\" to \"ongoing\"/\"finished\") for a match.\nThis is typically an admin or system operation.\n\nArgs:\n    match_id (str): The ID of the match to update.\n    new_status (str): Target status (\"upcoming\", \"ongoing\", \"finished\", ...).\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Match status updated to <new_status>.\" }\n        On error: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - match_id must refer to an existing match.\n    - new_status should be a valid status value (allowed: \"upcoming\", \"ongoing\", \"finished\").",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "add_match",
+      "description": "Register a new sporting match in the system.\n\nArgs:\n    match_id (str): Unique identifier for the match (must not already exist).\n    sport_type (str): Type of sport (e.g., \"soccer\").\n    start_time (str): Scheduled start time.\n    participant_ids (list of str): List of participant IDs (must all exist).\n    status (str): Match status (e.g., \"upcoming\", \"ongoing\").\n\nReturns:\n    dict: On success: { \"success\": True, \"message\": \"Match added successfully.\" }\n          On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - match_id must be unique.\n    - All participant_ids must exist.\n    - Required parameters must be provided with correct types.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          },
+          "sport_type": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "participant_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id",
+          "sport_type",
+          "start_time",
+          "participant_ids",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "add_bookmaker",
+      "description": "Register a new bookmaker in the system.\n\nArgs:\n    bookmaker_id (str): Unique identifier for the bookmaker.\n    name (str): Human-readable name for the bookmaker.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Bookmaker added successfully.\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - bookmaker_id must be unique (not already in the system).\n    - name must be unique (case-insensitive, not used by another bookmaker).\n    - bookmaker_id and name must not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bookmaker_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bookmaker_id",
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "add_participant",
+      "description": "Adds a new participant (team or player) to the platform.\n\nArgs:\n    participant_id (str): Unique identifier for the participant.\n    name (str): Name of the participant.\n    type (str): Type of the participant (\"team\" or \"player\").\n    country (str): Country of the participant.\n\nReturns:\n    dict:\n        - success (bool): Whether the operation succeeded.\n        - message (str): Success message (if success).\n        - error (str): Error message (if not successful).\n\nConstraints:\n    - participant_id must be unique (not already used).\n    - type must be either \"team\" or \"player\".\n    - All arguments must be non-empty strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "participant_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "participant_id",
+          "name",
+          "type",
+          "country"
+        ]
+      }
+    },
+    {
+      "name": "add_user",
+      "description": "Add a new user to the platform.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n    name (str): The display name of the user.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"message\": \"User added successfully.\"\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": \"reason for failure\"\n        }\nConstraints:\n    - user_id must be unique (not already present in self.users).\n    - Both user_id and name must be non-empty strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "name"
+        ]
+      }
+    }
+  ]
+}

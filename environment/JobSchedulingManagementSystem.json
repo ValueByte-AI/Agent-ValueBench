@@ -1,0 +1,418 @@
+{
+  "env_name": "JobSchedulingManagementSystem",
+  "description": "A job scheduling and management system organizes, tracks, and executes units of work—known as jobs—based on submitted specifications. It maintains persistent state for each job, including identifiers, metadata, execution statuses, and history, allowing users to query and manipulate jobs as needed. These systems are essential in automating batch processes, system maintenance tasks, and backend workflows.",
+  "initial_parameter_schema": {
+    "jobs": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "creator_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "integer"
+          },
+          "scheduled_time": {
+            "type": "string"
+          },
+          "parameters": {
+            "type": "object"
+          },
+          "execution_history": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "required": [
+          "job_id",
+          "name",
+          "creator_id",
+          "created_at",
+          "status",
+          "priority",
+          "scheduled_time",
+          "parameters",
+          "execution_history"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "permission": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "permission"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_job_by_id": [
+      "jobs"
+    ],
+    "list_all_jobs": [
+      "jobs"
+    ],
+    "list_jobs_by_creator": [
+      "jobs",
+      "users"
+    ],
+    "get_job_status": [
+      "jobs",
+      "users"
+    ],
+    "get_job_execution_history": [
+      "jobs",
+      "users"
+    ],
+    "get_user_by_username": [
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "check_user_permission_for_job": [
+      "jobs",
+      "users"
+    ],
+    "create_job": [
+      "jobs",
+      "users"
+    ],
+    "update_job_status": [
+      "jobs",
+      "users"
+    ],
+    "update_job_parameters": [
+      "jobs",
+      "users"
+    ],
+    "add_execution_history_entry": [
+      "jobs"
+    ],
+    "delete_job": [
+      "jobs",
+      "users"
+    ],
+    "reschedule_job": [
+      "jobs",
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_job_by_id",
+      "description": "Retrieve detailed metadata and historical records for a job given its job_id.\n\nArgs:\n    job_id (str): The unique job identifier to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": JobInfo  # Complete job info, including metadata and execution history\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # E.g., \"Job not found\"\n    }\n\nConstraints:\n    - job_id must exist in the system.\n    - (Authorization is not enforced unless a user context is provided.)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_jobs",
+      "description": "Retrieve a list of all jobs managed by the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[JobInfo]  # List may be empty if no jobs are present\n    }\n\nConstraints:\n    - Returns all jobs regardless of creator or status, with full JobInfo.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_jobs_by_creator",
+      "description": "List all jobs created by a specific user, referenced by either creator_id or username.\n\nArgs:\n    creator_id (str, optional): The user's unique ID to filter jobs by. Default None.\n    username (str, optional): The user's username to filter jobs by. Default None.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"data\": List[JobInfo]}  # May be empty if none found.\n        On error:\n            {\"success\": False, \"error\": str}\n\nConstraints:\n    - At least one of creator_id or username must be provided.\n    - If username is given, must resolve to a valid user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "creator_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "anyOf": [
+          {
+            "required": [
+              "creator_id"
+            ]
+          },
+          {
+            "required": [
+              "username"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_job_status",
+      "description": "Retrieve the current status of a specific job, only if the user is authorized.\n\nArgs:\n    job_id (str): Unique identifier of the job.\n    user_id (str): Unique identifier of the user requesting the status.\n\nReturns:\n    dict:\n        Success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"job_id\": str,\n                    \"status\": str\n                }\n            }\n        Failure (job not found, user not found, or not authorized):\n            {\n                \"success\": False,\n                \"error\": str\n            }\n\nConstraints:\n    - Each job_id must be unique.\n    - Only authorized users (e.g., creator of the job or admins) may query the status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_job_execution_history",
+      "description": "Fetch the execution history (status and parameter change log) of a specified job.\n\nArgs:\n    job_id (str): The identifier of the job whose execution history is requested.\n    requester_id (str): User ID of requester, for access control.\n\nReturns:\n    dict: \n        {\"success\": True, \"data\": execution_history} on success,\n        or {\"success\": False, \"error\": error_message} on failure.\n\nConstraints:\n    - Only authorized users may access job information.\n    - job_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "requester_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "requester_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_username",
+      "description": "Retrieve user details (including _id and permissions) by username.\n\nArgs:\n    username (str): The username of the user to retrieve.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": UserInfo  # The full user information dict\n        }\n    or\n        {\n            \"success\": False,\n            \"error\": str  # Reason for failure, e.g., \"User not found\"\n        }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user details, including permissions, by internal user _id.\n\nArgs:\n    user_id (str): The unique internal user identifier (_id).\n\nReturns:\n    dict:\n        - {\"success\": True, \"data\": UserInfo} if user exists\n        - {\"success\": False, \"error\": \"User not found\"} if user does not exist\n\nConstraints:\n    - Each user_id must be unique in the system.\n    - No authorization check needed for this query.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "check_user_permission_for_job",
+      "description": "Determine whether a user is authorized to query or manipulate a given job.\n\nArgs:\n    user_id (str): The user's unique identifier (_id).\n    job_id (str): The job's unique identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": bool   # True if permitted, False if not.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of error, e.g., user or job does not exist\n    }\n\nConstraints:\n    - User must exist.\n    - Job must exist.\n    - Permissions: 'admin' can access any job. Others may only access jobs they created.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "job_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "job_id"
+        ]
+      }
+    },
+    {
+      "name": "create_job",
+      "description": "Add a new job to the system, ensuring job_id uniqueness, creator validity, controlled initial status, and initial execution history record.\n\nArgs:\n    job_id (str): Unique identifier for the job.\n    name (str): Descriptive job name.\n    creator_id (str): User ID of the job creator (must exist).\n    priority (int): Job priority.\n    scheduled_time (str): Scheduled execution time.\n    parameters (Dict[str, Any]): Job parameters/config.\n    created_at (str, optional): Job creation datetime (default: now as ISO string).\n    status (str, optional): Initial status (default: \"pending\" and must be valid).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": f\"Job {job_id} created successfully.\"\n    } or {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - job_id must be unique.\n    - Only existing users can create jobs.\n    - Status must be in allowed set: {\"pending\", \"running\", \"completed\", \"failed\", \"canceled\"}.\n    - Execution history must start with creation event.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "creator_id": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "integer"
+          },
+          "scheduled_time": {
+            "type": "string"
+          },
+          "parameters": {
+            "type": "object"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "name",
+          "creator_id",
+          "priority",
+          "scheduled_time",
+          "parameters"
+        ]
+      }
+    },
+    {
+      "name": "update_job_status",
+      "description": "Change a job's status (pending, running, completed, failed, canceled),\nlogging the change in execution history.\n\nArgs:\n    job_id (str): The job identifier.\n    new_status (str): The status to set (\"pending\", \"running\", \"completed\", \"failed\", \"canceled\").\n    user_id (str): The user requesting the change.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Job <job_id> status updated to <new_status>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure\"\n    }\n\nConstraints:\n    - Only authorized users may manipulate the job.\n    - Status must be one of the controlled set.\n    - Execution history is appended with status change info (timestamp, user, from/to).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "new_status",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "update_job_parameters",
+      "description": "Modify job parameters and record the change in job execution history.\n\nArgs:\n    job_id (str): ID of job to update.\n    new_parameters (dict): The new parameters to set for the job.\n    user_id (str): The user performing the operation.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Job parameters updated and change recorded in execution history.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Job must exist.\n    - User must exist and must be authorized (\"admin\" or job creator).\n    - Execution history is updated with the change.\n    - Parameters must be a dict.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "new_parameters": {
+            "type": "object"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "new_parameters",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "add_execution_history_entry",
+      "description": "Append a new event (status/parameter/user action) to a job’s execution history for auditing.\n\nArgs:\n    job_id (str): Identifier of the job to modify.\n    event (Dict[str, Any]): The event/audit record to append (should include relevant info such as timestamp, user, action, etc.).\n\nReturns:\n    dict:\n        - {\"success\": True, \"message\": \"Execution history entry added to job <job_id>.\"}\n        - {\"success\": False, \"error\": \"Job not found.\"}\n\nConstraints:\n    - The job must exist (job_id valid).\n    - Appends atomically to the job's execution_history.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "event": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "job_id",
+          "event"
+        ]
+      }
+    },
+    {
+      "name": "delete_job",
+      "description": "Remove a job from the system. Only an authorized user (admin) can perform this operation.\n\nArgs:\n    job_id (str): The ID of the job to delete.\n    requester_id (str): The ID of the user making the delete request.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Job <job_id> deleted.\" }\n        On failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Each job_id must exist.\n    - Only users with permission == 'admin' can delete jobs.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "requester_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "requester_id"
+        ]
+      }
+    },
+    {
+      "name": "reschedule_job",
+      "description": "Change the scheduled_time of a job and record the update in the execution history.\n\nArgs:\n    job_id (str): The ID of the job to be rescheduled.\n    new_scheduled_time (str): The new scheduled time (expected ISO 8601 string).\n    user_id (str): The ID of the user attempting the operation.\n\nReturns:\n    dict:\n        success: True and a message on success,\n        or\n        success: False and error describing the issue.\n\nConstraints:\n    - Only authorized users may reschedule a job.\n    - The job must exist.\n    - The user must exist.\n    - Execution history is appended with a rescheduling entry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "new_scheduled_time": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "new_scheduled_time",
+          "user_id"
+        ]
+      }
+    }
+  ]
+}

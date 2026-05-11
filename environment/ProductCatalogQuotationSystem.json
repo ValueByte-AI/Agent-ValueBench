@@ -1,0 +1,424 @@
+{
+  "env_name": "ProductCatalogQuotationSystem",
+  "description": "A product catalog and quotation management system maintains records of available products, including descriptions, availability, and pricing information. It supports operations such as listing products, searching/filtering the catalog, and generating quotations tailored to specific items or customer requests. These systems are commonly used by sales teams, distributors, and manufacturers to streamline product offer management and support customer inquiries.",
+  "initial_parameter_schema": {
+    "products": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "availability_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "name",
+          "description",
+          "category",
+          "price",
+          "availability_status"
+        ]
+      }
+    },
+    "customers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "name",
+          "contact_info"
+        ]
+      }
+    },
+    "quotations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "quote_id": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "product_list": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "quoted_prices": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "validity_period": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "quote_id",
+          "customer_id",
+          "product_list",
+          "quoted_prices",
+          "validity_period",
+          "status",
+          "created_at"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "list_available_products": [
+      "products"
+    ],
+    "search_products_by_name": [
+      "products"
+    ],
+    "get_product_by_id": [
+      "products"
+    ],
+    "filter_products_by_category": [
+      "products"
+    ],
+    "get_product_price": [
+      "products"
+    ],
+    "get_customer_by_name": [
+      "customers"
+    ],
+    "get_customer_by_id": [
+      "customers"
+    ],
+    "list_customer_quotations": [
+      "customers",
+      "quotations"
+    ],
+    "get_quotation_by_id": [
+      "quotations"
+    ],
+    "create_quotation": [
+      "customers",
+      "products",
+      "quotations"
+    ],
+    "update_quotation_status": [
+      "quotations"
+    ],
+    "revise_quotation": [
+      "products",
+      "quotations"
+    ],
+    "delete_quotation": [
+      "quotations"
+    ],
+    "update_product_availability": [
+      "products"
+    ],
+    "update_product_price": [
+      "products"
+    ]
+  },
+  "tools": [
+    {
+      "name": "list_available_products",
+      "description": "Return all products in the catalog where availability_status is \"available\".\n\nArgs:\n    None\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[ProductInfo]  # list may be empty if no products available\n        }\nConstraints:\n    Only products with availability_status == \"available\" will be included in the output.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "search_products_by_name",
+      "description": "Retrieve a list of products whose name matches the provided search term,\nusing case-insensitive substring matching.\n\nArgs:\n    search_term (str): The search term to look for in the product names.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ProductInfo]\n    }\n    - The list may be empty if no products match.\n\nNotes:\n    - Matching is case-insensitive and based on substring search.\n    - No filtering by availability or other fields.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "search_term": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "search_term"
+        ]
+      }
+    },
+    {
+      "name": "get_product_by_id",
+      "description": "Retrieve detailed information for a specific product by its product_id.\n\nArgs:\n    product_id (str): The unique identifier of the product.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ProductInfo  # Detailed information about the product\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., product not found\n    }\n\nConstraints:\n    - Product must exist in the product catalog.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "filter_products_by_category",
+      "description": "Return all products belonging to the specified category.\n\nArgs:\n    category (str): The product category to filter by (exact match).\n\nReturns:\n    dict:\n        - \"success\": True if operation succeeds.\n        - \"data\": List[ProductInfo] for matching products (empty if none found).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category"
+        ]
+      }
+    },
+    {
+      "name": "get_product_price",
+      "description": "Return the current price for a product given its product_id.\n\nArgs:\n    product_id (str): The unique identifier for the product.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": float  # Current price of the product\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of why the lookup failed\n    }\n\nConstraints:\n    - The product_id must exist in the product catalog; otherwise, the lookup fails.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "get_customer_by_name",
+      "description": "Retrieve customer details (may be multiple) by customer name (case-insensitive).\n\nArgs:\n    name (str): The name of the customer to search for.\n\nReturns:\n    dict:\n      - On success:\n          {\n              \"success\": True,\n              \"data\": List[CustomerInfo]  # one or more matched customers\n          }\n      - On failure (no matching customer):\n          {\n              \"success\": False,\n              \"error\": \"No customer found with the given name\"\n          }\n\nConstraints:\n    - Name matching is case-insensitive.\n    - All customers with the given name are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_customer_by_id",
+      "description": "Retrieve customer details by their customer_id.\n\nArgs:\n    customer_id (str): The unique identifier of the customer.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"data\": CustomerInfo }\n        On failure: { \"success\": False, \"error\": \"Customer not found\" }\n\nConstraints:\n    - The customer_id must exist in the self.customers dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "list_customer_quotations",
+      "description": "Return all quotations associated with a particular customer_id.\n\nArgs:\n    customer_id (str): The unique ID of the customer to look up quotations for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[QuotationInfo],  # list may be empty if no quotations\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # explanation if customer_id is invalid\n    }\n\nConstraints:\n    - The customer_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "get_quotation_by_id",
+      "description": "Retrieve full details of a specific quotation by quote_id.\n\nArgs:\n    quote_id (str): The unique identifier for the quotation.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": QuotationInfo\n            }\n        On failure (quotation not found):\n            {\n                \"success\": False,\n                \"error\": \"Quotation does not exist\"\n            }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "quote_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "quote_id"
+        ]
+      }
+    },
+    {
+      "name": "create_quotation",
+      "description": "Generate a new quotation for specified available products and a customer, assigning prices and validity.\n\nArgs:\n    customer_id (str): The customer/request for whom the quotation is generated.\n    product_list (List[str]): List of product_ids to include in the quotation.\n    quoted_prices (Dict[str, float]): Mapping of product_id to quoted price.\n    validity_period (str): Quotation's validity period.\n    status (str): Status string for the quotation (e.g., 'draft', 'sent').\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Quotation <quote_id> created\" }\n        On error: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Each product in product_list must exist and be available.\n    - quoted_prices must be provided for all products in product_list.\n    - customer_id must exist.\n    - Each quotation can only be generated upon explicit customer/request.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          },
+          "product_list": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "quoted_prices": {
+            "type": "object"
+          },
+          "validity_period": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "product_list",
+          "quoted_prices",
+          "validity_period",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "update_quotation_status",
+      "description": "Change the status field of a quotation (e.g., mark as sent, accepted, expired, etc.).\n\nArgs:\n    quote_id (str): The identifier for the quotation whose status is to be updated.\n    new_status (str): The new status value to set.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Quotation status updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The specified quotation must exist in the system.\n    - The status field is updated as per input.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "quote_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "quote_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "revise_quotation",
+      "description": "Edit an existing quotation (edit product list, quoted prices, validity period, or status).\n\nArgs:\n    quote_id (str): The quotation to edit.\n    new_product_list (list[str], optional): New list of product IDs.\n    new_quoted_prices (dict[str, float], optional): New mapping from product_id to quoted price.\n    new_validity_period (str, optional): New validity period string.\n    new_status (str, optional): New status string for the quotation.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Quotation revised successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The quotation must exist.\n    - Only available products can be included in the quotation.\n    - Quoted prices, if supplied, must correspond to product list.\n    - Quotation must reference valid, existing products.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "quote_id": {
+            "type": "string"
+          },
+          "new_product_list": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "new_quoted_prices": {
+            "type": "object"
+          },
+          "new_validity_period": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "quote_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_quotation",
+      "description": "Remove a quotation completely from the system.\n\nArgs:\n    quote_id (str): The unique identifier of the quotation to be deleted.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Quotation <id> deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Quotation not found\"\n    }\n\nConstraints:\n    - quote_id must exist in the quotations database.\n    - No restrictions on the status or referencing entities.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "quote_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "quote_id"
+        ]
+      }
+    },
+    {
+      "name": "update_product_availability",
+      "description": "Change the availability_status of a product to make it available or unavailable for quoting/sale.\n\nArgs:\n    product_id (str): The unique identifier of the product to update.\n    new_status (str): The new availability status (\"available\" or \"unavailable\").\n\nReturns:\n    dict: Success message or error info:\n        { \"success\": True, \"message\": \"<updated>\" }\n        or\n        { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - product_id must exist in the catalog.\n    - new_status should be \"available\" or \"unavailable\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "update_product_price",
+      "description": "Update the price associated with a given product.\n\nArgs:\n    product_id (str): The ID of the product to update.\n    new_price (float): The new price to set for the product. Must be non-negative.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Product price updated successfully.\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Product must exist in the catalog.\n    - Price must be a non-negative float.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "new_price": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "product_id",
+          "new_price"
+        ]
+      }
+    }
+  ]
+}

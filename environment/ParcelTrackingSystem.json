@@ -1,0 +1,504 @@
+{
+  "env_name": "ParcelTrackingSystem",
+  "description": "A parcel tracking system is an information system used by logistics providers to monitor and manage the movement of packages. It stores stateful data about each shipment, including tracking numbers, sender/recipient details, current status, location, and delivery estimates. Users and staff access the system to query shipment states, update statuses, and generate reports throughout the parcel’s lifecycle.",
+  "initial_parameter_schema": {
+    "parcels": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "tracking_number": {
+            "type": "string"
+          },
+          "sender_id": {
+            "type": "string"
+          },
+          "recipient_id": {
+            "type": "string"
+          },
+          "current_status": {
+            "type": "string"
+          },
+          "current_location": {
+            "type": "string"
+          },
+          "delivery_estimate": {
+            "type": "string"
+          },
+          "shipment_date": {
+            "type": "string"
+          },
+          "delivery_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tracking_number",
+          "sender_id",
+          "recipient_id",
+          "current_status",
+          "current_location",
+          "delivery_estimate",
+          "shipment_date",
+          "delivery_date"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "address",
+          "contact_info"
+        ]
+      }
+    },
+    "parcel_status_history": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "tracking_number": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "tracking_number",
+            "timestamp",
+            "status",
+            "location"
+          ]
+        }
+      }
+    },
+    "authorized_staff": {
+      "type": "string"
+    }
+  },
+  "tool_state_dependencies": {
+    "get_parcel_by_tracking_number": [
+      "parcels"
+    ],
+    "get_parcel_delivery_estimate": [
+      "parcels"
+    ],
+    "get_parcel_actual_delivery_date": [
+      "parcels"
+    ],
+    "get_parcel_current_status": [
+      "parcels"
+    ],
+    "get_parcel_status_history": [
+      "parcel_status_history",
+      "parcels"
+    ],
+    "list_parcels_by_user": [
+      "parcels",
+      "users"
+    ],
+    "get_user_info": [
+      "users"
+    ],
+    "find_parcels_by_status": [
+      "parcels"
+    ],
+    "update_parcel_status": [
+      "authorized_staff",
+      "parcel_status_history",
+      "parcels"
+    ],
+    "update_parcel_location": [
+      "parcel_status_history",
+      "parcels"
+    ],
+    "set_parcel_delivery_estimate": [
+      "parcels"
+    ],
+    "record_parcel_delivery": [
+      "parcel_status_history",
+      "parcels"
+    ],
+    "add_new_parcel": [
+      "parcel_status_history",
+      "parcels",
+      "users"
+    ],
+    "add_new_user": [
+      "users"
+    ],
+    "append_parcel_status_history": [
+      "parcel_status_history",
+      "parcels"
+    ],
+    "delete_parcel": [
+      "parcel_status_history",
+      "parcels"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_parcel_by_tracking_number",
+      "description": "Retrieve all current information about a parcel using its tracking number.\n\nArgs:\n    tracking_number (str): Unique parcel identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ParcelInfo,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason why the query failed (e.g., parcel not found)\n    }\n\nConstraints:\n    - Each tracking number is unique system-wide.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tracking_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tracking_number"
+        ]
+      }
+    },
+    {
+      "name": "get_parcel_delivery_estimate",
+      "description": "Query the estimated delivery date for a specific parcel.\n\nArgs:\n    tracking_number (str): The unique identifier for the parcel.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": str  # The estimated delivery date string, may be empty if not set\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Parcel tracking number not found\"\n            }\n\nConstraints:\n    - Parcel with the provided tracking number must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tracking_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tracking_number"
+        ]
+      }
+    },
+    {
+      "name": "get_parcel_actual_delivery_date",
+      "description": "Query the actual delivery date for a parcel, if already delivered.\n\nArgs:\n    tracking_number (str): The tracking number of the parcel.\n\nReturns:\n    dict: \n        - {\"success\": True, \"data\": <delivery_date (str)>} if delivered.\n        - {\"success\": True, \"data\": None} if not yet delivered.\n        - {\"success\": False, \"error\": <error_message>} if parcel does not exist.\n\nConstraints:\n    - tracking_number must exist.\n    - delivery_date must reflect delivery occurrence or be empty/None if not yet delivered.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tracking_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tracking_number"
+        ]
+      }
+    },
+    {
+      "name": "get_parcel_current_status",
+      "description": "Retrieve the current status and location of a parcel.\n\nArgs:\n    tracking_number (str): The unique tracking number of the parcel.\n\nReturns:\n    dict:\n        success: True and data: {\"current_status\": str, \"current_location\": str} if found,\n        success: False and error message if not found.\n\nConstraints:\n    - The tracking number must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tracking_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tracking_number"
+        ]
+      }
+    },
+    {
+      "name": "get_parcel_status_history",
+      "description": "Fetch the full chronological status/location update history for a given parcel.\n\nArgs:\n    tracking_number (str): The unique tracking number for the parcel.\n\nReturns:\n    dict: \n        - On success:\n            {\n                \"success\": True,\n                \"data\": List[ParcelStatusHistoryInfo]  # Chronological history, possibly empty\n            }\n        - If the parcel is not found:\n            {\n                \"success\": False,\n                \"error\": \"Parcel not found\"\n            }\n\nConstraints:\n    - tracking_number must exist in the system (parcel must exist).\n    - Returned list is expected to be in chronological order.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tracking_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tracking_number"
+        ]
+      }
+    },
+    {
+      "name": "list_parcels_by_user",
+      "description": "Retrieve all parcels for which the specified user is either the sender or recipient.\n\nArgs:\n    user_id (str): User identifier (must exist in the system).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ParcelInfo]  # Zero or more parcels associated with the user\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # \"User does not exist\"\n    }\n\nConstraints:\n    - user_id must exist in self.users.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_info",
+      "description": "Retrieve user info (name, address, contact, etc.) for a given user_id.\n\nArgs:\n    user_id (str): Unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"User not found\"\n    }\n\nConstraints:\n    - user_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "find_parcels_by_status",
+      "description": "Query all parcels whose current status matches the specified status.\n\nArgs:\n    status (str): The target parcel status (e.g., \"in transit\", \"delivered\") to filter by.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ParcelInfo]  # List of parcels currently at the given status,\n                                  # empty if no match.\n    }\n\nConstraints:\n    - Query operation, no side effects.\n    - Status match is case-sensitive (exact match).\n\nEdge Cases:\n    - If no parcels match, returns \"success\": True and an empty list in \"data\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "update_parcel_status",
+      "description": "Updates the status of a parcel, only if called by authorized staff and the provided\ntimestamp is not earlier than the last known status update.\n\nArgs:\n    tracking_number (str): Unique identifier for the parcel.\n    new_status (str): The status to assign to the parcel.\n    timestamp (str): Timestamp of the new status update (ISO8601 or similar, lexicographically comparable).\n    staff_id (str): ID of the staff attempting this update.\n\nReturns:\n    dict: On success: { \"success\": True, \"message\": \"Parcel status updated\" }\n          On error: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Only authorized personnel may update statuses.\n    - Status updates must be timestamped in monotonic (chronological) order.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tracking_number": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "staff_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tracking_number",
+          "new_status",
+          "timestamp",
+          "staff_id"
+        ]
+      }
+    },
+    {
+      "name": "update_parcel_location",
+      "description": "Update the current location of a parcel and append this event to its status history.\nOnly authorized staff may perform this operation.\n\nArgs:\n    tracking_number (str): The unique parcel identifier.\n    new_location (str): The location string to set as current.\n    staff_user_id (str): The user attempting the update (must be staff).\n    timestamp (str): The ISO8601-formatted time of this update.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Parcel location updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Only staff may modify parcel location.\n    - Must append update (timestamp, status, location) to parcel's status history.\n    - Tracking number must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tracking_number": {
+            "type": "string"
+          },
+          "new_location": {
+            "type": "string"
+          },
+          "staff_user_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tracking_number",
+          "new_location",
+          "staff_user_id",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "set_parcel_delivery_estimate",
+      "description": "Modify the projected delivery date for a parcel.\nOnly permitted for staff/authorized personnel.\n\nArgs:\n    tracking_number (str): The parcel tracking number whose estimate is to be updated.\n    delivery_estimate (str): The new delivery estimate (date string, format not enforced here).\n    is_staff (bool): True if calling user has staff privilege (authorization).\n\nReturns:\n    dict: {\"success\": True, \"message\": \"...\"} on success,\n          {\"success\": False, \"error\": \"...\"} on error.\n\nConstraints:\n    - Only staff can modify.\n    - Parcel must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tracking_number": {
+            "type": "string"
+          },
+          "delivery_estimate": {
+            "type": "string"
+          },
+          "is_staff": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "tracking_number",
+          "delivery_estimate",
+          "is_staff"
+        ]
+      }
+    },
+    {
+      "name": "record_parcel_delivery",
+      "description": "Mark a parcel as delivered: \n  - set 'Delivered' status,\n  - set the actual delivery date,\n  - append a corresponding record in the parcel's status history.\n(Staff-only operation.)\n\nArgs:\n    tracking_number (str): The parcel's unique tracking number.\n    delivery_date (str): Actual delivery date-time (string, e.g., ISO8601).\n    staff_id (str): Acting user ID (must be authorized staff).\n\nReturns:\n    dict: \n        { \"success\": True, \"message\": \"Parcel marked as delivered.\" }\n        or\n        { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - The tracking number must exist.\n    - Only staff can perform this operation.\n    - Delivery date and status must be updated and recorded only if not already marked delivered.\n    - Status history must be updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tracking_number": {
+            "type": "string"
+          },
+          "delivery_date": {
+            "type": "string"
+          },
+          "staff_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tracking_number",
+          "delivery_date",
+          "staff_id"
+        ]
+      }
+    },
+    {
+      "name": "add_new_parcel",
+      "description": "Add a new parcel to the system.\n\nArgs:\n    tracking_number (str): Unique parcel tracking number.\n    sender_id (str): User ID of the sender. Must exist.\n    recipient_id (str): User ID of the recipient. Must exist.\n    current_status (str): Initial status for the parcel.\n    current_location (str): Initial location for the parcel.\n    delivery_estimate (str): Estimated delivery date (string).\n    shipment_date (str): Shipment date (string).\n    delivery_date (str): Initial delivery date (string, may be empty if not delivered).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Parcel {tracking_number} added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Each tracking number must be unique.\n    - Sender and recipient must exist as valid user IDs.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tracking_number": {
+            "type": "string"
+          },
+          "sender_id": {
+            "type": "string"
+          },
+          "recipient_id": {
+            "type": "string"
+          },
+          "current_status": {
+            "type": "string"
+          },
+          "current_location": {
+            "type": "string"
+          },
+          "delivery_estimate": {
+            "type": "string"
+          },
+          "shipment_date": {
+            "type": "string"
+          },
+          "delivery_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tracking_number",
+          "sender_id",
+          "recipient_id",
+          "current_status",
+          "current_location",
+          "delivery_estimate",
+          "shipment_date",
+          "delivery_date"
+        ]
+      }
+    },
+    {
+      "name": "add_new_user",
+      "description": "Register a new user in the tracking system.\n\nArgs:\n    user_id (str): Unique identifier for the user.\n    name (str): Name of the user.\n    address (str): Address of the user.\n    contact_info (str): Contact information for the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User <user_id> added successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"User ID already exists\"\n    }\n\nConstraints:\n    - user_id must be unique system-wide.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "address",
+          "contact_info"
+        ]
+      }
+    },
+    {
+      "name": "append_parcel_status_history",
+      "description": "Add a new status/location/timestamp entry to a parcel's history,\nensuring it is strictly chronological.\n\nArgs:\n    tracking_number (str): The parcel to update.\n    timestamp (str): The timestamp of this update (should be ISO 8601 string).\n    status (str): The new status for the parcel.\n    location (str): The new location for the parcel.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Status history appended.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <error message>\n    }\n\nConstraints:\n    - Parcel must exist.\n    - Status updates must be in strict chronological order by timestamp.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tracking_number": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tracking_number",
+          "timestamp",
+          "status",
+          "location"
+        ]
+      }
+    },
+    {
+      "name": "delete_parcel",
+      "description": "Remove a parcel record entirely from the system (admin/staff only; rarely used, with integrity checks).\n\nArgs:\n    tracking_number (str): The unique identifier for the parcel.\n    requester_role (str): The role of the requester (must be 'admin' or 'staff').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Parcel <tracking_number> deleted successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error\n    }\n\nConstraints:\n    - Only admin or staff are allowed to delete parcel records.\n    - The tracking number must exist in the system.\n    - Both the parcel record and its status history should be removed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tracking_number": {
+            "type": "string"
+          },
+          "requester_role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tracking_number",
+          "requester_role"
+        ]
+      }
+    }
+  ]
+}

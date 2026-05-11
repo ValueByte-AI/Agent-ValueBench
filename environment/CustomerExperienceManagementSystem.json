@@ -1,0 +1,700 @@
+{
+  "env_name": "CustomerExperienceManagementSystem",
+  "description": "A Customer Experience Management (CEM) system is designed to continuously capture, store, and analyze feedback and satisfaction metrics (such as NPS) from clients and customers. It maintains records of client identities, survey results, and other contextual data, allowing for historical trend analysis and monitoring of customer sentiment over time. Such a system typically supports querying, aggregating, and reporting on metric data segmented by client, time period, or other relevant criteria.",
+  "initial_parameter_schema": {
+    "clients": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "client_name": {
+            "type": "string"
+          },
+          "client_type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id",
+          "client_name",
+          "client_type",
+          "status"
+        ]
+      }
+    },
+    "surveys": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "survey_id": {
+            "type": "string"
+          },
+          "target_metric": {
+            "type": "string"
+          },
+          "creation_date": {
+            "type": "string"
+          },
+          "question": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "survey_id",
+          "target_metric",
+          "creation_date",
+          "question"
+        ]
+      }
+    },
+    "survey_responses": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "response_id": {
+            "type": "string"
+          },
+          "client_id": {
+            "type": "string"
+          },
+          "respondent_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "survey_id": {
+            "type": "string"
+          },
+          "channel": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "response_id",
+          "client_id",
+          "respondent_id",
+          "timestamp",
+          "survey_id",
+          "channel"
+        ]
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "metric_id": {
+            "type": "string"
+          },
+          "response_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "metric_id",
+          "response_id",
+          "type",
+          "value"
+        ]
+      }
+    },
+    "list_supported_metric_types": {
+      "type": "string"
+    }
+  },
+  "tool_state_dependencies": {
+    "get_client_by_id": [
+      "clients"
+    ],
+    "get_client_by_name": [
+      "clients"
+    ],
+    "list_all_clients": [
+      "clients"
+    ],
+    "list_surveys_by_client": [
+      "clients",
+      "survey_responses",
+      "surveys"
+    ],
+    "get_survey_by_id": [
+      "surveys"
+    ],
+    "list_survey_responses_by_client": [
+      "clients",
+      "survey_responses"
+    ],
+    "filter_survey_responses_by_client_and_time": [
+      "clients",
+      "survey_responses"
+    ],
+    "get_survey_response_by_id": [
+      "survey_responses"
+    ],
+    "get_metrics_by_response_id": [
+      "metrics",
+      "survey_responses"
+    ],
+    "get_metrics_by_type_and_client_and_time": [
+      "clients",
+      "metrics",
+      "survey_responses"
+    ],
+    "list_supported_metric_types": [
+      "metrics"
+    ],
+    "summarize_metrics_by_type_and_client_and_time": [
+      "clients",
+      "metrics",
+      "survey_responses"
+    ],
+    "check_client_permissions": [
+      "clients"
+    ],
+    "add_client": [
+      "clients"
+    ],
+    "update_client_info": [
+      "clients"
+    ],
+    "delete_client": [
+      "clients",
+      "survey_responses"
+    ],
+    "add_survey": [
+      "list_supported_metric_types",
+      "surveys"
+    ],
+    "update_survey": [
+      "list_supported_metric_types",
+      "surveys"
+    ],
+    "delete_survey": [
+      "survey_responses",
+      "surveys"
+    ],
+    "add_survey_response": [
+      "clients",
+      "survey_responses",
+      "surveys"
+    ],
+    "update_survey_response": [
+      "clients",
+      "survey_responses",
+      "surveys"
+    ],
+    "delete_survey_response": [
+      "metrics",
+      "survey_responses"
+    ],
+    "add_metric": [
+      "metrics",
+      "survey_responses",
+      "surveys"
+    ],
+    "update_metric": [
+      "metrics",
+      "surveys"
+    ],
+    "delete_metric": [
+      "metrics"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_client_by_id",
+      "description": "Retrieve client information based on client_id.\n\nArgs:\n    client_id (str): The unique identifier of the client.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": ClientInfo }\n        - On failure: { \"success\": False, \"error\": \"Client not found\" }\n\nConstraints:\n    - client_id must exist in the client registry (self.clients).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id"
+        ]
+      }
+    },
+    {
+      "name": "get_client_by_name",
+      "description": "Retrieve client information by client_name.\n\nArgs:\n    client_name (str): The name of the client to search for.\n\nReturns:\n    dict:\n        Success: { \"success\": True, \"data\": ClientInfo }\n        Failure: { \"success\": False, \"error\": str }\nConstraints:\n    - Returns the first client whose 'client_name' matches the argument exactly.\n    - Returns an error if no such client exists.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_name"
+        ]
+      }
+    },
+    {
+      "name": "list_all_clients",
+      "description": "List all clients registered in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ClientInfo],  # List of all clients, possibly empty\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_surveys_by_client",
+      "description": "Get all survey definitions (SurveyInfo) associated with the specified client.\n\nArgs:\n    client_id (str): The client ID to find associated surveys for.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[SurveyInfo]  # List may be empty if client has no surveys.\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Reason for failure, e.g. client does not exist.\n        }\n\nConstraints:\n    - client_id must exist in the system.\n    - Returns unique surveys for which there is at least one SurveyResponse linked to this client.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id"
+        ]
+      }
+    },
+    {
+      "name": "get_survey_by_id",
+      "description": "Fetch details of a specific survey given its unique survey_id.\n\nArgs:\n    survey_id (str): The unique identifier of the survey.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": SurveyInfo,   # Survey details if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str         # \"Survey not found\" if not present\n    }\n\nConstraints:\n    - The survey with the given survey_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "survey_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "survey_id"
+        ]
+      }
+    },
+    {
+      "name": "list_survey_responses_by_client",
+      "description": "Retrieve all survey responses for the specified client.\n\nArgs:\n    client_id (str): The ID of the client whose survey responses are to be retrieved.\n\nReturns:\n    dict:\n        - On success: {\n            \"success\": True,\n            \"data\": List[SurveyResponseInfo]  # Empty if none.\n          }\n        - On failure: {\n            \"success\": False,\n            \"error\": \"Client not found\"\n          }\nConstraints:\n    - client_id must exist in the clients database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id"
+        ]
+      }
+    },
+    {
+      "name": "filter_survey_responses_by_client_and_time",
+      "description": "Retrieve all survey responses for a client within a specific date/time range.\n\nArgs:\n    client_id (str): The unique identifier of the client.\n    start_time (str): ISO 8601 datetime string for start (inclusive).\n    end_time (str): ISO 8601 datetime string for end (inclusive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SurveyResponseInfo]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - client_id must exist.\n    - start_time and end_time must be valid ISO 8601 strings.\n    - start_time <= end_time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id",
+          "start_time",
+          "end_time"
+        ]
+      }
+    },
+    {
+      "name": "get_survey_response_by_id",
+      "description": "Retrieve details of a survey response given its unique response_id.\n\nArgs:\n    response_id (str): The ID of the survey response to retrieve.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": SurveyResponseInfo  # All fields for the response\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Survey response with response_id <id> does not exist.\"\n            }\n\nConstraints:\n    - response_id must exist in the system.\n    - No permission checks are required in this operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "response_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "response_id"
+        ]
+      }
+    },
+    {
+      "name": "get_metrics_by_response_id",
+      "description": "Retrieve all metric records (MetricInfo) linked to a particular survey response.\n\nArgs:\n    response_id (str): The ID of the survey response to fetch metrics for.\n\nReturns:\n    dict: \n      If found: {\n          \"success\": True,\n          \"data\": List[MetricInfo]  # May be empty list if no metrics for this response\n      }\n      If the survey response ID is not found: {\n          \"success\": False,\n          \"error\": \"Survey response not found\"\n      }\n\nConstraints:\n    - The survey response must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "response_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "response_id"
+        ]
+      }
+    },
+    {
+      "name": "get_metrics_by_type_and_client_and_time",
+      "description": "Retrieve all metrics of a given type for a specific client within a time range.\n\nArgs:\n    metric_type (str): The metric type to filter (e.g., 'NPS').\n    client_id (str): The client ID whose metrics to search.\n    start_time (str): ISO8601 datetime string, inclusive.\n    end_time (str): ISO8601 datetime string, inclusive.\n\nReturns:\n    dict: {\n      \"success\": True,\n      \"data\": List[MetricInfo] (may be empty)\n    }\n    or\n    {\n      \"success\": False,\n      \"error\": str\n    }\n\nConstraints:\n    - The client must exist.\n    - The metric_type must be a supported metric.\n    - Filters by client_id via associated SurveyResponse.\n    - Timestamps are filtered as ISO8601 string comparisons.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "metric_type": {
+            "type": "string"
+          },
+          "client_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "metric_type",
+          "client_id",
+          "start_time",
+          "end_time"
+        ]
+      }
+    },
+    {
+      "name": "list_supported_metric_types",
+      "description": "Returns the list of all currently supported metric types (e.g., NPS, CSAT) found in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str]  # Unique metric type strings, possibly empty if no metrics exist.\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "summarize_metrics_by_type_and_client_and_time",
+      "description": "Aggregate and summarize (average, count) a feedback metric (e.g., NPS) for a specific client\nwithin a given time range. Only considers metrics linked to the client's survey responses and\nmatching the specified metric type. Time comparisons are based on ISO8601 strings.\n\nArgs:\n    client_id (str): The client to summarize metrics for.\n    metric_type (str): e.g., \"NPS\", \"CSAT\" (case-sensitive, must appear in data).\n    start_time (str): Start UTC time (inclusive), ISO8601 string.\n    end_time (str): End UTC time (inclusive), ISO8601 string.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"client_id\": str,\n            \"metric_type\": str,\n            \"count\": int,\n            \"average\": float or None,\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\nConstraints:\n    - client_id must exist.\n    - metric_type must be a known metric (appear in at least one metric record).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "metric_type": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id",
+          "metric_type",
+          "start_time",
+          "end_time"
+        ]
+      }
+    },
+    {
+      "name": "check_client_permissions",
+      "description": "Check the permissions and data access rights for a given client.\nCurrently, only status is checked, as there is no explicit permissions apparatus modeled.\n\nArgs:\n    client_id (str): The ID of the client to check.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True, \n            \"data\": {\n                \"client_id\": str,\n                \"client_name\": str,\n                \"client_type\": str,\n                \"status\": str,\n                \"permissions_info\": str  # Human-readable description\n            }\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": \"Client not found\"\n        }\nConstraints:\n    - Client must exist.\n    - Permissions modeled only as \"status\" in this implementation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id"
+        ]
+      }
+    },
+    {
+      "name": "add_client",
+      "description": "Create a new client record in the system.\n\nArgs:\n    client_id (str): Unique identifier for the client.\n    client_name (str): Name of the client.\n    client_type (str): Type/category of the client.\n    status (str): Status value ('active', 'inactive', etc.).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Client <client_id> added.\"\n    }\n    or\n    dict: {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - client_id must be unique (must not already exist in the system).\n    - All fields must be provided and non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "client_name": {
+            "type": "string"
+          },
+          "client_type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id",
+          "client_name",
+          "client_type",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "update_client_info",
+      "description": "Modify the details of an existing client (client_name, client_type, status).\n\nArgs:\n    client_id (str): Unique identifier for the client to update.\n    client_name (str, optional): New client name (if updating).\n    client_type (str, optional): New client type (if updating).\n    status (str, optional): New status (if updating).\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Client info updated successfully\" }\n        On failure: { \"success\": False, \"error\": <error_message> }\n\nConstraints:\n    - client_id must exist in the system.\n    - At least one of client_name, client_type, or status must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "client_name": {
+            "type": "string"
+          },
+          "client_type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_client",
+      "description": "Remove a client record by client_id.\n\nArgs:\n    client_id (str): The unique identifier of the client to be deleted.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str   # Success message\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str     # Reason for failure\n    }\n\nConstraints:\n    - Cannot delete a client if there are associated survey responses (referential integrity).\n    - Client must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id"
+        ]
+      }
+    },
+    {
+      "name": "add_survey",
+      "description": "Create a new survey definition.\n\nArgs:\n    survey_id (str): Unique identifier for the survey.\n    target_metric (str): The feedback metric this survey targets (e.g., 'NPS').\n    creation_date (str): ISO-format date string of survey creation.\n    question (str): The survey's question.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Survey <survey_id> created.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <error message>\n    }\n\nConstraints:\n    - survey_id must be unique (not already present in self.surveys)\n    - target_metric must be in the supported metric types list\n    - All fields are required and must not be empty",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "survey_id": {
+            "type": "string"
+          },
+          "target_metric": {
+            "type": "string"
+          },
+          "creation_date": {
+            "type": "string"
+          },
+          "question": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "survey_id",
+          "target_metric",
+          "creation_date",
+          "question"
+        ]
+      }
+    },
+    {
+      "name": "update_survey",
+      "description": "Modify an existing survey definition. Only provided fields are updated.\n\nArgs:\n    survey_id (str): Unique identifier of the survey to update.\n    target_metric (str, optional): New target metric (must be supported).\n    creation_date (str, optional): New creation date.\n    question (str, optional): New survey question.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Survey updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - survey_id must exist in the system.\n    - If updating target_metric, its type must be among supported metric types.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "survey_id": {
+            "type": "string"
+          },
+          "target_metric": {
+            "type": "string"
+          },
+          "creation_date": {
+            "type": "string"
+          },
+          "question": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "survey_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_survey",
+      "description": "Remove a survey from the system.\n\nArgs:\n    survey_id (str): The ID of the survey to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Survey <survey_id> deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Survey must exist.\n    - Survey cannot be deleted if it is referenced by any SurveyResponse (referential integrity).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "survey_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "survey_id"
+        ]
+      }
+    },
+    {
+      "name": "add_survey_response",
+      "description": "Add a new survey response, ensuring it links to a valid client and survey.\n\nArgs:\n    response_id (str): Unique survey response identifier.\n    client_id (str): The client to whom the response belongs; must exist.\n    respondent_id (str): Identifier of the responding customer.\n    timestamp (str): ISO8601 string when the survey was answered.\n    survey_id (str): The survey being answered; must exist.\n    channel (str): The channel/context of the response (email, web, phone, etc).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Survey response added successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - response_id must be unique.\n    - client_id must exist in self.clients.\n    - survey_id must exist in self.surveys.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "response_id": {
+            "type": "string"
+          },
+          "client_id": {
+            "type": "string"
+          },
+          "respondent_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "survey_id": {
+            "type": "string"
+          },
+          "channel": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "response_id",
+          "client_id",
+          "respondent_id",
+          "timestamp",
+          "survey_id",
+          "channel"
+        ]
+      }
+    },
+    {
+      "name": "update_survey_response",
+      "description": "Modify details of an existing survey response.\n\nArgs:\n    response_id (str): The ID of the survey response to update.\n    updates (dict): Dict of fields and their new values. Allowed fields:\n        - client_id: str (must exist in clients)\n        - respondent_id: str\n        - timestamp: str\n        - survey_id: str (must exist in surveys)\n        - channel: str\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Survey response updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - response_id must exist.\n    - If client_id is being changed, it must be a valid client.\n    - If survey_id is being changed, it must be a valid survey.\n    - Only the allowed fields can be updated.\n    - Cannot update response_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "response_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "response_id",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "delete_survey_response",
+      "description": "Remove a survey response record and all associated metrics.\n\nArgs:\n    response_id (str): The ID of the survey response to delete.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"message\": \"Survey response deleted successfully.\"}\n        - On failure: {\"success\": False, \"error\": \"Survey response not found.\"}\n\nConstraints:\n    - Only delete if the survey response exists.\n    - Remove all metrics linked to this survey response to maintain database integrity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "response_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "response_id"
+        ]
+      }
+    },
+    {
+      "name": "add_metric",
+      "description": "Add a new metric record to the system, linked to a valid survey response and known/supported metric type.\n\nArgs:\n    metric_id (str): Unique identifier for the metric (must be unused).\n    response_id (str): The survey response to which this metric belongs (must exist).\n    type (str): Type of the metric (e.g., 'NPS', 'CSAT'); must be supported.\n    value (float): Value of the metric.\n\nReturns:\n    dict:\n      - On success: { \"success\": True, \"message\": \"Metric added successfully.\" }\n      - On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Each metric_id must be unique.\n    - response_id must exist.\n    - type must be in the supported metric types.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "metric_id": {
+            "type": "string"
+          },
+          "response_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "metric_id",
+          "response_id",
+          "type",
+          "value"
+        ]
+      }
+    },
+    {
+      "name": "update_metric",
+      "description": "Modify a metric's value or type.\n\nArgs:\n    metric_id (str): The ID of the metric to update.\n    type (str, optional): The new metric type (e.g., \"NPS\", \"CSAT\"). \n        If None, type is not changed.\n    value (float, optional): The new metric value. \n        If None, value is not changed.\n\nReturns:\n    dict: \n      - On success: { \"success\": True, \"message\": \"Metric updated.\" }\n      - On failure: { \"success\": False, \"error\": \"<error message>\" }\n\nConstraints:\n    - metric_id must exist in self.metrics.\n    - If 'type' is provided, it must be a supported metric type.\n    - If 'value' is provided, it must be a float (or convertible to float).\n    - At least one of 'type' or 'value' must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "metric_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "metric_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_metric",
+      "description": "Remove a metric record from the system.\n\nArgs:\n    metric_id (str): The unique ID of the metric to remove.\n\nReturns:\n    dict: \n      - On success: { \"success\": True, \"message\": \"Metric <metric_id> deleted\" }\n      - On failure: { \"success\": False, \"error\": \"Metric not found\" }\n\nConstraints:\n    - The metric must exist in the system.\n    - No cascading deletion; only the metric is removed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "metric_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "metric_id"
+        ]
+      }
+    }
+  ]
+}

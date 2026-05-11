@@ -1,0 +1,604 @@
+{
+  "env_name": "YelpEnvironment",
+  "description": "A consumer review and local business listing platform maintains a database of businesses, user reviews, ratings, and related metadata. It supports search, filtering, and ranking operations based on terms, location, category, and customer feedback. Users interact with the platform to discover, evaluate, and select local businesses and services according to their preferences.",
+  "initial_parameter_schema": {
+    "businesses": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "business_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "address": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "zip_code": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "overall_rating": {
+            "type": "number"
+          },
+          "review_count": {
+            "type": "integer"
+          },
+          "is_active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "business_id",
+          "name",
+          "categories",
+          "address",
+          "city",
+          "state",
+          "zip_code",
+          "latitude",
+          "longitude",
+          "phone",
+          "overall_rating",
+          "review_count",
+          "is_active"
+        ]
+      }
+    },
+    "reviews": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "type": "string"
+          },
+          "business_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "number"
+          },
+          "text": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "votes": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "review_id",
+          "business_id",
+          "user_id",
+          "rating",
+          "text",
+          "date",
+          "votes"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "registration_date": {
+            "type": "string"
+          },
+          "review_count": {
+            "type": "integer"
+          },
+          "average_rating_given": {
+            "type": "number"
+          },
+          "location": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "registration_date",
+          "review_count",
+          "average_rating_given",
+          "location"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_user_by_name": [
+      "users"
+    ],
+    "search_businesses": [
+      "businesses"
+    ],
+    "filter_businesses_by_category": [
+      "businesses"
+    ],
+    "filter_businesses_by_location": [
+      "businesses"
+    ],
+    "get_business_by_id": [
+      "businesses"
+    ],
+    "list_business_reviews": [
+      "businesses",
+      "reviews"
+    ],
+    "get_business_average_rating": [
+      "businesses",
+      "reviews"
+    ],
+    "get_top_rated_businesses": [
+      "businesses"
+    ],
+    "get_all_categories": [
+      "businesses"
+    ],
+    "get_review_by_id": [
+      "reviews"
+    ],
+    "get_user_reviews": [
+      "reviews",
+      "users"
+    ],
+    "add_review": [
+      "businesses",
+      "reviews",
+      "users"
+    ],
+    "update_business_rating": [
+      "businesses",
+      "reviews"
+    ],
+    "add_business": [
+      "businesses"
+    ],
+    "set_business_active_status": [
+      "businesses"
+    ],
+    "edit_business_info": [
+      "businesses"
+    ],
+    "delete_review": [
+      "businesses",
+      "reviews",
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve the complete information for a user given the user_id.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo  # user info dictionary\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"User not found\"\n    }\n\nConstraints:\n    - user_id must exist within the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_name",
+      "description": "Retrieve user(s) whose name matches (case-insensitive) the given name.\n\nArgs:\n    name (str): The user's name to search for.\n\nReturns:\n    dict:\n        On success: {\n            \"success\": True,\n            \"data\": List[UserInfo],  # List of all matching users (may be more than one)\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": \"No user found with the given name\"\n        }\n\nConstraints:\n    - Search is case-insensitive.\n    - Returns all users with exact matching name.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "search_businesses",
+      "description": "Search for active businesses with valid location by term (in name or categories),\noptional city, state, or zip code, and supports filtering by category and overall_rating.\n\nArgs:\n    term (str, optional): Keyword to search for (case-insensitive, matches in name/categories).\n    city (str, optional): City to filter by (exact, case-insensitive).\n    state (str, optional): State to filter by (exact, case-insensitive).\n    zip_code (str, optional): Zip code to filter by (exact).\n    category (str, optional): Category filter (case-insensitive, partial match allowed).\n    min_overall_rating (float, optional): Minimum overall_rating for filtering.\n\nReturns:\n    dict -- {\n        \"success\": True,\n        \"data\": [<BusinessInfo>, ...]  # Businesses matching all criteria\n    }\nNotes:\n    - Only 'active' businesses with a valid (non-empty) zip_code are included.\n    - If no criteria given, returns all active businesses with location.\n    - Filters are case-insensitive where reasonable.\n    - Empty-string text filters are treated the same as omitted filters.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "term": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "zip_code": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "min_overall_rating": {
+            "type": "number"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "filter_businesses_by_category",
+      "description": "Retrieve active businesses filtered by one or more specified categories.\n\nArgs:\n    categories (list of str): Categories to filter by. At least one required.\n\nReturns:\n    dict:\n      - On success: {\"success\": True, \"data\": List[BusinessInfo]}\n      - On error: {\"success\": False, \"error\": str}\n\nConstraints:\n    - Only businesses with is_active == True are included.\n    - Each business must belong to at least one of the provided categories.\n    - Parameter categories must be a non-empty list of strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "categories"
+        ]
+      }
+    },
+    {
+      "name": "filter_businesses_by_location",
+      "description": "Retrieve active businesses filtered by location attributes. Filters may include zip_code, city, state,\nand/or proximity to geographic coordinates (latitude, longitude, within radius_km kilometers).\nAll active businesses matching ALL provided filters are returned.\n\nArgs:\n    zip_code (str, optional): Filter by business zip code.\n    city (str, optional): Filter by business city (case insensitive).\n    state (str, optional): Filter by business state (case insensitive).\n    latitude (float, optional): Center latitude for proximity filter.\n    longitude (float, optional): Center longitude for proximity filter.\n    radius_km (float, optional): Search radius in kilometers for lat/lon proximity.\n\nReturns:\n    dict:\n      - If filter params are valid:\n        {\"success\": True, \"data\": List[BusinessInfo]}\n      - On error (e.g., no filters, bad params):\n        {\"success\": False, \"error\": \"Error message\"}\nConstraints:\n    - Only active businesses (is_active=True) are included in results.\n    - At least one location filter must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "zip_code": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "radius_km": {
+            "type": "number"
+          }
+        },
+        "required": [],
+        "anyOf": [
+          {
+            "required": [
+              "zip_code"
+            ]
+          },
+          {
+            "required": [
+              "city"
+            ]
+          },
+          {
+            "required": [
+              "state"
+            ]
+          },
+          {
+            "required": [
+              "latitude",
+              "longitude"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_business_by_id",
+      "description": "Retrieve all details for a single business given its business_id.\n\nArgs:\n    business_id (str): The unique identifier for the business.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": BusinessInfo  # Details for the found business\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, if not found\n    }\n\nConstraints:\n    - Returns details for the business regardless of active status.\n    - If business_id does not exist, returns an error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "business_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "business_id"
+        ]
+      }
+    },
+    {
+      "name": "list_business_reviews",
+      "description": "Retrieve all reviews for a given business, including ratings and contents.\n\nArgs:\n    business_id (str): The unique identifier of the business.\n\nReturns:\n    dict:\n        {\"success\": True, \"data\": List[ReviewInfo]}  # All reviews for the business (possibly empty)\n    or\n        {\"success\": False, \"error\": str}             # If business not found\n\nConstraints:\n    - The specified business must exist in the platform.\n    - All returned reviews are associated with that business_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "business_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "business_id"
+        ]
+      }
+    },
+    {
+      "name": "get_business_average_rating",
+      "description": "Compute and return the current average overall rating for a given business.\nThe rating is dynamically calculated from all reviews that reference the given business_id.\n\nArgs:\n    business_id (str): The unique identifier of the business.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"business_id\": str,\n            \"average_rating\": float,  # 0.0 if no reviews found\n            \"review_count\": int\n        }\n    }\n    Or\n    {\n        \"success\": False,\n        \"error\": str  # Reason why average could not be computed (e.g., business not found)\n    }\n\nConstraints:\n    - The business_id must reference an existing business.\n    - Only ratings from reviews referencing this business_id are included.\n    - If there are no reviews, average_rating will be 0.0.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "business_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "business_id"
+        ]
+      }
+    },
+    {
+      "name": "get_top_rated_businesses",
+      "description": "Return businesses sorted by overall_rating (highest first), with optional filters for category and location.\n\nArgs:\n    category (str, optional): Only include businesses in this category.\n    city (str, optional): Only include businesses in this city.\n    state (str, optional): Only include businesses in this state.\n    zip_code (str, optional): Only include businesses in this zip code.\n    limit (int, optional): Max number of top businesses to return.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BusinessInfo],  # Sorted, possibly empty.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error reason\n    }\n\nConstraints:\n    - Only active businesses (is_active=True) are considered.\n    - Location filters are ANDed with category if specified.\n    - Sorted by overall_rating (descending), then review_count (descending), then name (ascending).\n    - limit, if specified, must be a positive integer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "zip_code": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "integer"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "get_all_categories",
+      "description": "Retrieve the list of all unique categories used among businesses in the environment.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str]  # Sorted list of unique categories used by any business (may be empty if no businesses)\n    }\nConstraints:\n    - Considers all businesses, regardless of their active status.\n    - If no businesses or no categories, returns empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_review_by_id",
+      "description": "Retrieve details of a review given its unique review_id.\n\nArgs:\n    review_id (str): The unique identifier of the review.\n\nReturns:\n    dict:\n        - {\"success\": True, \"data\": ReviewInfo} if found\n        - {\"success\": False, \"error\": \"Review not found\"} if not found\n\nConstraints:\n    - Reviews must reference valid users and businesses, but this method only does a direct lookup.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_reviews",
+      "description": "Retrieve all reviews submitted by the specified user.\n\nArgs:\n    user_id (str): The user ID for which to return reviews.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ReviewInfo],\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - user_id must exist in the platform.\n    - If user has not submitted any reviews, returned list will be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "add_review",
+      "description": "Add a new review by user for a business, and update business and user aggregates.\n\nArgs:\n    business_id (str): The business being reviewed.\n    user_id (str): The user writing the review.\n    rating (float): The star rating (should be 1-5).\n    text (str): Content of the review.\n    date (str): Date of submission.\n    votes (int, optional): Initial number of votes (default 0).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Review added successfully\",\n        \"review_id\": <generated_review_id>\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - business_id must exist and be active.\n    - user_id must exist.\n    - rating must be float in range 1-5.\n    - text must be non-empty.\n    - On success, updates business's review_count/overall_rating and user's review_count/average_rating_given.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "business_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "number"
+          },
+          "text": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "votes": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "business_id",
+          "user_id",
+          "rating",
+          "text",
+          "date"
+        ]
+      }
+    },
+    {
+      "name": "update_business_rating",
+      "description": "Recalculate and update the `overall_rating` and `review_count` for a business\nbased on its associated reviews.\n\nArgs:\n    business_id (str): The unique ID of the business to update.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Business overall_rating updated to X.XX with N reviews.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Business not found\"\n            }\n\nConstraints:\n    - If there are zero reviews, overall_rating will be set to 0.0 and review_count to 0.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "business_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "business_id"
+        ]
+      }
+    },
+    {
+      "name": "add_business",
+      "description": "Adds a new business to the environment with all required fields and metadata.\n\nArgs:\n    business_id (str): Unique business ID.\n    name (str): Business name.\n    categories (list): List of categories.\n    address (str): Street address.\n    city (str): City where the business is located.\n    state (str): State where the business is located.\n    zip_code (str): Zip code (required for valid location).\n    latitude (float): Latitude of the business.\n    longitude (float): Longitude of the business.\n    phone (str): Contact phone number.\n    is_active (bool): Whether the business is currently active. Defaults to True.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Business added successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - business_id must be unique.\n    - Must provide valid zip_code and location data.\n    - Name must not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "business_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "address": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "zip_code": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "business_id",
+          "name",
+          "categories",
+          "address",
+          "city",
+          "state",
+          "zip_code",
+          "latitude",
+          "longitude",
+          "phone"
+        ]
+      }
+    },
+    {
+      "name": "set_business_active_status",
+      "description": "Toggle or update the `is_active` status of a business.\n\nArgs:\n    business_id (str): The unique identifier of the business.\n    is_active (bool): The desired active status (True = open/active, False = closed/inactive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Business status updated to active/inactive.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., business not found.\n    }\n\nConstraints:\n    - The business with the given ID must exist.\n    - Sets the active status regardless of prior value (idempotent).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "business_id": {
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "business_id",
+          "is_active"
+        ]
+      }
+    },
+    {
+      "name": "edit_business_info",
+      "description": "Update metadata for an existing business (e.g., categories, address, contact info).\n\nArgs:\n    business_id (str): Unique ID for the business to update.\n    update_fields (dict): Dictionary of fields to update. Valid fields include:\n        - name (str)\n        - categories (List[str])\n        - address (str)\n        - city (str)\n        - state (str)\n        - zip_code (str)\n        - latitude (float)\n        - longitude (float)\n        - phone (str)\n\nReturns:\n    dict:\n        - {\"success\": True, \"message\": \"Business info updated successfully\"} if update succeeds\n        - {\"success\": False, \"error\": \"<reason>\"} on failure\n\nConstraints:\n    - business_id must exist.\n    - Fields overall_rating, review_count, is_active, business_id are not directly editable via this method.\n    - Cannot add new/unknown attributes.\n    - zip_code must remain non-empty if changed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "business_id": {
+            "type": "string"
+          },
+          "update_fields": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "business_id",
+          "update_fields"
+        ]
+      }
+    },
+    {
+      "name": "delete_review",
+      "description": "Remove a review by its review_id from the system and update the associated business's\nand user's review statistics (review_count, overall_rating, average_rating_given).\n\nArgs:\n    review_id (str): The ID of the review to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Review deleted and business/user statistics updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <error_message>\n    }\n\nConstraints:\n    - Review must exist.\n    - Business and user referenced by review must exist.\n    - After deletion, business and user statistics must be recalculated to reflect the change.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id"
+        ]
+      }
+    }
+  ]
+}

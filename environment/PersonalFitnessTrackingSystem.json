@@ -1,0 +1,421 @@
+{
+  "env_name": "PersonalFitnessTrackingSystem",
+  "description": "A personal fitness tracking system manages users' health and activity data over time, associating metrics like hydration, heart rate, and calories with individual exercise sessions. It supports operations such as logging new activities, updating health parameters, retrieving summaries, and analyzing trends to help users monitor and improve their fitness. These systems maintain structured records for each user and activity instance, enabling both real-time and retrospective tracking.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "profile_info": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "profile_info",
+          "contact_info"
+        ]
+      }
+    },
+    "activity_sessions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "activity_type": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "user_id",
+          "activity_type",
+          "start_time",
+          "end_time",
+          "location"
+        ]
+      }
+    },
+    "health_metrics": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "hydration_level": {
+            "type": "number"
+          },
+          "heart_rate": {
+            "type": "number"
+          },
+          "calories_burned": {
+            "type": "number"
+          },
+          "steps": {
+            "type": "integer"
+          },
+          "additional_metric": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "session_id",
+          "hydration_level",
+          "heart_rate",
+          "calories_burned",
+          "steps",
+          "additional_metric"
+        ]
+      }
+    },
+    "health_metrics_audit": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_user_by_name": [
+      "users"
+    ],
+    "list_user_activity_sessions": [
+      "activity_sessions",
+      "users"
+    ],
+    "get_activity_sessions_by_type_and_time": [
+      "activity_sessions",
+      "users"
+    ],
+    "get_activity_session_by_id": [
+      "activity_sessions"
+    ],
+    "get_health_metrics_by_session_id": [
+      "health_metrics"
+    ],
+    "get_health_metrics_audit_history": [
+      "health_metrics"
+    ],
+    "update_health_metric": [
+      "health_metrics"
+    ],
+    "log_activity_session": [
+      "activity_sessions",
+      "users"
+    ],
+    "create_health_metrics_for_session": [
+      "activity_sessions",
+      "health_metrics"
+    ],
+    "append_health_metrics_audit_entry": [
+      "health_metrics",
+      "health_metrics_audit"
+    ],
+    "delete_activity_session": [
+      "activity_sessions",
+      "health_metrics"
+    ],
+    "delete_health_metrics_record": [
+      "health_metrics"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user information by their unique user identifier.\n\nArgs:\n    _id (str): The system-wide unique identifier for the user.\n\nReturns:\n    dict: \n    - If found: { \"success\": True, \"data\": UserInfo }\n    - If not found: { \"success\": False, \"error\": \"User not found\" }\n\nConstraints:\n    - User _id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_name",
+      "description": "Retrieve all user records that match the given name (case-insensitive).\n\nArgs:\n    name (str): The user's name to search for.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[UserInfo],  # All matching User records\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # \"User not found\"\n        }\n\nNotes/Constraints:\n    - Name match is case-insensitive.\n    - Returns all user records matching the given name.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "list_user_activity_sessions",
+      "description": "Retrieve all activity sessions associated with the given user.\n\nArgs:\n    user_id (str): The user's unique identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ActivitySessionInfo],  # List (possibly empty) of activity session information\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,  # Reason for failure, e.g., user does not exist\n    }\n\nConstraints:\n    - user_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_activity_sessions_by_type_and_time",
+      "description": "Retrieve a user's activity sessions filtered by activity_type and/or a specific time window.\n\nArgs:\n    user_id (str): User's unique ID whose sessions to retrieve.\n    activity_type (str, optional): Only include sessions of this activity type (if given).\n    start_time (str, optional): ISO-format string; lower bound (inclusive) for session start time.\n    end_time (str, optional): ISO-format string; upper bound (inclusive) for session end time.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ActivitySessionInfo],  # possibly empty if no sessions match\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,  # error message\n    }\n\nConstraints:\n    - user_id must exist in the users table.\n    - Time bounds are compared as ISO strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "activity_type": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_activity_session_by_id",
+      "description": "Retrieve details for a specific activity session using its session_id.\n\nArgs:\n    session_id (str): Unique identifier of the activity session.\n\nReturns:\n    dict: \n      - {\"success\": True, \"data\": ActivitySessionInfo} on success\n      - {\"success\": False, \"error\": str} if the session is not found\n\nConstraints:\n    - The activity session must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "get_health_metrics_by_session_id",
+      "description": "Retrieve health metrics for a specified ActivitySession.\n\nArgs:\n    session_id (str): The ID of the activity session whose health metrics are to be retrieved.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": HealthMetricsInfo  # Health metrics for the given session\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Reason for failure (e.g., session_id not found)\n        }\n\nConstraints:\n    - Returns health metrics only if they exist for the session_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "get_health_metrics_audit_history",
+      "description": "Retrieve the audit/modification history for a health metrics record.\n\nArgs:\n    session_id (str): The unique identifier for the activity session/health metric record.\n\nReturns:\n    dict: \n        - If audit/history is enabled and present:\n            {\n                \"success\": True,\n                \"data\": List[dict]  # List of audit/history records for the given session_id\n            }\n        - If audit/history is not enabled in the system:\n            {\n                \"success\": False,\n                \"error\": \"Audit/history not enabled\"\n            }\n        - If the session_id is invalid:\n            {\n                \"success\": False,\n                \"error\": \"Invalid session_id\"\n            }\nConstraints:\n    - Audit/history is optional. Only return data if available.\n    - session_id must exist in health_metrics.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "update_health_metric",
+      "description": "Update one or more quantitative health metric values for a specific session's HealthMetrics entry,\nenforcing physiological validity constraints.\n\nArgs:\n    session_id (str): Unique ID of the ActivitySession whose HealthMetrics to update.\n    hydration_level (float, optional): New hydration value in liters (must be >= 0).\n    heart_rate (float, optional): New heart rate in bpm (must be >= 0).\n    calories_burned (float, optional): New calories value (must be >= 0).\n    steps (int, optional): New step count (must be >= 0).\n    additional_metric (float, optional): New value for additional metric (must be >= 0).\n\nReturns:\n    dict:\n        - {\"success\": True, \"message\": \"Health metrics updated for session <session_id>\"} on success\n        - {\"success\": False, \"error\": \"<reason>\"} on error (session not found, invalid values, etc.)\n\nConstraints:\n    - session_id must exist in the health_metrics dictionary.\n    - Any updated fields must be within physiologically realistic ranges (non-negative).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "hydration_level": {
+            "type": "number"
+          },
+          "heart_rate": {
+            "type": "number"
+          },
+          "calories_burned": {
+            "type": "number"
+          },
+          "steps": {
+            "type": "integer"
+          },
+          "additional_metric": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "log_activity_session",
+      "description": "Create and store a new ActivitySession for the specified user.\n\nArgs:\n    session_id (str): Unique identifier for this activity session.\n    user_id (str): The user performing the activity (must exist in the system).\n    activity_type (str): Type of the activity (e.g., 'running').\n    start_time (str): Timestamp for activity start.\n    end_time (str): Timestamp for activity end.\n    location (str): Location where the activity was performed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"ActivitySession created for user <user_id> with session_id <session_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - session_id must be unique.\n    - user_id must exist in the system.\n    - Each ActivitySession must belong to exactly one User.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "activity_type": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "user_id",
+          "activity_type",
+          "start_time",
+          "end_time",
+          "location"
+        ]
+      }
+    },
+    {
+      "name": "create_health_metrics_for_session",
+      "description": "Initialize HealthMetrics data for a newly logged session.\n\nArgs:\n    session_id (str): The ActivitySession ID to associate with these metrics. Must exist.\n    hydration_level (float): Hydration in liters or relevant units. Must be non-negative and realistic.\n    heart_rate (float): Heart rate in BPM. Must be within physiological limits (30 < hr < 250).\n    calories_burned (float): Calories burned. Must be non-negative, usually < 10000.\n    steps (int): Number of steps. Must be non-negative.\n    additional_metric (float): Additional metric (non-negative).\n\nReturns:\n    dict: \n      - On success: {\"success\": True, \"message\": \"...\"}\n      - On failure: {\"success\": False, \"error\": \"...\"}\n\nConstraints:\n    - session_id must exist as an ActivitySession.\n    - No HealthMetrics may already exist for this session.\n    - All inputs must be within physiologically realistic non-negative ranges.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "hydration_level": {
+            "type": "number"
+          },
+          "heart_rate": {
+            "type": "number"
+          },
+          "calories_burned": {
+            "type": "number"
+          },
+          "steps": {
+            "type": "integer"
+          },
+          "additional_metric": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "session_id",
+          "hydration_level",
+          "heart_rate",
+          "calories_burned",
+          "steps",
+          "additional_metric"
+        ]
+      }
+    },
+    {
+      "name": "append_health_metrics_audit_entry",
+      "description": "Appends an audit/history entry to the HealthMetrics audit log for the given session.\n\nArgs:\n    session_id (str): The session identifier whose HealthMetrics' audit entry is to be recorded.\n    audit_entry (dict): The audit entry to log.\n        It should include at least 'timestamp' (float/int/str) and any other relevant info\n        (e.g., what was changed, old/new value, who did it).\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Audit entry appended to HealthMetrics session <session_id>\"\n            }\n        On error:\n            {\n                \"success\": False,\n                \"error\": <reason>\n            }\nConstraints:\n    - Only append if the HealthMetrics record for session_id exists.\n    - The audit_entry must be a dict and should contain at least a 'timestamp' key.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "audit_entry": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "session_id",
+          "audit_entry"
+        ]
+      }
+    },
+    {
+      "name": "delete_activity_session",
+      "description": "Remove an activity session and its associated health metrics records for a given session_id.\n\nArgs:\n    session_id (str): The activity session identifier to delete.\n\nReturns:\n    dict:\n        { \"success\": True, \"message\": \"Activity session and associated health metrics deleted.\" }\n        or\n        { \"success\": False, \"error\": \"Activity session not found.\" }\n\nConstraints:\n    - Only delete if session exists.\n    - Remove all associated HealthMetrics for this session.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_health_metrics_record",
+      "description": "Remove HealthMetrics data for a given session (admin/cleanup action).\n\nArgs:\n    session_id (str): The session ID for which the associated HealthMetrics record should be deleted.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Health metrics record for session <session_id> deleted.\" }\n        - On failure: { \"success\": False, \"error\": \"Health metrics record for session not found.\" }\n\nConstraints:\n    - Only deletes HealthMetrics for an existing session_id.\n    - Does not remove any ActivitySession or User data.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    }
+  ]
+}

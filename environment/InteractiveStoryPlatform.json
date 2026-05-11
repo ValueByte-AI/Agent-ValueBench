@@ -1,0 +1,535 @@
+{
+  "env_name": "InteractiveStoryPlatform",
+  "description": "An interactive story platform enables users to access, read, and engage with digital interactive stories, often featuring branching narratives or multimedia elements. The system maintains stateful records of stories, user accounts, comments, and ratings, facilitating communal discovery and critique. Core platform functions include story browsing, review submission, aggregation of user feedback, and moderation.",
+  "initial_parameter_schema": {
+    "stories": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "story_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "author_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "branches": {},
+          "media_elements": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "average_rating": {
+            "type": "number"
+          },
+          "num_ratings": {
+            "type": "integer"
+          },
+          "publish_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "story_id",
+          "title",
+          "author_id",
+          "content",
+          "branches",
+          "media_elements",
+          "average_rating",
+          "num_ratings",
+          "publish_status"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          },
+          "registration_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "username",
+          "email",
+          "account_status",
+          "registration_date"
+        ]
+      }
+    },
+    "reviews": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "type": "string"
+          },
+          "story_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "comment_text": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "integer"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "moderation_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id",
+          "story_id",
+          "user_id",
+          "comment_text",
+          "rating",
+          "timestamp",
+          "moderation_status"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_user_by_username": [
+      "users"
+    ],
+    "check_user_exists": [
+      "users"
+    ],
+    "get_story_by_id": [
+      "stories"
+    ],
+    "check_story_exists": [
+      "stories"
+    ],
+    "check_story_published": [
+      "stories"
+    ],
+    "get_review_by_user_and_story": [
+      "reviews",
+      "stories",
+      "users"
+    ],
+    "list_reviews_by_story": [
+      "reviews",
+      "stories"
+    ],
+    "list_reviews_by_user": [
+      "reviews",
+      "users"
+    ],
+    "get_review_moderation_status": [
+      "reviews"
+    ],
+    "get_story_rating_info": [
+      "stories"
+    ],
+    "add_or_update_review": [
+      "reviews",
+      "stories",
+      "users"
+    ],
+    "moderate_review": [
+      "reviews"
+    ],
+    "update_story_aggregate_rating": [
+      "reviews",
+      "stories"
+    ],
+    "delete_review": [
+      "reviews",
+      "stories"
+    ],
+    "create_user": [
+      "users"
+    ],
+    "create_story": [
+      "stories",
+      "users"
+    ],
+    "change_story_publish_status": [
+      "stories"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve all user information given a user_id.\n\nArgs:\n    user_id (str): Unique identifier for the user.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": UserInfo  # Full user information\n            }\n        On failure (user_id does not exist):\n            {\n                \"success\": False,\n                \"error\": \"User not found\"\n            }\n\nConstraints:\n    - user_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_username",
+      "description": "Retrieve user information using their username.\n\nArgs:\n    username (str): The username to look up.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": UserInfo }\n        - On failure: { \"success\": False, \"error\": \"User not found\" }\n\nConstraints:\n    - Only one user per username should exist (usernames must be unique).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "check_user_exists",
+      "description": "Checks whether a user exists, given user_id or username.\n\nArgs:\n    user_id (str, optional): The user's unique ID.\n    username (str, optional): The user's username.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"exists\": bool\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If no parameters are given or input is invalid\n    }\n\nConstraints:\n    - At least one of user_id or username must be provided (not empty).\n    - If both are provided and either matches a user, returns True.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "anyOf": [
+          {
+            "required": [
+              "user_id"
+            ]
+          },
+          {
+            "required": [
+              "username"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_story_by_id",
+      "description": "Retrieve detailed information for a story given its story_id.\n\nArgs:\n    story_id (str): Unique identifier of the story.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": StoryInfo  # All information about the story.\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Story not found\"\n            }\n\nConstraints:\n    - story_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "story_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "story_id"
+        ]
+      }
+    },
+    {
+      "name": "check_story_exists",
+      "description": "Check whether a story with the given story_id exists in the platform.\n\nArgs:\n    story_id (str): Unique identifier of the story to check.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": bool  # True if story exists, False otherwise\n    }\n\nConstraints:\n    - No permission checks, just dictionary lookup.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "story_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "story_id"
+        ]
+      }
+    },
+    {
+      "name": "check_story_published",
+      "description": "Confirm whether a story is currently published and accessible.\n\nArgs:\n    story_id (str): The unique identifier of the story to check.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"published\": bool  # True if story is published, otherwise False\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If story does not exist\n    }\n\nConstraints:\n    - The story must exist in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "story_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "story_id"
+        ]
+      }
+    },
+    {
+      "name": "get_review_by_user_and_story",
+      "description": "Retrieve a review for a specific (user_id, story_id) pair if it exists.\n\nArgs:\n    user_id (str): ID of the user.\n    story_id (str): ID of the story.\n\nReturns:\n    dict: \n        {\"success\": True, \"data\": ReviewInfo} if found,\n        {\"success\": False, \"error\": \"...\"} otherwise.\n\nConstraints:\n    - User and story must exist.\n    - At most one review per (user_id, story_id) pair.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "story_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "story_id"
+        ]
+      }
+    },
+    {
+      "name": "list_reviews_by_story",
+      "description": "Retrieve all reviews (ReviewInfo) associated with a specified story.\n\nArgs:\n    story_id (str): The ID of the story whose reviews are to be listed.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[ReviewInfo]  # Could be empty if no reviews present\n            }\n        On error (e.g., story_id does not exist):\n            {\n                \"success\": False,\n                \"error\": str  # e.g., \"Story not found\"\n            }\n\nConstraints:\n    - story_id must refer to an existing story.\n    - All reviews associated with the story are returned, regardless of moderation status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "story_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "story_id"
+        ]
+      }
+    },
+    {
+      "name": "list_reviews_by_user",
+      "description": "Retrieve all reviews submitted by the specified user.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ReviewInfo]  # All reviews by this user (can be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g., user does not exist)\n    }\n\nConstraints:\n    - The user must exist in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_review_moderation_status",
+      "description": "Get the current moderation status (e.g., pending, approved, rejected) of the specified review.\n\nArgs:\n    review_id (str): The unique identifier for the review.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": str  # Moderation status of the review (e.g., \"pending\", \"approved\", \"rejected\")\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g. if review does not exist\n    }\n\nConstraints:\n    - The review_id must exist in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id"
+        ]
+      }
+    },
+    {
+      "name": "get_story_rating_info",
+      "description": "Retrieve the average rating and the number of ratings for a specific story.\n\nArgs:\n    story_id (str): The unique identifier of the story.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"average_rating\": float,\n                    \"num_ratings\": int\n                }\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # e.g., \"Story does not exist\"\n            }\n\nConstraints:\n    - The specified story_id must exist in self.stories.\n    - The average_rating and num_ratings reflect current data for the story.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "story_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "story_id"
+        ]
+      }
+    },
+    {
+      "name": "add_or_update_review",
+      "description": "Add or update a review for a story by a user.\nEnforces one review per user/story, validates rating, updates aggregation.\n\nArgs:\n    user_id (str): The ID of the user submitting the review.\n    story_id (str): The ID of the story being reviewed.\n    comment_text (str): The review comment.\n    rating (int): The rating (must be between 1 and 5 inclusive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str,\n        \"review_id\": str\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - User and story must exist.\n    - Rating in [1, 5].\n    - At most one review per user per story (replace if exists).\n    - Story aggregate ratings updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "story_id": {
+            "type": "string"
+          },
+          "comment_text": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "user_id",
+          "story_id",
+          "comment_text",
+          "rating"
+        ]
+      }
+    },
+    {
+      "name": "moderate_review",
+      "description": "Change the moderation status of a review.\n\nArgs:\n    review_id (str): The unique identifier of the review to moderate.\n    new_status (str): The moderation status to set (e.g., 'approved', 'rejected').\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"message\": \"Moderation status updated for review <review_id>.\"}\n        - On failure: {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - The review must exist.\n    - No explicit check on allowed moderation statuses (accept any string as status).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "update_story_aggregate_rating",
+      "description": "Recalculate and update the average rating and number of ratings for a story.\n\nArgs:\n    story_id (str): The ID of the story whose ratings should be updated.\n\nReturns:\n    dict: \n      - On success: {\n            \"success\": True,\n            \"message\": \"Aggregate rating updated for story <story_id>.\"\n        }\n      - On failure: {\n            \"success\": False,\n            \"error\": \"Story does not exist.\"\n        }\n\nConstraints:\n    - Only consider reviews for this story that have a moderation_status of 'approved'.\n    - If there are no approved reviews, set average_rating to 0.0 and num_ratings to 0.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "story_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "story_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_review",
+      "description": "Remove a review from the system and update story aggregate rating accordingly.\n\nArgs:\n    review_id (str): The unique identifier for the review to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # On successful deletion and update\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If review_id does not exist\n    }\n\nConstraints:\n    - Review must exist.\n    - Aggregate rating and rating count for the associated story must be updated after deletion.\n    - If story has no remaining ratings, set average_rating=0.0 and num_ratings=0.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id"
+        ]
+      }
+    },
+    {
+      "name": "create_user",
+      "description": "Add a new user to the system.\n\nArgs:\n    user_id (str): Unique identifier for the user (must not already exist).\n    username (str): The user's display or login name.\n    email (str): The user's email address.\n    account_status (str): The account status (e.g., 'active', 'pending', 'banned').\n    registration_date (str): Registration date in string/ISO format.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"User <user_id> created successfully\" }\n        On failure: { \"success\": False, \"error\": \"User ID already exists\" }\n\nConstraints:\n    - User IDs must be unique in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          },
+          "registration_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "username",
+          "email",
+          "account_status",
+          "registration_date"
+        ]
+      }
+    },
+    {
+      "name": "create_story",
+      "description": "Add a new story to the platform.\nArgs:\n    story_id (str): Unique identifier for the story.\n    title (str): Story title.\n    author_id (str): User ID of the author (must exist).\n    content (str): Story content.\n    branches (Any): Branch data structure for story navigation.\n    media_elements (List[str]): Media asset identifiers (URLs, paths, etc).\n    publish_status (str): Current story publishing status.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Story created\",\n        \"story_id\": str\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str (reason)\n    }\n\nConstraints:\n    - story_id must be unique.\n    - author_id must point to an existing user.\n    - Initializes average_rating=0.0 and num_ratings=0",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "story_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "author_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "branches": {},
+          "media_elements": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "publish_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "story_id",
+          "title",
+          "author_id",
+          "content",
+          "branches",
+          "media_elements",
+          "publish_status"
+        ]
+      }
+    },
+    {
+      "name": "change_story_publish_status",
+      "description": "Change the publication status of a story (publish or unpublish it).\n\nArgs:\n    story_id (str): Unique identifier of the story.\n    new_status (str): New publish status to set (e.g., 'published', 'unpublished').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Story <story_id> publish status changed to <new_status>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<Reason for failure>\"\n    }\n\nConstraints:\n    - story_id must exist in self.stories.\n    - new_status should be a valid non-empty string (suggested: 'published', 'unpublished').",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "story_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "story_id",
+          "new_status"
+        ]
+      }
+    }
+  ]
+}

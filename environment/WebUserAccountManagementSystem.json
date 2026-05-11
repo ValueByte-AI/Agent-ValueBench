@@ -1,0 +1,513 @@
+{
+  "env_name": "WebUserAccountManagementSystem",
+  "description": "A web-based user account management system maintains records of user profiles, authentication credentials, and session states for individuals accessing the platform. It allows administrators to create, modify, and deactivate user accounts, handle password resets, and monitor or terminate active login sessions. Such systems are common in organizations managing employee access to internal resources and sensitive information.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "full_name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "rol": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "full_name",
+          "email",
+          "status",
+          "rol"
+        ]
+      }
+    },
+    "credentials": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "password_hash": {
+            "type": "string"
+          },
+          "last_password_change": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "password_hash",
+          "last_password_change"
+        ]
+      }
+    },
+    "sessions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "login_timestamp": {
+            "type": "string"
+          },
+          "last_activity_timestamp": {
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "session_id",
+          "user_id",
+          "login_timestamp",
+          "last_activity_timestamp",
+          "is_active"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_username": [
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "list_all_users": [
+      "users"
+    ],
+    "get_user_status": [
+      "users"
+    ],
+    "get_credential_by_user_id": [
+      "credentials",
+      "users"
+    ],
+    "verify_password_for_user": [
+      "credentials",
+      "users"
+    ],
+    "get_sessions_by_user_id": [
+      "sessions",
+      "users"
+    ],
+    "get_active_sessions_by_user_id": [
+      "sessions",
+      "users"
+    ],
+    "get_session_by_id": [
+      "sessions"
+    ],
+    "list_all_active_sessions": [
+      "sessions"
+    ],
+    "get_session_user_id": [
+      "sessions"
+    ],
+    "terminate_session_by_id": [
+      "sessions"
+    ],
+    "terminate_all_sessions_for_user": [
+      "sessions",
+      "users"
+    ],
+    "terminate_multiple_sessions": [
+      "sessions"
+    ],
+    "update_user_status": [
+      "users"
+    ],
+    "update_user_password": [
+      "credentials",
+      "users"
+    ],
+    "create_new_session": [
+      "sessions",
+      "users"
+    ],
+    "invalidate_all_sessions": [
+      "sessions"
+    ],
+    "reset_user_credentials": [
+      "credentials",
+      "users"
+    ],
+    "create_new_user": [
+      "users"
+    ],
+    "delete_user": [
+      "credentials",
+      "sessions",
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_username",
+      "description": "Retrieve user information using the given username.\n\nArgs:\n    username (str): The username to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g. \"User not found\"\n    }\n\nConstraints:\n    - Searches for the user with matching username.\n    - Returns user details if found, otherwise an error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user information using the unique user ID (_id).\n\nArgs:\n    _id (str): Unique identifier of the user.\n\nReturns:\n    dict:\n        - If user exists: \n            { \"success\": True, \"data\": UserInfo }\n        - If user does not exist:\n            { \"success\": False, \"error\": \"User not found\" }\n\nConstraints:\n    - The user with the given _id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_users",
+      "description": "Retrieve all user accounts in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[UserInfo]  # List of all user info dicts, may be empty if no users exist\n    }\nConstraints:\n    - None for this operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_user_status",
+      "description": "Check the current status (active/inactive/deactivated) of a user.\n\nArgs:\n    user_id (str): The unique user identifier (_id) whose status is to be queried.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": <status_value> }\n        - On failure: { \"success\": False, \"error\": \"User not found\" }\n\nConstraints:\n    - The user must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_credential_by_user_id",
+      "description": "Retrieve the credential entry for a given user ID.\n\nArgs:\n    user_id (str): Unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": CredentialInfo,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,  # Reason for error (user or credential not found)\n    }\nConstraints:\n    - The user ID must correspond to an existing user.\n    - The credentials mapping must have an entry for the given user ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "verify_password_for_user",
+      "description": "Check if a provided plaintext password, when hashed, matches the stored password hash for a given user.\n\nArgs:\n    user_id (str): The unique ID of the user whose password is being verified.\n    plaintext_password (str): The plaintext password to check.\n\nReturns:\n    dict: On success,\n        { \"success\": True, \"data\": bool }  # True if matched, False otherwise\n        On failure,\n        { \"success\": False, \"error\": str }\n\nConstraints:\n    - Passwords must be securely compared: hash(plaintext_password) == stored password_hash.\n    - User and credential must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "plaintext_password": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "plaintext_password"
+        ]
+      }
+    },
+    {
+      "name": "get_sessions_by_user_id",
+      "description": "List all sessions associated with a given user.\n\nArgs:\n    user_id (str): The unique ID of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SessionInfo],  # All sessions (possibly empty list)\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # e.g., \"User not found\"\n    }\n\nConstraints:\n    - user_id must exist in the system.\n    - Returns all session records linked to the given user, regardless of status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_active_sessions_by_user_id",
+      "description": "List all currently active sessions for a given user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SessionInfo],  # Active sessions for this user (can be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g., \"User does not exist\"\n    }\n\nConstraints:\n    - The user must exist (user_id must be present in self.users).\n    - Only sessions where is_active == True and user_id matches are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_session_by_id",
+      "description": "Retrieve detailed information for a session using its session ID.\n\nArgs:\n    session_id (str): The unique identifier of the session.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"data\": SessionInfo}  # SessionInfo for the session.\n        On failure:\n            {\"success\": False, \"error\": \"Session not found\"}",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_active_sessions",
+      "description": "List all active sessions across all users.\n\nReturns:\n    dict:\n        - success: True if operation succeeds.\n        - data: List[SessionInfo] where is_active is True. May be an empty list if no active sessions exist.\n\nConstraints:\n    - Only sessions where is_active is True will be returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_session_user_id",
+      "description": "For a given session ID, return the associated user ID.\n\nArgs:\n    session_id (str): The session's unique identifier.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"data\": str}  # user_id associated with session\n        On failure:\n            {\"success\": False, \"error\": str}  # \"Session not found\"",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "terminate_session_by_id",
+      "description": "Terminates (logouts) a specific session by setting its is_active attribute to False.\n\nArgs:\n    session_id (str): The identifier of the session to terminate.\n\nReturns:\n    dict:\n        On success: {\n            \"success\": True,\n            \"message\": \"Session <session_id> terminated (set as inactive).\"\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": \"Session not found.\"\n        }\n\nConstraints:\n    - Any session can be terminated regardless of its current is_active state.\n    - No permissions are checked for this operation (administrators can terminate any session).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "terminate_all_sessions_for_user",
+      "description": "End (invalidate) all active sessions for the specified user.\n\nArgs:\n    user_id (str): The user _id whose sessions should be ended.\n\nReturns:\n    dict: On success,\n        {\n            \"success\": True,\n            \"message\": \"Terminated X active session(s) for user <user_id>.\"\n        }\n        If user does not exist:\n        {\n            \"success\": False,\n            \"error\": \"User not found.\"\n        }\n\nConstraints:\n    - user_id must exist in the system.\n    - All sessions associated with this user are set to is_active=False if active.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "terminate_multiple_sessions",
+      "description": "Bulk terminate a provided list of session IDs.\n\nArgs:\n    session_ids (list[str]): List of session IDs to be terminated.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Terminated N sessions.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <str>\n    }\n\nConstraints:\n    - Only sessions that exist and are currently active will be terminated.\n    - Skips session IDs that do not exist or are already inactive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "session_ids"
+        ]
+      }
+    },
+    {
+      "name": "update_user_status",
+      "description": "Change the user status to 'active', 'inactive', or 'deactivated'.\n\nArgs:\n    user_id (str): The _id of the user to update.\n    new_status (str): The desired status ('active', 'inactive', 'deactivated').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User status updated to <new_status>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"User not found\" | \"Invalid status value\"\n    }\n\nConstraints:\n    - Only 'active', 'inactive', or 'deactivated' are valid values for status.\n    - The user must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "update_user_password",
+      "description": "Change a user's password hash and update last_password_change.\n\nArgs:\n    user_id (str): The unique user identifier.\n    new_password_hash (str): The new (securely computed) password hash; must not be None or empty.\n    change_time (str): The timestamp (as string) when the change occurs.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Password updated for user <user_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Password hash must not be empty.\n    - Credential record for user_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "new_password_hash": {
+            "type": "string"
+          },
+          "change_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "new_password_hash",
+          "change_time"
+        ]
+      }
+    },
+    {
+      "name": "create_new_session",
+      "description": "Establish a new session for an 'active' user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Session created\",\n                \"session\": SessionInfo\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": <error reason>\n            }\n\nConstraints:\n    - The user must exist and have status 'active'.\n    - Each session must have a unique session_id.\n    - The session is associated with the user_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "invalidate_all_sessions",
+      "description": "End (invalidate) all sessions in the system as an emergency administrative action.\n\nThis operation forcibly marks all sessions as inactive, regardless of current state or user.\nDoes not delete session records, only sets is_active = False for each session.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"All sessions have been invalidated.\"\n    }\n\nConstraints:\n    - No input parameters required.\n    - All sessions (if any) set to is_active = False.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "reset_user_credentials",
+      "description": "Reset a user's password and related credential data.\n\nArgs:\n    user_id (str): The user's unique ID whose credentials are to be reset.\n    new_password_hash (str): The new password hash (should NOT be plaintext).\n    reset_time (str): The timestamp of the reset (e.g., ISO format).\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"User credentials reset.\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - User must exist in the system.\n    - Corresponding Credential entry must exist.\n    - Password must be set as a hash, not as plaintext.\n    - Empty hashes are invalid.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "new_password_hash": {
+            "type": "string"
+          },
+          "reset_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "new_password_hash",
+          "reset_time"
+        ]
+      }
+    },
+    {
+      "name": "create_new_user",
+      "description": "Add a new user to the system.\n\nArgs:\n    _id (str): Unique user identifier\n    username (str): Unique username\n    full_name (str): Full name of the user\n    email (str): User's email address\n    status (str): One of 'active', 'inactive', or 'deactivated'\n    rol (str): User's role\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User created successfully\"\n    }\n    On failure:\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure\"\n    }\n\nConstraints:\n    - _id must be unique (not already in self.users)\n    - username must be unique (not used by any user)\n    - status must be 'active', 'inactive', or 'deactivated'\n    - All fields must be provided and non-empty",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "full_name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "rol": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "full_name",
+          "email",
+          "status",
+          "rol"
+        ]
+      }
+    },
+    {
+      "name": "delete_user",
+      "description": "Completely remove a user account and all associated data (credentials, sessions).\n\nArgs:\n    user_id (str): The unique ID of the user to delete.\n\nReturns:\n    dict: \n        {\"success\": True, \"message\": \"User and all associated data deleted.\"}\n        or\n        {\"success\": False, \"error\": \"User does not exist\"}\n\nConstraints:\n    - Removes the user record from the system.\n    - Removes any credentials record for that user.\n    - Removes all session records for that user (active or inactive).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    }
+  ]
+}

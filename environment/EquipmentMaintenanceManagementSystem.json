@@ -1,0 +1,798 @@
+{
+  "env_name": "EquipmentMaintenanceManagementSystem",
+  "description": "An equipment maintenance management system organizes information about machinery, including identification details, maintenance histories, and upcoming service schedules. It maintains stateful records that enable both proactive scheduling and retrospective analysis of maintenance events. Common operations include scheduling, updating, and querying maintenance for various assets to ensure operational reliability.",
+  "initial_parameter_schema": {
+    "machines": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "machine_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "serial_number": {
+            "type": "string"
+          },
+          "owner_user_id": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "machine_id",
+          "name",
+          "model",
+          "serial_number",
+          "owner_user_id",
+          "location",
+          "status"
+        ]
+      }
+    },
+    "maintenance_schedules": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          },
+          "machine_id": {
+            "type": "string"
+          },
+          "scheduled_date": {
+            "type": "string"
+          },
+          "maintenance_type": {
+            "type": "string"
+          },
+          "assigned_technician_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schedule_id",
+          "machine_id",
+          "scheduled_date",
+          "maintenance_type",
+          "assigned_technician_id",
+          "status"
+        ]
+      }
+    },
+    "maintenance_histories": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "history_id": {
+            "type": "string"
+          },
+          "machine_id": {
+            "type": "string"
+          },
+          "maintenance_date": {
+            "type": "string"
+          },
+          "maintenance_type": {
+            "type": "string"
+          },
+          "technician_id": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "history_id",
+          "machine_id",
+          "maintenance_date",
+          "maintenance_type",
+          "technician_id",
+          "notes"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_details": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "contact_details",
+          "role"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_user_by_name": [
+      "users"
+    ],
+    "list_all_users": [
+      "users"
+    ],
+    "get_machine_by_id": [
+      "machines"
+    ],
+    "list_machines_by_owner": [
+      "machines",
+      "users"
+    ],
+    "list_all_machines": [
+      "machines"
+    ],
+    "get_maintenance_schedule_by_machine": [
+      "machines",
+      "maintenance_schedules"
+    ],
+    "get_maintenance_schedule_by_id": [
+      "maintenance_schedules"
+    ],
+    "list_schedules_for_technician": [
+      "maintenance_schedules",
+      "users"
+    ],
+    "get_maintenance_history_by_machine": [
+      "machines",
+      "maintenance_histories",
+      "users"
+    ],
+    "get_maintenance_history_by_id": [
+      "machines",
+      "maintenance_histories",
+      "users"
+    ],
+    "check_user_authorization_for_machine": [
+      "machines",
+      "maintenance_histories",
+      "maintenance_schedules",
+      "users"
+    ],
+    "find_overlapping_schedules": [
+      "machines",
+      "maintenance_schedules"
+    ],
+    "create_machine": [
+      "machines",
+      "users"
+    ],
+    "update_machine_info": [
+      "machines",
+      "users"
+    ],
+    "delete_machine": [
+      "machines",
+      "maintenance_histories",
+      "maintenance_schedules"
+    ],
+    "create_maintenance_schedule": [
+      "machines",
+      "maintenance_schedules",
+      "users"
+    ],
+    "update_maintenance_schedule": [
+      "machines",
+      "maintenance_schedules",
+      "users"
+    ],
+    "cancel_maintenance_schedule": [
+      "machines",
+      "maintenance_schedules",
+      "users"
+    ],
+    "create_maintenance_history_entry": [
+      "machines",
+      "maintenance_histories",
+      "users"
+    ],
+    "update_maintenance_history_entry": [
+      "machines",
+      "maintenance_histories",
+      "users"
+    ],
+    "delete_maintenance_schedule": [
+      "machines",
+      "maintenance_schedules"
+    ],
+    "assign_technician_to_schedule": [
+      "machines",
+      "maintenance_schedules",
+      "users"
+    ],
+    "create_user": [
+      "users"
+    ],
+    "update_user_info": [
+      "users"
+    ],
+    "delete_user": [
+      "machines",
+      "maintenance_histories",
+      "maintenance_schedules",
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user information for a specific user by user_id.\n\nArgs:\n    user_id (str): The unique user identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"User not found\"\n    }\n\nConstraints:\n    - The provided user_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_name",
+      "description": "Retrieve user information by user name.\n\nArgs:\n    name (str): The name of the user to search for.\n\nReturns:\n    dict:\n        If found:\n            { \"success\": True, \"data\": List[UserInfo] }\n        If not found:\n            { \"success\": False, \"error\": \"No user found with the given name.\" }\n\nNotes:\n    - User names are not guaranteed to be unique; all matches are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "list_all_users",
+      "description": "Retrieve a list of all users in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": List[UserInfo]  # List of user information dictionaries (may be empty if no users)\n        }\nConstraints:\n    - No constraints apply. Returns all users in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_machine_by_id",
+      "description": "Retrieve machine details by machine_id.\n\nArgs:\n    machine_id (str): The ID of the machine to retrieve.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": MachineInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Machine not found\"\n    }\n\nConstraints:\n    - The machine_id must exist in the system.\n    - No authorization check is enforced (see notes).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "machine_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "machine_id"
+        ]
+      }
+    },
+    {
+      "name": "list_machines_by_owner",
+      "description": "List all machines owned by a specific user.\n\nArgs:\n    owner_user_id (str): User ID of the owner.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MachineInfo]  # List of machines (can be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If user_id is not found\n    }\n\nConstraints:\n    - The user must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "owner_user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_machines",
+      "description": "Retrieve a list of all machines in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MachineInfo],  # List of all MachineInfo dicts (may be empty)\n    }\n\nConstraints:\n    - No authorization is required for this operation.\n    - If no machines exist, an empty list is returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_maintenance_schedule_by_machine",
+      "description": "Retrieve all scheduled maintenance events for a given machine.\n\nArgs:\n    machine_id (str): The unique identifier of the target machine.\n\nReturns:\n    dict:\n        success (bool): True if retrieved successfully; False otherwise.\n        data (List[MaintenanceScheduleInfo]): List of all matching scheduled maintenance events.\n        error (str): Reason for failure (if any).\n\nConstraints:\n    - machine_id must exist in the system.\n    - (Authorization is not enforced here since user_id is not supplied.)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "machine_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "machine_id"
+        ]
+      }
+    },
+    {
+      "name": "get_maintenance_schedule_by_id",
+      "description": "Retrieve details of a maintenance schedule using the given schedule_id.\n\nArgs:\n    schedule_id (str): The unique identifier of the maintenance schedule.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": MaintenanceScheduleInfo  # Details of the schedule\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error reason if not found\n    }\n\nConstraints:\n    - schedule_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schedule_id"
+        ]
+      }
+    },
+    {
+      "name": "list_schedules_for_technician",
+      "description": "List all scheduled maintenance entries assigned to the specified technician.\n\nArgs:\n    technician_id (str): The user ID of the maintenance technician.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MaintenanceScheduleInfo],  # List of schedules (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If technician does not exist\n    }\n\nConstraints:\n    - The technician_id must reference an existing user.\n    - No additional authorization check is performed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "technician_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "technician_id"
+        ]
+      }
+    },
+    {
+      "name": "get_maintenance_history_by_machine",
+      "description": "Retrieve the maintenance history for a specified machine, ensuring access is permitted\nonly if the user is the machine owner or has been the maintenance technician for that machine.\n\nArgs:\n    machine_id (str): The machine whose maintenance history is to be retrieved.\n    user_id (str): The user requesting the history.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"data\": List[MaintenanceHistoryInfo] }\n        On failure:\n            { \"success\": False, \"error\": str }\n        \nConstraints:\n    - Machine must exist.\n    - Only the machine owner or a technician who has performed maintenance on the machine can view its history.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "machine_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "machine_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_maintenance_history_by_id",
+      "description": "Retrieve details of a maintenance history event by history_id,\nensuring that the requesting user is authorized\n(machine owner or technician assigned to this event).\n\nArgs:\n    history_id (str): The unique maintenance history record ID.\n    requesting_user_id (str): The user making the query.\n\nReturns:\n    dict: Success: { \"success\": True, \"data\": MaintenanceHistoryInfo }\n          Failure: { \"success\": False, \"error\": str }\n\nConstraints:\n    - The maintenance history event must exist.\n    - Only machine owner or assigned technician can view this info.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "history_id": {
+            "type": "string"
+          },
+          "requesting_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "history_id",
+          "requesting_user_id"
+        ]
+      }
+    },
+    {
+      "name": "check_user_authorization_for_machine",
+      "description": "Determine if a user has permission to view or modify a specific machine's maintenance info.\n\nArgs:\n    user_id (str): The user's unique identifier.\n    machine_id (str): The machine's unique identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"authorized\": bool,\n        \"reason\": str  # description of why/why not\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nAuthorization logic:\n    - User is the machine owner.\n    - OR user is assigned as a technician to a schedule for this machine.\n    - OR user performed past maintenance (in history) for this machine.\n    - OR user role is 'admin' (case-insensitive check, common admin/superuser roles).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "machine_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "machine_id"
+        ]
+      }
+    },
+    {
+      "name": "find_overlapping_schedules",
+      "description": "Examine if a given machine has overlapping maintenance schedules within a given time window.\n\nArgs:\n    machine_id (str): The ID of the machine.\n    start_date (str): Start of the time window (inclusive, 'YYYY-MM-DD').\n    end_date (str): End of the time window (inclusive, 'YYYY-MM-DD').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[List[str]],  # List of overlapping schedule_id pairs (or groups). Empty list if none.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # reason\n    }\n\nConstraints:\n    - The machine must exist.\n    - Dates should be in 'YYYY-MM-DD' format.\n    - Only schedules for the machine within the window are checked.\n    - Overlap: scheduled_date occurs more than once.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "machine_id": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "machine_id",
+          "start_date",
+          "end_date"
+        ]
+      }
+    },
+    {
+      "name": "create_machine",
+      "description": "Add a new machine to the system with the provided attributes.\n\nArgs:\n    machine_id (str): Unique identifier for the machine.\n    name (str): Machine name.\n    model (str): Machine model.\n    serial_number (str): Serial number.\n    owner_user_id (str): ID of the user who owns the machine.\n    location (str): Physical location of the machine.\n    status (str): Status of the machine.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Machine created successfully.\" }\n        On failure:\n            { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - machine_id must be unique in the system.\n    - owner_user_id must reference an existing user.\n    - All fields must be provided (non-empty).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "machine_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "serial_number": {
+            "type": "string"
+          },
+          "owner_user_id": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "machine_id",
+          "name",
+          "model",
+          "serial_number",
+          "owner_user_id",
+          "location",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "update_machine_info",
+      "description": "Update details or status of an existing machine.\n\nArgs:\n    machine_id (str): The unique identifier of the machine to update.\n    updates (dict): Fields to update with their new values.\n        Allowed: name, model, serial_number, owner_user_id, location, status.\n    requesting_user_id (str): The ID of the user attempting this operation.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Update status,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g., permission denied, not found, invalid field, etc.\n    }\n\nConstraints:\n    - Only the machine owner or an admin user can perform update.\n    - The machine must exist.\n    - Only mutable fields can be updated (machine_id is immutable).\n    - All updated fields must be valid keys of MachineInfo except machine_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "machine_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          },
+          "requesting_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "machine_id",
+          "updates",
+          "requesting_user_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_machine",
+      "description": "Permanently remove a machine from the system as well as all associated maintenance schedules and maintenance history records.\n\nArgs:\n    machine_id (str): The unique identifier for the target machine.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Machine and associated schedules/histories deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The machine must exist.\n    - All maintenance schedules and histories referencing this machine will be deleted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "machine_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "machine_id"
+        ]
+      }
+    },
+    {
+      "name": "create_maintenance_schedule",
+      "description": "Add a new maintenance event (schedule) for a machine, ensuring:\n    - schedule_id is unique,\n    - referenced machine exists,\n    - assigned technician exists,\n    - no forbidden overlap with existing schedules for this machine/date,\n    - the requesting user is authorized (machine owner, assigned technician, or admin).\n\nArgs:\n    schedule_id (str): Unique schedule identifier.\n    machine_id (str): Target machine's id; must exist.\n    scheduled_date (str): Date/time of maintenance (e.g., 'YYYY-MM-DD').\n    maintenance_type (str): Type of maintenance planned.\n    assigned_technician_id (str): User id of assigned technician.\n    status (str): Schedule status.\n    request_user_id (str): User requesting this operation (authorization checked).\n\nReturns:\n    dict: \n        On success: {\"success\": True, \"message\": \"Maintenance schedule created.\"}\n        On failure: {\"success\": False, \"error\": str description}\nConstraints:\n    - Schedule ids are unique.\n    - Machine must exist.\n    - Schedule cannot overlap another schedule for the same machine (same date).\n    - Only machine owner, assigned technician, or an admin user can create a schedule.\n    - Assigned technician must exist as a user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          },
+          "machine_id": {
+            "type": "string"
+          },
+          "scheduled_date": {
+            "type": "string"
+          },
+          "maintenance_type": {
+            "type": "string"
+          },
+          "assigned_technician_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "request_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schedule_id",
+          "machine_id",
+          "scheduled_date",
+          "maintenance_type",
+          "assigned_technician_id",
+          "status",
+          "request_user_id"
+        ]
+      }
+    },
+    {
+      "name": "update_maintenance_schedule",
+      "description": "Modify the date, type, technician, or status of an existing maintenance schedule.\n\nArgs:\n    user_id (str): The ID of the user requesting the change.\n    schedule_id (str): The maintenance schedule to update.\n    scheduled_date (str, optional): New scheduled date.\n    maintenance_type (str, optional): New maintenance type.\n    assigned_technician_id (str, optional): New assigned technician.\n    status (str, optional): New schedule status.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Maintenance schedule updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Only the machine owner, current assigned technician, or an admin user may modify the schedule.\n    - Changing assigned_technician_id requires that the user exists.\n    - Changing scheduled_date may not cause overlapping schedules for the same machine.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "schedule_id": {
+            "type": "string"
+          },
+          "scheduled_date": {
+            "type": "string"
+          },
+          "maintenance_type": {
+            "type": "string"
+          },
+          "assigned_technician_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "schedule_id"
+        ]
+      }
+    },
+    {
+      "name": "cancel_maintenance_schedule",
+      "description": "Cancel a planned maintenance event, changing its status to 'cancelled'.\nArgs:\n    schedule_id (str): The maintenance schedule to cancel.\n    user_id (str): The user attempting the cancellation (for authorization check).\n\nReturns:\n    dict:\n        {\"success\": True, \"message\": \"Maintenance schedule <id> cancelled.\"}\n        or\n        {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - Schedule must exist.\n    - User must exist.\n    - Only authorized users can cancel: machine owner or assigned technician.\n    - Schedule must not be already cancelled.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schedule_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "create_maintenance_history_entry",
+      "description": "Add a new maintenance history record for a completed maintenance event.\n\nArgs:\n    history_id (str): Unique identifier for the maintenance history entry.\n    machine_id (str): The ID of the maintained machine.\n    maintenance_date (str): The date when maintenance occurred.\n    maintenance_type (str): The type of maintenance performed.\n    technician_id (str): The ID of the technician who performed the work.\n    notes (str): Additional notes for the event.\n    requesting_user_id (str): The user performing the operation (for authorization checking).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Maintenance history entry created.\"\n    } or {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - history_id must not already exist.\n    - machine_id must exist.\n    - technician_id must exist.\n    - Only authorized users (machine owner or assigned technician/staff) can add entries.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "history_id": {
+            "type": "string"
+          },
+          "machine_id": {
+            "type": "string"
+          },
+          "maintenance_date": {
+            "type": "string"
+          },
+          "maintenance_type": {
+            "type": "string"
+          },
+          "technician_id": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "requesting_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "history_id",
+          "machine_id",
+          "maintenance_date",
+          "maintenance_type",
+          "technician_id",
+          "notes",
+          "requesting_user_id"
+        ]
+      }
+    },
+    {
+      "name": "update_maintenance_history_entry",
+      "description": "Edit the notes or details of a historical maintenance event.\n\nArgs:\n    history_id (str): ID of the maintenance history entry to update.\n    user_id (str):    ID of the user making the change (authorization required).\n    notes (str, optional): Updated notes for the maintenance entry.\n    maintenance_date (str, optional): Updated maintenance date.\n    maintenance_type (str, optional): Updated type of maintenance.\n    technician_id (str, optional): Updated technician id.\n\nReturns:\n    dict: Success or error message.\n        {\n            \"success\": True,\n            \"message\": \"Maintenance history updated successfully.\"\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": \"<reason>\"\n        }\n\nConstraints:\n    - Only the machine owner or the technician who performed the maintenance may update the history entry.\n    - The referenced maintenance history must exist.\n    - The referenced machine must exist.\n    - At least one of ('notes', 'maintenance_date', 'maintenance_type', 'technician_id') must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "history_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "maintenance_date": {
+            "type": "string"
+          },
+          "maintenance_type": {
+            "type": "string"
+          },
+          "technician_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "history_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_maintenance_schedule",
+      "description": "Remove a scheduled maintenance event by its schedule_id if the requesting user is authorized.\n\nArgs:\n    schedule_id (str): ID of the maintenance schedule to remove.\n    requesting_user_id (str): ID of the user attempting the deletion.\n\nReturns:\n    dict:\n        Success: {\n            \"success\": True,\n            \"message\": \"Maintenance schedule deleted successfully\"\n        }\n        Failure: {\n            \"success\": False,\n            \"error\": \"<reason>\"\n        }\n\nConstraints:\n    - Schedule must exist.\n    - Only machine owner or assigned technician can delete schedule.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          },
+          "requesting_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schedule_id",
+          "requesting_user_id"
+        ]
+      }
+    },
+    {
+      "name": "assign_technician_to_schedule",
+      "description": "Assign or reassign a technician to a maintenance schedule.\n\nArgs:\n    user_id (str): The acting user's ID (must have permission to modify this schedule).\n    schedule_id (str): The ID of the maintenance schedule to update.\n    technician_id (str): The technician's user ID to assign.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Schedule and technician must exist.\n    - Technician must have role \"technician\".\n    - Only authorized users (owner, assigned technician, or admin) can modify schedule.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "schedule_id": {
+            "type": "string"
+          },
+          "technician_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "schedule_id",
+          "technician_id"
+        ]
+      }
+    },
+    {
+      "name": "create_user",
+      "description": "Adds a new user to the system.\n\nArgs:\n    user_id (str): Unique identifier for the user.\n    name (str): The user's name.\n    contact_details (str): The user's contact information.\n    role (str): The user's role within the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User created successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - user_id must be unique.\n    - All fields must be non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_details": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "contact_details",
+          "role"
+        ]
+      }
+    },
+    {
+      "name": "update_user_info",
+      "description": "Edit details of an existing user.\n\nArgs:\n    user_id (str): ID of the user to edit.\n    name (str, optional): New name for the user.\n    contact_details (str, optional): New contact details for the user.\n    role (str, optional): New role for the user.\n\nReturns:\n    dict: \n        - Success: {\"success\": True, \"message\": \"User info updated successfully.\"}\n        - Failure: {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - user_id must exist.\n    - At least one field must be provided to update.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_details": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_user",
+      "description": "Remove a user from the system.\n\nArgs:\n    user_id (str): The user_id of the user to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User deleted successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": Error message string\n    }\n\nConstraints:\n    - User must exist.\n    - User must NOT be referenced as a machine owner,\n      assigned technician in a schedule, or\n      technician in maintenance history. If referenced, deletion is not allowed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,488 @@
+{
+  "env_name": "RetailPOSTransactionManagementSystem",
+  "description": "A retail POS transaction management system records, stores, and retrieves sales transaction data across one or more store locations. The system maintains details such as transaction timestamps, purchased items, payment methods, and location identifiers, supporting essential reporting and audit operations for store managers. It enables efficient tracking, querying, and analysis of transactions to facilitate accounting, inventory management, and business insights.",
+  "initial_parameter_schema": {
+    "products": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "current_price": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "product_id",
+          "name",
+          "category",
+          "current_price"
+        ]
+      }
+    },
+    "store_locations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id",
+          "name",
+          "address"
+        ]
+      }
+    },
+    "transactions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "location_id": {
+            "type": "string"
+          },
+          "payment_method": {
+            "type": "string"
+          },
+          "transaction_items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "transaction_id": {
+                  "type": "string"
+                },
+                "product_id": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "integer"
+                },
+                "unit_price": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "transaction_id",
+                "product_id",
+                "quantity",
+                "unit_price"
+              ]
+            }
+          },
+          "total_amount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "timestamp",
+          "location_id",
+          "payment_method",
+          "transaction_items",
+          "total_amount"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_transaction_by_id": [
+      "transactions"
+    ],
+    "list_transactions_by_location": [
+      "store_locations",
+      "transactions"
+    ],
+    "list_transactions_by_date_range": [
+      "transactions"
+    ],
+    "list_transactions_by_location_and_date_range": [
+      "store_locations",
+      "transactions"
+    ],
+    "get_transaction_items": [
+      "transactions"
+    ],
+    "get_store_location_by_id": [
+      "store_locations"
+    ],
+    "list_all_store_locations": [
+      "store_locations"
+    ],
+    "get_product_by_id": [
+      "products"
+    ],
+    "list_all_products": [
+      "products"
+    ],
+    "get_transactions_by_product_id": [
+      "products",
+      "transactions"
+    ],
+    "summarize_transactions": [
+      "store_locations",
+      "transactions"
+    ],
+    "add_transaction": [
+      "products",
+      "store_locations",
+      "transactions"
+    ],
+    "void_transaction": [
+      "transactions"
+    ],
+    "add_product": [
+      "products"
+    ],
+    "update_product_price": [
+      "products"
+    ],
+    "add_store_location": [
+      "store_locations"
+    ],
+    "update_store_location": [
+      "store_locations"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_transaction_by_id",
+      "description": "Retrieve details of a specific transaction, including all items and metadata.\n\nArgs:\n    transaction_id (str): The unique ID of the transaction to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": TransactionInfo               # All transaction metadata and items\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str                          # Reason for failure (e.g., transaction not found)\n    }\n\nConstraints:\n    - The given transaction_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id"
+        ]
+      }
+    },
+    {
+      "name": "list_transactions_by_location",
+      "description": "Retrieve all transactions for a specific store location.\n\nArgs:\n    location_id (str): The ID of the store location.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TransactionInfo]  # List may be empty if no transactions for location\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # error message if location does not exist\n    }\n\nConstraints:\n    - The location_id must correspond to an existing store location.\n    - All transactions where 'location_id' matches are included.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      }
+    },
+    {
+      "name": "list_transactions_by_date_range",
+      "description": "Retrieve all transactions within the specified start and end date (inclusive).\n\nArgs:\n    start_date (str): Range start (inclusive), ISO 8601 string (e.g. '2024-06-01T00:00:00')\n    end_date (str): Range end (inclusive), ISO 8601 string (e.g. '2024-06-30T23:59:59')\n\nReturns:\n    dict:\n    - { \"success\": True, \"data\": List[TransactionInfo] }\n    - { \"success\": False, \"error\": <reason str> }\n\nConstraints:\n    - Both dates must be parseable ISO8601 date/time strings.\n    - start_date must be <= end_date (inclusive).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "start_date",
+          "end_date"
+        ]
+      }
+    },
+    {
+      "name": "list_transactions_by_location_and_date_range",
+      "description": "Retrieve all transactions for a given location within a specified (inclusive) date range.\n\nArgs:\n    location_id (str): The location/store to filter by.\n    start_date (str): ISO date string (\"YYYY-MM-DD\"), inclusive.\n    end_date (str): ISO date string (\"YYYY-MM-DD\"), inclusive.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TransactionInfo]  # Possibly empty\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - location_id must exist in the system.\n    - start_date and end_date must be valid ISO dates and start_date <= end_date.\n    - Only transactions with matching location and whose\n      timestamp's date part is between start_date and end_date (inclusive) are included.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id",
+          "start_date",
+          "end_date"
+        ]
+      }
+    },
+    {
+      "name": "get_transaction_items",
+      "description": "List all items (products, quantities, unit prices) in a given transaction.\n\nArgs:\n    transaction_id (str): The identifier of the transaction to query.\n\nReturns:\n    dict:\n        - If transaction found:\n            { \"success\": True, \"data\": List[TransactionItemInfo] }\n        - If not found:\n            { \"success\": False, \"error\": \"Transaction not found\" }\n\nConstraints:\n    - Transaction must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id"
+        ]
+      }
+    },
+    {
+      "name": "get_store_location_by_id",
+      "description": "Retrieve the details for a specific store location.\n\nArgs:\n    location_id (str): The unique identifier of the store location.\n\nReturns:\n    dict: On success,\n        {\n            \"success\": True,\n            \"data\": StoreLocationInfo\n        }\n        On failure,\n        {\n            \"success\": False,\n            \"error\": str  # \"Store location not found\"\n        }\n\nConstraints:\n    - The store location must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_store_locations",
+      "description": "List all retail store locations managed by the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[StoreLocationInfo]  # List of all store locations, possibly empty\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message, if internal failure occurs\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_product_by_id",
+      "description": "Retrieve product details by product_id.\n\nArgs:\n    product_id (str): The unique identifier for the product.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ProductInfo,   # Product details if product_id is found\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str           # Reason for failure, e.g., 'Product not found'\n    }\n\nConstraints:\n    - product_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_products",
+      "description": "List all products in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ProductInfo],  # List of all products (can be empty if no products exist)\n    }\n\nConstraints:\n    - None (simply returns all available products).\n    - If no products are registered, returns an empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_transactions_by_product_id",
+      "description": "List all transactions that include at least one TransactionItem for the specified product.\n\nArgs:\n    product_id (str): The ID of the product to search for in transactions.\n\nReturns:\n    dict:\n        - If successful, {\n              \"success\": True,\n              \"data\": List[TransactionInfo]  # May be empty if no transactions contain this product\n          }\n        - If product does not exist, {\n              \"success\": False,\n              \"error\": \"Product not found\"\n          }\n\nConstraints:\n    - Product must exist in the system.\n    - Only transactions containing this product will be returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "summarize_transactions",
+      "description": "Returns aggregate transaction data for a given store location and date range.\n\nArgs:\n    location_id (str): ID of the store location.\n    start_date (str): Start date (inclusive), format 'YYYY-MM-DD' or ISO date string.\n    end_date (str): End date (inclusive), format 'YYYY-MM-DD' or ISO date string.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"location_id\": str,\n            \"transaction_count\": int,\n            \"total_sales_amount\": float\n        }\n    }\n    or {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Only considers transactions for this location.\n    - Only considers transactions where start_date <= timestamp <= end_date.\n    - If no transactions found, returns counts/sums of 0.\n    - Returns error if location_id doesn't exist.\n    - Date strings compared lexicographically (expecting ISO format).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id",
+          "start_date",
+          "end_date"
+        ]
+      }
+    },
+    {
+      "name": "add_transaction",
+      "description": "Records a new transaction and its items in the system.\n\nArgs:\n    transaction_id (str): Unique ID for the transaction.\n    timestamp (str): Transaction datetime (immutable after recording).\n    location_id (str): Store location where transaction occurred (must exist).\n    payment_method (str): Payment method (e.g. \"Cash\", \"Card\").\n    transaction_items (list of dict): Each item should be {\n        'product_id': str,\n        'quantity': int,\n        'unit_price': float\n    }\n    total_amount (float): Total amount of the transaction.\n\nReturns:\n    dict: On success,\n        { \"success\": True, \"message\": \"Transaction added successfully\" }\n    On error,\n        { \"success\": False, \"error\": <reason> }\n\nConstraints:\n- transaction_id must be unique.\n- location_id must exist.\n- Each product_id must reference an existing product.\n- Quantity must be >0.\n- Transaction timestamps are immutable after recording.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "location_id": {
+            "type": "string"
+          },
+          "payment_method": {
+            "type": "string"
+          },
+          "transaction_items": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "total_amount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "timestamp",
+          "location_id",
+          "payment_method",
+          "transaction_items",
+          "total_amount"
+        ]
+      }
+    },
+    {
+      "name": "void_transaction",
+      "description": "Mark a transaction as voided/cancelled.\n- Maintains audit trail: does NOT alter timestamp or original transaction items/details.\n- If already voided, operation is idempotent (returns error).\n\nArgs:\n    transaction_id (str): The ID of the transaction to be voided.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Transaction <id> marked as voided.\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\nConstraints:\n    - Transaction must exist.\n    - Transaction must not already be voided.\n    - Does not modify timestamp, transaction_items, or total_amount.\n    - Retains all original details for audit trail.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id"
+        ]
+      }
+    },
+    {
+      "name": "add_product",
+      "description": "Add a new product to the product catalog.\n\nArgs:\n    product_id (str): Unique product identifier.\n    name (str): Product's name.\n    category (str): Product's category.\n    current_price (float): Product's current price. Must be >= 0.\n\nReturns:\n    dict: \n        On success:\n            {\"success\": True, \"message\": \"Product <product_id> added successfully.\"}\n        On failure:\n            {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - product_id must be unique (not already in catalog).\n    - current_price must be non-negative.\n    - name and category must be non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "current_price": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "product_id",
+          "name",
+          "category",
+          "current_price"
+        ]
+      }
+    },
+    {
+      "name": "update_product_price",
+      "description": "Update the current price for a given product.\nDoes NOT affect past transactions.\n\nArgs:\n    product_id (str): The unique identifier for the product to update.\n    new_price (float): The new price to set. Must be non-negative.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Product price updated successfully.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Product must already exist in the system.\n    - new_price must be non-negative.\n    - Only the 'current_price' on product is changed; past transactions are immutable.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "new_price": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "product_id",
+          "new_price"
+        ]
+      }
+    },
+    {
+      "name": "add_store_location",
+      "description": "Add a new store location to the system.\n\nArgs:\n    location_id (str): Unique identifier for the store location (must not already exist).\n    name (str): Name of the store location.\n    address (str): Address of the store location.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Store location <location_id> added.\" }\n        On failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - location_id must be unique.\n    - All fields must be non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id",
+          "name",
+          "address"
+        ]
+      }
+    },
+    {
+      "name": "update_store_location",
+      "description": "Edit metadata (name, address) for an existing store location.\n\nArgs:\n    location_id (str): ID of the store location to update.\n    name (str, optional): New store name (if provided).\n    address (str, optional): New store address (if provided).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Store location updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - location_id must exist.\n    - At least one of name or address must be provided.\n    - Only provided fields are updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      }
+    }
+  ]
+}

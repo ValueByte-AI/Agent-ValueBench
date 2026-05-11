@@ -1,0 +1,505 @@
+{
+  "env_name": "EmergencyDispatchSystem",
+  "description": "An emergency services dispatch system manages the intake and prioritization of emergency requests from the public, tracks available response resources, and coordinates the dispatch of personnel and equipment to incident locations. The system maintains real-time records of requests, addresses, dispatched units, and their status. It enables efficient allocation of resources to incidents, ensuring timely and effective responses to emergencies.",
+  "initial_parameter_schema": {
+    "emergency_requests": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "request_time": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "assigned_unit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "request_id",
+          "address",
+          "request_time",
+          "priority",
+          "status",
+          "assigned_unit"
+        ]
+      }
+    },
+    "response_units": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "assigned_request_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "unit_id",
+          "type",
+          "status",
+          "location",
+          "assigned_request_id"
+        ]
+      }
+    },
+    "addresses": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "address_id": {
+            "type": "string"
+          },
+          "street": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "geo_coordinate": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "address_id",
+          "street",
+          "city",
+          "geo_coordinate"
+        ]
+      }
+    },
+    "personnel": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "personnel_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "qualification": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "assigned_unit_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "personnel_id",
+          "name",
+          "qualification",
+          "status",
+          "assigned_unit_id"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_address_by_details": [
+      "addresses"
+    ],
+    "list_all_addresses": [
+      "addresses"
+    ],
+    "get_emergency_request_by_address": [
+      "emergency_requests"
+    ],
+    "get_emergency_request_by_id": [
+      "emergency_requests"
+    ],
+    "list_all_open_emergency_requests": [
+      "emergency_requests"
+    ],
+    "list_available_response_units": [
+      "response_units"
+    ],
+    "get_response_unit_by_id": [
+      "response_units"
+    ],
+    "get_units_assigned_to_request": [
+      "emergency_requests",
+      "response_units"
+    ],
+    "list_response_units_by_type": [
+      "response_units"
+    ],
+    "check_unit_assignment_status": [
+      "response_units"
+    ],
+    "get_personnel_by_qualification": [
+      "personnel"
+    ],
+    "get_personnel_assigned_to_unit": [
+      "personnel",
+      "response_units"
+    ],
+    "create_emergency_request": [
+      "addresses",
+      "emergency_requests"
+    ],
+    "assign_unit_to_emergency_request": [
+      "addresses",
+      "emergency_requests",
+      "response_units"
+    ],
+    "update_emergency_request_status": [
+      "emergency_requests"
+    ],
+    "update_unit_status": [
+      "response_units"
+    ],
+    "unassign_unit_from_request": [
+      "emergency_requests",
+      "response_units"
+    ],
+    "update_personnel_assignment": [
+      "personnel",
+      "response_units"
+    ],
+    "update_emergency_request_priority": [
+      "emergency_requests"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_address_by_details",
+      "description": "Lookup address entities using street, city, and/or geo_coordinate.\nAt least one filter criterion must be provided.\n\nArgs:\n    street (Optional[str]): Street name or part thereof to match.\n    city (Optional[str]): City name to match.\n    geo_coordinate (Optional[str]): Exact geo_coordinate string to match.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AddressInfo]  # list of matching addresses\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., \"No matching address found\" or \"At least one detail must be provided\"\n    }\n\nConstraints:\n    - At least one parameter (street, city, geo_coordinate) must be provided.\n    - All provided criteria are matched using exact string matching (case sensitive).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "street": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "geo_coordinate": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "list_all_addresses",
+      "description": "List all registered addresses known by the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AddressInfo]  # list of all address information (can be empty)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_emergency_request_by_address",
+      "description": "Retrieve all ongoing or open emergency requests for a given address.\n\nArgs:\n    address (str): The address string for which to find linked emergency requests.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[EmergencyRequestInfo]  # All \"open\"/\"ongoing\" emergency requests for the address (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason (e.g. invalid input)\n    }\n\nConstraints:\n    - Return requests only if their status is considered \"open\" or \"ongoing\".\n    - Does not validate against the Address table; matches based on string equality with EmergencyRequestInfo['address'].",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "address"
+        ]
+      }
+    },
+    {
+      "name": "get_emergency_request_by_id",
+      "description": "Fetch the details of an emergency request using its request_id.\n\nArgs:\n    request_id (str): The unique identifier of the emergency request.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": EmergencyRequestInfo,    # Dictionary containing request details\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason the request could not be fulfilled\n    }\n\nConstraints:\n    - No special constraints; just checks existence.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_open_emergency_requests",
+      "description": "List all emergency requests that are currently not resolved or closed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[EmergencyRequestInfo],  # List of open requests\n    }\n\n    Always succeeds (returns empty list if no open requests found).\n\nNotes:\n    - Any request whose status is NOT \"resolved\" or \"closed\" is considered open.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_available_response_units",
+      "description": "Retrieve all response units that currently have status 'available'.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ResponseUnitInfo]  # List of available units (possibly empty)\n    }\n\nNo constraints are enforced in this query operation; just a filter.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_response_unit_by_id",
+      "description": "Fetch full details for a response unit given its unit_id.\n\nArgs:\n    unit_id (str): The unique identifier of the response unit.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ResponseUnitInfo  # Full details of the unit.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if not found.\n    }\n\nConstraints:\n    - The response unit with the specified unit_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "unit_id"
+        ]
+      }
+    },
+    {
+      "name": "get_units_assigned_to_request",
+      "description": "List all response units currently assigned to the specified emergency request.\n\nArgs:\n    request_id (str): The unique identifier of the emergency request.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ResponseUnitInfo]  # May be empty if no units assigned\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g., request does not exist\n    }\n\nConstraints:\n    - request_id must exist among emergency requests.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id"
+        ]
+      }
+    },
+    {
+      "name": "list_response_units_by_type",
+      "description": "Retrieve all response units of the given type.\n\nArgs:\n    unit_type (str): The type of the response unit (e.g., 'ambulance', 'fire truck', etc.)\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ResponseUnitInfo],  # May be empty if no units of given type exist\n    }\n\nConstraints:\n    - No special constraints; this is a direct filter on unit type.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "unit_type"
+        ]
+      }
+    },
+    {
+      "name": "check_unit_assignment_status",
+      "description": "Query whether a specific response unit is currently assigned, and to which request.\n\nArgs:\n    unit_id (str): The unique identifier of the response unit.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"assigned\": bool,                    # Whether the unit is assigned to a request\n            \"assigned_request_id\": Optional[str] # request_id if assigned, else None\n        }\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g., unit does not exist)\n    }\n\nConstraints:\n    - The provided unit_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "unit_id"
+        ]
+      }
+    },
+    {
+      "name": "get_personnel_by_qualification",
+      "description": "Retrieve all personnel who have a given qualification.\n\nArgs:\n    qualification (str): The qualification to filter personnel by (e.g., 'paramedic', 'firefighter').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PersonnelInfo]  # list of personnel with the given qualification (may be empty)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "qualification": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "qualification"
+        ]
+      }
+    },
+    {
+      "name": "get_personnel_assigned_to_unit",
+      "description": "List personnel currently assigned to a specific response unit.\n\nArgs:\n    unit_id (str): The unique identifier of the response unit.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PersonnelInfo],  # Personnel currently assigned to this unit (possibly empty)\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # If the unit_id does not exist\n    }\n\nConstraints:\n    - The response unit must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "unit_id"
+        ]
+      }
+    },
+    {
+      "name": "create_emergency_request",
+      "description": "Open a new emergency request for a given address with specified time and priority.\n\nArgs:\n    address_id (str): Unique identifier for the address involved in the emergency.\n    request_time (str): The time the request was made (ISO8601 or timestamp string).\n    priority (str): Priority level for the emergency (e.g., \"high\", \"medium\", \"low\").\n    request_id (str, optional): If provided, use this as the request_id; otherwise, generate a unique one.\n\nReturns:\n    dict:\n        On success: {\n            \"success\": True,\n            \"message\": \"Emergency request created with request_id <ID>\"\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": \"<reason>\"\n        }\n\nConstraints:\n    - Address must exist in the system.\n    - request_id must be unique in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "address_id": {
+            "type": "string"
+          },
+          "request_time": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "address_id",
+          "request_time",
+          "priority"
+        ]
+      }
+    },
+    {
+      "name": "assign_unit_to_emergency_request",
+      "description": "Dispatch a response unit to a request:\n    - Assigns the response unit to the emergency request.\n    - Updates both the unit and the request with the assignment.\n    - Updates statuses as appropriate.\n\nArgs:\n    request_id (str): ID of the emergency request to assign a unit to.\n    unit_id (str): ID of the response unit to assign.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Success message, on successful dispatch.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str    # Error message, if operation could not be completed.\n    }\n\nConstraints:\n    - The emergency request and unit must exist.\n    - The response unit must have status \"available\".\n    - The request's address must exist in the address book.\n    - The response unit must not be assigned to another request.\n    - The emergency request can have at most one assigned unit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "unit_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "unit_id"
+        ]
+      }
+    },
+    {
+      "name": "update_emergency_request_status",
+      "description": "Change the status of an emergency request.\n\nArgs:\n    request_id (str): The unique ID of the emergency request.\n    new_status (str): The new status to be set (e.g., \"in progress\", \"resolved\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Emergency request status updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - The emergency request identified by request_id must exist.\n    - No constraint on allowable status strings (trust user-provided status).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "update_unit_status",
+      "description": "Update the status of a response unit.\n\nArgs:\n    unit_id (str): Unique identifier of the response unit.\n    new_status (str): The new status to set (e.g., \"dispatched\", \"busy\", \"available\").\n\nReturns:\n    dict: \n        On success:\n            {\"success\": True, \"message\": \"Response unit status updated to <new_status>\"}\n        On failure:\n            {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - The response unit must exist.\n    - No restriction on new_status value in current environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "unit_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "unassign_unit_from_request",
+      "description": "Remove the assignment of a unit from a request and set the unit's status as available.\n\nArgs:\n    unit_id (str): The ID of the response unit to unassign.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Unit unassigned from request and marked available.\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The unit must exist.\n    - The unit must currently be assigned to a request.\n    - The assigned request must also exist and reference this unit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "unit_id"
+        ]
+      }
+    },
+    {
+      "name": "update_personnel_assignment",
+      "description": "Assign or reassign a personnel to a unit.\n\nArgs:\n    personnel_id (str): The personnel to assign or reassign.\n    unit_id (str): The target response unit ID to assign to. If empty string or None, unassigns from any unit.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Personnel <id> now assigned to unit <unit_id>\" OR \"Personnel <id> is now unassigned\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": <error_reason>\n    }\nConstraints:\n    - Personnel must exist.\n    - If assigning (unit_id is not None/empty), unit must exist.\n    - Assignment is always updated to target value.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "personnel_id": {
+            "type": "string"
+          },
+          "unit_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "personnel_id",
+          "unit_id"
+        ]
+      }
+    },
+    {
+      "name": "update_emergency_request_priority",
+      "description": "Change the priority level of an ongoing emergency request.\n\nArgs:\n    request_id (str): The unique identifier for the emergency request to update.\n    new_priority (str): The new priority level to set for the request.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Priority updated for request <request_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <error reason>\n    }\n\nConstraints:\n    - The request_id must exist in the system.\n    - The priority can always be changed (no status restriction).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "new_priority": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "new_priority"
+        ]
+      }
+    }
+  ]
+}

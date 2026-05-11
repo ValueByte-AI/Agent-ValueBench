@@ -1,0 +1,773 @@
+{
+  "env_name": "SportsAnalyticsPlatform",
+  "description": "A Sports Analytics Platform manages detailed data about teams, players, matches, and events, capturing metrics such as scoring, movement, and performance. The platform allows granular querying and analysis, supporting features like performance reporting, trend analysis, and visualizations tailored for coaching and strategy. Its structured, entity-rich state supports data-driven decision-making across sports teams and organizations.",
+  "initial_parameter_schema": {
+    "teams": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "team_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "roster": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "coach": {
+            "type": "string"
+          },
+          "league": {
+            "type": "string"
+          },
+          "roster_history": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "required": [
+          "team_id",
+          "name",
+          "roster",
+          "coach",
+          "league",
+          "roster_history"
+        ]
+      }
+    },
+    "players": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "team_id": {
+            "type": "string"
+          },
+          "position": {
+            "type": "string"
+          },
+          "stats_overview": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "player_id",
+          "name",
+          "team_id",
+          "position",
+          "stats_overview"
+        ]
+      }
+    },
+    "matches": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "participating_team_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "location": {
+            "type": "string"
+          },
+          "result": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "match_id",
+          "date",
+          "participating_team_ids",
+          "location",
+          "result"
+        ]
+      }
+    },
+    "events": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "match_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "event_type": {
+            "type": "string"
+          }
+        },
+      "required": [
+        "event_id"
+      ]
+    }
+  },
+    "player_performances": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "event_id": {
+            "type": "string"
+          },
+          "match_id": {
+            "type": "string"
+          },
+          "metrics": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "player_id",
+          "event_id",
+          "match_id",
+          "metrics"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_team_by_id": [
+      "teams"
+    ],
+    "get_team_roster_at_time": [
+      "teams"
+    ],
+    "get_players_by_team": [
+      "players",
+      "teams"
+    ],
+    "get_player_by_id": [
+      "players"
+    ],
+    "get_events_by_ids": [
+      "events"
+    ],
+    "get_event_by_id": [
+      "events"
+    ],
+    "get_match_by_id": [
+      "matches"
+    ],
+    "get_player_performance": [
+      "events",
+      "matches",
+      "player_performances",
+      "players"
+    ],
+    "get_team_player_performances_for_events": [
+      "events",
+      "player_performances",
+      "teams"
+    ],
+    "has_player_performance_spatial_coordinates": [
+      "player_performances"
+    ],
+    "generate_team_event_heatmap": [
+      "events",
+      "player_performances",
+      "players",
+      "teams"
+    ],
+    "validate_event_and_match_links": [
+      "events",
+      "matches"
+    ],
+    "list_all_teams": [
+      "teams"
+    ],
+    "list_all_players": [
+      "players"
+    ],
+    "list_all_matches": [
+      "matches"
+    ],
+    "update_team_roster": [
+      "players",
+      "teams"
+    ],
+    "add_roster_history_entry": [
+      "players",
+      "teams"
+    ],
+    "add_player_performance": [
+      "events",
+      "matches",
+      "player_performances",
+      "players",
+      "teams"
+    ],
+    "update_player_performance_metrics": [
+      "player_performances"
+    ],
+    "add_event": [
+      "events",
+      "matches"
+    ],
+    "update_event_information": [
+      "events",
+      "matches"
+    ],
+    "update_player_info": [
+      "players",
+      "teams"
+    ],
+    "update_match_info": [
+      "matches",
+      "teams"
+    ],
+    "remove_player_performance": [
+      "player_performances"
+    ],
+    "remove_event": [
+      "events",
+      "player_performances"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_team_by_id",
+      "description": "Retrieve full team information, including roster and roster history, given a team ID.\n\nArgs:\n    team_id (str): The team identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": TeamInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The team must exist in self.teams.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "team_id"
+        ]
+      }
+    },
+    {
+      "name": "get_team_roster_at_time",
+      "description": "Get the roster (list of player_ids) for a team as of a specific timestamp.\n\nArgs:\n    team_id (str): The ID of the team to query.\n    timestamp (float): The timestamp (event time) for historic roster lookup.\n\nReturns:\n    dict:\n        - success: True, data: List[str] (roster at/before timestamp).\n        - success: False, error: str.\n\nConstraints:\n    - team must exist.\n    - historic roster entry (roster_history) must exist at or before timestamp.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "team_id",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "get_players_by_team",
+      "description": "Retrieve all current PlayerInfo dicts for players on the given team's current roster.\n\nArgs:\n    team_id (str): Unique ID of the team whose current roster is requested.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PlayerInfo],  # player info for all rostered players (may be empty if no players)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # why the request failed (e.g., team not found)\n    }\n\nConstraints:\n    - team_id must exist in the self.teams dictionary.\n    - Only pulls current roster (not historic rosters).\n    - Skips/ignores player_ids in the roster which do not exist in self.players.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "team_id"
+        ]
+      }
+    },
+    {
+      "name": "get_player_by_id",
+      "description": "Fetch a player's details and overview statistics by their player ID.\n\nArgs:\n    player_id (str): The unique identifier for the player.\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"data\": PlayerInfo  # full player information dictionary\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": \"Player not found\"\n        }\n\nConstraints:\n    - The player_id must exist in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id"
+        ]
+      }
+    },
+    {
+      "name": "get_events_by_ids",
+      "description": "Retrieve events and their details (including match and timestamps) for a list of event IDs.\n\nArgs:\n    event_ids (list): List of event_id strings to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[EventInfo],            # List of EventInfo for found event_ids.\n        \"missing_event_ids\": List[str],     # event_ids not found in self.events (empty if all found)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str                        # Error message if input is invalid.\n    }\n\nConstraints:\n    - Returned events must exist in self.events.\n    - If input is not a list or is empty, failure.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "event_ids"
+        ]
+      }
+    },
+    {
+      "name": "get_event_by_id",
+      "description": "Retrieve details for a single event by its unique event_id.\n\nArgs:\n    event_id (str): The identifier for the event to look up.\n\nReturns:\n    dict: {\"success\": True, \"data\": EventInfo} if event found,\n          {\"success\": False, \"error\": \"Event not found\"} if not found.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "get_match_by_id",
+      "description": "Retrieve full details of a match (participating teams, date, location, result) by match ID.\n\nArgs:\n    match_id (str): The unique identifier of the match.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": MatchInfo\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - The match with the given match_id must exist in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id"
+        ]
+      }
+    },
+    {
+      "name": "get_player_performance",
+      "description": "Fetch a PlayerPerformance record for a specific player, event, and match.\n\nArgs:\n    player_id (str): The player's unique identifier.\n    event_id (str): The event's unique identifier.\n    match_id (str): The match's unique identifier.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": PlayerPerformanceInfo\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Error description\n            }\n\nConstraints:\n    - The (player_id, event_id, match_id) tuple must identify a stored player_performance record.\n    - event_id must exist in self.events.\n    - The read is allowed even when the referenced player catalog entry or match link is missing, so corrupted records can still be inspected and repaired.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "event_id": {
+            "type": "string"
+          },
+          "match_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id",
+          "event_id",
+          "match_id"
+        ]
+      }
+    },
+    {
+      "name": "get_team_player_performances_for_events",
+      "description": "Retrieve all PlayerPerformance records (with all metrics, including spatial_coordinates) for all members\nof a team during the listed events.\n\nArgs:\n    team_id (str): The team ID.\n    event_ids (list of str): List of event IDs.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PlayerPerformanceInfo],  # List of matching player performances\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g., invalid team_id or event_id)\n    }\n\nConstraints:\n    - Players can only appear if they were rostered on the team at the time of the event (checked via roster_history).\n    - PlayerPerformance must exist and reference valid player_id, event_id, and match_id.\n    - Event must exist and have valid match link and timestamp.\n    - PlayerPerformance metrics must include \"spatial_coordinates\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team_id": {
+            "type": "string"
+          },
+          "event_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "team_id",
+          "event_ids"
+        ]
+      }
+    },
+    {
+      "name": "has_player_performance_spatial_coordinates",
+      "description": "For each provided (player_id, event_id, match_id) tuple, check whether the corresponding\nPlayerPerformance entry contains the 'spatial_coordinates' field in its metrics.\n\nArgs:\n    performance_keys (list of tuple): Each tuple is (player_id, event_id, match_id) identifying a PlayerPerformance.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"player_id|event_id|match_id\": bool,\n            ...\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nNotes/Constraints:\n    - If the PlayerPerformance entry does not exist, result for that key is False.\n    - Input must be a non-empty list of tuples.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "performance_keys": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "array",
+              "minItems": 3,
+              "maxItems": 3,
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "performance_keys"
+        ]
+      }
+    },
+    {
+      "name": "generate_team_event_heatmap",
+      "description": "Aggregate and transform spatial_coordinates from PlayerPerformance records into\na heatmap visualization structure for a given team and set of event IDs.\n\nArgs:\n    team_id (str): The team for which the heatmap will be generated.\n    event_ids (List[str]): List of event IDs from which PlayerPerformance data should be aggregated.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": heatmap, # dict structure, e.g. {\"points\": List[coordinates], \"total\": int}\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Only include PlayerPerformance records referencing valid players rostered for the team at event time.\n    - Only aggregate spatial_coordinates found in qualifying PlayerPerformance records.\n    - If team or any event is missing, operation fails.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team_id": {
+            "type": "string"
+          },
+          "event_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "team_id",
+          "event_ids"
+        ]
+      }
+    },
+    {
+      "name": "validate_event_and_match_links",
+      "description": "Confirm that all events are associated with a valid match and have valid timestamps.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"invalid_events\": List[Dict[str, str]]  # Each dict: {\"event_id\": ..., \"error\": ...}\n        }\n    }\n\nConstraints:\n    - Each event must reference an existing match (match_id in self.matches).\n    - Each event must have a valid timestamp (float, and >0).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_all_teams",
+      "description": "Retrieve the list of all teams in the platform.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TeamInfo]  # List of all teams (may be empty if no teams present)\n    }\n\nConstraints:\n    - None. Simple enumeration of all teams tracked.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_all_players",
+      "description": "List all registered players in the platform.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PlayerInfo]  # May be empty if no players are registered\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_all_matches",
+      "description": "List all recorded matches in the analytics platform.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MatchInfo],  # List of all match info (may be empty if none recorded)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "update_team_roster",
+      "description": "Change a team’s current roster by adding or removing a player.\nThis updates both the team's roster and its roster_history for historic accuracy.\n\nArgs:\n    team_id (str): ID of the team to modify.\n    player_id (str): ID of the player to add/remove.\n    action (str): \"add\" or \"remove\".\n    timestamp (float): Time of the roster change.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Success description\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of error/constraint failure\n    }\n\nConstraints:\n    - team_id must exist.\n    - player_id must exist.\n    - For add: player not already in roster.\n    - For remove: player must be in roster.\n    - roster_history is updated with the new roster and timestamp.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team_id": {
+            "type": "string"
+          },
+          "player_id": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "team_id",
+          "player_id",
+          "action",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "add_roster_history_entry",
+      "description": "Add a roster snapshot to a team's roster_history for historic roster queries.\n\nArgs:\n    team_id (str): The team to update.\n    timestamp (float): The point in time (as a Unix timestamp) for the roster snapshot.\n    roster (List[str]): List of player_ids representing the roster at the timestamp.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Roster history entry added to team <team_id>.\"\n    }\n    or in case of error:\n    {\n        \"success\": False,\n        \"error\": <error message>\n    }\n\nConstraints:\n    - Team must exist.\n    - All player_ids in roster must exist in self.players.\n    - roster must be a list of strings (player_ids).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "roster": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "team_id",
+          "timestamp",
+          "roster"
+        ]
+      }
+    },
+    {
+      "name": "add_player_performance",
+      "description": "Insert a new PlayerPerformance entry for a specific (player, event, match).\n\nArgs:\n    player_id (str): The player's unique identifier.\n    event_id (str): The event's unique identifier.\n    match_id (str): The match's unique identifier.\n    metrics (Dict[str, Any]): Performance data for the player in this event/match.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"message\": \"PlayerPerformance entry added\"}\n        On failure:\n            {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - Player, event, and match must exist.\n    - Event must belong to the specified match.\n    - Player must be on their team's roster at event timestamp.\n    - No duplicate PlayerPerformance entry (player_id, event_id, match_id).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "event_id": {
+            "type": "string"
+          },
+          "match_id": {
+            "type": "string"
+          },
+          "metrics": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "player_id",
+          "event_id",
+          "match_id",
+          "metrics"
+        ]
+      }
+    },
+    {
+      "name": "update_player_performance_metrics",
+      "description": "Update the metrics (including possibly spatial_coordinates or any other keys) for an existing PlayerPerformance record.\n\nArgs:\n    player_id (str): The ID of the player.\n    event_id (str): The event ID.\n    match_id (str): The match ID.\n    metrics_update (Dict[str, Any]): Dictionary of metrics to update (merged into existing metrics).\n\nReturns:\n    dict:\n        { \"success\": True, \"message\": \"PlayerPerformance metrics updated successfully.\" }\n        OR\n        { \"success\": False, \"error\": \"PlayerPerformance record not found.\" }\n\nConstraints:\n    - PlayerPerformance record for the given (player_id, event_id, match_id) must exist.\n    - Only provided keys are updated (existing metrics keys are merged/overwritten).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "event_id": {
+            "type": "string"
+          },
+          "match_id": {
+            "type": "string"
+          },
+          "metrics_update": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "player_id",
+          "event_id",
+          "match_id",
+          "metrics_update"
+        ]
+      }
+    },
+    {
+      "name": "add_event",
+      "description": "Add a new event with all required attributes to the analytics platform.\n\nArgs:\n    event_id (str): Unique identifier for the event.\n    name (str): Event name/description.\n    match_id (str): ID of the associated match (must exist).\n    timestamp (float): Event timestamp (Unix time, must be valid).\n    event_type (str): Type of event (e.g., goal, save).\n\nReturns:\n    dict: Success or failure information. Success gives message. Failure gives error reason.\n\nConstraints:\n    - event_id must be unique (cannot already exist).\n    - match_id must exist in the platform.\n    - timestamp must be a float (non-negative).\n    - All fields required.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "match_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "event_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "name",
+          "match_id",
+          "timestamp",
+          "event_type"
+        ]
+      }
+    },
+    {
+      "name": "update_event_information",
+      "description": "Modify event details, such as match, name, timestamp, or type.\n\nArgs:\n    event_id (str): The ID of the event to modify.\n    name (str, optional): New name for the event.\n    match_id (str, optional): New match_id to associate with the event (must exist).\n    timestamp (float, optional): New event timestamp (Unix time, must be non-negative).\n    event_type (str, optional): New event type.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Event updated successfully.\"\n    } OR\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Event must exist.\n    - If match_id is changed, new match_id must already exist.\n    - timestamp, if specified, must be non-negative.\n    - At least one update field must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "match_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "event_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "name",
+          "match_id",
+          "timestamp",
+          "event_type"
+        ]
+      }
+    },
+    {
+      "name": "update_player_info",
+      "description": "Modify a player's information (position, stats_overview, team_id, name).\n\nArgs:\n    player_id (str): ID of player to update (required).\n    position (str, optional): New position.\n    stats_overview (dict, optional): Updated stats_overview dictionary.\n    team_id (str, optional): New team assignment (team must exist).\n    name (str, optional): New player name.\n\nReturns:\n    dict: Success or error status.\n\nConstraints:\n    - player_id must exist.\n    - If updating team_id: new team must exist, update rosters accordingly.\n    - All fields are optional (at least one must be provided to update).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "position": {
+            "type": "string"
+          },
+          "stats_overview": {
+            "type": "object"
+          },
+          "team_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id",
+          "position",
+          "stats_overview",
+          "team_id",
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "update_match_info",
+      "description": "Update match details such as participating teams, result, or date.\n\nArgs:\n    match_id (str): Identifier of the match to update.\n    date (str, optional): New date for the match.\n    participating_team_ids (List[str], optional): New list of team IDs.\n    location (str, optional): New location for the match.\n    result (dict, optional): New match result data.\n\nReturns:\n    dict: \n      On success: { \"success\": True, \"message\": \"Match info updated for match_id <id>\" }\n      On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - match_id must exist in current matches.\n    - If participating_team_ids provided, all team_ids must exist in teams.\n    - Only updates fields that are explicitly provided/non-None.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "participating_team_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "location": {
+            "type": "string"
+          },
+          "result": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "match_id",
+          "date",
+          "participating_team_ids",
+          "location",
+          "result"
+        ]
+      }
+    },
+    {
+      "name": "remove_player_performance",
+      "description": "Delete a PlayerPerformance record matching the identifiers (player_id, event_id, match_id).\n\nArgs:\n    player_id (str): ID of the player.\n    event_id (str): ID of the event.\n    match_id (str): ID of the match.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Player performance removed.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Player performance not found.\"\n    }\n\nConstraints:\n    - The (player_id, event_id, match_id) record must exist in player_performances.\n    - No exceptions are raised; errors are reported in the returned dict.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "event_id": {
+            "type": "string"
+          },
+          "match_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id",
+          "event_id",
+          "match_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_event",
+      "description": "Delete an event entry from the platform. Also removes any PlayerPerformance entries\nthat reference this event for consistency.\n\nArgs:\n    event_id (str): The ID of the event to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": f\"Event {event_id} and associated player performances deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The event must exist.\n    - All PlayerPerformance entries referencing this event will also be deleted (data integrity).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    }
+  ]
+}

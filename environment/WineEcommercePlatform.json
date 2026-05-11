@@ -1,0 +1,467 @@
+{
+  "env_name": "WineEcommercePlatform",
+  "description": "A wine e-commerce platform is a digital marketplace enabling users to browse, search, and purchase wine products. It maintains structured records for each wine, including attributes like varietal, origin, price, and inventory, and supports features such as recommendations, shopping carts, and checkout. The platform is optimized for user interaction, ensuring seamless selection and purchase of wines for individuals and businesses.",
+  "initial_parameter_schema": {
+    "wines": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "wine_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "varietal": {
+            "type": "string"
+          },
+          "origin": {
+            "type": "string"
+          },
+          "vintage": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "description": {
+            "type": "string"
+          },
+          "stock_quantity": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "wine_id",
+          "name",
+          "varietal",
+          "origin",
+          "vintage",
+          "price",
+          "description",
+          "stock_quantity"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "user_type": {
+            "type": "string"
+          },
+          "preferences": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "email",
+          "user_type",
+          "preferences"
+        ]
+      }
+    },
+    "shopping_carts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "cart_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "last_updated": {
+            "type": "string"
+          },
+          "cart_items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "cart_id": {
+                  "type": "string"
+                },
+                "wine_id": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "cart_id",
+                "wine_id",
+                "quantity"
+              ]
+            }
+          }
+        },
+        "required": [
+          "cart_id",
+          "user_id",
+          "last_updated",
+          "cart_items"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "list_available_wines": [
+      "wines"
+    ],
+    "get_wine_by_id": [
+      "wines"
+    ],
+    "search_wines": [
+      "wines"
+    ],
+    "recommend_wines": [
+      "users",
+      "wines"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_user_cart": [
+      "shopping_carts",
+      "users"
+    ],
+    "get_cart_items": [
+      "shopping_carts"
+    ],
+    "get_cart_item_detail": [
+      "shopping_carts",
+      "wines"
+    ],
+    "check_wine_stock": [
+      "wines"
+    ],
+    "add_cart_item": [
+      "shopping_carts",
+      "wines"
+    ],
+    "update_cart_item_quantity": [
+      "shopping_carts",
+      "wines"
+    ],
+    "remove_cart_item": [
+      "shopping_carts"
+    ],
+    "clear_cart": [
+      "shopping_carts"
+    ],
+    "synchronize_cart_with_stock": [
+      "shopping_carts",
+      "wines"
+    ],
+    "update_wine_stock_quantity": [
+      "shopping_carts",
+      "wines"
+    ],
+    "create_new_cart": [
+      "shopping_carts",
+      "users"
+    ],
+    "delete_cart": [
+      "shopping_carts"
+    ]
+  },
+  "tools": [
+    {
+      "name": "list_available_wines",
+      "description": "Retrieve the full list of wines currently in stock (stock_quantity > 0).\n\nReturns:\n    dict:\n        - success (bool): True if the operation completes normally.\n        - data (List[WineProductInfo]): List of WineProductInfo for all wines with stock_quantity > 0.\n\nConstraints:\n    - Only wines with stock_quantity > 0 are returned.\n    - If no such wines, returns success with empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_wine_by_id",
+      "description": "Retrieve the details of a wine product given its wine_id.\n\nArgs:\n    wine_id (str): The unique identifier for the wine product.\n\nReturns:\n    dict:\n        success (bool): Operation result.\n        data (WineProductInfo): Wine details if found.\n        error (str): Error message if wine is not found.\n\nConstraints:\n    - The wine product with wine_id must exist in the catalogue.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "wine_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "wine_id"
+        ]
+      }
+    },
+    {
+      "name": "search_wines",
+      "description": "Search for wines using optional filters (varietal, origin, vintage, price range).\n\nArgs:\n    varietal (str, optional): Wine varietal to match. Use an empty string to leave this field unrestricted.\n    origin (str, optional): Wine origin (e.g. country/region) to match. Use an empty string to leave this field unrestricted.\n    vintage (str, optional): Wine vintage (as string or int) to match. Use an empty string to leave this field unrestricted.\n    min_price (float, optional): Minimum price (inclusive).\n    max_price (float, optional): Maximum price (inclusive).\n\nReturns:\n    dict: {\n        'success': True,\n        'data': List[WineProductInfo]    # List of matching wines (empty if none match)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "varietal": {
+            "type": "string"
+          },
+          "origin": {
+            "type": "string"
+          },
+          "vintage": {
+            "type": "string"
+          },
+          "min_price": {
+            "type": "number"
+          },
+          "max_price": {
+            "type": "number"
+          }
+        },
+        "required": [
+        ]
+      }
+    },
+    {
+      "name": "recommend_wines",
+      "description": "Provide a list of wine recommendations for a user, based on wine availability\nand (optionally) user preferences.\n\nArgs:\n    user_id (str): ID of the user to recommend wines for.\n    limit (int): Maximum number of recommendations to return (default: 10).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[WineProductInfo],  # List of recommended wines (could be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., user does not exist\n    }\n\nConstraints:\n    - User must exist.\n    - Only wines with stock_quantity > 0 are considered.\n    - Optionally use user preferences for more relevant recommendations.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user profile info given a user's unique _id.\n\nArgs:\n    user_id (str): User's unique _id.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo    # On success\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str        # \"User not found\"\n    }\nConstraints:\n    - The _id must correspond to an existing user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_cart",
+      "description": "Retrieve the current shopping cart and list all its items for a given user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ShoppingCartInfo,  # Cart and items (cart_items may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of error, e.g. user does not exist or cart not found\n    }\n\nConstraints:\n    - The user must exist.\n    - Each shopping cart is associated with a single user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_cart_items",
+      "description": "Retrieve all items (wine_id, quantity) in a specified shopping cart.\n\nArgs:\n    cart_id (str): The unique identifier for the shopping cart.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[{'wine_id': str, 'quantity': int}],  # List of cart items from that cart (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description, e.g., \"Cart does not exist\"\n    }\n\nConstraints:\n    - The cart_id must correspond to an existing shopping cart.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cart_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cart_id"
+        ]
+      }
+    },
+    {
+      "name": "get_cart_item_detail",
+      "description": "For each item in the given shopping cart, provide full wine details along with quantity.\n\nArgs:\n    cart_id (str): The ID of the shopping cart to query.\n\nReturns:\n    dict: \n        {\n            \"success\": True, \n            \"data\": List[{\"wine\": WineProductInfo, \"quantity\": int}]\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - Fails if cart does not exist.\n    - Skips any cart items referencing wines that no longer exist in catalog.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cart_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cart_id"
+        ]
+      }
+    },
+    {
+      "name": "check_wine_stock",
+      "description": "Check available stock quantity for a specified wine.\n\nArgs:\n    wine_id (str): The unique identifier for the wine to check.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"wine_id\": str,\n                    \"stock_quantity\": int\n                }\n            }\n        On failure (wine not found):\n            {\n                \"success\": False,\n                \"error\": \"Wine not found\"\n            }\nConstraints:\n    - WineProduct must exist in the system.\n    - Stock quantity must reflect the current inventory (may be zero or more).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "wine_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "wine_id"
+        ]
+      }
+    },
+    {
+      "name": "add_cart_item",
+      "description": "Add a specified quantity of a wine product to the user's shopping cart,\nonly if sufficient stock is available and the cart/wine exists.\n\nArgs:\n    cart_id (str): The shopping cart's identifier.\n    wine_id (str): The wine product's identifier.\n    quantity (int): Number of units/bottles to add.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Wine added to cart\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure (cart/wine not found, insufficient stock, invalid quantity)\"\n    }\n\nConstraints:\n    - Cart must exist.\n    - Wine must exist.\n    - Quantity must be positive.\n    - Total quantity in cart plus requested quantity must not exceed stock_quantity.\n    - Wine stock_quantity cannot be negative.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cart_id": {
+            "type": "string"
+          },
+          "wine_id": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cart_id",
+          "wine_id",
+          "quantity"
+        ]
+      }
+    },
+    {
+      "name": "update_cart_item_quantity",
+      "description": "Modify the quantity of a specific wine in a cart, enforcing stock constraints.\n\nArgs:\n    cart_id (str): The shopping cart's ID.\n    wine_id (str): The wine's ID to update quantity for.\n    new_quantity (int): The new desired quantity.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Description of update\n    }\n    or\n    dict: {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - Cart must exist.\n    - Cart item for wine must exist in cart.\n    - Wine must exist.\n    - new_quantity >= 0 and <= available stock.\n    - Setting quantity to zero removes the item.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cart_id": {
+            "type": "string"
+          },
+          "wine_id": {
+            "type": "string"
+          },
+          "new_quantity": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cart_id",
+          "wine_id",
+          "new_quantity"
+        ]
+      }
+    },
+    {
+      "name": "remove_cart_item",
+      "description": "Remove a specific wine product from the user’s shopping cart.\n\nArgs:\n    cart_id (str): The ID of the shopping cart.\n    wine_id (str): The ID of the wine product to be removed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Wine removed from cart.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for the failure.\"\n    }\n\nConstraints:\n    - The cart must exist.\n    - If cart does not contain the specified wine, return error.\n    - Cart's 'last_updated' should be updated to reflect the change.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cart_id": {
+            "type": "string"
+          },
+          "wine_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cart_id",
+          "wine_id"
+        ]
+      }
+    },
+    {
+      "name": "clear_cart",
+      "description": "Remove all items from a user’s shopping cart.\n\nArgs:\n    cart_id (str): The ID of the shopping cart to clear.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Cart cleared successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The cart must exist.\n    - All items are removed and last_updated is set to current time.\n    - This operation does not affect wine inventory.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cart_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cart_id"
+        ]
+      }
+    },
+    {
+      "name": "synchronize_cart_with_stock",
+      "description": "Synchronize all shopping carts with the current wine stock.\n- For each cart item:\n    - If the wine is no longer in catalog, remove the item from cart.\n    - If the wine stock_quantity is zero, remove the item from cart.\n    - If the quantity in the cart exceeds available stock, reduce it to the available stock.\nUpdates shopping carts in place.\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"All shopping carts synchronized with current wine stock.\"\n    }\nConstraints:\n    - Cart contents should be updated in real time if item quantities or stock change.\n    - Users cannot have more in their cart than is available for purchase.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "update_wine_stock_quantity",
+      "description": "Admin-level operation to directly adjust the stock quantity of a wine product.\n\nArgs:\n    wine_id (str): The ID of the wine product to update.\n    new_stock_quantity (int): The new stock quantity to set. Must be zero or positive.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Wine stock quantity updated.\" }\n        On failure:\n            { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Cannot set stock quantity negative.\n    - wine_id must exist.\n    - Shopping cart items referencing this wine must be synchronized if their quantities exceed the new stock.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "wine_id": {
+            "type": "string"
+          },
+          "new_stock_quantity": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "wine_id",
+          "new_stock_quantity"
+        ]
+      }
+    },
+    {
+      "name": "create_new_cart",
+      "description": "Create a new (empty) shopping cart associated with the given user.\n\nArgs:\n    user_id (str): The _id of the user for whom to create the cart.\n\nReturns:\n    dict:\n      - Success: {\n          \"success\": True,\n          \"message\": \"Cart created.\",\n          \"cart_id\": <new_cart_id>\n        }\n      - Failure: {\n          \"success\": False,\n          \"error\": \"reason\"\n        }\n\nConstraints:\n    - The user must exist.\n    - Each user may only have one active cart.\n    - The cart will be empty and have the current timestamp as 'last_updated'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_cart",
+      "description": "Remove a shopping cart entirely from the system.\n\nArgs:\n    cart_id (str): The unique identifier of the cart to remove.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"message\": \"Cart deleted successfully.\"}\n        On failure:\n            {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - The cart must exist in the system to be deleted.\n    - Cart items are contained within the cart; no separate cleanup required.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cart_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cart_id"
+        ]
+      }
+    }
+  ]
+}

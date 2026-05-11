@@ -1,0 +1,508 @@
+{
+  "env_name": "PersonalFinanceManagementSystem",
+  "description": "A Personal Finance Management System is designed to help individuals manage their financial accounts and activities. It stores information about accounts, transactions, dates, amounts, and descriptive memos or categories. Users can review, add, edit, or delete records to track expenses, monitor balances, and generate financial reports for budgeting and analysis.",
+  "initial_parameter_schema": {
+    "accounts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "account_name": {
+            "type": "string"
+          },
+          "account_type": {
+            "type": "string"
+          },
+          "owner_id": {
+            "type": "string"
+          },
+          "balance": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "account_id",
+          "account_name",
+          "account_type",
+          "owner_id",
+          "balance"
+        ]
+      }
+    },
+    "transactions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "account_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "category": {
+            "type": "string"
+          },
+          "memo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "account_id",
+          "date",
+          "amount",
+          "category",
+          "memo"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "email"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_name": [
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_account_by_name": [
+      "accounts"
+    ],
+    "get_accounts_by_user": [
+      "accounts",
+      "users"
+    ],
+    "get_account_by_id": [
+      "accounts"
+    ],
+    "list_transactions_by_account": [
+      "accounts",
+      "transactions"
+    ],
+    "find_transaction_by_date_and_memo": [
+      "accounts",
+      "transactions"
+    ],
+    "get_transaction_by_id": [
+      "transactions"
+    ],
+    "list_transactions_by_date": [
+      "accounts",
+      "transactions"
+    ],
+    "check_duplicate_transaction_in_account": [
+      "accounts",
+      "transactions"
+    ],
+    "calculate_account_balance": [
+      "accounts",
+      "transactions"
+    ],
+    "update_transaction": [
+      "accounts",
+      "transactions"
+    ],
+    "add_transaction": [
+      "accounts",
+      "transactions"
+    ],
+    "delete_transaction": [
+      "accounts",
+      "transactions"
+    ],
+    "update_account_info": [
+      "accounts"
+    ],
+    "add_account": [
+      "accounts",
+      "users"
+    ],
+    "delete_account": [
+      "accounts",
+      "transactions"
+    ],
+    "recalculate_account_balance": [
+      "accounts",
+      "transactions"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_name",
+      "description": "Retrieve user information by name.\n\nArgs:\n    name (str): The name of the user to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[UserInfo]  # List of user information dicts with matching name (may be empty if no users found)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description (e.g., invalid input)\n    }\n\nConstraints:\n    - The name parameter must be a non-empty string.\n    - Multiple users can share the same name; all matches are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user information by user_id.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict:\n        - If user exists: {\"success\": True, \"data\": UserInfo}\n        - If user does not exist: {\"success\": False, \"error\": \"User not found\"}\n\nConstraints:\n    - user_id must correspond to an existing user in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_account_by_name",
+      "description": "Retrieve account details using account name, and optionally owner_id.\n\nArgs:\n    account_name (str): Name of the account to search for.\n    owner_id (str, optional): ID of the owner. If specified, only accounts belonging to this owner are returned.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": AccountInfo or List[AccountInfo],\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - If multiple accounts match (same name, different owners), returns list of matches.\n    - If owner_id specified, only accounts under that owner are considered.\n    - If no matching account, returns error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_name": {
+            "type": "string"
+          },
+          "owner_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_name"
+        ]
+      }
+    },
+    {
+      "name": "get_accounts_by_user",
+      "description": "List all accounts belonging to a specific user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True,\n            \"data\": List[AccountInfo]  # Empty list if the user owns no accounts\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - The user with the given user_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_account_by_id",
+      "description": "Retrieve account information given the unique account_id.\n\nArgs:\n    account_id (str): Unique identifier of the account.\n\nReturns:\n    dict:\n        - If found: { \"success\": True, \"data\": AccountInfo }\n        - If not found: { \"success\": False, \"error\": \"Account not found\" }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      }
+    },
+    {
+      "name": "list_transactions_by_account",
+      "description": "Retrieve all transactions for the given account.\n\nArgs:\n    account_id (str): ID of the account whose transactions are to be listed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TransactionInfo]  # possibly empty if account has no transactions\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # error reason (e.g., account not found)\n    }\n\nConstraints:\n    - account_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      }
+    },
+    {
+      "name": "find_transaction_by_date_and_memo",
+      "description": "Retrieve a transaction in the specified account that matches both a specific date and memo.\n\nArgs:\n    account_id (str): The account's unique identifier.\n    date (str): Transaction date (in the same format as stored in TransactionInfo).\n    memo (str): Transaction memo for identification.\n\nReturns:\n    dict:\n      - If found: { \"success\": True, \"data\": TransactionInfo }\n      - If no such transaction: { \"success\": False, \"error\": \"Transaction not found\" }\n      - If account doesn't exist: { \"success\": False, \"error\": \"Account does not exist\" }\n\nConstraints:\n    - Only search within the specified account.\n    - No two transactions per account can have both the same date and the same memo.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "memo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "date",
+          "memo"
+        ]
+      }
+    },
+    {
+      "name": "get_transaction_by_id",
+      "description": "Retrieve full information about a transaction given its unique transaction_id.\n\nArgs:\n    transaction_id (str): The ID of the transaction to retrieve.\n\nReturns:\n    dict:\n        - If the transaction exists:\n            {\n                \"success\": True,\n                \"data\": TransactionInfo\n            }\n        - If the transaction does not exist:\n            {\n                \"success\": False,\n                \"error\": \"Transaction not found\"\n            }\nConstraints:\n    - The transaction_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id"
+        ]
+      }
+    },
+    {
+      "name": "list_transactions_by_date",
+      "description": "Get all transactions in a specific account for a given date.\n\nArgs:\n    account_id (str): ID of the account to query.\n    date (str): Date string to filter transactions (format assumed as stored in TransactionInfo).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TransactionInfo]  # All transactions for the account on the given date\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - The account_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "date"
+        ]
+      }
+    },
+    {
+      "name": "check_duplicate_transaction_in_account",
+      "description": "Check if a transaction with the given date and memo already exists in the account.\n\nArgs:\n    account_id (str): The account in which to check for duplicate.\n    date (str): Date of the transaction (format assumed string).\n    memo (str): Memo of the transaction.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": bool  # True if duplicate exists, False otherwise\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # error message if account does not exist\n    }\n\nConstraints:\n    - Account must exist.\n    - Duplicate is defined as another transaction in the same account having the same date and memo.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "memo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "date",
+          "memo"
+        ]
+      }
+    },
+    {
+      "name": "calculate_account_balance",
+      "description": "Compute (and update) the balance of the account as the sum of its transactions' amounts.\n\nArgs:\n    account_id (str): The ID of the account for which to calculate the balance.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"balance\": float }\n        - On failure: { \"success\": False, \"error\": str }\nConstraints:\n    - The account_id must exist in the system.\n    - The balance is computed as the sum of all amounts of transactions with the given account_id.\n    - If there are no transactions, the balance is 0.0.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      }
+    },
+    {
+      "name": "update_transaction",
+      "description": "Modify amount, memo, category, or date of an existing transaction, enforcing uniqueness constraint within the account.\n\nArgs:\n    transaction_id (str): The ID of the transaction to update.\n    amount (float, optional): New amount; must be numeric if provided.\n    date (str, optional): New date.\n    memo (str, optional): New memo.\n    category (str, optional): New category.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Transaction updated successfully\" }\n        On failure: { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - The transaction must exist.\n    - The updated (date, memo) pair must be unique in the account (no duplicate with another transaction).\n    - Amount must be numeric if provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "date": {
+            "type": "string"
+          },
+          "memo": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id"
+        ]
+      }
+    },
+    {
+      "name": "add_transaction",
+      "description": "Create a new transaction under a specific account with linkage and uniqueness constraints.\n\nArgs:\n    transaction_id (str): A unique identifier for the transaction.\n    account_id (str): The account to associate with this transaction.\n    date (str): The transaction date (ISO or YYYY-MM-DD recommended).\n    amount (float): Transaction amount (negative for expense, positive for income).\n    category (str): Transaction category.\n    memo (str): Description/memo.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Transaction added successfully\"\n    } on success,\n    or\n    {\n        \"success\": False,\n        \"error\": \"<description>\"\n    }\n\nConstraints:\n    - The referenced account must exist.\n    - The transaction_id must be unique.\n    - No other transaction within the same account can share the same date and memo.\n    - The amount must be numeric (float or int).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "account_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "category": {
+            "type": "string"
+          },
+          "memo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "account_id",
+          "date",
+          "amount",
+          "category",
+          "memo"
+        ]
+      }
+    },
+    {
+      "name": "delete_transaction",
+      "description": "Removes a transaction from its associated account and from the system.\nUpdates the account's balance accordingly.\n\nArgs:\n    transaction_id (str): The unique identifier of the transaction to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Transaction deleted and account balance updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The transaction must exist.\n    - The associated account must exist.\n    - After removal, account balance reflects the removal of this transaction's amount.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id"
+        ]
+      }
+    },
+    {
+      "name": "update_account_info",
+      "description": "Edit account-level fields for a given account.\n\nArgs:\n    account_id (str): Unique identifier of the account to edit.\n    account_name (Optional[str]): New name for the account (if updating).\n    account_type (Optional[str]): New type for the account (if updating).\n\nReturns:\n    dict: \n        On success:  { \"success\": True, \"message\": \"Account info updated\" }\n        On failure:  { \"success\": False, \"error\": reason_str }\n\nConstraints:\n    - The account_id must correspond to an existing account.\n    - At least one updatable field must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "account_name": {
+            "type": "string"
+          },
+          "account_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      }
+    },
+    {
+      "name": "add_account",
+      "description": "Add a new financial account for a user.\n\nArgs:\n    account_id (str): Unique identifier for the account.\n    account_name (str): The display name of the account.\n    account_type (str): The type/category of the account (e.g., 'Checking', 'Savings').\n    owner_id (str): The user_id of the account's owner.\n    balance (float, optional): Opening balance for the account. Defaults to 0.0.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True, \n                \"message\": \"Account <account_id> added for user <owner_id>\"\n            }\n        On failure:\n            {\n                \"success\": False, \n                \"error\": <error reason>\n            }\n\nConstraints:\n    - account_id must be unique (not already in accounts).\n    - owner_id must refer to an existing user.\n    - balance must be numeric.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "account_name": {
+            "type": "string"
+          },
+          "account_type": {
+            "type": "string"
+          },
+          "owner_id": {
+            "type": "string"
+          },
+          "balance": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "account_id",
+          "account_name",
+          "account_type",
+          "owner_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_account",
+      "description": "Remove the specified account and all transactions associated with it.\n\nArgs:\n    account_id (str): The unique identifier of the account to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Account and its transactions deleted successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Account not found.\"\n    }\n\nConstraints:\n    - The account must exist.\n    - All transactions belonging to this account will also be removed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      }
+    },
+    {
+      "name": "recalculate_account_balance",
+      "description": "Recompute and update the balance for the specified account by summing the\namounts of all its transactions.\n\nArgs:\n    account_id (str): The unique identifier of the account to update.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Account balance recalculated to <new_balance>\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Account does not exist\"\n            }\n\nConstraints:\n    - The specified account must exist.\n    - The balance is computed as the sum of all transaction amounts for this account.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      }
+    }
+  ]
+}

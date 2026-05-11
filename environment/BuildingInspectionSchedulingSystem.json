@@ -1,0 +1,536 @@
+{
+  "env_name": "BuildingInspectionSchedulingSystem",
+  "description": "A building inspection scheduling system maintains a registry of buildings, inspectors, and inspection appointments. It supports operations such as assigning inspectors to buildings, tracking inspection dates and statuses, and ensuring that compliance or maintenance checks are performed as required. The system encapsulates the relationships between assets, personnel, and scheduled activities, optimizing resource allocation and record-keeping.",
+  "initial_parameter_schema": {
+    "buildings": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "building_id": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "building_type": {
+            "type": "string"
+          },
+          "compliance_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "building_id",
+          "address",
+          "owner",
+          "building_type",
+          "compliance_status"
+        ]
+      }
+    },
+    "inspectors": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "inspector_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "qualifications": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "current_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "inspector_id",
+          "name",
+          "contact_info",
+          "qualifications",
+          "current_status"
+        ]
+      }
+    },
+    "appointments": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "appointment_id": {
+            "type": "string"
+          },
+          "building_id": {
+            "type": "string"
+          },
+          "inspector_id": {
+            "type": "string"
+          },
+          "scheduled_date": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "results": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "appointment_id",
+          "building_id",
+          "inspector_id",
+          "scheduled_date",
+          "status",
+          "results",
+          "notes"
+        ]
+      }
+    },
+    "get_building_required_qualifications": {
+      "type": "string"
+    }
+  },
+  "tool_state_dependencies": {
+    "get_building_by_id": [
+      "buildings"
+    ],
+    "list_all_buildings": [
+      "buildings"
+    ],
+    "get_inspector_by_id": [
+      "inspectors"
+    ],
+    "list_all_inspectors": [
+      "inspectors"
+    ],
+    "check_inspector_qualifications": [
+      "inspectors"
+    ],
+    "get_building_required_qualifications": [
+      "buildings"
+    ],
+    "list_appointments_for_inspector": [
+      "appointments",
+      "inspectors"
+    ],
+    "list_appointments_for_building": [
+      "appointments",
+      "buildings"
+    ],
+    "get_appointments_by_datetime": [
+      "appointments"
+    ],
+    "get_appointment_by_id": [
+      "appointments"
+    ],
+    "check_inspector_availability": [
+      "appointments",
+      "inspectors"
+    ],
+    "get_appointment_status": [
+      "appointments"
+    ],
+    "create_inspection_appointment": [
+      "appointments",
+      "buildings",
+      "get_building_required_qualifications",
+      "inspectors"
+    ],
+    "update_appointment_status": [
+      "appointments"
+    ],
+    "cancel_appointment": [
+      "appointments"
+    ],
+    "modify_appointment_details": [
+      "appointments",
+      "buildings",
+      "get_building_required_qualifications",
+      "inspectors"
+    ],
+    "delete_appointment": [
+      "appointments"
+    ],
+    "record_appointment_results": [
+      "appointments"
+    ],
+    "assign_inspector_to_appointment": [
+      "appointments",
+      "buildings",
+      "get_building_required_qualifications",
+      "inspectors"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_building_by_id",
+      "description": "Retrieve detailed information for a specific building via building_id.\n\nArgs:\n    building_id (str): The unique identifier of the building.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": BuildingInfo\n    } if found,\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    } if not found.\n\nConstraints:\n    - The building_id must exist in the system to return info.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "building_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "building_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_buildings",
+      "description": "Retrieve a list of all registered buildings in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BuildingInfo],  # List of all building info dictionaries (empty list if none registered)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_inspector_by_id",
+      "description": "Retrieve detailed information for a specific inspector by their inspector_id.\n\nArgs:\n    inspector_id (str): The unique identifier for the inspector.\n\nReturns:\n    dict:\n        - If inspector exists:\n            {\n                \"success\": True,\n                \"data\": InspectorInfo\n            }\n        - If inspector not found:\n            {\n                \"success\": False,\n                \"error\": \"Inspector not found\"\n            }\n\nConstraints:\n    - The inspector_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "inspector_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "inspector_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_inspectors",
+      "description": "Retrieve a list of all inspectors in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[InspectorInfo]  # List of inspector info dicts (possibly empty)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "check_inspector_qualifications",
+      "description": "Get the list of qualifications for a given inspector.\n\nArgs:\n    inspector_id (str): The unique identifier of the inspector.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str]  # List of inspector's qualifications\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g. inspector not found\n    }\n\nConstraints:\n    - The inspector must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "inspector_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "inspector_id"
+        ]
+      }
+    },
+    {
+      "name": "get_building_required_qualifications",
+      "description": "Retrieve the required or recommended inspector qualifications for a given building,\ninferred from its building_type and/or compliance_status.\n\nArgs:\n    building_id (str): The unique identifier for the building.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str],  # List of required/recommended qualifications\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g., building not found)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "building_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "building_id"
+        ]
+      }
+    },
+    {
+      "name": "list_appointments_for_inspector",
+      "description": "Retrieve all inspection appointments assigned to the specified inspector.\n\nArgs:\n    inspector_id (str): The unique identifier of the inspector.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[InspectionAppointmentInfo]  # May be empty if no appointments.\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Inspector does not exist\n        }\n\nConstraints:\n    - The inspector_id must exist in the inspector registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "inspector_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "inspector_id"
+        ]
+      }
+    },
+    {
+      "name": "list_appointments_for_building",
+      "description": "Retrieve all inspection appointments scheduled for a specific building.\n\nArgs:\n    building_id (str): Unique identifier for the building.\n\nReturns:\n    dict:\n        On success:\n          {\n            \"success\": True,\n            \"data\": List[InspectionAppointmentInfo]  # List of all appointments for the building (may be empty).\n          }\n        On failure (building not found):\n          {\n            \"success\": False,\n            \"error\": \"Building not found\"\n          }\nConstraints:\n    - building_id must refer to an existing building.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "building_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "building_id"
+        ]
+      }
+    },
+    {
+      "name": "get_appointments_by_datetime",
+      "description": "Retrieve all inspection appointments, optionally filtering by inspector and/or scheduled date/time.\n\nArgs:\n    inspector_id (Optional[str]): If specified, only return appointments assigned to this inspector.\n    scheduled_date (Optional[str]): If specified, only return appointments scheduled at this date/time (ISO datetime string).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[InspectionAppointmentInfo],  # All matching appointments (may be empty),\n    }\n\nNotes:\n    - If both filters are None, returns all appointments.\n    - Filtering uses AND logic (i.e., both criteria must be met if both are provided).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "inspector_id": {
+            "type": "string"
+          },
+          "scheduled_date": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "get_appointment_by_id",
+      "description": "Retrieve the details of a specific inspection appointment using its appointment_id.\n\nArgs:\n    appointment_id (str): The unique identifier for the inspection appointment.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": InspectionAppointmentInfo  # All details of the requested appointment\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Appointment not found\"\n            }\n\nConstraints:\n    - The appointment_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "appointment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "appointment_id"
+        ]
+      }
+    },
+    {
+      "name": "check_inspector_availability",
+      "description": "Determine if an inspector is available at a specific date and time slot.\n\nArgs:\n    inspector_id (str): The identifier of the inspector to check.\n    scheduled_date (str): The date and time to check (ISO datetime string).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"available\": bool  # True if available, False if not\n    }\n    or\n    dict: {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g., inspector not found)\n    }\n\nConstraints:\n    - Inspector must exist.\n    - Inspector cannot have another scheduled appointment at the same date/time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "inspector_id": {
+            "type": "string"
+          },
+          "scheduled_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "inspector_id",
+          "scheduled_date"
+        ]
+      }
+    },
+    {
+      "name": "get_appointment_status",
+      "description": "Query the current status of a specific inspection appointment.\n\nArgs:\n    appointment_id (str): The unique identifier for the inspection appointment.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"status\": str  # The current status of the appointment (\"scheduled\", \"completed\", \"cancelled\", etc.)\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason (e.g., appointment does not exist)\n            }\n\nConstraints:\n    - The appointment_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "appointment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "appointment_id"
+        ]
+      }
+    },
+    {
+      "name": "create_inspection_appointment",
+      "description": "Schedule a new inspection appointment for a specific building, inspector, and scheduled date, verifying all constraints.\n\nArgs:\n    appointment_id (str): Unique ID for the new appointment.\n    building_id (str): ID of the building to inspect.\n    inspector_id (str): ID of the inspector assigned.\n    scheduled_date (str): ISO format string representing the inspection date/time.\n    results (Optional[str]): Optional initial results field (default None).\n    notes (Optional[str]): Optional notes about the appointment.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Appointment created for {building_id} with inspector {inspector_id} on {scheduled_date}\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - appointment_id must be unique.\n    - building_id and inspector_id must exist.\n    - inspector must not have another appointment at the same scheduled_date.\n    - inspector must meet required qualifications for the building (if any).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "appointment_id": {
+            "type": "string"
+          },
+          "building_id": {
+            "type": "string"
+          },
+          "inspector_id": {
+            "type": "string"
+          },
+          "scheduled_date": {
+            "type": "string"
+          },
+          "results": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "appointment_id",
+          "building_id",
+          "inspector_id",
+          "scheduled_date"
+        ]
+      }
+    },
+    {
+      "name": "update_appointment_status",
+      "description": "Change the status of an inspection appointment.\n\nArgs:\n    appointment_id (str): The ID of the appointment to update.\n    new_status (str): The new status string (e.g., 'scheduled', 'completed', 'cancelled').\n\nReturns:\n    dict:\n        On success: {\"success\": True, \"message\": \"Appointment status updated.\"}\n        On failure: {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - The appointment_id must exist in the system.\n    - new_status must be one of the allowed statuses.\n    - Appointment status must actually change.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "appointment_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "appointment_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "cancel_appointment",
+      "description": "Cancel an existing scheduled appointment.\n\nArgs:\n    appointment_id (str): The ID of the appointment to cancel.\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"message\": \"Appointment <id> has been cancelled.\"}\n        - On error: {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - Appointment must exist.\n    - Only appointments with status 'scheduled' can be cancelled.\n    - Completed or already-cancelled appointments cannot be cancelled.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "appointment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "appointment_id"
+        ]
+      }
+    },
+    {
+      "name": "modify_appointment_details",
+      "description": "Modify attributes of an inspection appointment. Supports changing inspector, building, date/time, results, or notes.\n\nArgs:\n    appointment_id (str): Appointment to modify.\n    inspector_id (str, optional): New inspector assignment.\n    building_id (str, optional): New building assignment.\n    scheduled_date (str, optional): New scheduled time (ISO datetime string).\n    results (str, optional): Results of the inspection.\n    notes (str, optional): Additional notes.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Appointment details modified successfully\",\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <description>\n    }\n\nConstraints:\n    - The appointment, building, and inspector must exist if referenced.\n    - No inspector may be double-booked at a single time.\n    - Inspector must be qualified for the assigned building.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "appointment_id": {
+            "type": "string"
+          },
+          "inspector_id": {
+            "type": "string"
+          },
+          "building_id": {
+            "type": "string"
+          },
+          "scheduled_date": {
+            "type": "string"
+          },
+          "results": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "appointment_id"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "inspector_id"
+            ]
+          },
+          {
+            "required": [
+              "building_id"
+            ]
+          },
+          {
+            "required": [
+              "scheduled_date"
+            ]
+          },
+          {
+            "required": [
+              "results"
+            ]
+          },
+          {
+            "required": [
+              "notes"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "delete_appointment",
+      "description": "Permanently removes an inspection appointment from the system.\n\nArgs:\n    appointment_id (str): The unique ID of the appointment to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Appointment <appointment_id> has been deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Appointment not found.\"\n    }\n\nConstraints:\n    - Only existing appointments can be deleted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "appointment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "appointment_id"
+        ]
+      }
+    },
+    {
+      "name": "record_appointment_results",
+      "description": "Store results and notes after an inspection is completed.\n\nArgs:\n    appointment_id (str): The unique ID of the inspection appointment.\n    results (str): Summary/results of the inspection.\n    notes (Optional[str]): Additional notes (optional).\n\nReturns:\n    dict:\n        - { \"success\": True, \"message\": \"Results and notes recorded for appointment <appointment_id>.\" }\n        - { \"success\": False, \"error\": \"<reason>\" }\nConstraints:\n    - Appointment must exist.\n    - Appointment status must be 'completed' to record results.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "appointment_id": {
+            "type": "string"
+          },
+          "results": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "appointment_id",
+          "results"
+        ]
+      }
+    },
+    {
+      "name": "assign_inspector_to_appointment",
+      "description": "Assign or change an inspector for an existing appointment, enforcing all eligibility and availability constraints.\n\nArgs:\n    appointment_id (str): Unique identifier of the inspection appointment.\n    inspector_id (str): Unique identifier of the inspector to assign.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Success message\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - Both appointment and inspector must exist.\n    - Appointment must be in a modifiable status (not completed or canceled).\n    - Inspector cannot already be assigned to another appointment at the same scheduled_date.\n    - Inspector must possess all needed qualifications for the building/appointment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "appointment_id": {
+            "type": "string"
+          },
+          "inspector_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "appointment_id",
+          "inspector_id"
+        ]
+      }
+    }
+  ]
+}

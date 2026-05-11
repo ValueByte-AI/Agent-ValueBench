@@ -1,0 +1,692 @@
+{
+  "env_name": "InsuranceClaimsManagementSystem",
+  "description": "An insurance claims management system maintains records of insurance claims filed by policyholders, tracking each claim’s details, current status, supporting documents, and interactions. The system enables users and administrators to submit new claims, update existing ones, and query claim states by unique identifiers. Its scope typically covers lifecycle management from claim initiation through investigation to resolution and payout or denial.",
+  "initial_parameter_schema": {
+    "claims": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "policyholder_id": {
+            "type": "string"
+          },
+          "date_filed": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "claim_type": {
+            "type": "string"
+          },
+          "claim_amount": {
+            "type": "number"
+          },
+          "supporting_documents": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "interactions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "assigned_adjuster_id": {
+            "type": "string"
+          },
+          "payout_amount": {
+            "type": "number"
+          },
+          "resolution_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id",
+          "policyholder_id",
+          "date_filed",
+          "status",
+          "claim_type",
+          "claim_amount",
+          "supporting_documents",
+          "interactions",
+          "assigned_adjuster_id",
+          "payout_amount",
+          "resolution_date"
+        ]
+      }
+    },
+    "policyholders": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "policyholder_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "policy_num": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "policyholder_id",
+          "name",
+          "contact_info",
+          "policy_num"
+        ]
+      }
+    },
+    "documents": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "claim_id": {
+            "type": "string"
+          },
+          "document_type": {
+            "type": "string"
+          },
+          "upload_date": {
+            "type": "string"
+          },
+          "file_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "claim_id",
+          "document_type",
+          "upload_date",
+          "file_url"
+        ]
+      }
+    },
+    "interactions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "interaction_id": {
+            "type": "string"
+          },
+          "claim_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "interaction_type": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "participant_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "interaction_id",
+          "claim_id",
+          "date",
+          "interaction_type",
+          "notes",
+          "participant_id"
+        ]
+      }
+    },
+    "adjusters": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "adjuster_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "adjuster_id",
+          "name",
+          "contact_info"
+        ]
+      }
+    },
+    "check_user_authorization_for_claim": {
+      "type": "string"
+    }
+  },
+  "tool_state_dependencies": {
+    "get_claim_by_id": [
+      "claims"
+    ],
+    "get_claim_status": [
+      "claims"
+    ],
+    "list_claims_by_policyholder": [
+      "claims",
+      "policyholders"
+    ],
+    "get_policyholder_by_id": [
+      "policyholders"
+    ],
+    "get_documents_for_claim": [
+      "claims",
+      "documents"
+    ],
+    "get_document_by_id": [
+      "documents"
+    ],
+    "get_interactions_for_claim": [
+      "claims",
+      "interactions"
+    ],
+    "get_interaction_by_id": [
+      "interactions"
+    ],
+    "get_adjuster_by_id": [
+      "adjusters"
+    ],
+    "get_claims_by_status": [
+      "claims"
+    ],
+    "check_user_authorization_for_claim": [
+      "claims"
+    ],
+    "get_claim_history": [
+      "claims",
+      "interactions"
+    ],
+    "submit_new_claim": [
+      "claims",
+      "policyholders"
+    ],
+    "update_claim_status": [
+      "claims"
+    ],
+    "update_claim_info": [
+      "claims"
+    ],
+    "assign_adjuster_to_claim": [
+      "adjusters",
+      "claims"
+    ],
+    "add_supporting_document_to_claim": [
+      "check_user_authorization_for_claim",
+      "claims",
+      "documents"
+    ],
+    "remove_supporting_document_from_claim": [
+      "claims",
+      "documents"
+    ],
+    "add_interaction_to_claim": [
+      "claims",
+      "interactions"
+    ],
+    "delete_claim": [
+      "claims",
+      "documents",
+      "interactions"
+    ],
+    "update_payout_amount": [
+      "claims"
+    ],
+    "set_claim_resolution_date": [
+      "claims"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_claim_by_id",
+      "description": "Retrieve full details of a claim using its unique claim_id.\n\nArgs:\n    claim_id (str): Unique identifier of the insurance claim.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"data\": <ClaimInfo> }\n        On failure: { \"success\": False, \"error\": \"Claim not found\" }\n\nConstraints:\n    - claim_id must exist in the claims registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id"
+        ]
+      }
+    },
+    {
+      "name": "get_claim_status",
+      "description": "Query the current status of a claim by claim_id.\n\nArgs:\n    claim_id (str): The unique identifier of the claim.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"claim_id\": str,\n                    \"status\": str\n                }\n            }\n        On failure (claim does not exist):\n            {\n                \"success\": False,\n                \"error\": \"Claim not found\"\n            }\nConstraints:\n    - The provided claim_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id"
+        ]
+      }
+    },
+    {
+      "name": "list_claims_by_policyholder",
+      "description": "Retrieve all claims filed by the specified policyholder.\n\nArgs:\n    policyholder_id (str): The ID of the policyholder.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ClaimInfo]  # List of ClaimInfo filed by the policyholder (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message, e.g., \"Policyholder not found\"\n    }\n\nConstraints:\n    - Only existing policyholders are valid.\n    - Each claim is associated with exactly one policyholder.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "policyholder_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "policyholder_id"
+        ]
+      }
+    },
+    {
+      "name": "get_policyholder_by_id",
+      "description": "Retrieve details of a policyholder given their policyholder_id.\n\nArgs:\n    policyholder_id (str): The unique identifier of the policyholder.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"data\": PolicyholderInfo }\n        On error: { \"success\": False, \"error\": \"Policyholder not found\" }\n\nConstraints:\n    - The given policyholder_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "policyholder_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "policyholder_id"
+        ]
+      }
+    },
+    {
+      "name": "get_documents_for_claim",
+      "description": "List all supporting documents (with metadata) associated with the given claim.\n\nArgs:\n    claim_id (str): The unique identifier of the claim.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DocumentInfo],  # List of supporting documents (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g., claim not found)\n    }\n\nConstraints:\n    - claim_id must exist in the system.\n    - Documents are those listed in the claim's supporting_documents field\n      and present in the system's document registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id"
+        ]
+      }
+    },
+    {
+      "name": "get_document_by_id",
+      "description": "Retrieve metadata and file URL for a supporting document by document_id.\n\nArgs:\n    document_id (str): Unique identifier of the supporting document.\n\nReturns:\n    dict:\n        Success:\n            {\"success\": True, \"data\": DocumentInfo}\n        Failure:\n            {\"success\": False, \"error\": \"Document not found.\"}\n\nConstraints:\n    - The document_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id"
+        ]
+      }
+    },
+    {
+      "name": "get_interactions_for_claim",
+      "description": "List all interactions (communications or actions) linked to a given claim.\n\nArgs:\n    claim_id (str): The unique ID of the claim.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[InteractionInfo]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The claim must exist.\n    - The returned interactions must exist in self.interactions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id"
+        ]
+      }
+    },
+    {
+      "name": "get_interaction_by_id",
+      "description": "Retrieve details of a single interaction by its ID.\n\nArgs:\n    interaction_id (str): The unique identifier of the interaction to retrieve.\n\nReturns:\n    dict:\n        If success:\n            {\n                \"success\": True,\n                \"data\": InteractionInfo\n            }\n        If failure (interaction not found):\n            {\n                \"success\": False,\n                \"error\": \"Interaction not found\"\n            }\nConstraints:\n    - interaction_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "interaction_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "interaction_id"
+        ]
+      }
+    },
+    {
+      "name": "get_adjuster_by_id",
+      "description": "Retrieve details about an adjuster by their unique adjuster_id.\n\nArgs:\n    adjuster_id (str): The unique identifier for the adjuster.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": AdjusterInfo }\n        - On failure: { \"success\": False, \"error\": str }\nConstraints:\n    - adjuster_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "adjuster_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "adjuster_id"
+        ]
+      }
+    },
+    {
+      "name": "get_claims_by_status",
+      "description": "Retrieve all claims that match a specific status value.\n\nArgs:\n    status (str): The desired claim status (must be one of the allowed statuses).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ClaimInfo]  # May be empty if no matches\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\nConstraints:\n    - Status value must be from the defined set.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "check_user_authorization_for_claim",
+      "description": "Determine if a user (policyholder or admin) is authorized to access/modify claim data.\n\nArgs:\n    claim_id (str): The claim to check access for.\n    user_id (str): The unique identifier of the user.\n    user_role (str): The user's role (\"policyholder\" or \"admin\").\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"authorized\": True/False }\n        On error:   { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Admin can always access/modify.\n    - Policyholder can access only if they own the claim.\n    - Invalid roles or missing claim handled as failure.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "user_role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id",
+          "user_id",
+          "user_role"
+        ]
+      }
+    },
+    {
+      "name": "get_claim_history",
+      "description": "Return the sequence of status changes (if tracked) and all interactions for a given claim.\n\nArgs:\n    claim_id (str): The unique identifier of the claim to retrieve history for.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"status_changes\": List[dict],   # Each dict with at least status and date\n                    \"interactions\": List[InteractionInfo]\n                }\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str\n            }\n\nConstraints:\n    - claim_id must exist.\n    - Interactions should be sorted by date ascending.\n    - Status change sequence may be limited to first (date_filed), last (resolution_date), and current status if no full log is available.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id"
+        ]
+      }
+    },
+    {
+      "name": "submit_new_claim",
+      "description": "File a new insurance claim.\nCreates a unique claim_id, sets initial status to 'Filed', and links to the specified policyholder.\n\nArgs:\n    policyholder_id (str): Existing policyholder's ID filing the claim.\n    claim_type (str): Type/category of claim (e.g., 'Auto', 'Home').\n    claim_amount (float): Amount being claimed.\n    date_filed (Optional[str]): Filing date (ISO format). Defaults to current date if not provided.\n    initial_supporting_documents (Optional[List[str]]): List of existing document_ids to link (optional, usually empty).\n    initial_interactions (Optional[List[str]]): List of existing interaction_ids to link (optional, usually empty).\n\nReturns:\n    dict:\n        On success: {\n            \"success\": True,\n            \"message\": \"Claim submitted\",\n            \"claim_id\": <generated_claim_id>\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": <reason>\n        }\n\nConstraints:\n    - policyholder_id must exist in the system.\n    - claim_id is unique (auto-generated).\n    - Initializes status to 'Filed'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "policyholder_id": {
+            "type": "string"
+          },
+          "claim_type": {
+            "type": "string"
+          },
+          "claim_amount": {
+            "type": "number"
+          },
+          "date_filed": {
+            "type": "string"
+          },
+          "initial_supporting_documents": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "initial_interactions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "policyholder_id",
+          "claim_type",
+          "claim_amount"
+        ]
+      }
+    },
+    {
+      "name": "update_claim_status",
+      "description": "Modify the status of an existing claim, provided the new status is valid.\n\nArgs:\n    claim_id (str): Unique identifier of the claim to update.\n    new_status (str): The status to set (\"Filed\", \"Under Investigation\", \n                      \"Approved\", \"Denied\", \"Paid Out\", etc.)\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str\n    } \n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Claim must exist (claim_id in system).\n    - new_status must be in the defined set of valid statuses.\n    - Only modifies the status (no audit trail, timestamp, or auth handled here).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "update_claim_info",
+      "description": "Change editable fields (e.g., claim_type, claim_amount, payout_amount) of an existing claim.\nImmutable fields such as claim_id, policyholder_id, date_filed, assigned_adjuster_id, status, and resolution_date cannot be updated.\n\nArgs:\n    claim_id (str): The claim to update.\n    updates (dict): Dictionary of field: new_value pairs to update.\n\nReturns:\n    dict:\n      - On success: \n            { \"success\": True, \"message\": \"Claim <claim_id> updated successfully\" }\n      - On failure: \n            { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n- Only editable fields can be updated.\n- If claim_id not found, report error.\n- Fields with invalid values (e.g., negative claim_amount) return error.\n- Does not perform detailed authorization check (could be added by passing user context).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "claim_id",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "assign_adjuster_to_claim",
+      "description": "Assign or change the adjuster responsible for a specific claim.\n\nArgs:\n    claim_id (str): The unique identifier of the claim to update.\n    adjuster_id (str): The adjuster's unique identifier to assign to the claim.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Adjuster assigned to claim <claim_id> successfully.\" }\n        On failure:\n            { \"success\": False, \"error\": <error_reason> }\n\nConstraints:\n    - claim_id must refer to an existing claim.\n    - adjuster_id must refer to an existing adjuster.\n    - Only updates the 'assigned_adjuster_id' field for the claim.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "adjuster_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id",
+          "adjuster_id"
+        ]
+      }
+    },
+    {
+      "name": "add_supporting_document_to_claim",
+      "description": "Upload a new supporting document and link it to the specified claim.\n\nArgs:\n    claim_id (str): The ID of the claim to attach the document to.\n    document_id (str): A unique identifier for the new document.\n    document_type (str): Type/category of the document (e.g., 'photo', 'report').\n    upload_date (str): The upload date as an ISO date string.\n    file_url (str): URL/path to the uploaded file.\n    user_id (str): The ID of the user attempting to add the document.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Document added and linked to claim successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error\n    }\n\nConstraints:\n    - Claim must exist.\n    - document_id must be unique.\n    - Only authorized users may add documents to the claim.\n    - The new document's claim_id field must match the claim,\n      and it will be linked in the claim's supporting_documents list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "document_id": {
+            "type": "string"
+          },
+          "document_type": {
+            "type": "string"
+          },
+          "upload_date": {
+            "type": "string"
+          },
+          "file_url": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id",
+          "document_id",
+          "document_type",
+          "upload_date",
+          "file_url",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_supporting_document_from_claim",
+      "description": "Detach a supporting document from a claim.\n\nArgs:\n    claim_id (str): The unique ID of the claim.\n    document_id (str): The ID of the document to un-link from the claim.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Document detached from claim.\" }\n        - On failure: { \"success\": False, \"error\": <error_message> }\n\nConstraints:\n    - The claim and document must both exist.\n    - The document must be listed in the claim's supporting_documents.\n    - The document's claim_id must match the claim_id.\n    - Only detaches the document reference from the claim; does not delete the document object.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "document_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id",
+          "document_id"
+        ]
+      }
+    },
+    {
+      "name": "add_interaction_to_claim",
+      "description": "Records a new interaction for the specified claim.\n\nArgs:\n    claim_id (str): The claim's unique identifier.\n    interaction_id (str): Unique identifier for the new interaction.\n    date (str): ISO date string for the interaction timestamp.\n    interaction_type (str): The type/category of the interaction (e.g., note, contact).\n    notes (str): Details/content of the interaction.\n    participant_id (str): The user or adjuster involved in this interaction.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"message\": \"Interaction added to claim <claim_id>\"}\n        - On failure: {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - claim_id must already exist in the system.\n    - interaction_id must not already exist.\n    - Interactions are timestamped and assigned to claims.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "interaction_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "interaction_type": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "participant_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id",
+          "interaction_id",
+          "date",
+          "interaction_type",
+          "notes",
+          "participant_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_claim",
+      "description": "Remove an existing claim and all its associated documents and interactions.\n(Admin-level action only.)\n\nArgs:\n    claim_id (str): The unique identifier of the claim to delete.\n    user_id (str): The user requesting the operation (must be admin).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Claim <claim_id> deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<description of error>\"\n    }\n\nConstraints:\n    - Only admin users may delete claims.\n    - All supporting documents and interactions linked to the claim are also deleted.\n    - claim_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "update_payout_amount",
+      "description": "Set or change the payout amount for a resolved claim.\n\nArgs:\n    claim_id (str): The claim to update.\n    payout_amount (float): The payout amount to set. Must be non-negative.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Payout amount updated for claim <claim_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - claim_id must exist.\n    - payout_amount must be non-negative.\n    - Claim must be in a resolved status (\"Approved\", \"Denied\", \"Paid Out\").",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "payout_amount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "claim_id",
+          "payout_amount"
+        ]
+      }
+    },
+    {
+      "name": "set_claim_resolution_date",
+      "description": "Assign or modify the resolution date for a claim.\n\nArgs:\n    claim_id (str): The unique identifier for the claim.\n    resolution_date (str): ISO date string to set as the claim's resolution date (format: YYYY-MM-DD).\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"message\": \"Claim resolution date updated successfully.\" }\n        - On failure: {\"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - claim_id must exist in the system.\n    - resolution_date should be a valid ISO date string (\"YYYY-MM-DD\"). Minimal format check only.\n    - Authorization checks are not performed due to lack of user context.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "resolution_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id",
+          "resolution_date"
+        ]
+      }
+    }
+  ]
+}

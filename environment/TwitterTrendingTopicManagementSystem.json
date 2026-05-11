@@ -1,0 +1,422 @@
+{
+  "env_name": "TwitterTrendingTopicManagementSystem",
+  "description": "A Twitter trending topic management system maintains live state about hashtags and topics currently popular across different geographic regions. It supports querying trending hashtags, updates them regularly based on user activity, and allows filtering by location, language, or category. This environment is essential for monitoring real-time public sentiment, social movements, and digital marketing opportunities around the world.",
+  "initial_parameter_schema": {
+    "hashtags": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "hashtag_id": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "trend_score": {
+            "type": "number"
+          },
+          "last_updated_timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "hashtag_id",
+          "text",
+          "category",
+          "language",
+          "trend_score",
+          "last_updated_timestamp"
+        ]
+      }
+    },
+    "regions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "region_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "country_code": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "region_id",
+          "name",
+          "country_code",
+          "timezone"
+        ]
+      }
+    },
+    "trends": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "hashtag_id": {
+              "type": "string"
+            },
+            "region_id": {
+              "type": "string"
+            },
+            "trend_score": {
+              "type": "number"
+            },
+            "rank": {
+              "type": "integer"
+            },
+            "timestamp": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "hashtag_id",
+            "region_id",
+            "trend_score",
+            "rank",
+            "timestamp"
+          ]
+        }
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_region_by_name": [
+      "regions"
+    ],
+    "get_region_by_country_code": [
+      "regions"
+    ],
+    "list_all_regions": [
+      "regions"
+    ],
+    "get_latest_trends_by_region": [
+      "regions",
+      "trends"
+    ],
+    "get_trending_hashtags_filtered": [
+      "hashtags",
+      "regions",
+      "trends"
+    ],
+    "get_hashtag_info": [
+      "hashtags"
+    ],
+    "list_trending_regions_for_hashtag": [
+      "hashtags",
+      "regions",
+      "trends"
+    ],
+    "get_trend_history_for_region": [
+      "regions",
+      "trends"
+    ],
+    "get_trend_history_for_hashtag": [
+      "hashtags",
+      "trends"
+    ],
+    "update_trending_hashtags_for_region": [
+      "hashtags",
+      "regions",
+      "trends"
+    ],
+    "add_or_update_hashtag": [
+      "hashtags"
+    ],
+    "remove_hashtag_from_region_trending": [
+      "regions",
+      "trends"
+    ],
+    "set_hashtag_trend_score": [
+      "hashtags",
+      "regions",
+      "trends"
+    ],
+    "purge_outdated_trends": [
+      "trends"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_region_by_name",
+      "description": "Retrieve region information by region name.\n\nArgs:\n    region_name (str): The name of the region to retrieve (e.g., \"Japan\").\n\nReturns:\n    dict:\n        - success: True, data: RegionInfo for the first region matching the name\n        - success: False, error: \"Region not found\" (if no match)\nConstraints:\n    - Region name lookup is case-sensitive.\n    - Only the first matching region (if more exist) is returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "region_name"
+        ]
+      }
+    },
+    {
+      "name": "get_region_by_country_code",
+      "description": "Retrieve all region infos matching the given ISO country code.\n\nArgs:\n    country_code (str): ISO country code, e.g., 'JP', 'KR', 'AU'.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RegionInfo]  # List of regions with the given country code (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g., invalid input\n    }\n\nConstraints:\n    - country_code must be a non-empty string.\n    - Matches are case-insensitive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "country_code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "country_code"
+        ]
+      }
+    },
+    {
+      "name": "list_all_regions",
+      "description": "Retrieve all available regions being tracked in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RegionInfo],  # List of all region metadata dictionaries (may be empty)\n    }\n\nConstraints:\n    - None (simply returns all RegionInfo entries in the system).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_latest_trends_by_region",
+      "description": "Get the most recent trending hashtags for a specified region (by region_id),\nsorted by rank (ascending) or trend_score (descending).\n\nArgs:\n    region_id (str): ID of the region to query trends for.\n    sort_by (str): Either \"rank\" or \"trend_score\" (optional, default \"rank\").\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[TrendInfo]  # Trends at latest timestamp, sorted per sort_by.\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": \"Reason\"\n        }\n\nConstraints:\n    - Only the most recent trends per region (by timestamp) are considered.\n    - If region does not exist, operation fails.\n    - If region has no trends, returns empty list as success.\n    - If sort_by is invalid, defaults to \"rank\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region_id": {
+            "type": "string"
+          },
+          "sort_by": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "region_id"
+        ]
+      }
+    },
+    {
+      "name": "get_trending_hashtags_filtered",
+      "description": "Retrieve currently trending hashtags filtered by one or more of: region, language, or category.\n\nArgs:\n    region_id (str, optional): Only include trends from this region (must exist if specified).\n    language (str, optional): Only include hashtags of this language.\n    category (str, optional): Only include hashtags of this category.\n\nReturns:\n    dict:\n        success (bool): Was the query successful?\n        data (list[HashtagInfo]): List of currently trending hashtags matching all filters (possibly empty).\n        error (str, optional): Description of the error on failure.\n    \nConstraints:\n    - If region_id is specified, it must exist.\n    - Only currently trending hashtags are considered (latest trends per region).\n    - Multiple filters combine as \"AND\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region_id": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          }
+        },
+        "required": [
+          
+        ]
+      }
+    },
+    {
+      "name": "get_hashtag_info",
+      "description": "Retrieve full metadata for a given hashtag/topic.\n\nArgs:\n    hashtag_id (str): The unique identifier of the hashtag/topic.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": HashtagInfo  # metadata of the hashtag\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., \"Hashtag not found\"\n    }\n\nConstraints:\n    - The hashtag_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hashtag_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "hashtag_id"
+        ]
+      }
+    },
+    {
+      "name": "list_trending_regions_for_hashtag",
+      "description": "Query all regions where a given hashtag is currently trending.\n\nArgs:\n    hashtag_id (str): The ID of the hashtag to query.\n\nReturns:\n    dict:\n      On success:\n        {\n          \"success\": True,\n          \"data\": List[RegionInfo]  # List of region infos where hashtag is currently trending\n        }\n      On failure:\n        {\n          \"success\": False,\n          \"error\": str  # Error description, e.g., hashtag not found\n        }\n\nConstraints:\n    - Only the most recent trends per region are considered for \"currently trending\".\n    - The hashtag must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hashtag_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "hashtag_id"
+        ]
+      }
+    },
+    {
+      "name": "get_trend_history_for_region",
+      "description": "Retrieve historical trending data (past rankings/scores) for a specified region.\n\nArgs:\n    region_id (str): The region's identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TrendInfo]  # All historical trend records for the region (may be empty)\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., region does not exist\n    }\n\nConstraints:\n    - The region must exist in self.regions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "region_id"
+        ]
+      }
+    },
+    {
+      "name": "get_trend_history_for_hashtag",
+      "description": "Retrieve historical trend information (when, where, score, rank) for the specified hashtag.\n\nArgs:\n    hashtag_id (str): Unique identifier for the hashtag/topic.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TrendInfo]  # All TrendInfo records for this hashtag (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Explanation (e.g., 'Hashtag not found')\n    }\n\nConstraints:\n    - hashtag_id must exist in self.hashtags.\n    - All records across all regions and timestamps must be included.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hashtag_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "hashtag_id"
+        ]
+      }
+    },
+    {
+      "name": "update_trending_hashtags_for_region",
+      "description": "Update the set of trending hashtags/topics and their ranks/scores for a given region.\n\nArgs:\n    region_id (str): ID of the region for which to update trending hashtags.\n    new_trends (List[TrendInfo]): The latest list of trending hashtags/topics with\n                                  their updated scores, ranks, and timestamps.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Trending hashtags for region <region_name> updated successfully.\"\n            }\n        On error:\n            {\n                \"success\": False,\n                \"error\": <description>\n            }\n\nConstraints:\n    - The region must exist.\n    - All hashtag_ids in new_trends must exist in self.hashtags.\n    - The existing list of trends for that region is completely replaced by new_trends.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region_id": {
+            "type": "string"
+          },
+          "new_trends": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "hashtag_id": {
+                  "type": "string"
+                },
+                "region_id": {
+                  "type": "string"
+                },
+                "trend_score": {
+                  "type": "number"
+                },
+                "rank": {
+                  "type": "integer"
+                },
+                "timestamp": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "hashtag_id",
+                "region_id",
+                "trend_score",
+                "rank",
+                "timestamp"
+              ]
+            }
+          }
+        },
+        "required": [
+          "region_id",
+          "new_trends"
+        ]
+      }
+    },
+    {
+      "name": "add_or_update_hashtag",
+      "description": "Add a new hashtag/topic to the system, or update its properties if it exists.\n\nArgs:\n    hashtag_id (str): The unique identifier for the hashtag/topic. (Required)\n    text (str, optional): The hashtag text (e.g., \"#ai\").\n    category (str, optional): Category of the hashtag.\n    language (str, optional): ISO language code.\n    trend_score (float, optional): The hashtag's current trend score.\n    last_updated_timestamp (str, optional): Most recent update time (ISO8601 or similar).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Added or updated hashtag <hashtag_id>\"\n      }\n      or\n      {\n        \"success\": False,\n        \"error\": \"<reason>\"\n      }\n\nConstraints:\n    - hashtag_id must not be empty.\n    - For a new hashtag, at least text, category, language, trend_score, last_updated_timestamp must be provided.\n    - For existing, at least one non-ID field must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hashtag_id": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "trend_score": {
+            "type": "number"
+          },
+          "last_updated_timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "hashtag_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_hashtag_from_region_trending",
+      "description": "Remove a given hashtag from the current trending list of a specified region.\n\nArgs:\n    hashtag_id (str): The hashtag/topic id to remove from the region's trending list.\n    region_id (str): The region id from which to remove the trending hashtag.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Hashtag {hashtag_id} removed from trending in region {region_id}.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - If specified region does not exist, operation fails.\n    - If the hashtag is not trending in the region, operation fails.\n    - All TrendInfo entries for the hashtag in that region will be removed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hashtag_id": {
+            "type": "string"
+          },
+          "region_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "hashtag_id",
+          "region_id"
+        ]
+      }
+    },
+    {
+      "name": "set_hashtag_trend_score",
+      "description": "Manually adjust the trend score for a hashtag in a specific region.\n\nArgs:\n    hashtag_id (str): The hashtag/topic ID to adjust.\n    region_id (str): The target region ID.\n    new_trend_score (float): The new trend score to set.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # operation completed description\n    } or {\n        \"success\": False,\n        \"error\": str  # error description\n    }\n\nConstraints:\n    - Both hashtag_id and region_id must exist.\n    - The (hashtag_id, region_id) pair must exist in current trends.\n    - Only the most recent/current TrendInfo for this hashtag+region is updated.\n    - Hashtag metadata is kept in sync with the updated trend score.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hashtag_id": {
+            "type": "string"
+          },
+          "region_id": {
+            "type": "string"
+          },
+          "new_trend_score": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "hashtag_id",
+          "region_id",
+          "new_trend_score"
+        ]
+      }
+    },
+    {
+      "name": "purge_outdated_trends",
+      "description": "Remove or archive trends that are no longer current or relevant per region.\nFor each region, only the latest trends (those with the most recent timestamp) are kept;\nall older trends are removed from the trends list for that region.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Purged outdated trends from all regions.\"\n    }\n    If no trends existed, still returns success.\n\nConstraints:\n    - Only the most recent trends per region (by timestamp) are kept after the purge.\n    - If multiple trends have the identical latest timestamp in a region, all are retained.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    }
+  ]
+}

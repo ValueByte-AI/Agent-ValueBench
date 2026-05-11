@@ -1,0 +1,754 @@
+{
+  "env_name": "EnterpriseTelephonyManagementSystem",
+  "description": "An enterprise telephony management system organizes and provisions telephone numbers, endpoints, and routing configurations for businesses. It maintains stateful mappings of departments, users, devices, and numbers, supporting allocation, deallocation, and lookup operations. This system enables organizations to efficiently manage communications resources and integrate with call routing solutions.",
+  "initial_parameter_schema": {
+    "departments": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "department_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "allocated_num": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "department_id",
+          "name",
+          "allocated_num"
+        ]
+      }
+    },
+    "telephone_numbers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "string"
+          },
+          "allocation_status": {
+            "type": "string"
+          },
+          "allocated_to": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "endpoint_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "number",
+          "allocation_status",
+          "allocated_to",
+          "endpoint_id"
+        ]
+      }
+    },
+    "endpoints": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "endpoint_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "device_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "endpoint_id",
+          "type",
+          "address",
+          "device_id"
+        ]
+      }
+    },
+    "devices": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "assigned_to": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "device_id",
+          "model",
+          "location",
+          "assigned_to"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "department_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "assigned_device": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "department_id",
+          "assigned_device"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "list_allocated_numbers": [
+      "telephone_numbers"
+    ],
+    "list_unallocated_numbers": [
+      "telephone_numbers"
+    ],
+    "get_allocated_numbers_for_department": [
+      "departments",
+      "telephone_numbers"
+    ],
+    "get_allocated_numbers_for_user": [
+      "telephone_numbers",
+      "users"
+    ],
+    "get_endpoint_for_number": [
+      "endpoints",
+      "telephone_numbers"
+    ],
+    "get_number_info": [
+      "telephone_numbers"
+    ],
+    "get_department_info": [
+      "departments"
+    ],
+    "get_user_info": [
+      "users"
+    ],
+    "get_device_info": [
+      "devices"
+    ],
+    "get_endpoint_info": [
+      "endpoints"
+    ],
+    "list_departments": [
+      "departments"
+    ],
+    "list_users": [
+      "users"
+    ],
+    "list_devices": [
+      "devices"
+    ],
+    "list_endpoints": [
+      "endpoints"
+    ],
+    "allocate_number_to_department": [
+      "departments",
+      "telephone_numbers"
+    ],
+    "allocate_number_to_user": [
+      "departments",
+      "telephone_numbers",
+      "users"
+    ],
+    "deallocate_number": [
+      "departments",
+      "telephone_numbers"
+    ],
+    "route_number_to_endpoint": [
+      "endpoints",
+      "telephone_numbers"
+    ],
+    "unroute_number": [
+      "telephone_numbers"
+    ],
+    "assign_device_to_user": [
+      "devices",
+      "users"
+    ],
+    "unassign_device_from_user": [
+      "devices",
+      "users"
+    ],
+    "add_telephone_number": [
+      "telephone_numbers"
+    ],
+    "remove_telephone_number": [
+      "departments",
+      "telephone_numbers",
+      "users"
+    ],
+    "add_endpoint": [
+      "devices",
+      "endpoints"
+    ],
+    "remove_endpoint": [
+      "endpoints",
+      "telephone_numbers"
+    ],
+    "add_device": [
+      "devices",
+      "users"
+    ],
+    "remove_device": [
+      "devices",
+      "users"
+    ],
+    "add_user": [
+      "departments",
+      "devices",
+      "users"
+    ],
+    "remove_user": [
+      "devices",
+      "telephone_numbers",
+      "users"
+    ],
+    "add_department": [
+      "departments"
+    ],
+    "remove_department": [
+      "departments",
+      "telephone_numbers",
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "list_allocated_numbers",
+      "description": "Retrieve all telephone numbers currently allocated to departments or users.\n\nReturns:\n    dict:\n        - success (bool): True if the query is successful\n        - data (List[TelephoneNumberInfo]): List of allocated telephone numbers' info (could be empty)\n\nConstraints:\n    - Only numbers with 'allocation_status' == 'allocated' are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_unallocated_numbers",
+      "description": "Retrieve all telephone numbers that are currently unallocated (available for assignment).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TelephoneNumberInfo]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Failure reason (should not happen for normal queries)\n    }\n\nConstraints:\n    - Only numbers where allocation_status == 'unallocated' should be included.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_allocated_numbers_for_department",
+      "description": "Retrieve the list of telephone numbers allocated specifically to the given department.\n\nArgs:\n    department_id (str): The unique identifier for the department.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str]  # List of allocated telephone number strings\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Department must exist.\n    - Only numbers with allocation_status == 'allocated' and allocated_to == department_id are included.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "department_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "department_id"
+        ]
+      }
+    },
+    {
+      "name": "get_allocated_numbers_for_user",
+      "description": "Retrieve all numbers specifically allocated to a given user.\n\nArgs:\n    user_id (str): The ID of the user.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[TelephoneNumberInfo]  # List may be empty if user has no numbers\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # E.g., \"User does not exist\"\n            }\n\nConstraints:\n    - The user must exist in the system.\n    - Only numbers with allocation_status == 'allocated' and allocated_to == user_id are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_endpoint_for_number",
+      "description": "Given a telephone number, retrieve its associated endpoint information (if routed).\n\nArgs:\n    number (str): The telephone number to look up.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": <EndpointInfo dict>,   # the endpoint info, if routed\n        }\n        or\n        {\n            \"success\": True,\n            \"data\": None                   # if not routed to any endpoint\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str                   # error description\n        }\n\nConstraints:\n    - The telephone number must exist in the system.\n    - If the number is not routed (endpoint_id is None), data is None.\n    - If the endpoint_id is set but not present in endpoints, return error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "number"
+        ]
+      }
+    },
+    {
+      "name": "get_number_info",
+      "description": "Retrieve full allocation and endpoint assignment details for a telephone number.\n\nArgs:\n    number (str): The telephone number to look up.\n\nReturns:\n    dict:\n        - success: True and data is the TelephoneNumberInfo dict if found\n        - success: False and an error message if the number does not exist\n\nConstraints:\n    - The specified telephone number must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "number"
+        ]
+      }
+    },
+    {
+      "name": "get_department_info",
+      "description": "Retrieve complete information for a specified department.\n\nArgs:\n    department_id (str): The unique identifier of the department.\n\nReturns:\n    dict: \n        On success:\n            {\"success\": True, \"data\": DepartmentInfo}  # Department details\n        On failure:\n            {\"success\": False, \"error\": str}  # Error message if not found\n\nConstraints:\n    - The department_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "department_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "department_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_info",
+      "description": "Retrieve information about a specific user.\n\nArgs:\n    user_id (str): Unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of error, e.g. user does not exist\n    }\n\nConstraints:\n    - The specified user_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_device_info",
+      "description": "Retrieve information/details for a specific device.\n\nArgs:\n    device_id (str): The unique identifier for the device.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": DeviceInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If device_id does not exist\n    }\n\nConstraints:\n    - The device_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id"
+        ]
+      }
+    },
+    {
+      "name": "get_endpoint_info",
+      "description": "Retrieve information about a specific endpoint.\n\nArgs:\n    endpoint_id (str): Unique identifier for the endpoint.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": EndpointInfo,  # contains endpoint_id, type, address, device_id (may be None)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # 'Endpoint not found' if not found in system\n    }\n\nConstraints:\n    - Endpoint must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "endpoint_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "endpoint_id"
+        ]
+      }
+    },
+    {
+      "name": "list_departments",
+      "description": "Get a list of all departments in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DepartmentInfo]  # Each department's information as a dict\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nIf no departments exist, the data list will be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_users",
+      "description": "Get a list of all users in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[UserInfo]  # List of user information dicts (may be empty if no users)\n    }\n\nConstraints:\n    - None.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_devices",
+      "description": "Retrieve all devices registered in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DeviceInfo]  # List of all devices in the system; empty list if none exist\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_endpoints",
+      "description": "Retrieve all endpoint entries in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[EndpointInfo],  # May be empty if no endpoints exist\n    }\n\nConstraints:\n    - None; this operation lists all endpoints unconditionally.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "allocate_number_to_department",
+      "description": "Allocate a telephone number to a department, enforcing uniqueness and updating state.\n\nArgs:\n    number (str): The telephone number to allocate.\n    department_id (str): The department's unique id.\n\nReturns:\n    dict: \n        If success:\n            {\"success\": True, \"message\": \"Number <number> allocated to department <department_id>\"}\n        If failure:\n            {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - The number and department must exist.\n    - The number must not be already allocated (to any department/user).\n    - Allocated numbers must be unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "string"
+          },
+          "department_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "department_id"
+        ]
+      }
+    },
+    {
+      "name": "allocate_number_to_user",
+      "description": "Allocate a telephone number to a specific user, enforcing uniqueness.\nPrior assignment (to department or another user) is removed.\n\nArgs:\n    number (str): The telephone number to allocate.\n    user_id (str): The user ID to allocate the number to.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Number {number} successfully allocated to user {user_id}.\"\n    }\n    or \n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Number must exist in the system.\n    - User must exist in the system.\n    - Number is allocated to at most one department or user at a time.\n    - If previously allocated to department, remove from department's allocated_num.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "deallocate_number",
+      "description": "Remove the allocation of a telephone number from any department or user, making it available.\n\nArgs:\n    number (str): The telephone number to deallocate.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Number <number> deallocated successfully.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"<reason>\"\n            }\n\nConstraints:\n    - The number must exist in the system.\n    - The number must currently be allocated to a department or user.\n    - Department's allocated_num list must be updated if relevant.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "number"
+        ]
+      }
+    },
+    {
+      "name": "route_number_to_endpoint",
+      "description": "Assign (route) a telephone number to a routing endpoint.\n\nArgs:\n    number (str): The telephone number to route.\n    endpoint_id (str): The endpoint to which the number should be routed.\n\nReturns:\n    dict, on success:\n        {\n            \"success\": True,\n            \"message\": \"Number <number> routed to endpoint <endpoint_id>\"\n        }\n    On error:\n        {\n            \"success\": False,\n            \"error\": \"<reason>\"\n        }\n\nConstraints:\n    - The endpoint must exist in the system before a number can be routed to it.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "string"
+          },
+          "endpoint_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "endpoint_id"
+        ]
+      }
+    },
+    {
+      "name": "unroute_number",
+      "description": "Remove the routing assignment from a telephone number by clearing its endpoint reference.\n\nArgs:\n    number (str): The telephone number to unroute.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Routing for number <number> has been removed.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - The telephone number must exist within the system.\n    - If the number is already unrouted (endpoint_id is None), this operation is idempotent and succeeds.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "number"
+        ]
+      }
+    },
+    {
+      "name": "assign_device_to_user",
+      "description": "Assign a device to a specified user, updating both the user and device states.\n\nArgs:\n    user_id (str): The ID of the user to assign the device to.\n    device_id (str): The ID of the device to be assigned.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Device <device_id> assigned to user <user_id>\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"<reason>\"\n            }\n\nConstraints:\n    - Both user and device must exist.\n    - The device may only be assigned to one user at a time.\n    - If the user already has a different device assigned, unassign it first.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "device_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "device_id"
+        ]
+      }
+    },
+    {
+      "name": "unassign_device_from_user",
+      "description": "Remove device assignment from a user, making that device available for reassignment.\n\nArgs:\n    user_id (str): The ID of the user whose device assignment is to be removed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Device {device_id} unassigned from user {user_id}.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Description of the problem.\"\n    }\n\nConstraints:\n    - The user must exist in the system.\n    - The user must have an assigned device.\n    - Update both the user and device state to reflect the unassignment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "add_telephone_number",
+      "description": "Add a new telephone number entry to the system, unallocated by default.\n\nArgs:\n    number (str): The telephone number (as a string) to add.\n\nReturns:\n    dict: \n        { \"success\": True, \"message\": \"Telephone number <number> added (unallocated).\" }\n        OR\n        { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The number must not already exist in the system (unique).\n    - The number must be a non-empty string.\n    - On addition: allocation_status is 'unallocated', allocated_to and endpoint_id are None.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "number"
+        ]
+      }
+    },
+    {
+      "name": "remove_telephone_number",
+      "description": "Remove a telephone number record from the system, deallocating any assignment.\n\nArgs:\n    number (str): The telephone number string to remove.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Telephone number <number> removed from the system.\" }\n        On failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - If allocated to a department, remove it from their allocated_num list.\n    - If allocated_to refers to a user/department, remove those links as relevant.\n    - If routed to an endpoint, no special cleanup required (unless references must be dropped).\n    - Number must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "number"
+        ]
+      }
+    },
+    {
+      "name": "add_endpoint",
+      "description": "Add a new endpoint to the telephony system.\n\nArgs:\n    endpoint_id (str): Unique identifier for the endpoint.\n    type (str): Endpoint type (e.g., 'SIP', 'PSTN').\n    address (str): Endpoint address (e.g., SIP URI or MAC address).\n    device_id (Optional[str]): Device associated with this endpoint (must exist if provided, otherwise None).\n\nReturns:\n    dict:\n        - {\"success\": True, \"message\": \"Endpoint <endpoint_id> added.\" }\n        - {\"success\": False, \"error\": \"reason\"}\n\nConstraints:\n    - endpoint_id must not already exist in the system.\n    - If device_id is provided, it must exist in self.devices.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "endpoint_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "device_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "endpoint_id",
+          "type",
+          "address"
+        ]
+      }
+    },
+    {
+      "name": "remove_endpoint",
+      "description": "Remove an endpoint from the system if and only if no telephone number is routed to it.\n\nArgs:\n    endpoint_id (str): The ID of the endpoint to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Endpoint removed successfully\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Endpoint must exist.\n    - No telephone number may have its endpoint_id set to the endpoint being removed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "endpoint_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "endpoint_id"
+        ]
+      }
+    },
+    {
+      "name": "add_device",
+      "description": "Register a new device in the system.\n\nArgs:\n    device_id (str): Unique identifier for the device.\n    model (str): Model name/number of the device.\n    location (str): Location (physical or logical) of the device.\n    assigned_to (Optional[str]): user_id this device is assigned to, or None.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"message\": \"Device <device_id> added.\"\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": <reason>\n        }\n\nConstraints:\n    - device_id must be unique within the system.\n    - If assigned_to is not None, corresponding user_id must exist.\n    - Device assignment must be to valid users within the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "assigned_to": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id",
+          "model",
+          "location"
+        ]
+      }
+    },
+    {
+      "name": "remove_device",
+      "description": "Remove a device from the system, updating or warning about any user assignment.\n\nArgs:\n    device_id (str): The unique ID of the device to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str,  # Description of the operation, including if users were updated\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,  # Reason for failure (e.g., device does not exist)\n    }\n\nConstraints:\n    - Device must exist to be removed.\n    - Any user assigned to this device should have `assigned_device` set to None upon removal.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id"
+        ]
+      }
+    },
+    {
+      "name": "add_user",
+      "description": "Register a new user in the system, specifying department and optionally assigning a device.\n\nArgs:\n    user_id (str): Unique identifier for the new user.\n    name (str): User's name.\n    department_id (str): Department ID the user belongs to (must exist).\n    assigned_device (Optional[str]): Device ID to assign to the user (must be unassigned, if provided).\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"User <user_id> added successfully\" }\n        On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - user_id must be unique.\n    - department_id must exist.\n    - assigned_device, if provided, must exist and be unassigned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "department_id": {
+            "type": "string"
+          },
+          "assigned_device": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "department_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_user",
+      "description": "Remove a user from the system, unassigning any devices and telephone numbers.\n\nArgs:\n    user_id (str): The ID of the user to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User <user_id> removed and all devices/numbers unassigned.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<error reason>\"\n    }\n\nConstraints:\n    - User must exist.\n    - All devices assigned to this user are unassigned (assigned_to set to None).\n    - All telephone numbers where allocated_to == user_id are made unallocated/None.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "add_department",
+      "description": "Create/register a new department entry in the system.\n\nArgs:\n    department_id (str): Unique identifier for the department.\n    name (str): Human-readable name of the department.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Department <department_id> added.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - department_id must be unique in the system.\n    - name and department_id must not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "department_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "department_id",
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "remove_department",
+      "description": "Remove a department by department_id.\n\nThis operation:\n  - Deallocates all telephone numbers allocated to this department,\n    by setting their allocation_status to 'unallocated' and allocated_to to None.\n  - Removes the department from self.departments.\n  - Sets department_id to None for any users who belonged to this department (\"orphaned users\").\n\nArgs:\n    department_id (str): The identifier of the department to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Department <department_id> removed, numbers deallocated, orphaned users handled.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The department must exist.\n    - All associated numbers must be deallocated.\n    - Orphaned users must not reference the deleted department.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "department_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "department_id"
+        ]
+      }
+    }
+  ]
+}

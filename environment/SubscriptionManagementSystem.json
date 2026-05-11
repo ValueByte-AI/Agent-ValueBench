@@ -1,0 +1,565 @@
+{
+  "env_name": "SubscriptionManagementSystem",
+  "description": "A subscription management system tracks customers, their chosen subscription plans, payment schedules, and subscription statuses. It maintains stateful records of plan types, start and end dates, renewal cycles, and customer associations to facilitate recurring billing and service access control. Such systems are widely deployed in businesses offering memberships, SaaS solutions, or ongoing services, streamlining the management of complex subscription lifecycles.",
+  "initial_parameter_schema": {
+    "customers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "name",
+          "contact_info",
+          "account_status"
+        ]
+      }
+    },
+    "plans": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "billing_cycle": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "plan_id",
+          "name",
+          "billing_cycle",
+          "price",
+          "features"
+        ]
+      }
+    },
+    "subscriptions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "plan_id": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          },
+          "renewal_cycle": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "payment_schedule": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subscription_id",
+          "customer_id",
+          "plan_id",
+          "start_date",
+          "end_date",
+          "renewal_cycle",
+          "status",
+          "payment_schedule"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_customer_by_id": [
+      "customers"
+    ],
+    "list_all_customers": [
+      "customers"
+    ],
+    "check_customer_account_status": [
+      "customers"
+    ],
+    "get_plan_by_id": [
+      "plans"
+    ],
+    "get_plan_by_billing_cycle": [
+      "plans"
+    ],
+    "list_all_plans": [
+      "plans"
+    ],
+    "list_customer_subscriptions": [
+      "customers",
+      "subscriptions"
+    ],
+    "get_subscription_by_id": [
+      "subscriptions"
+    ],
+    "list_active_subscriptions_for_customer_plan": [
+      "customers",
+      "plans",
+      "subscriptions"
+    ],
+    "get_subscription_status": [
+      "subscriptions"
+    ],
+    "add_subscription_plan": [
+      "plans"
+    ],
+    "update_subscription_plan": [
+      "plans"
+    ],
+    "delete_subscription_plan": [
+      "plans",
+      "subscriptions"
+    ],
+    "create_subscription": [
+      "customers",
+      "plans",
+      "subscriptions"
+    ],
+    "cancel_subscription": [
+      "subscriptions"
+    ],
+    "pause_subscription": [
+      "subscriptions"
+    ],
+    "update_subscription_dates": [
+      "subscriptions"
+    ],
+    "change_renewal_cycle": [
+      "plans",
+      "subscriptions"
+    ],
+    "delete_subscription": [
+      "subscriptions"
+    ],
+    "reactivate_subscription": [
+      "plans",
+      "subscriptions"
+    ],
+    "change_subscription_plan": [
+      "plans",
+      "subscriptions"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_customer_by_id",
+      "description": "Retrieve detailed account information for a specific customer.\n\nArgs:\n    customer_id (str): The unique identifier for the customer.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": CustomerInfo }\n        - On failure: { \"success\": False, \"error\": \"Customer not found\" }\n\nConstraints:\n    - The customer with the provided ID must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_customers",
+      "description": "Return the list of all registered customers.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CustomerInfo]  # List of all customers (possibly empty)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "check_customer_account_status",
+      "description": "Query a customer's account status by customer_id.\n\nArgs:\n    customer_id (str): The ID of the customer whose status is requested.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": str  # The customer's account_status\n            }\n        On failure (e.g., customer_id not found):\n            {\n                \"success\": False,\n                \"error\": str  # Error message\n            }\n\nConstraints:\n    - customer_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "get_plan_by_id",
+      "description": "Retrieve full information for a subscription plan by its plan_id.\n\nArgs:\n    plan_id (str): The unique identifier for the subscription plan.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": SubscriptionPlanInfo,  # Plan info dictionary\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # If plan_id not found\n        }\n\nConstraints:\n    - No modification, just fetch. Returns error if plan not found.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id"
+        ]
+      }
+    },
+    {
+      "name": "get_plan_by_billing_cycle",
+      "description": "Retrieve all subscription plans that match the specified billing cycle.\n\nArgs:\n    billing_cycle (str): The billing cycle to search for (e.g., 'monthly', 'quarterly', 'yearly').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SubscriptionPlanInfo],  # List of matching plan info dicts\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Only if billing_cycle is not a string or missing\n    }\n\nConstraints:\n    - No particular constraints on billing cycle values (returns empty if no matches).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "billing_cycle": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "billing_cycle"
+        ]
+      }
+    },
+    {
+      "name": "list_all_plans",
+      "description": "Retrieve all subscription plans available in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SubscriptionPlanInfo],  # List with info for each plan (possibly empty if none)\n    }\nNotes:\n    - No input is required.\n    - No constraints apply; always returns success with a list.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_customer_subscriptions",
+      "description": "Retrieve all subscriptions associated with the given customer_id.\n\nArgs:\n    customer_id (str): The unique identifier for the customer.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SubscriptionInfo],  # List of subscriptions for the customer (possibly empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., customer not found\n    }\n\nConstraints:\n    - customer_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "get_subscription_by_id",
+      "description": "Retrieve full information for a subscription by its subscription_id.\n\nArgs:\n    subscription_id (str): The unique identifier of the subscription.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": SubscriptionInfo  # Full info for the subscription\n            }\n        On failure (not found):\n            {\n                \"success\": False,\n                \"error\": \"Subscription not found\"\n            }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subscription_id"
+        ]
+      }
+    },
+    {
+      "name": "list_active_subscriptions_for_customer_plan",
+      "description": "Return all active subscriptions for a customer to a given plan.\n\nArgs:\n    customer_id (str): Unique identifier for the customer.\n    plan_id (str): Unique identifier for the subscription plan.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[SubscriptionInfo]  # list of active subscriptions (may be empty)\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": str  # Reason: customer or plan not found\n        }\n\nConstraints:\n    - The customer and plan must both exist in the system.\n    - \"Active\" subscriptions are those whose status == 'active'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          },
+          "plan_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "plan_id"
+        ]
+      }
+    },
+    {
+      "name": "get_subscription_status",
+      "description": "Query the status of a specific subscription by its subscription_id.\n\nArgs:\n    subscription_id (str): The unique identifier of the subscription.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": { \"subscription_id\": str, \"status\": str }\n            }\n        On failure (subscription not found):\n            {\n                \"success\": False,\n                \"error\": \"Subscription not found\"\n            }\n\nConstraints:\n    - The provided subscription_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subscription_id"
+        ]
+      }
+    },
+    {
+      "name": "add_subscription_plan",
+      "description": "Add a new subscription plan to the environment.\n\nArgs:\n    plan_id (str): Unique plan identifier.\n    name (str): Subscription plan name.\n    billing_cycle (str): Billing recurrence ('monthly', 'yearly', etc.).\n    price (float): Price per billing cycle (must be positive).\n    features (List[str]): List of feature descriptions.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\nConstraints:\n    - plan_id must be unique (not already present in self.plans).\n    - price must be positive.\n    - billing_cycle should be a non-empty string.\n    - features should be a list of strings.\n    - name must be a non-empty string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "billing_cycle": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "plan_id",
+          "name",
+          "billing_cycle",
+          "price",
+          "features"
+        ]
+      }
+    },
+    {
+      "name": "update_subscription_plan",
+      "description": "Modify the properties of an existing subscription plan.\n\nArgs:\n    plan_id (str): The ID of the subscription plan to modify.\n    name (str, optional): New name for the plan.\n    billing_cycle (str, optional): New billing cycle ('monthly', 'quarterly', 'yearly', etc.).\n    price (float, optional): New price for the plan (must be non-negative).\n    features (list, optional): New list of features for the plan.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Subscription plan updated\"\n    } or {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The plan must exist.\n    - price, if provided, must be >= 0.\n    - billing_cycle, if provided, should be non-empty string.\n    - At least one field must be provided to update.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "billing_cycle": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "plan_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_subscription_plan",
+      "description": "Remove a subscription plan from the environment.\nPrevents deletion if there are any active subscriptions for this plan.\n\nArgs:\n    plan_id (str): Unique identifier of the plan to be deleted.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Plan <plan_id> deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Cannot delete a plan if any active subscription exists for that plan.\n    - Plan must exist to be deletable.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id"
+        ]
+      }
+    },
+    {
+      "name": "create_subscription",
+      "description": "Create a new subscription for a specified customer and plan, enforcing all validation constraints.\n\nArgs:\n    subscription_id (str): Unique identifier for this subscription.\n    customer_id (str): The customer to assign the subscription to.\n    plan_id (str): The plan for the subscription.\n    start_date (str): Subscription start date, ISO format.\n    end_date (Optional[str]): Optional subscription end date (None for ongoing).\n    renewal_cycle (str): Renewal cycle (should match plan's billing_cycle).\n    status (str): Initial subscription status (e.g. 'active', 'paused', etc.).\n    payment_schedule (str): The payment schedule string.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Subscription created for customer <customer_id> on plan <plan_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Customer and plan must exist.\n    - No duplicate active subscription for same customer and plan.\n    - start_date <= end_date (if end_date is set).\n    - renewal_cycle must match plan's billing_cycle.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "plan_id": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          },
+          "renewal_cycle": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "payment_schedule": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subscription_id",
+          "customer_id",
+          "plan_id",
+          "start_date",
+          "renewal_cycle",
+          "status",
+          "payment_schedule"
+        ]
+      }
+    },
+    {
+      "name": "cancel_subscription",
+      "description": "Cancel a subscription by updating its status to \"cancelled\",\nthus ending recurring billing and service access.\n\nArgs:\n    subscription_id (str): The unique identifier for the subscription.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Subscription <id> cancelled.\" }\n        - On error: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Subscription must exist.\n    - Should only allow cancellation if not already \"cancelled\".\n    - After cancellation, status will be \"cancelled\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subscription_id"
+        ]
+      }
+    },
+    {
+      "name": "pause_subscription",
+      "description": "Temporarily suspend a subscription by setting its status to \"paused\".\n\nArgs:\n    subscription_id (str): The ID of the subscription to pause.\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"message\": \"Subscription paused.\"}\n        - On failure: {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - Subscription must exist.\n    - Only subscriptions with status 'active' can be paused.\n    - Cannot pause an already paused or cancelled subscription.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subscription_id"
+        ]
+      }
+    },
+    {
+      "name": "update_subscription_dates",
+      "description": "Change the start and/or end date of an existing subscription.\n\nArgs:\n    subscription_id (str): ID of the subscription to update.\n    start_date (Optional[str]): New start date (ISO format). If None, do not change.\n    end_date (Optional[str]): New end date (ISO format). If None, do not change.\n\nReturns:\n    dict:\n      On success: { \"success\": True, \"message\": \"Subscription dates updated successfully.\" }\n      On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - subscription_id must exist.\n    - If both start_date and end_date are set (after update), start_date must not be after end_date.\n    - Dates should be in string format (ISO). No type parsing/error if not.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subscription_id"
+        ]
+      }
+    },
+    {
+      "name": "change_renewal_cycle",
+      "description": "Modify the renewal cycle for a subscription, ensuring it matches the plan's billing cycle. When the cycle changes, the visible payment_schedule is synchronized to the new cadence.\n\nArgs:\n    subscription_id (str): The unique identifier of the subscription to modify.\n    new_renewal_cycle (str): The new renewal cycle value to set (should match plan's billing_cycle).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Renewal cycle updated for subscription <subscription_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The subscription must exist.\n    - The associated plan must exist.\n    - The new renewal cycle must exactly match the plan's billing_cycle.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string"
+          },
+          "new_renewal_cycle": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subscription_id",
+          "new_renewal_cycle"
+        ]
+      }
+    },
+    {
+      "name": "delete_subscription",
+      "description": "Permanently remove a subscription from the system.\n\nArgs:\n    subscription_id (str): The unique subscription ID to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Subscription <id> deleted successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Subscription not found.\"\n    }\n\nConstraints:\n    - Subscription must exist in the system.\n    - Operation is admin-level (permissions presumed elsewhere).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subscription_id"
+        ]
+      }
+    },
+    {
+      "name": "reactivate_subscription",
+      "description": "Reactivate a subscription (set its status to 'active') if currently 'cancelled' or 'paused',\nsubject to constraints:\n  - Subscription must exist.\n  - Must be in 'cancelled' or 'paused' status (NOT already 'active').\n  - Associated plan must exist.\n  - If end_date is set, start_date must not be after end_date.\n  - (Optionally) If end_date is set and in the past, reactivation is not allowed.\n\nArgs:\n    subscription_id (str): The unique ID of the subscription to reactivate.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Subscription <id> has been reactivated (status set to active)\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subscription_id"
+        ]
+      }
+    },
+    {
+      "name": "change_subscription_plan",
+      "description": "Switch an active subscription to a different plan (upgrade/downgrade operation).\n\nArgs:\n    subscription_id (str): The subscription to change.\n    new_plan_id (str): The target plan ID to switch to.\n\nReturns:\n    dict:\n        - On success:\n            {\"success\": True, \"message\": \"Subscription switched to new plan.\"}\n        - On failure:\n            {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints/enforcement:\n    - Subscription must exist and must be active.\n    - New plan must exist.\n    - Cannot result in the customer having duplicate active subscriptions to the same plan.\n    - The subscription's renewal_cycle must match the new plan's billing_cycle (update if needed).\n    - If the billing cadence changes, the subscription's payment_schedule is synchronized as well.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string"
+          },
+          "new_plan_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subscription_id",
+          "new_plan_id"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,384 @@
+{
+  "env_name": "AirQualityMonitoringSystem",
+  "description": "An Air Quality Monitoring System tracks and manages real-time and historical air pollution data across multiple locations. It maintains records for various air quality indicators, including AQI values and concentrations of key pollutants like NO2, PM2.5, and O3. The system enables users to retrieve, analyze, and report air quality information by city or region for decision-making and public awareness.",
+  "initial_parameter_schema": {
+    "locations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "city_name": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "region_coordinate": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id",
+          "city_name",
+          "country",
+          "region_coordinate"
+        ]
+      }
+    },
+    "measurements": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "measurement_id": {
+            "type": "string"
+          },
+          "location_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "AQI": {
+            "type": "number"
+          },
+          "main_pollutant": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "measurement_id",
+          "location_id",
+          "timestamp",
+          "AQI",
+          "main_pollutant"
+        ]
+      }
+    },
+    "pollutant_levels": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "measurement_id": {
+              "type": "string"
+            },
+            "pollutant_type": {
+              "type": "string"
+            },
+            "concentration": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "measurement_id",
+            "pollutant_type",
+            "concentration"
+          ]
+        }
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_location_by_city_country": [
+      "locations"
+    ],
+    "list_locations": [
+      "locations"
+    ],
+    "get_latest_measurement_for_location": [
+      "locations",
+      "measurements"
+    ],
+    "get_measurement_by_id": [
+      "measurements"
+    ],
+    "get_AQI_and_main_pollutant": [
+      "measurements"
+    ],
+    "get_pollutant_levels_for_measurement": [
+      "measurements",
+      "pollutant_levels"
+    ],
+    "get_pollutant_concentration": [
+      "measurements",
+      "pollutant_levels"
+    ],
+    "list_measurements_for_location": [
+      "locations",
+      "measurements"
+    ],
+    "add_air_quality_measurement": [
+      "locations",
+      "measurements",
+      "pollutant_levels"
+    ],
+    "update_pollutant_level": [
+      "pollutant_levels"
+    ],
+    "recalculate_AQI_and_main_pollutant": [
+      "measurements",
+      "pollutant_levels"
+    ],
+    "delete_air_quality_measurement": [
+      "measurements",
+      "pollutant_levels"
+    ],
+    "add_location": [
+      "locations"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_location_by_city_country",
+      "description": "Retrieve the Location entity (information) for the given city and country.\n\nArgs:\n    city_name (str): The city to search for.\n    country (str): The country to search for.\n\nReturns:\n    dict:\n        - If found: { \"success\": True, \"data\": LocationInfo }\n        - If not found: { \"success\": False, \"error\": \"Location not found\" }\n\nNotes:\n    - The operation performs a case-sensitive match on both city and country.\n    - Returns the first matching location found.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "city_name": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "city_name",
+          "country"
+        ]
+      }
+    },
+    {
+      "name": "list_locations",
+      "description": "List all tracked locations with metadata (id, city, country, region).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[LocationInfo]  # List of all locations (may be empty)\n    }\n\nConstraints:\n    - None. Lists all entries in the locations dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_latest_measurement_for_location",
+      "description": "Retrieve the most recent Air Quality Measurement for a specific location.\n\nArgs:\n    location_id (str): The unique identifier of the location.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": AirQualityMeasurementInfo  # Most recent measurement,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure: non-existent location or no measurements available.\n    }\n\nConstraints:\n    - The given location must exist.\n    - If no measurement exists for the location, return a failure.\n    - The returned measurement has the latest (max) timestamp for the location.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      }
+    },
+    {
+      "name": "get_measurement_by_id",
+      "description": "Retrieve details for a specific air quality measurement by its ID.\n\nArgs:\n    measurement_id (str): The unique identifier for the measurement.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": AirQualityMeasurementInfo\n            }\n        On failure (ID not found):\n            {\n                \"success\": False,\n                \"error\": \"Measurement ID not found\"\n            }\n\nConstraints:\n    - The provided measurement_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "measurement_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "measurement_id"
+        ]
+      }
+    },
+    {
+      "name": "get_AQI_and_main_pollutant",
+      "description": "For a given air quality measurement, return its AQI value and main pollutant type.\n\nArgs:\n    measurement_id (str): The unique identifier for the air quality measurement.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"AQI\": float,\n            \"main_pollutant\": str\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., if measurement_id not found\n    }\n\nConstraints:\n    - The measurement_id must exist in the measurements collection.\n    - The measurement must have AQI and main_pollutant attributes assigned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "measurement_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "measurement_id"
+        ]
+      }
+    },
+    {
+      "name": "get_pollutant_levels_for_measurement",
+      "description": "For a given measurement_id, list all pollutant types and their concentrations.\n\nArgs:\n    measurement_id (str): The ID of the air quality measurement.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[PollutantLevelInfo]  # May be empty if no pollutants recorded\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason for failure\n            }\n\nConstraints:\n    - The measurement_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "measurement_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "measurement_id"
+        ]
+      }
+    },
+    {
+      "name": "get_pollutant_concentration",
+      "description": "Retrieve the concentration value for the given pollutant type within a specific measurement.\n\nArgs:\n    measurement_id (str): Unique identifier for the air quality measurement.\n    pollutant_type (str): Type of pollutant (e.g., \"NO2\", \"PM2.5\", \"O3\").\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": float   # concentration value for the pollutant\n            }\n        - On error:\n            {\n                \"success\": False,\n                \"error\": str    # Message explaining the missing data or problem\n            }\nConstraints:\n    - The measurement must exist, and the pollutant_type must be present for that measurement.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "measurement_id": {
+            "type": "string"
+          },
+          "pollutant_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "measurement_id",
+          "pollutant_type"
+        ]
+      }
+    },
+    {
+      "name": "list_measurements_for_location",
+      "description": "Lists all air quality measurements for a given location_id, optionally within a time range.\n\nArgs:\n    location_id (str): The location to filter measurements for. Must exist.\n    start_time (str, optional): Minimum timestamp (inclusive) (ISO format or comparable string). Default: None.\n    end_time (str, optional): Maximum timestamp (inclusive) (ISO format or comparable string). Default: None.\n\nReturns:\n    dict:\n        - success: True and data: List[AirQualityMeasurementInfo] if found (can be empty)\n        - success: False and error: str if location_id is invalid\n\nConstraints:\n    - location_id must exist in the system.\n    - If start_time and/or end_time are provided, only measurements within [start_time, end_time] (inclusive) are included.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      }
+    },
+    {
+      "name": "add_air_quality_measurement",
+      "description": "Add a new Air Quality Measurement record for a location.\n\nArgs:\n    measurement_id (str): Unique identifier for the measurement.\n    location_id (str): The ID of the location (must exist in self.locations).\n    timestamp (str): ISO or other standard string representing the timestamp.\n    AQI (float): Computed Air Quality Index value.\n    main_pollutant (str): The pollutant with greatest impact on AQI for this record.\n    pollutant_levels (list of dict): Each dict must have 'pollutant_type' (str) and 'concentration' (float).\n                                    Must include at least all standard pollutants: NO2, PM2.5, O3.\n\nReturns:\n    dict: On success, { \"success\": True, \"message\": ... }\n          On failure, { \"success\": False, \"error\": ... }\n\nConstraints:\n    - measurement_id must be unique.\n    - location_id must refer to an existing location.\n    - All standard pollutants must be present.\n    - main_pollutant must be one of the pollutants in pollutant_levels.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "measurement_id": {
+            "type": "string"
+          },
+          "location_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "AQI": {
+            "type": "number"
+          },
+          "main_pollutant": {
+            "type": "string"
+          },
+          "pollutant_levels": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "required": [
+          "measurement_id",
+          "location_id",
+          "timestamp",
+          "AQI",
+          "main_pollutant",
+          "pollutant_levels"
+        ]
+      }
+    },
+    {
+      "name": "update_pollutant_level",
+      "description": "Update the concentration value for a specific pollutant in a given measurement.\n\nArgs:\n    measurement_id (str): The ID of the air quality measurement.\n    pollutant_type (str): The pollutant type to update (e.g., \"NO2\", \"PM2.5\").\n    concentration (float): The new concentration value.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Concentration for <pollutant_type> in measurement <measurement_id> updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Measurement not found\" | \"Pollutant type not found for this measurement\"\n    }\n\nConstraints:\n    - Measurement ID and pollutant type must exist.\n    - Does not recalculate AQI/main_pollutant automatically.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "measurement_id": {
+            "type": "string"
+          },
+          "pollutant_type": {
+            "type": "string"
+          },
+          "concentration": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "measurement_id",
+          "pollutant_type",
+          "concentration"
+        ]
+      }
+    },
+    {
+      "name": "recalculate_AQI_and_main_pollutant",
+      "description": "Recalculate the AQI value and identify the main pollutant for a specific measurement\nbased on the current pollutant concentrations.\n\nArgs:\n    measurement_id (str): The ID of the measurement to update.\n\nReturns:\n    dict:\n        Success:\n            {\n                \"success\": True,\n                \"message\": \"AQI and main pollutant recalculated for measurement <measurement_id>.\"\n            }\n        Failure (not found or missing data):\n            {\n                \"success\": False,\n                \"error\": \"<reason>\"\n            }\n\nConstraints:\n    - measurement_id must exist in measurements and pollutant_levels.\n    - Pollutant concentrations for at least one pollutant must be present.\n    - AQI and main_pollutant must be updated in self.measurements.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "measurement_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "measurement_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_air_quality_measurement",
+      "description": "Remove an Air Quality Measurement and all its associated pollutant level records.\n\nArgs:\n    measurement_id (str): Unique identifier for the measurement to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Measurement and associated pollutant records deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Measurement not found.\"\n    }\n\nConstraints:\n    - If the measurement_id does not exist, return an error.\n    - Associated pollutant level records for this measurement_id must also be deleted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "measurement_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "measurement_id"
+        ]
+      }
+    },
+    {
+      "name": "add_location",
+      "description": "Register a new city/region as a monitored Location in the system.\n\nArgs:\n    location_id (str): Unique identifier for the new location.\n    city_name (str): Name of the city or region.\n    country (str): Country the location is in.\n    region_coordinate (str): Coordinate or descriptor for the region.\n\nReturns:\n    dict: \n      - On success: { \"success\": True, \"message\": \"Location added: <location_id>\" }\n      - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - location_id must be unique (must not exist in self.locations).\n    - All fields must be non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "city_name": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "region_coordinate": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id",
+          "city_name",
+          "country",
+          "region_coordinate"
+        ]
+      }
+    }
+  ]
+}

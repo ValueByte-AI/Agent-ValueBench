@@ -1,0 +1,460 @@
+{
+  "env_name": "B2BProductProcurementSystem",
+  "description": "A B2B Product Procurement System is a platform that manages the listing, ordering, and pricing of products for business customers. It maintains up-to-date product catalogs, inventory details, pricing structures, and supports quotation generation and order processing. This environment streamlines business-to-business purchasing workflows by providing real-time access to product information and transaction management tools.",
+  "initial_parameter_schema": {
+    "products": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "unit_price": {
+            "type": "number"
+          },
+          "sku": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "name",
+          "category",
+          "description",
+          "unit_price",
+          "sku"
+        ]
+      }
+    },
+    "inventories": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "available_quantity": {
+            "type": "integer"
+          },
+          "location": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "available_quantity",
+          "location"
+        ]
+      }
+    },
+    "companies": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          },
+          "company_name": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id",
+          "company_name",
+          "account_status",
+          "contact_info"
+        ]
+      }
+    },
+    "quotations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "quotation_id": {
+            "type": "string"
+          },
+          "company_id": {
+            "type": "string"
+          },
+          "date_issued": {
+            "type": "string"
+          },
+          "quoted_items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "quotation_id": {
+                  "type": "string"
+                },
+                "product_id": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "integer"
+                },
+                "unit_price": {
+                  "type": "number"
+                },
+                "line_total": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "quotation_id",
+                "product_id",
+                "quantity",
+                "unit_price",
+                "line_total"
+              ]
+            }
+          },
+          "status": {
+            "type": "string"
+          },
+          "valid_until": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "quotation_id",
+          "company_id",
+          "date_issued",
+          "quoted_items",
+          "status",
+          "valid_until"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_company_by_name": [
+      "companies"
+    ],
+    "list_available_products": [
+      "inventories",
+      "products"
+    ],
+    "get_product_details": [
+      "products"
+    ],
+    "get_inventory_by_product": [
+      "inventories"
+    ],
+    "list_company_quotations": [
+      "companies",
+      "quotations"
+    ],
+    "get_quotation_details": [
+      "quotations"
+    ],
+    "check_company_account_status": [
+      "companies"
+    ],
+    "generate_quotation": [
+      "companies",
+      "inventories",
+      "products",
+      "quotations"
+    ],
+    "add_quoted_item_to_quotation": [
+      "inventories",
+      "products",
+      "quotations"
+    ],
+    "set_quotation_validity": [
+      "quotations"
+    ],
+    "update_quotation_status": [
+      "quotations"
+    ],
+    "modify_quoted_item": [
+      "inventories",
+      "products",
+      "quotations"
+    ],
+    "remove_quoted_item": [
+      "quotations"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_company_by_name",
+      "description": "Retrieve company details using company name.\n\nArgs:\n    company_name (str): The name of the company to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": CompanyInfo  # Matching company's details\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if no company is found\n    }\n\nConstraints:\n    - If multiple companies share the same name, returns the first match.\n    - Company search is case-sensitive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_name"
+        ]
+      }
+    },
+    {
+      "name": "list_available_products",
+      "description": "Retrieve all products for which the associated inventory available_quantity > 0.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ProductInfo]  # Product info dicts (empty if none available)\n    }\n\nConstraints:\n    - Product must have an entry in inventory with available_quantity > 0.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_product_details",
+      "description": "Retrieve all attributes of a product given its product_id.\n\nArgs:\n    product_id (str): The unique identifier of the product.\n\nReturns:\n    dict: \n        If found: {\n            \"success\": True,\n            \"data\": ProductInfo\n        }\n        If not found: {\n            \"success\": False,\n            \"error\": \"Product not found\"\n        }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "get_inventory_by_product",
+      "description": "Retrieve inventory information (including available_quantity and location) for a given product.\n\nArgs:\n    product_id (str): The product's unique identifier.\n\nReturns:\n    dict: \n        - On success: {\n              \"success\": True,\n              \"data\": InventoryInfo  # includes product_id, available_quantity, location\n          }\n        - On failure: {\n              \"success\": False,\n              \"error\": \"No inventory info for product_id\"\n          }\n\nConstraints:\n    - product_id must exist in inventories.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "list_company_quotations",
+      "description": "Retrieve all quotations previously generated for a particular company.\n\nArgs:\n    company_id (str): The company's unique identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[QuotationInfo]  # List of QuotationInfo dicts for the company\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If the company does not exist in the records\n    }\n\nConstraints:\n    - The company_id must exist in the system.\n    - If no quotations are found for this company, returns an empty list with success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id"
+        ]
+      }
+    },
+    {
+      "name": "get_quotation_details",
+      "description": "Retrieve complete details for a specific quotation by its ID.\n\nArgs:\n    quotation_id (str): The identifier of the quotation to look up.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": QuotationInfo,  # All fields, including quoted_items[]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason why details could not be retrieved\n    }\n\nConstraints:\n    - The quotation must exist (quotation_id in self.quotations).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "quotation_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "quotation_id"
+        ]
+      }
+    },
+    {
+      "name": "check_company_account_status",
+      "description": "Query and return the current account status for a given company.\n\nArgs:\n    company_id (str): The unique identifier of the company.\n\nReturns:\n    dict: \n        If found: {\"success\": True, \"data\": {\"company_id\": str, \"account_status\": str}}\n        If not found: {\"success\": False, \"error\": \"Company not found\"}\nConstraints:\n    - The company_id must refer to an existing company.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id"
+        ]
+      }
+    },
+    {
+      "name": "generate_quotation",
+      "description": "Create a new quotation for one or more products for a specific company.\n\nArgs:\n    company_id (str): ID of the company requesting the quotation.\n    items (list): List of dicts, each with keys:\n        - product_id (str)\n        - quantity (int)\n        - unit_price (float)\n    date_issued (str): Date when the quotation is issued.\n    valid_until (str): Validity period end date (as str).\n\nReturns:\n    dict: On success,\n        {\n            \"success\": True,\n            \"message\": \"Quotation generated\",\n            \"quotation_id\": str,\n            \"quotation\": QuotationInfo\n        }\n        On failure,\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - Company must exist.\n    - Each product must exist and have available_quantity > 0 in inventory.\n    - Each quantity must be >0 and <= available_quantity.\n    - Unit price must be non-negative.\n    - Quotation must fully reference existing products and company.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object"
+            }
+          },
+          "date_issued": {
+            "type": "string"
+          },
+          "valid_until": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id",
+          "items",
+          "date_issued",
+          "valid_until"
+        ]
+      }
+    },
+    {
+      "name": "add_quoted_item_to_quotation",
+      "description": "Add a new quoted item (product and terms) to an existing quotation.\n\nArgs:\n    quotation_id (str): The ID of the quotation to be updated.\n    product_id (str): The ID of the product to add as a quoted item.\n    quantity (int): Number of units to quote.\n    unit_price (float): Price per unit for this quote line.\n\nReturns:\n    dict: \n      - On success: { \"success\": True, \"message\": \"Quoted item added to quotation.\" }\n      - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Quotation must exist.\n    - Product must exist.\n    - Product inventory must exist with available_quantity > 0.\n    - Quantity must be positive and should not exceed available_quantity.\n    - Quotation must reference valid products.\n    - Quotation and product values cannot be negative or zero as appropriate.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "quotation_id": {
+            "type": "string"
+          },
+          "product_id": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "unit_price": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "quotation_id",
+          "product_id",
+          "quantity",
+          "unit_price"
+        ]
+      }
+    },
+    {
+      "name": "set_quotation_validity",
+      "description": "Update or set the 'valid_until' field for a specific quotation.\n\nArgs:\n    quotation_id (str): The identifier for the quotation to update.\n    valid_until (str): The new validity date/time (ISO or other string format).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Quotation validity updated\"\n    } \n    or\n    {\n        \"success\": False,\n        \"error\": \"Quotation not found\"\n    }\n\nConstraints:\n    - The quotation with given quotation_id must exist in self.quotations.\n    - No checks/validation on the valid_until format (assumed as string by spec).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "quotation_id": {
+            "type": "string"
+          },
+          "valid_until": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "quotation_id",
+          "valid_until"
+        ]
+      }
+    },
+    {
+      "name": "update_quotation_status",
+      "description": "Change the status of a specific quotation.\n\nArgs:\n    quotation_id (str): The ID of the quotation whose status should be updated.\n    new_status (str): New status value (e.g., 'issued', 'expired').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Status for quotation <quotation_id> updated to <new_status>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Quotation does not exist\"\n    }\n\nConstraints:\n    - Quotation must exist.\n    - No restriction on status values specified by environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "quotation_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "quotation_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "modify_quoted_item",
+      "description": "Change the quantity, unit_price, or line_total of an item within a quotation.\n\nArgs:\n    quotation_id (str): The ID of the quotation containing the item.\n    product_id (str): The product ID of the quoted item to be modified.\n    quantity (int, optional): New quantity. Must be >= 1 and <= available stock.\n    unit_price (float, optional): New unit price. Must be >= 0.\n    line_total (float, optional): New line total. If not provided, recalculated as quantity * unit_price.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Quoted item modified successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Quotation and cited product must exist.\n    - The quoted item must be present in the quotation.\n    - Only positive quantity (>=1) permitted and must not exceed available stock.\n    - Unit price must be non-negative.\n    - Quotation and references must remain valid.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "quotation_id": {
+            "type": "string"
+          },
+          "product_id": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "unit_price": {
+            "type": "number"
+          },
+          "line_total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "quotation_id",
+          "product_id"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "quantity"
+            ]
+          },
+          {
+            "required": [
+              "unit_price"
+            ]
+          },
+          {
+            "required": [
+              "line_total"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "remove_quoted_item",
+      "description": "Remove an item (product line) identified by product_id from a quotation.\n\nArgs:\n    quotation_id (str): The ID of the quotation to be modified.\n    product_id (str): The product ID to be removed from the quotation.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Removed product <product_id> from quotation <quotation_id>.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"<reason>\"\n            }\n\nConstraints:\n  - Quotation must exist.\n  - Quoted item (specified by product_id) must exist in the quotation.\n  - After removal, the quotation still only references valid products (enforced by original construction, not an issue here).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "quotation_id": {
+            "type": "string"
+          },
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "quotation_id",
+          "product_id"
+        ]
+      }
+    }
+  ]
+}

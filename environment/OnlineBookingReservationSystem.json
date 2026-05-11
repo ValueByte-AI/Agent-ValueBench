@@ -1,0 +1,494 @@
+{
+  "env_name": "OnlineBookingReservationSystem",
+  "description": "An online booking and reservation system manages user accounts, tracks availability of bookable items, and facilitates reservations for events or services. It stores state information for users, items, and booking records, enabling operations such as searching, booking, cancellation, and comparison of available options across multiple accounts. Such systems are commonly used for managing venues, appointments, equipment, or event spaces in both commercial and organizational contexts.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "user_name": {
+            "type": "string"
+          },
+          "tokens": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "user_name",
+          "tokens",
+          "status"
+        ]
+      }
+    },
+    "items": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string"
+          },
+          "item_name": {
+            "type": "string"
+          },
+          "item_type": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "availability_schedule": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            }
+          },
+          "access": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "item_id",
+          "item_name",
+          "item_type",
+          "location",
+          "availability_schedule",
+          "access"
+        ]
+      }
+    },
+    "reservations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "reservation_id": {
+            "type": "string"
+          },
+          "account_id": {
+            "type": "string"
+          },
+          "item_id": {
+            "type": "string"
+          },
+          "reservation_time": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reservation_id",
+          "account_id",
+          "item_id",
+          "reservation_time",
+          "status",
+          "detail"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_account_by_token": [
+      "users"
+    ],
+    "list_accounts_by_tokens": [
+      "users"
+    ],
+    "list_bookable_items_for_account": [
+      "items",
+      "users"
+    ],
+    "get_bookable_item_details": [
+      "items"
+    ],
+    "check_item_availability_for_time": [
+      "items"
+    ],
+    "list_available_items_for_account_and_time": [
+      "items",
+      "users"
+    ],
+    "get_reservations_for_account": [
+      "reservations",
+      "users"
+    ],
+    "get_reservations_for_item": [
+      "items",
+      "reservations"
+    ],
+    "compare_items_across_accounts": [
+      "items",
+      "users"
+    ],
+    "create_reservation": [
+      "items",
+      "reservations",
+      "users"
+    ],
+    "cancel_reservation": [
+      "reservations",
+      "users"
+    ],
+    "modify_reservation_time": [
+      "items",
+      "reservations"
+    ],
+    "batch_cancel_reservations": [
+      "reservations",
+      "users"
+    ],
+    "update_bookable_item_availability": [
+      "items"
+    ],
+    "add_bookable_item": [
+      "items"
+    ],
+    "remove_bookable_item": [
+      "items",
+      "reservations"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_account_by_token",
+      "description": "Retrieve the user account information associated with the provided authentication token.\n\nArgs:\n    token (str): The authentication token.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserAccountInfo  # The matched user account info\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If the token does not correspond to any user account\n    }\n\nConstraints:\n    - The token must exist in at least one user's 'tokens' list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ]
+      }
+    },
+    {
+      "name": "list_accounts_by_tokens",
+      "description": "Given a list of tokens, retrieve details for all corresponding user accounts.\n\nArgs:\n    tokens (list of str): List of authentication tokens.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[UserAccountInfo]  # zero or more accounts\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # error reason\n            }\nConstraints:\n    - tokens must be a list of strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tokens": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "tokens"
+        ]
+      }
+    },
+    {
+      "name": "list_bookable_items_for_account",
+      "description": "Retrieve the list of bookable items accessible/visible to the specified account.\n\nArgs:\n    account_id (str): The identifier of the user account.\n\nReturns:\n    dict:\n        - If success: {\"success\": True, \"data\": List[BookableItemInfo]}\n        - If error: {\"success\": False, \"error\": str}\n\nConstraints:\n    - The account_id must exist in the system.\n    - Only return items where the account_id is present in the item's access list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      }
+    },
+    {
+      "name": "get_bookable_item_details",
+      "description": "Return full metadata/details for a specific bookable item by item_id.\n\nArgs:\n    item_id (str): Identifier of the bookable item.\n\nReturns:\n    dict:\n        - If item exists:\n            {\"success\": True, \"data\": BookableItemInfo}\n        - If not found:\n            {\"success\": False, \"error\": \"Bookable item not found\"}\n\nConstraints:\n    - Only retrieves details if the item exists in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_id"
+        ]
+      }
+    },
+    {
+      "name": "check_item_availability_for_time",
+      "description": "Query whether a specific bookable item is available for a given time slot.\n\nArgs:\n    item_id (str): The ID of the bookable item.\n    reservation_time (str): ISO-formatted time slot to check (e.g., \"2024-06-15T09:00\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"item_id\": str,\n            \"reservation_time\": str,\n            \"available\": bool\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - If the item does not exist, returns an error.\n    - If the time slot is not listed in availability_schedule, treat as unavailable.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string"
+          },
+          "reservation_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_id",
+          "reservation_time"
+        ]
+      }
+    },
+    {
+      "name": "list_available_items_for_account_and_time",
+      "description": "For a specific account and time, list all bookable items accessible to the account\nand available at the given time.\n\nArgs:\n    account_id (str): The user account's ID making the inquiry.\n    reservation_time (str): The ISO timestamp (e.g., \"2024-06-15T09:00\") to check item availability.\n\nReturns:\n    dict: {\n        'success': True,\n        'data': List[BookableItemInfo]  # List of items account can access and are available at that time\n    }\n    OR\n    {\n        'success': False,\n        'error': str  # Reason for failure (e.g. account not found)\n    }\n\nConstraints:\n    - account_id must exist\n    - Only return items where account_id is in 'access' list and 'availability_schedule'[reservation_time] == True",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "reservation_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "reservation_time"
+        ]
+      }
+    },
+    {
+      "name": "get_reservations_for_account",
+      "description": "Retrieve all reservations (active, cancelled, etc.) for the given account.\n\nArgs:\n    account_id (str): The account id for which to list all reservations.\n\nReturns:\n    dict: \n        { \"success\": True, \"data\": List[ReservationInfo] }\n            - list is empty if the account has no reservations\n        { \"success\": False, \"error\": str }\n            - if the account does not exist\n\nConstraints:\n    - account_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      }
+    },
+    {
+      "name": "get_reservations_for_item",
+      "description": "List all reservations (or filtered) for a specific bookable item.\n\nArgs:\n    item_id (str): The ID of the bookable item.\n    status (str, optional): Reservation status to filter (e.g. \"active\", \"cancelled\", etc.).\n    reservation_time (str, optional): Filter for a specific reservation time (ISO string).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ReservationInfo],  # List of reservations for the item (possibly empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description (e.g. \"Item does not exist\")\n    }\n\nConstraints:\n    - item_id must refer to a valid BookableItem.\n    - If no reservations are found, return an empty list with success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "reservation_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_id"
+        ]
+      }
+    },
+    {
+      "name": "compare_items_across_accounts",
+      "description": "Aggregate and organize accessible bookable item lists from multiple accounts for side-by-side comparison.\n\nArgs:\n    account_ids (List[str]): List of account IDs to compare accessible items for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            account_id1: List[BookableItemInfo],\n            account_id2: List[BookableItemInfo],\n            ...\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Explanation, e.g. invalid input or no valid accounts\n    }\n\nConstraints:\n    - Only items with the account_id in their 'access' list are included for each account.\n    - Account_ids not present in the system will have an empty list in the result.\n    - If no valid account_ids, an error is returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "account_ids"
+        ]
+      }
+    },
+    {
+      "name": "create_reservation",
+      "description": "Attempt to create a reservation for a user authenticated by token\nfor the specified item at the given time slot, if permitted and available.\n\nArgs:\n    token (str): The authentication token of the user.\n    item_id (str): ID of the bookable item.\n    reservation_time (str): The desired booking time (ISO string).\n    detail (str): Details/notes about the reservation.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Reservation created\",\n        \"reservation_id\": <new_id>\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - User must be authenticated (token for active account).\n    - Item must exist, be accessible, and be available at reservation_time.\n    - The reservation links one account, one bookable item, one slot.\n    - The item slot is marked unavailable upon booking.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "item_id": {
+            "type": "string"
+          },
+          "reservation_time": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "item_id",
+          "reservation_time",
+          "detail"
+        ]
+      }
+    },
+    {
+      "name": "cancel_reservation",
+      "description": "Cancels an active reservation. Only the owning account may cancel their reservation,\nsubject to appropriate status.\n\nArgs:\n    reservation_id (str): The ID of the reservation to cancel.\n    token (str): The authentication token of the user trying to cancel.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Reservation <reservation_id> cancelled successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure\"\n    }\n\nConstraints:\n  - Only the owning account may cancel their reservation (using token for authentication).\n  - Reservation must be active to be cancelled.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reservation_id": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reservation_id",
+          "token"
+        ]
+      }
+    },
+    {
+      "name": "modify_reservation_time",
+      "description": "Change the time slot for an existing reservation, with checks on availability and ownership.\n\nArgs:\n    reservation_id (str): The unique identifier for the reservation.\n    account_id (str): The account requesting the modification (auth/ownership).\n    new_time (str): The desired new reservation time (ISO string).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Reservation time updated to <new_time>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Reservation must exist and belong to given account_id.\n    - Reservation must be active (not cancelled or completed).\n    - Bookable item must exist and be accessible to account_id.\n    - Bookable item must be available at new_time.\n    - There must be no conflicting reservation for the item at new_time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reservation_id": {
+            "type": "string"
+          },
+          "account_id": {
+            "type": "string"
+          },
+          "new_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reservation_id",
+          "account_id",
+          "new_time"
+        ]
+      }
+    },
+    {
+      "name": "batch_cancel_reservations",
+      "description": "Cancel multiple reservations for a user (or group of users), \nensuring ownership and correct status. Only 'active' reservations\nowned by acting_account_id can be cancelled. \n\nArgs:\n    acting_account_id (str): The account_id of the user initiating the cancellation.\n    reservation_ids (list): List of reservation_id values to be cancelled.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": <summary string detailing which reservations were cancelled, which failed and why>\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <error description>\n    }\n\nConstraints:\n    - Only the owning account (the one matching reservation.account_id) may cancel a reservation.\n    - Only reservations in 'active' status can be cancelled.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "acting_account_id": {
+            "type": "string"
+          },
+          "reservation_ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "acting_account_id",
+          "reservation_ids"
+        ]
+      }
+    },
+    {
+      "name": "update_bookable_item_availability",
+      "description": "Modify the availability schedule of a bookable item.\n\nArgs:\n    item_id (str): Identifier of the bookable item to update.\n    new_availability (Dict[str, bool]): Mapping of ISO time strings to their availability (True/False).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Availability schedule updated for item <item_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Item must exist in self.items.\n    - new_availability must be a dict mapping ISO strings to bools.\n    - Edge case: If new_availability is empty, it will still overwrite the schedule.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string"
+          },
+          "new_availability": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            }
+          }
+        },
+        "required": [
+          "item_id",
+          "new_availability"
+        ]
+      }
+    },
+    {
+      "name": "add_bookable_item",
+      "description": "Add a new bookable item to the system (admin-level action).\n\nArgs:\n    item_id (str): Unique identifier for the new item.\n    item_name (str): Descriptive name of the item.\n    item_type (str): Category/type designation.\n    location (str): Physical or logical location.\n    availability_schedule (Dict[str, bool]): Schedule of time-slot availability.\n    access (List[str]): List of account_ids allowed to view/book the item.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\nConstraints:\n    - item_id must be unique; if an item with this ID already exists, fail.\n    - All fields are required and should match type.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string"
+          },
+          "item_name": {
+            "type": "string"
+          },
+          "item_type": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "availability_schedule": {
+            "type": "object"
+          },
+          "access": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "item_id",
+          "item_name",
+          "item_type",
+          "location",
+          "availability_schedule",
+          "access"
+        ]
+      }
+    },
+    {
+      "name": "remove_bookable_item",
+      "description": "Remove a bookable item from the system (admin-level action), along with\nall associated reservations.\n\nArgs:\n    item_id (str): Unique identifier of the bookable item to remove.\n\nReturns:\n    dict: \n        - On success: {\n            \"success\": True,\n            \"message\": \"Bookable item <item_id> removed.\"\n          }\n        - On failure: {\n            \"success\": False,\n            \"error\": \"Bookable item not found\"\n          }\n\nConstraints:\n    - If the bookable item does not exist, operation fails.\n    - All reservations for this item are also removed from the system.\n    - No authentication required (admin-level).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_id"
+        ]
+      }
+    }
+  ]
+}

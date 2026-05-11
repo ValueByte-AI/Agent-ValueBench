@@ -1,0 +1,608 @@
+{
+  "env_name": "VenueAccessControlManagementSystem",
+  "description": "A venue access control management system centralizes the administration of entry points within a physical facility, such as a cinema. It maintains records of each entrance, including operational schedules, access control technologies employed, and current status. The system allows authorized personnel to configure hours, adjust entry methods, and monitor the accessibility of different zones for both regular and special-use cases.",
+  "initial_parameter_schema": {
+    "entrances": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "entrance_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "zone": {
+            "type": "string"
+          },
+          "access_technology": {
+            "type": "string"
+          },
+          "operational_hours": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entrance_id",
+          "name",
+          "zone",
+          "access_technology",
+          "operational_hours",
+          "status"
+        ]
+      }
+    },
+    "access_technologies": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "technology_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "configuration_detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "technology_id",
+          "name",
+          "configuration_detail"
+        ]
+      }
+    },
+    "schedules": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          },
+          "entrance_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "special_use_case": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schedule_id",
+          "entrance_id",
+          "start_time",
+          "end_time",
+          "special_use_case"
+        ]
+      }
+    },
+    "personnel": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "personnel_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "authorized_entrances": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "personnel_id",
+          "name",
+          "role",
+          "authorized_entrances"
+        ]
+      }
+    },
+    "get_access_technology_status": {
+      "type": "string"
+    }
+  },
+  "tool_state_dependencies": {
+    "get_entrance_by_name": [
+      "entrances"
+    ],
+    "get_entrance_by_id": [
+      "entrances"
+    ],
+    "list_all_entrances": [
+      "entrances"
+    ],
+    "get_access_technology_status": [
+      "access_technologies"
+    ],
+    "get_access_technology_by_id": [
+      "access_technologies"
+    ],
+    "get_entrance_schedules": [
+      "entrances",
+      "schedules"
+    ],
+    "list_maintenance_windows_for_entrance": [
+      "entrances",
+      "schedules"
+    ],
+    "check_schedule_overlap": [
+      "entrances",
+      "schedules"
+    ],
+    "get_personnel_by_id": [
+      "personnel"
+    ],
+    "verify_personnel_authorization": [
+      "entrances",
+      "personnel"
+    ],
+    "get_schedule_by_id": [
+      "schedules"
+    ],
+    "update_entrance_operational_hours": [
+      "entrances",
+      "personnel",
+      "schedules"
+    ],
+    "set_entrance_status": [
+      "access_technologies",
+      "entrances",
+      "get_access_technology_status",
+      "personnel",
+      "schedules"
+    ],
+    "add_schedule_to_entrance": [
+      "entrances",
+      "personnel",
+      "schedules"
+    ],
+    "remove_schedule_from_entrance": [
+      "entrances",
+      "personnel",
+      "schedules"
+    ],
+    "assign_access_technology_to_entrance": [
+      "access_technologies",
+      "entrances",
+      "personnel"
+    ],
+    "set_access_technology_status": [
+      "access_technologies"
+    ],
+    "bulk_update_entrance_schedules": [
+      "entrances",
+      "personnel",
+      "schedules"
+    ],
+    "create_maintenance_window": [
+      "entrances",
+      "personnel",
+      "schedules"
+    ],
+    "remove_maintenance_window": [
+      "entrances",
+      "personnel",
+      "schedules"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_entrance_by_name",
+      "description": "Retrieve all metadata/details of an entrance given its name.\n\nArgs:\n    name (str): The name of the entrance.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": EntranceInfo  # Entrance details matching the name\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If no such entrance exists\n    }\n\nNotes:\n    - Assumes entrance names are unique. If multiple entrances have the same name, returns the first match.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_entrance_by_id",
+      "description": "Retrieve all details of an entrance by its entrance_id.\n\nArgs:\n    entrance_id (str): The unique identifier of the entrance.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": EntranceInfo,  # Full details if found\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # 'Entrance not found' if not present\n    }\n\nConstraints:\n    - No authorization or operational constraints apply for read-only querying.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entrance_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entrance_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_entrances",
+      "description": "Retrieve a list of all entrance points (with full metadata) in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[EntranceInfo]  # List may be empty if no entrances exist\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_access_technology_status",
+      "description": "Retrieve the status and configuration details of an access technology.\n\nArgs:\n    technology_id (str): The unique identifier of the access technology.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"technology_id\": str,\n            \"name\": str,\n            \"status\": str,  # e.g., 'online', 'maintenance', or 'unknown' if not set.\n            \"configuration_detail\": str\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if technology does not exist.\n    }\n\nNotes:\n    - No modification of state; only querying.\n    - If the 'status' attribute is missing, return \"unknown\" for status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "technology_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "technology_id"
+        ]
+      }
+    },
+    {
+      "name": "get_access_technology_by_id",
+      "description": "Retrieve access technology details by technology_id.\n\nArgs:\n    technology_id (str): Unique identifier for the access technology.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": AccessTechnologyInfo,  # The complete info for the access technology\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., \"Access technology not found\"\n    }\n\nConstraints:\n    - technology_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "technology_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "technology_id"
+        ]
+      }
+    },
+    {
+      "name": "get_entrance_schedules",
+      "description": "Retrieve the schedules currently attached to a given entrance.\n\nArgs:\n    entrance_id (str): The unique identifier for the entrance.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ScheduleInfo],  # Schedules currently referenced by the entrance's operational_hours list (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description if entrance does not exist\n    }\nConstraints:\n    - The given entrance_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entrance_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entrance_id"
+        ]
+      }
+    },
+    {
+      "name": "list_maintenance_windows_for_entrance",
+      "description": "Get all maintenance-type schedules for a specific entrance.\n\nArgs:\n    entrance_id (str): Unique identifier of the entrance.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ScheduleInfo]  # List of maintenance windows (can be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., \"Entrance does not exist\"\n    }\n\nConstraints:\n    - Entrance with the specified ID must exist.\n    - Only schedules linked to the specified entrance and with special_use_case == \"maintenance\" are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entrance_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entrance_id"
+        ]
+      }
+    },
+    {
+      "name": "check_schedule_overlap",
+      "description": "Check if the proposed operational period for an entrance overlaps with any of its maintenance windows.\n\nArgs:\n    entrance_id (str): The ID of the entrance to check against.\n    proposed_start_time (str): The start time of the proposed period (ISO 8601 or comparable datetime string).\n    proposed_end_time (str): The end time of the proposed period.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"overlaps\": List[ScheduleInfo]  # All maintenance schedules that overlap with the proposed time\n        }\n    or\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - Entrance must exist.\n    - Checks only against schedules with special_use_case == 'maintenance' for the given entrance.\n    - If times overlap, the corresponding maintenance windows are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entrance_id": {
+            "type": "string"
+          },
+          "proposed_start_time": {
+            "type": "string"
+          },
+          "proposed_end_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entrance_id",
+          "proposed_start_time",
+          "proposed_end_time"
+        ]
+      }
+    },
+    {
+      "name": "get_personnel_by_id",
+      "description": "Retrieve personnel details, including their role and authorized entrances.\n\nArgs:\n    personnel_id (str): The unique identifier of the personnel.\n\nReturns:\n    dict: \n      - On success: {\"success\": True, \"data\": PersonnelInfo}\n      - On failure: {\"success\": False, \"error\": \"Personnel not found\"}\n\nConstraints:\n    - personnel_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "personnel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "personnel_id"
+        ]
+      }
+    },
+    {
+      "name": "verify_personnel_authorization",
+      "description": "Check if the given personnel is authorized to modify the specified entrance.\n\nArgs:\n    personnel_id (str): ID of the personnel to check.\n    entrance_id (str): ID of the entrance in question.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"data\": True }  # if authorized\n            { \"success\": True, \"data\": False } # if not authorized\n        On error:\n            { \"success\": False, \"error\": \"<reason>\" }\nConstraints:\n    - Personnel must exist in the system.\n    - Entrance must exist in the system.\n    - Authorization is checked by whether entrance_id is in personnel['authorized_entrances'].",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "personnel_id": {
+            "type": "string"
+          },
+          "entrance_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "personnel_id",
+          "entrance_id"
+        ]
+      }
+    },
+    {
+      "name": "get_schedule_by_id",
+      "description": "Retrieve full details of a schedule given its schedule_id.\n\nArgs:\n    schedule_id (str): The unique identifier for the schedule.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ScheduleInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Schedule not found\"\n    }\n\nConstraints:\n    - Will only succeed if the schedule exists in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schedule_id"
+        ]
+      }
+    },
+    {
+      "name": "update_entrance_operational_hours",
+      "description": "Modify the list of operational schedules for a specified entrance. Replaces the current list\nwith the provided list of schedule IDs. Only authorized personnel can modify.\n\nArgs:\n    personnel_id (str): The staff member attempting the modification.\n    entrance_id (str): The target entrance's unique identifier.\n    new_operational_schedule_ids (List[str]): The new set of operational schedule IDs to assign.\n\nReturns:\n    dict: {\n        'success': True, 'message': str    # if schedules updated\n    }\n    or\n    dict: {\n        'success': False, 'error': str     # on failure, with error reason\n    }\n\nConstraints:\n    - Only authorized personnel for the entrance may modify operational hours.\n    - All new schedule IDs must exist and belong to the same entrance.\n    - Proposed operational schedules must not overlap with maintenance windows.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "personnel_id": {
+            "type": "string"
+          },
+          "entrance_id": {
+            "type": "string"
+          },
+          "new_operational_schedule_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "personnel_id",
+          "entrance_id",
+          "new_operational_schedule_ids"
+        ]
+      }
+    },
+    {
+      "name": "set_entrance_status",
+      "description": "Change the status of an entrance (e.g., 'open', 'closed', 'maintenance'), \nensuring that only authorized personnel can make changes and that relevant \ntechnology/scheduling constraints are enforced.\n\nArgs:\n    entrance_id (str): The ID of the entrance to update.\n    new_status (str): The new status ('open', 'closed', 'maintenance', ...).\n    personnel_id (str): The ID of the personnel requesting the operation.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Status changed to <new_status> for entrance <entrance_id>\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Only authorized personnel may modify entrance configuration.\n    - Cannot set status to 'open' unless associated technology is online/operational.\n    - Cannot set status to 'open' if any active maintenance windows overlap for the entrance.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entrance_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          },
+          "personnel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entrance_id",
+          "new_status",
+          "personnel_id"
+        ]
+      }
+    },
+    {
+      "name": "add_schedule_to_entrance",
+      "description": "Add a new schedule period (for operation or special use) to a specific entrance.\n\nArgs:\n    entrance_id (str): Target entrance to update.\n    schedule_info (dict): Fields: schedule_id, entrance_id (should match arg), start_time (HH:MM), end_time (HH:MM), special_use_case.\n    personnel_id (str): The personnel requesting the addition (for authorization).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Schedule added to entrance\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints enforced:\n    - Entrance must exist.\n    - Personnel must exist and be authorized for this entrance.\n    - New schedule_id must be unique.\n    - schedule_info[\"entrance_id\"] must match given entrance_id.\n    - For non-maintenance schedules, must not overlap maintenance windows for this entrance.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entrance_id": {
+            "type": "string"
+          },
+          "schedule_info": {
+            "type": "object"
+          },
+          "personnel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entrance_id",
+          "schedule_info",
+          "personnel_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_schedule_from_entrance",
+      "description": "Remove an existing schedule from a specific entrance.\n\nArgs:\n    personnel_id (str): ID of the personnel attempting the operation.\n    entrance_id (str): ID of the entrance.\n    schedule_id (str): ID of the schedule to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Schedule <schedule_id> removed from entrance <entrance_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Only authorized personnel can modify entrance configurations.\n    - Schedule must be associated with the specified entrance.\n    - After removal, the schedule is no longer returned by get_entrance_schedules for that entrance.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "personnel_id": {
+            "type": "string"
+          },
+          "entrance_id": {
+            "type": "string"
+          },
+          "schedule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "personnel_id",
+          "entrance_id",
+          "schedule_id"
+        ]
+      }
+    },
+    {
+      "name": "assign_access_technology_to_entrance",
+      "description": "Assign a specified access technology to a given entrance,\nenforcing compatibility and personnel authorization constraints.\n\nArgs:\n    entrance_id (str): The identifier of the entrance to update.\n    technology_id (str): The identifier of the access technology to assign.\n    personnel_id (str): The identifier of the personnel requesting the assignment.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Access technology assigned to entrance successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - Only authorized personnel can modify entrance configurations.\n    - Access technology assigned must be compatible with entrance type (to the extent info is available).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entrance_id": {
+            "type": "string"
+          },
+          "technology_id": {
+            "type": "string"
+          },
+          "personnel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entrance_id",
+          "technology_id",
+          "personnel_id"
+        ]
+      }
+    },
+    {
+      "name": "set_access_technology_status",
+      "description": "Set the operational status of an access technology (e.g., 'maintenance', 'offline', 'online').\n\nArgs:\n    technology_id (str): ID of the access technology to update.\n    new_status (str): The new operational status to set. Should be one of {'online', 'offline', 'maintenance'}.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str,   # Summary of operation if successful,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str      # Error message if operation fails\n    }\n\nConstraints:\n    - The access technology must exist in the system.\n    - Status must be one of the recognized strings.\n    - This operation only changes technology status; impacts on entrances are handled elsewhere.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "technology_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "technology_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "bulk_update_entrance_schedules",
+      "description": "Simultaneously update operational schedules for multiple entrances.\n\nArgs:\n    personnel_id (str): The identifier for the personnel trying to make the change.\n    updates (list): Each element is a dict: {\n        \"entrance_id\": str,\n        \"schedule_ids\": List[str]\n    }\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"message\": \"Bulk update complete for all entrances\"}\n        On failure:\n            {\"success\": False, \"error\": \"reason\"}\nConstraints:\n    - Only authorized personnel can modify entrance configurations.\n    - Schedule IDs must exist, belong to the correct entrance, and not overlap with maintenance for that entrance.\n    - All entrances must exist.\n    - No partial updates; if any error occurs with any update, no changes are applied.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "personnel_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "entrance_id": {
+                  "type": "string"
+                },
+                "schedule_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "entrance_id",
+                "schedule_ids"
+              ]
+            }
+          }
+        },
+        "required": [
+          "personnel_id",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "create_maintenance_window",
+      "description": "Add a new maintenance window (schedule) to a specific entrance.\n\nArgs:\n    personnel_id (str): The ID of personnel requesting the operation.\n    entrance_id (str): The entrance to add the maintenance window.\n    start_time (str): Start time in ISO 8601 format.\n    end_time (str): End time in ISO 8601 format.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Only authorized personnel can create maintenance windows for an entrance.\n    - The maintenance window must not overlap with the entrance's operational hours.\n    - Entrance and personnel must exist.\n    - start_time must be before end_time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "personnel_id": {
+            "type": "string"
+          },
+          "entrance_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "personnel_id",
+          "entrance_id",
+          "start_time",
+          "end_time"
+        ]
+      }
+    },
+    {
+      "name": "remove_maintenance_window",
+      "description": "Remove a maintenance schedule from a specific entrance.\n\nArgs:\n    personnel_id (str): The ID of personnel attempting the operation (must be authorized).\n    entrance_id (str): The entrance from which to remove the maintenance schedule.\n    schedule_id (str): The schedule (maintenance window) to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Maintenance window removed from entrance.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": <explanation>\n    }\n\nConstraints:\n    - Only authorized personnel can modify entrance configurations.\n    - Schedule must exist, be linked to the entrance, and be of 'maintenance' use case.\n    - Schedule should be removed from both entrance's operational_hours and the system's schedules.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "personnel_id": {
+            "type": "string"
+          },
+          "entrance_id": {
+            "type": "string"
+          },
+          "schedule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "personnel_id",
+          "entrance_id",
+          "schedule_id"
+        ]
+      }
+    }
+  ]
+}

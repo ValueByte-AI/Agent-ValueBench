@@ -1,0 +1,477 @@
+{
+  "env_name": "PharmacyOrderDeliverySystem",
+  "description": "A pharmacy medication order and delivery tracking system is a specialized software platform that manages the fulfillment and delivery statuses of prescription medicines. The system stores information about medication orders, patient details, shipment tracking, and current delivery states. It enables pharmacies and customers to monitor the progress of medication deliveries from order placement through final delivery.",
+  "initial_parameter_schema": {
+    "patients": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "prescription_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id",
+          "name",
+          "contact_info",
+          "prescription_info"
+        ]
+      }
+    },
+    "medications": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "medication_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "dosage": {
+            "type": "string"
+          },
+          "form": {
+            "type": "string"
+          },
+          "instruction": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "medication_id",
+          "name",
+          "dosage",
+          "form",
+          "instruction"
+        ]
+      }
+    },
+    "medication_orders": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "medication_list": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "order_id": {
+                  "type": "string"
+                },
+                "medication_id": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "order_id",
+                "medication_id",
+                "quantity"
+              ]
+            }
+          },
+          "order_date": {
+            "type": "string"
+          },
+          "order_status": {
+            "type": "string"
+          },
+          "prescription_required": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "order_id",
+          "patient_id",
+          "medication_list",
+          "order_date",
+          "order_status",
+          "prescription_required"
+        ]
+      }
+    },
+    "shipments": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "shipment_id": {
+            "type": "string"
+          },
+          "order_id": {
+            "type": "string"
+          },
+          "carrier": {
+            "type": "string"
+          },
+          "tracking_number": {
+            "type": "string"
+          },
+          "delivery_status": {
+            "type": "string"
+          },
+          "shipped_date": {
+            "type": "string"
+          },
+          "expected_delivery_date": {
+            "type": "string"
+          },
+          "delivered_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "shipment_id",
+          "order_id",
+          "carrier",
+          "tracking_number",
+          "delivery_status",
+          "shipped_date",
+          "expected_delivery_date",
+          "delivered_date"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_patient_by_id": [
+      "patients"
+    ],
+    "get_patient_by_name": [
+      "patients"
+    ],
+    "list_medication_orders_for_patient": [
+      "medication_orders",
+      "patients"
+    ],
+    "get_active_medication_orders_for_patient": [
+      "medication_orders",
+      "patients"
+    ],
+    "get_medication_order_by_id": [
+      "medication_orders"
+    ],
+    "get_medications_in_order": [
+      "medication_orders",
+      "medications"
+    ],
+    "get_shipment_by_order_id": [
+      "medication_orders",
+      "shipments"
+    ],
+    "get_shipment_status": [
+      "shipments"
+    ],
+    "list_shipment_status_options": [],
+    "check_prescription_validity": [
+      "medication_orders",
+      "patients"
+    ],
+    "update_shipment_status": [
+      "medication_orders",
+      "shipments"
+    ],
+    "mark_order_as_shipped": [
+      "medication_orders",
+      "patients",
+      "shipments"
+    ],
+    "attach_prescription_to_order": [
+      "medication_orders",
+      "patients"
+    ],
+    "create_medication_order": [
+      "medication_orders",
+      "medications",
+      "patients"
+    ],
+    "cancel_medication_order": [
+      "medication_orders",
+      "shipments"
+    ],
+    "update_medication_order_status": [
+      "medication_orders"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_patient_by_id",
+      "description": "Retrieve patient details by patient_id, including prescription information.\n\nArgs:\n    patient_id (str): Unique patient identifier.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"data\": PatientInfo }\n        On failure: { \"success\": False, \"error\": \"Patient not found\" }\n\nConstraints:\n    - patient_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      }
+    },
+    {
+      "name": "get_patient_by_name",
+      "description": "Retrieve patient information using the patient's name.\n\nArgs:\n    name (str): The name of the patient to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PatientInfo],  # List of patients with this name (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., \"Patient not found\"\n    }\n\nNotes:\n    - If multiple patients have the same name, all will be returned.\n    - Names are case-sensitive unless normalization is desired.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "list_medication_orders_for_patient",
+      "description": "List all medication orders belonging to a given patient.\n\nArgs:\n    patient_id (str): The unique identifier of the patient.\n\nReturns:\n    dict:\n        - If patient exists:\n            {\n                \"success\": True,\n                \"data\": List[MedicationOrderInfo]  # All orders for this patient (may be empty)\n            }\n        - If patient does not exist:\n            {\n                \"success\": False,\n                \"error\": \"Patient not found\"\n            }\n\nConstraints:\n    - The given patient_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      }
+    },
+    {
+      "name": "get_active_medication_orders_for_patient",
+      "description": "Retrieve all valid (active) medication orders for the specified patient.\n\nArgs:\n    patient_id (str): Unique identifier of the patient.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": List[MedicationOrderInfo],  # Possibly empty if no active orders\n            }\n        - On failure (invalid patient):\n            {\n                \"success\": False,\n                \"error\": \"Patient not found\"\n            }\n\nConstraints:\n    - Only returns orders for the provided patient_id.\n    - Only includes \"active\" orders.\n      \"Active\" excludes statuses: 'cancelled', 'completed', 'delivered', 'fulfilled'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      }
+    },
+    {
+      "name": "get_medication_order_by_id",
+      "description": "Retrieve all details for a specific medication order using order_id.\n\nArgs:\n    order_id (str): The unique ID of the medication order.\n\nReturns:\n    dict: \n        - If found: {\"success\": True, \"data\": MedicationOrderInfo}\n        - If not found: {\"success\": False, \"error\": \"Medication order not found\"}",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id"
+        ]
+      }
+    },
+    {
+      "name": "get_medications_in_order",
+      "description": "Retrieve the list of medications, with full details and ordered quantities,\nfor the medication order specified by order_id.\n\nArgs:\n    order_id (str): The ID of the medication order.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[dict]  # Each item: medication details and 'quantity'\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., order not found\n    }\n\nConstraints:\n    - If the referenced medication order does not exist, return error.\n    - If a medication reference is missing in self.medications, skip it (or add with 'medication_id': ..., 'missing': True).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id"
+        ]
+      }
+    },
+    {
+      "name": "get_shipment_by_order_id",
+      "description": "Retrieve all shipment details (ShipmentInfo) associated with the specified order_id.\n\nArgs:\n    order_id (str): The medication order ID whose shipment(s) is/are to be looked up.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ShipmentInfo],  # May be an empty list if no shipments for this order_id\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error reason (e.g., order_id not found)\n    }\n\nConstraints:\n    - If order_id does not exist in the system, returns failure.\n    - Returns all shipments that reference the given order_id by shipment.order_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id"
+        ]
+      }
+    },
+    {
+      "name": "get_shipment_status",
+      "description": "Retrieve the current delivery status for a shipment by shipment_id or order_id.\n\nArgs:\n    shipment_id (str, optional): The unique ID of the shipment.\n    order_id (str, optional): The unique ID of the order whose shipment's status to query.\n\nReturns:\n    dict:\n      On success:\n        { \"success\": True, \"data\": { \"delivery_status\": <str> } }\n      On error:\n        { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - At least one of shipment_id or order_id must be provided.\n    - If both are provided and point to different shipments, shipment_id takes precedence.\n    - Returns the delivery_status of the first matching shipment if multiple shipments exist for an order.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "shipment_id": {
+            "type": "string"
+          },
+          "order_id": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "list_shipment_status_options",
+      "description": "Return the defined valid workflow/status options for delivery shipments.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str]  # The valid shipment delivery status workflow options\n    }\n\nConstraints:\n    - Options follow the defined workflow for delivery. \n    - Always succeeds (unless critical internal error).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "check_prescription_validity",
+      "description": "Confirm whether the prescription attached to a medication order is valid.\n\nArgs:\n    order_id (str): The unique ID of the medication order to check prescription validity for.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"order_id\": str,\n                    \"prescription_required\": bool,\n                    \"valid\": bool,\n                    \"message\": str\n                }\n            }\n        On failure:\n            {\"success\": False, \"error\": str}\n\nConstraints:\n    - If the order does not exist, return an error.\n    - If prescription is required, prescription_info must be present (non-empty) on the patient.\n    - If prescription is not required, always valid.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id"
+        ]
+      }
+    },
+    {
+      "name": "update_shipment_status",
+      "description": "Updates the delivery status of a shipment following allowed workflow transitions.\n\nArgs:\n    shipment_id (str): Unique identifier of the shipment to update.\n    new_status (str): The desired delivery status. Must follow defined workflow.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Shipment status updated from X to Y.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Shipment must exist.\n    - Only valid (active) medication orders can be tracked for delivery.\n    - Only allow workflow-valid status transitions.\n    - Delivery status options are: \"pending\", \"shipped\", \"in transit\", \"out for delivery\", \"delivered\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "shipment_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "shipment_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "mark_order_as_shipped",
+      "description": "Update the medication order and the associated shipment to indicate that the order has shipped.\n\nArgs:\n    order_id (str): The ID of the medication order to mark as shipped.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Order marked as shipped.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Order must exist and be in a valid (active) status.\n    - If prescription is required, a valid prescription must be attached.\n    - A shipment corresponding to the order must exist.\n    - Shipment status must allow transition to \"shipped\".\n    - Shipment and order states are updated accordingly.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id"
+        ]
+      }
+    },
+    {
+      "name": "attach_prescription_to_order",
+      "description": "Add or update the valid prescription for a medication order.\n\nArgs:\n    order_id (str): The order to which to attach the prescription.\n    prescription_info (str): The prescription data/details to attach.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Prescription attached to order <order_id>.\" }\n        - On error: { \"success\": False, \"error\": <error_message> }\n\nConstraints:\n    - The order must exist.\n    - The associated patient must exist.\n    - Updates the PatientInfo's prescription_info with the provided value.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
+          },
+          "prescription_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id",
+          "prescription_info"
+        ]
+      }
+    },
+    {
+      "name": "create_medication_order",
+      "description": "Place a new medication order for a patient.\n\nArgs:\n    patient_id (str): The patient's unique identifier.\n    medication_items (List[dict]): List of items, each has:\n        - medication_id (str)\n        - quantity (int)\n    order_date (str): Date of the order (ISO format or suitable string).\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Order created\", \"order_id\": str }\n        On failure: { \"success\": False, \"error\": str }\n\nConstraints:\n    - Patient must exist.\n    - All medications must exist.\n    - Quantity for each medication must be positive.\n    - If any medication requires prescription, patient must have valid prescription_info.\n    - Order ID uniquely generated.\n    - medication_items should not be empty.\n    - Successful order creation also initializes a pending shipment record for downstream tracking and shipping.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          },
+          "medication_items": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "order_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id",
+          "medication_items",
+          "order_date"
+        ]
+      }
+    },
+    {
+      "name": "cancel_medication_order",
+      "description": "Invalidate or remove a medication order if allowed.\n\nArgs:\n    order_id (str): The ID of the medication order to cancel.\n\nReturns:\n    dict: \n        success (bool), \n        message (str) if successful, \n        error (str) if failed (e.g., order does not exist or cannot be canceled).\n\nConstraints:\n    - Only orders that are not \"shipped\", \"delivered\", or already \"canceled\" may be canceled.\n    - All associated shipments must also be in a cancelable state (not shipped or delivered).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id"
+        ]
+      }
+    },
+    {
+      "name": "update_medication_order_status",
+      "description": "Manually change the status of a medication order (e.g., from draft to active).\n\nArgs:\n    order_id (str): The ID of the medication order to update.\n    new_status (str): The new status to set for the order.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Success message.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message.\n    }\n\nConstraints:\n    - order_id must refer to an existing medication order\n    - new_status must be in the set of valid statuses, including \"on_hold\" (with legacy alias \"halted\")\n    - Order status transitions should follow valid workflow if specified (not enforced unless workflow specified)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id",
+          "new_status"
+        ]
+      }
+    }
+  ]
+}

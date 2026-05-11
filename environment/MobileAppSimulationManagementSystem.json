@@ -1,0 +1,438 @@
+{
+  "env_name": "MobileAppSimulationManagementSystem",
+  "description": "A mobile app simulation management system tracks simulated user scenarios (such as geolocations) for one or more mobile applications, often organized into groups for batch testing or collaborative experiments. The system maintains state about applications, simulations, and groupings, allowing users to create, retrieve, and manage simulations and their associations. Operations typically include starting simulations, grouping them, and querying group or simulation states for coordinated testing.",
+  "initial_parameter_schema": {
+    "applications": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "platform": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "application_id",
+          "name",
+          "version",
+          "platform"
+        ]
+      }
+    },
+    "simulations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "simulation_id": {
+            "type": "string"
+          },
+          "application_id": {
+            "type": "string"
+          },
+          "scenario_type": {
+            "type": "string"
+          },
+          "scenario_parameters": {
+            "type": "object"
+          },
+          "status": {
+            "type": "string"
+          },
+          "group_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "simulation_id",
+          "application_id",
+          "scenario_type",
+          "scenario_parameters",
+          "status",
+          "group_id"
+        ]
+      }
+    },
+    "groups": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "group_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "group_id",
+          "name",
+          "description",
+          "created_by",
+          "created_at"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_application_by_id": [
+      "applications"
+    ],
+    "list_applications": [
+      "applications"
+    ],
+    "get_group_by_id": [
+      "groups"
+    ],
+    "list_groups": [
+      "groups"
+    ],
+    "list_simulations_by_group": [
+      "groups",
+      "simulations"
+    ],
+    "list_simulations_by_application": [
+      "applications",
+      "simulations"
+    ],
+    "get_simulation_by_id": [
+      "simulations"
+    ],
+    "get_simulation_status": [
+      "simulations"
+    ],
+    "list_simulations_by_status": [
+      "simulations"
+    ],
+    "create_simulation": [
+      "applications",
+      "simulations"
+    ],
+    "associate_simulation_with_group": [
+      "groups",
+      "simulations"
+    ],
+    "create_group": [
+      "groups"
+    ],
+    "update_simulation_status": [
+      "simulations"
+    ],
+    "remove_simulation_from_group": [
+      "simulations"
+    ],
+    "update_simulation_parameters": [
+      "simulations"
+    ],
+    "delete_simulation": [
+      "simulations"
+    ],
+    "delete_group": [
+      "groups",
+      "simulations"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_application_by_id",
+      "description": "Retrieve details for a specific application using its application_id.\n\nArgs:\n    application_id (str): The unique identifier for the application.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ApplicationInfo  # Application info dict\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Error message, e.g., \"Application does not exist\"\n    }\n\nConstraints:\n    - The provided application_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "application_id"
+        ]
+      }
+    },
+    {
+      "name": "list_applications",
+      "description": "Retrieve a list of all registered applications.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ApplicationInfo]  # List of apps, may be empty if none are registered\n    }\n\nConstraints:\n    - No parameters.\n    - Returns all applications present in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_group_by_id",
+      "description": "Retrieve details for a specific group by its group_id.\n\nArgs:\n    group_id (str): The ID of the group to retrieve.\n\nReturns:\n    dict:\n      - If successful:\n        { \"success\": True, \"data\": GroupInfo }\n      - If group not found:\n        { \"success\": False, \"error\": \"Group not found\" }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "group_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "group_id"
+        ]
+      }
+    },
+    {
+      "name": "list_groups",
+      "description": "Retrieve a list of all groups in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[GroupInfo],  # All groups' metadata, may be empty if no groups exist.\n    }\n\nConstraints:\n    - No input parameters or authorization enforced by this method.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_simulations_by_group",
+      "description": "Retrieve all simulations associated with the specified group_id.\n\nArgs:\n    group_id (str): The identifier of the group.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SimulationInfo],  # List of matching simulations (empty if none)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Group does not exist\n    }\n\nConstraints:\n    - The group with group_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "group_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "group_id"
+        ]
+      }
+    },
+    {
+      "name": "list_simulations_by_application",
+      "description": "List all simulations tied to a specified application_id.\n\nArgs:\n    application_id (str): The unique identifier of the application.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SimulationInfo]  # List of simulation info dicts (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if the application does not exist\n    }\n\nConstraints:\n    - The application_id must be present in self.applications.\n    - Only simulations exactly matching the application_id are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "application_id"
+        ]
+      }
+    },
+    {
+      "name": "get_simulation_by_id",
+      "description": "Retrieve full details for a given simulation_id.\n\nArgs:\n    simulation_id (str): The unique identifier of the simulation.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": SimulationInfo,  # The simulation info dictionary\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If simulation_id not found\n    }\n\nConstraints:\n    - simulation_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "simulation_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "simulation_id"
+        ]
+      }
+    },
+    {
+      "name": "get_simulation_status",
+      "description": "Return the current status of a simulation by its id.\n\nArgs:\n    simulation_id (str): The unique identifier of the simulation.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": str,  # The current status of the simulation\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g., simulation does not exist\n    }\n\nConstraints:\n    - The simulation with the given id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "simulation_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "simulation_id"
+        ]
+      }
+    },
+    {
+      "name": "list_simulations_by_status",
+      "description": "Retrieve all simulations filtered by their status.\n\nArgs:\n    status (str): The simulation status to filter by (e.g., \"running\", \"completed\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SimulationInfo],  # List of matching simulations (empty if none match)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message, e.g. invalid input type\n    }\n\nConstraints:\n    - status must be a non-empty string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "create_simulation",
+      "description": "Instantiate (start) a new simulation for a registered application with specific scenario parameters.\n\nArgs:\n    application_id (str): ID of the application for which the simulation is created. Must exist.\n    scenario_type (str): The type/category of the simulation scenario.\n    scenario_parameters (Dict[str, Any]): The parameters (e.g., geolocation dict) for the simulation.\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"simulation_id\": <str>,\n            \"message\": \"Simulation created successfully.\"\n        }\n    On failure:\n        {\n            \"success\": False,\n            \"error\": <str>\n        }\n\nConstraints:\n    - The application_id must exist in self.applications.\n    - The simulation will have status 'initialized' and no group association by default.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string"
+          },
+          "scenario_type": {
+            "type": "string"
+          },
+          "scenario_parameters": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "application_id",
+          "scenario_type",
+          "scenario_parameters"
+        ]
+      }
+    },
+    {
+      "name": "associate_simulation_with_group",
+      "description": "Assigns or updates a simulation's association to a group.\n\nArgs:\n    simulation_id (str): The identifier for the simulation to modify.\n    group_id (str): The identifier for the group to associate with.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Simulation <simulation_id> associated with group <group_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason: simulation or group does not exist>\n    }\n\nConstraints:\n    - Both the simulation and group must exist.\n    - Simulation can belong to at most one group; this will overwrite previous association.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "simulation_id": {
+            "type": "string"
+          },
+          "group_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "simulation_id",
+          "group_id"
+        ]
+      }
+    },
+    {
+      "name": "create_group",
+      "description": "Create a new group for organizing simulations.\n\nArgs:\n    name (str): Name for the new group.\n    description (str): Description of the group.\n    created_by (str): User ID or username creating the group (authorization required).\n    created_at (str): Timestamp string for group creation.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Group created\",\n        \"group_id\": <new_group_id>\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Only authorized users may create groups.\n    - group_id must be unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "created_by",
+          "created_at"
+        ]
+      }
+    },
+    {
+      "name": "update_simulation_status",
+      "description": "Change the status of a simulation (e.g., start, stop, complete).\n\nArgs:\n    simulation_id (str): The unique identifier of the simulation to update.\n    new_status (str): The new status to set for the simulation.\n\nReturns:\n    dict: On success:\n              { \"success\": True, \"message\": \"Simulation status updated to <new_status>\" }\n          On failure:\n              { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - The simulation with simulation_id must exist.\n    - (Not enforced) No restriction on allowed statuses unless predefined elsewhere.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "simulation_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "simulation_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "remove_simulation_from_group",
+      "description": "Remove a simulation’s group association by setting group_id to None.\n\nArgs:\n    simulation_id (str): Unique identifier of the simulation to modify.\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"message\": \"Simulation removed from group.\"}\n        - On failure: {\"success\": False, \"error\": \"Simulation not found.\"}\n\nConstraints:\n    - The simulation must exist.\n    - Each simulation can belong to zero or one group.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "simulation_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "simulation_id"
+        ]
+      }
+    },
+    {
+      "name": "update_simulation_parameters",
+      "description": "Change the scenario parameters for an existing simulation.\n\nArgs:\n    simulation_id (str): The ID of the simulation to update.\n    parameters (dict): The new scenario parameters to assign (overwriting the previous set).\n\nReturns:\n    dict:\n        On success: {\"success\": True, \"message\": \"Simulation parameters updated successfully.\"}\n        On failure: {\"success\": False, \"error\": \"Simulation not found\" or \"Invalid parameters\"}\n\nConstraints:\n    - The simulation must exist.\n    - Scenario parameters must be a dictionary.\n    - Authorization is assumed/omitted (no user/session in environment).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "simulation_id": {
+            "type": "string"
+          },
+          "parameters": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "simulation_id",
+          "parameters"
+        ]
+      }
+    },
+    {
+      "name": "delete_simulation",
+      "description": "Permanently remove a simulation from the system.\n\nArgs:\n    simulation_id (str): The unique ID of the simulation to remove.\n    user (str): The identifier of the user performing the deletion.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Simulation <simulation_id> has been deleted\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<error message>\"\n    }\n\nConstraints:\n    - Only authorized users may delete simulations.\n    - Simulation must exist; otherwise, deletion fails.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "simulation_id": {
+            "type": "string"
+          },
+          "user": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "simulation_id",
+          "user"
+        ]
+      }
+    },
+    {
+      "name": "delete_group",
+      "description": "Delete a group and update associated simulations to remove their group association.\n\nArgs:\n    group_id (str): The unique identifier of the group to delete.\n\nReturns:\n    dict:\n        - On success: \n            {\n                \"success\": True,\n                \"message\": \"Group <group_id> deleted. <N> simulations orphaned.\"\n            }\n        - On error:\n            {\n                \"success\": False,\n                \"error\": \"<reason>\"\n            }\n\nConstraints:\n    - The group must exist.\n    - Simulations referencing this group must have their `group_id` set to None (become orphaned).\n    - State must remain consistent; no simulations reference deleted group.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "group_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "group_id"
+        ]
+      }
+    }
+  ]
+}

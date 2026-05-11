@@ -1,0 +1,532 @@
+{
+  "env_name": "OnlineMultiplayerGameServer",
+  "description": "An online multiplayer game server manages persistent data for each player, including profiles, virtual currency balances, inventories, and progress. It supports a range of real-time operations such as querying player status, updating currency, handling item purchases, and synchronizing game events. Typically, these servers enable interaction among many users and maintain comprehensive state to ensure continuity and security within the game world.",
+  "initial_parameter_schema": {
+    "players": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "profile_data": {},
+          "currency_balance": {
+            "type": "number"
+          },
+          "inventory": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "progress": {},
+          "login_status": {
+            "type": "string"
+          },
+          "last_sync_tim": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id",
+          "username",
+          "profile_data",
+          "currency_balance",
+          "inventory",
+          "progress",
+          "login_status",
+          "last_sync_tim"
+        ]
+      }
+    },
+    "items": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "m_id": {
+            "type": "string"
+          },
+          "item_type": {
+            "type": "string"
+          },
+          "item_prop": {}
+        },
+        "required": [
+          "m_id",
+          "item_type",
+          "item_prop"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_player_by_id": [
+      "players"
+    ],
+    "get_player_by_username": [
+      "players"
+    ],
+    "get_all_players": [
+      "players"
+    ],
+    "get_player_currency_balance": [
+      "players"
+    ],
+    "get_player_inventory": [
+      "players"
+    ],
+    "get_player_progress": [
+      "players"
+    ],
+    "get_player_login_status": [
+      "players"
+    ],
+    "get_player_last_sync_time": [
+      "players"
+    ],
+    "get_item_by_id": [
+      "items"
+    ],
+    "get_all_items": [
+      "items"
+    ],
+    "check_item_exists": [
+      "items"
+    ],
+    "update_player_currency_balance": [
+      "players"
+    ],
+    "add_item_to_inventory": [
+      "items",
+      "players"
+    ],
+    "remove_item_from_inventory": [
+      "items",
+      "players"
+    ],
+    "update_player_progress": [
+      "players"
+    ],
+    "player_login": [
+      "players"
+    ],
+    "player_logout": [
+      "players"
+    ],
+    "synchronize_player_state": [
+      "items",
+      "players"
+    ],
+    "create_player": [
+      "items",
+      "players"
+    ],
+    "delete_player": [
+      "players"
+    ],
+    "update_item_in_catalog": [
+      "items"
+    ],
+    "add_item_to_catalog": [
+      "items"
+    ],
+    "remove_item_from_catalog": [
+      "items"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_player_by_id",
+      "description": "Retrieve the complete profile and game-related information for a given player by their unique player_id.\n\nArgs:\n    player_id (str): The unique ID of the player.\n\nReturns:\n    dict:\n        - On success: {\n              \"success\": True,\n              \"data\": PlayerInfo  # The full info for the player\n          }\n        - On failure: {\n              \"success\": False,\n              \"error\": \"Player not found\"\n          }\n\nConstraints:\n    - The player_id must exist in the server.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id"
+        ]
+      }
+    },
+    {
+      "name": "get_player_by_username",
+      "description": "Retrieve a player's information given their username.\n\nArgs:\n    username (str): The username of the player to retrieve.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": PlayerInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g. player not found\n    }\n\nConstraints:\n    - The username should match exactly.\n    - If no such player exists, return success=False.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "get_all_players",
+      "description": "List all registered players on the server.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PlayerInfo],  # List of all players' info (empty list if no players)\n    }\n\nConstraints:\n    - No parameters are required.\n    - Returns all players currently registered in the server.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_player_currency_balance",
+      "description": "Fetch the virtual currency balance for a specific player.\n\nArgs:\n    player_id (str): Unique identifier of the player.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": float  # player's virtual currency balance\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"Player not found\"\n    }\n\nConstraints:\n    - player_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id"
+        ]
+      }
+    },
+    {
+      "name": "get_player_inventory",
+      "description": "List all item IDs currently owned by a specific player.\n\nArgs:\n    player_id (str): The unique identifier of the player to query.\n\nReturns:\n    dict:\n        On success:\n            {\n              \"success\": True,\n              \"data\": List[str]  # List of item IDs (may be empty).\n            }\n        On failure:\n            {\n              \"success\": False,\n              \"error\": str  # Error message (e.g., player does not exist).\n            }\n\nConstraints:\n    - The player with the given ID must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id"
+        ]
+      }
+    },
+    {
+      "name": "get_player_progress",
+      "description": "Retrieve the progress or achievements of a player.\n\nArgs:\n    player_id (str): Unique identifier of the player.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": Any              # The progress information of the player.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str            # Reason for error, e.g., player not found.\n    }\n\nConstraints:\n    - player_id must exist in the server.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id"
+        ]
+      }
+    },
+    {
+      "name": "get_player_login_status",
+      "description": "Check whether the player is currently logged in.\n\nArgs:\n    player_id (str): The unique identifier of the player.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": str    # Login status (e.g., \"online\", \"offline\", etc.)\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Player not found\"\n            }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id"
+        ]
+      }
+    },
+    {
+      "name": "get_player_last_sync_time",
+      "description": "Get the last synchronization timestamp for a player.\n\nArgs:\n    player_id (str): The unique identifier of the player.\n\nReturns:\n    dict:\n        - {\"success\": True, \"data\": last_sync_tim}\n            If the player exists; last_sync_tim is typically a string or float timestamp.\n        - {\"success\": False, \"error\": \"Player does not exist\"}\n            If the player_id is not found in the server.\n\nConstraints:\n    - player_id must exist within self.players.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id"
+        ]
+      }
+    },
+    {
+      "name": "get_item_by_id",
+      "description": "Retrieve full information about a specific item (type and properties) in the item catalog.\n\nArgs:\n    m_id (str): The unique identifier of the item.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ItemInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If item does not exist\n    }\n\nConstraints:\n    - m_id must exist in the item catalog (self.items).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "m_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "m_id"
+        ]
+      }
+    },
+    {
+      "name": "get_all_items",
+      "description": "Retrieve the full item catalog currently available in the game.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ItemInfo]  # All items in the catalog (empty if none)\n    }\n\nConstraints:\n    - No constraints directly affect this query operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "check_item_exists",
+      "description": "Verify if a given item id exists in the system’s item catalog.\n\nArgs:\n    m_id (str): The item id to check.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": { \"exists\": bool }  # True if item exists, False otherwise\n    }\n    If m_id is invalid (not string or empty), exists will be False.\n\nConstraints:\n    - No state change; just check existence.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "m_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "m_id"
+        ]
+      }
+    },
+    {
+      "name": "update_player_currency_balance",
+      "description": "Add to or subtract from a player’s virtual currency, ensuring the result is non-negative.\n\nArgs:\n    player_id (str): Unique player identifier.\n    amount (float): Amount to add (positive) or subtract (negative) from the player's currency.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Player currency updated. New balance: <balance>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <string describing error>\n    }\n\nConstraints:\n    - The player must exist.\n    - The resulting currency balance cannot be negative.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "player_id",
+          "amount"
+        ]
+      }
+    },
+    {
+      "name": "add_item_to_inventory",
+      "description": "Add a specific item (item_id) to a player's (player_id) inventory if the item exists in the catalog.\n\nArgs:\n    player_id (str): The unique identifier of the player.\n    item_id (str): The unique identifier of the item to add (m_id).\n\nReturns:\n    dict: \n        On success:\n            {\"success\": True, \"message\": \"Item added to inventory\"}\n        On failure:\n            {\"success\": False, \"error\": reason}\n\nConstraints:\n    - The player_id must exist in the system.\n    - The item_id must exist in the item catalog.\n    - Inventory can only contain items that exist in the catalog.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "item_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id",
+          "item_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_item_from_inventory",
+      "description": "Remove a specified item (by m_id) from a player's inventory.\n\nArgs:\n    player_id (str): Unique identifier of the player.\n    m_id (str): Unique identifier of the item to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Item <m_id> removed from player <player_id> inventory.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<error description>\"\n    }\n\nConstraints:\n    - Player must exist.\n    - Item must exist in the player's current inventory.\n    - After removal, the player's inventory must only contain item ids present in the item catalog.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "m_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id",
+          "m_id"
+        ]
+      }
+    },
+    {
+      "name": "update_player_progress",
+      "description": "Update or increment a player’s progress according to valid in-game actions.\n\nArgs:\n    player_id (str): The unique identifier of the player.\n    progress_update (number | object): The update or increment to apply.\n        Pass a native JSON number for numeric progress or a native JSON object\n        for structured progress. The value must match the player's current\n        progress type. Do not wrap an object in an extra JSON string.\n\nReturns:\n    dict: { \"success\": True, \"message\": str }\n          or\n          { \"success\": False, \"error\": str }\n\nConstraints:\n    - Progress must only increment or change by valid in-game actions.\n    - No progress regression allowed.\n    - Player must exist.\n    - If the player's current progress is numeric, progress_update must be numeric.\n    - If the player's current progress is an object, progress_update must be an object.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "progress_update": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "object"
+              }
+            ]
+          }
+        },
+        "required": [
+          "player_id",
+          "progress_update"
+        ]
+      }
+    },
+    {
+      "name": "player_login",
+      "description": "Sets the player's login status to 'logged in' and updates their last_sync_tim to the current time.\n\nArgs:\n    player_id (str): The unique identifier of the player to log in.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Player <player_id> is now logged in\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if player not found\n    }\n\nConstraints:\n    - The player must exist in the server.\n    - Updates login_status to \"logged in\" and last_sync_tim to the current time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id"
+        ]
+      }
+    },
+    {
+      "name": "player_logout",
+      "description": "Set a player's login status to 'logged out' and update last_sync_tim.\n\nArgs:\n    player_id (str): The unique ID of the player to log out.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Player <player_id> logged out and sync time updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Player must exist.\n    - Updates player['login_status'] to 'logged out' (idempotent).\n    - Updates player['last_sync_tim'] to the current timestamp (float).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id"
+        ]
+      }
+    },
+    {
+      "name": "synchronize_player_state",
+      "description": "Commit and validate all recent changes to a player's state atomically.\n\nArgs:\n    player_id (str): The unique ID of the player to synchronize.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Player state synchronized successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for synchronization failure.\n    }\n\nConstraints:\n    - The player must exist.\n    - The currency balance must not be negative.\n    - All items in inventory must exist in the item catalog.\n    - Synchronization is atomic; if validation fails, no partial update occurs.\n    - Updates last_sync_tim to current time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id"
+        ]
+      }
+    },
+    {
+      "name": "create_player",
+      "description": "Add a new player with a unique player_id to the system.\n\nArgs:\n    player_id (str): Unique player identifier.\n    username (str): Player's username.\n    profile_data (Any): Miscellaneous profile data.\n    initial_currency (float, optional): Initial virtual currency balance (defaults to 0.0). Must not be negative.\n    initial_inventory (list, optional): Initial inventory as list of item IDs (defaults to empty list).\n    initial_progress (Any, optional): Initial player progress (defaults to None/empty).\n    login_status (str, optional): Player's initial login status (defaults to \"offline\").\n    last_sync_tim (str, optional): Initial last sync time (defaults to empty string).\n\nReturns:\n    dict:\n        - success (bool): Whether the player was created.\n        - message (str): On success, success message.\n        - error (str): On failure, reason for failure.\n\nConstraints:\n    - player_id must be unique.\n    - Virtual currency balance cannot be negative.\n    - Inventory must only contain items in the item catalog (for initial inventory).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "profile_data": {},
+          "initial_currency": {
+            "type": "number"
+          },
+          "initial_inventory": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "initial_progress": {},
+          "login_status": {
+            "type": "string"
+          },
+          "last_sync_tim": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id",
+          "username",
+          "profile_data"
+        ]
+      }
+    },
+    {
+      "name": "delete_player",
+      "description": "Remove a player (and all persistent data) from the game system.\n\nArgs:\n    player_id (str): The unique ID of the player to be deleted.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Player <player_id> deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Player not found.\"\n    }\n\nConstraints:\n    - player_id must exist in the system.\n    - This is an admin operation; no permission checks required here.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id"
+        ]
+      }
+    },
+    {
+      "name": "update_item_in_catalog",
+      "description": "Edit properties of an item in the item catalog (admin/developer operation).\n\nArgs:\n    m_id (str): The unique item id to update (must already exist).\n    item_type (str, optional): New item type (if updating).\n    item_prop (Any, optional): New item properties (if updating).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Item updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <error message>\n    }\n\nConstraints:\n    - The item must exist in the catalog.\n    - At least one of item_type or item_prop must be provided.\n    - It is not allowed to update m_id itself.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "m_id": {
+            "type": "string"
+          },
+          "item_type": {
+            "type": "string"
+          },
+          "item_prop": {}
+        },
+        "required": [
+          "m_id"
+        ]
+      }
+    },
+    {
+      "name": "add_item_to_catalog",
+      "description": "Add a new item to the canonical item catalog.\n\nArgs:\n    m_id (str): The unique item id.\n    item_type (str): The type/category of the item.\n    item_prop (Any): Additional properties of the item.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Item added to catalog\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Item with this m_id already exists\"\n    }\n\nConstraints:\n    - m_id must be unique in the item catalog.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "m_id": {
+            "type": "string"
+          },
+          "item_type": {
+            "type": "string"
+          },
+          "item_prop": {}
+        },
+        "required": [
+          "m_id",
+          "item_type",
+          "item_prop"
+        ]
+      }
+    },
+    {
+      "name": "remove_item_from_catalog",
+      "description": "Remove an item from the item catalog. This prevents future acquisition of this item,\nbut does not affect any existing instances of the item in player inventories.\n\nArgs:\n    m_id (str): Unique ID of the item to remove.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Item <m_id> removed from catalog\" }\n        - On failure: { \"success\": False, \"error\": \"Item does not exist in catalog\" }\n\nConstraints:\n    - Only existing catalog items may be removed.\n    - Does not remove item from any player inventory.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "m_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "m_id"
+        ]
+      }
+    }
+  ]
+}

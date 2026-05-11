@@ -1,0 +1,427 @@
+{
+  "env_name": "EmailVerificationPlatform",
+  "description": "An Email Verification Platform maintains user accounts with associated credit balances, supports batch and single email verification requests, and tracks the status of processing jobs. The platform helps users ensure email list quality by validating addresses and reporting results. Its structure typically includes entities for accounts, jobs, and verification records, supporting operations such as credit checking, status retrieval, and result delivery.",
+  "initial_parameter_schema": {
+    "accounts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "organization_name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "credit_balance": {
+            "type": "integer"
+          },
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "organization_name",
+          "contact_info",
+          "credit_balance",
+          "account_status"
+        ]
+      }
+    },
+    "batch_jobs": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "account_id": {
+            "type": "string"
+          },
+          "submitted_at": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "total_emails": {
+            "type": "integer"
+          },
+          "processed_count": {
+            "type": "integer"
+          },
+          "result_location": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "account_id",
+          "submitted_at",
+          "status",
+          "total_emails",
+          "processed_count",
+          "result_location"
+        ]
+      }
+    },
+    "verification_records": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "verification_id": {
+            "type": "string"
+          },
+          "job_id": {
+            "type": "string"
+          },
+          "account_id": {
+            "type": "string"
+          },
+          "email_address": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "result": {
+            "type": "string"
+          },
+          "requested_at": {
+            "type": "string"
+          },
+          "completed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "verification_id",
+          "job_id",
+          "account_id",
+          "email_address",
+          "status",
+          "result",
+          "requested_at",
+          "completed_at"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_account_info": [
+      "accounts"
+    ],
+    "get_account_credit_balance": [
+      "accounts"
+    ],
+    "get_batch_job_status": [
+      "batch_jobs"
+    ],
+    "get_verification_record_status": [
+      "verification_records"
+    ],
+    "get_batch_job_verification_records": [
+      "batch_jobs",
+      "verification_records"
+    ],
+    "list_account_batch_jobs": [
+      "accounts",
+      "batch_jobs"
+    ],
+    "get_account_verification_history": [
+      "accounts",
+      "verification_records"
+    ],
+    "list_accounts": [
+      "accounts"
+    ],
+    "submit_single_email_verification": [
+      "accounts",
+      "verification_records"
+    ],
+    "submit_batch_email_verification": [
+      "accounts",
+      "batch_jobs",
+      "verification_records"
+    ],
+    "update_batch_job_status": [
+      "batch_jobs"
+    ],
+    "update_verification_record_status": [
+      "accounts",
+      "verification_records"
+    ],
+    "increment_batch_processed_count": [
+      "batch_jobs"
+    ],
+    "refund_credits_for_failed_verification": [
+      "accounts",
+      "verification_records"
+    ],
+    "suspend_or_restore_account": [
+      "accounts"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_account_info",
+      "description": "Retrieve general information of an account, including status and organization details.\n\nArgs:\n    account_id (str): ID of the account to be queried.\n\nReturns:\n    dict:\n        - success: True, data: AccountInfo dict (on found)\n        - success: False, error: reason (if not found)\n\nConstraints:\n    - The account must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      }
+    },
+    {
+      "name": "get_account_credit_balance",
+      "description": "Query the available credit balance for a given account.\n\nArgs:\n    account_id (str): The unique identifier for the account.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"account_id\": str,\n            \"credit_balance\": int\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., \"Account not found\"\n    }\n\nConstraints:\n    - The specified account must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      }
+    },
+    {
+      "name": "get_batch_job_status",
+      "description": "Retrieve the current status and details of a batch verification job by job_id.\n\nArgs:\n    job_id (str): The unique identifier of the batch verification job.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": BatchJobInfo  # Batch job details if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if job ID does not exist\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      }
+    },
+    {
+      "name": "get_verification_record_status",
+      "description": "Retrieve the status and result of a specific email verification record.\n\nArgs:\n    verification_id (str): The unique verification record identifier.\n\nReturns:\n    dict: \n      - If successful:\n          {\n            \"success\": True,\n            \"data\": {\n              \"verification_id\": str,\n              \"status\": str,\n              \"result\": str\n            }\n          }\n      - If not found:\n          { \"success\": False, \"error\": \"Verification record not found\" }\n\nConstraints:\n    - verification_id must exist in platform records.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "verification_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "verification_id"
+        ]
+      }
+    },
+    {
+      "name": "get_batch_job_verification_records",
+      "description": "List all email verification records (as EmailVerificationRecordInfo) associated with a given batch job.\n\nArgs:\n    job_id (str): The unique identifier of the batch job.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[EmailVerificationRecordInfo],  # may be empty if no records\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Reason job_id not found\n        }\n\nConstraints:\n    - job_id must refer to an existing batch job.\n    - Only records whose job_id field == job_id are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      }
+    },
+    {
+      "name": "list_account_batch_jobs",
+      "description": "Retrieve all batch jobs submitted by a specific account.\n\nArgs:\n    account_id (str): The ID of the account.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BatchJobInfo]  # List of batch job info dicts (may be empty).\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If the account does not exist.\n    }\n\nConstraints:\n    - Provided account_id must exist in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      }
+    },
+    {
+      "name": "get_account_verification_history",
+      "description": "Retrieve the history (list and statuses) of all email verifications for a given account.\n\nArgs:\n    account_id (str): The account identifier.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": List[EmailVerificationRecordInfo]\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str\n        }\nConstraints:\n    - account_id must exist in the platform.\n    - Only records where email_verification.account_id == account_id are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      }
+    },
+    {
+      "name": "list_accounts",
+      "description": "Return all registered accounts on the platform.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AccountInfo],  # List of all accounts (may be empty)\n    }\n\nConstraints:\n    - None",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "submit_single_email_verification",
+      "description": "Start a single email verification request for an account.\nDecrements credits if sufficient, creates and returns a new verification record.\n\nArgs:\n    account_id (str): The ID of the account requesting verification.\n    email_address (str): The email address to be verified.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Verification record created\",\n                \"verification_id\": str\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str\n            }\nConstraints:\n    - Account must exist and have status \"active\".\n    - Account must have at least 1 credit.\n    - Credits are decremented when a request is made.\n    - The created EmailVerificationRecord will have:\n        - unique verification_id\n        - job_id=None\n        - account_id, email_address set\n        - status=\"pending\"\n        - result=\"\"\n        - requested_at=<now>\n        - completed_at=None",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "email_address": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "email_address"
+        ]
+      }
+    },
+    {
+      "name": "submit_batch_email_verification",
+      "description": "Start a batch email verification job for an account, decrementing credits and creating batch job plus associated verification records.\n\nArgs:\n    account_id (str): The ID of the account requesting the verification.\n    emails (List[str]): List of email addresses to verify.\nReturns:\n    dict: {\n        \"success\": True,\n        \"job_id\": str,\n        \"verification_record_ids\": List[str],\n        \"message\": str,\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str,\n    }\nConstraints:\n    - Account must exist and be active.\n    - Sufficient credits must be available (len(emails) <= credit_balance).\n    - Minimum one email required.\n    - Credits are decremented by number of emails.\n    - BatchJob and verification records refer to valid entities.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "emails": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "account_id",
+          "emails"
+        ]
+      }
+    },
+    {
+      "name": "update_batch_job_status",
+      "description": "Update the status of a batch job (e.g., from \"pending\" to \"processing\", or to \"completed\"/\"failed\").\n\nArgs:\n    job_id (str): The ID of the batch job to update.\n    new_status (str): The target status (must be one of: \"pending\", \"processing\", \"completed\", \"failed\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Batch job status updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n- job_id must correspond to an existing batch job.\n- new_status must be a valid status value (pending, processing, completed, failed).\n- (Optional) Status transitions should respect platform's FSM. Minimal transition logic is enforced here matching constraints description.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "update_verification_record_status",
+      "description": "Update the status and result of an email verification record. If new_status is 'failed',\nrefunds credit to the associated account (per platform policy). Valid transitions:\n'pending' -> 'processing' -> 'completed'/'failed'. No revert from 'completed'/'failed'.\n\nArgs:\n    verification_id (str): The verification record to update.\n    new_status (str): New status: 'processing', 'completed', or 'failed'.\n    result (str, optional): Result of verification ('valid', 'invalid', etc.).\n                            Required for 'completed' or 'failed'.\n    completed_at (str, optional): Completion timestamp (ISO format).\n                                  Required for 'completed' or 'failed'.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"message\": \"Verification record updated.\"}\n        - On failure: {\"success\": False, \"error\": \"reason\"}\nConstraints:\n    - Status transitions must be forward, not to previous states.\n    - If failed, refund one credit to the associated account (if not already refunded).\n    - Verification record and account must exist.\n    - result and completed_at must be provided for 'completed'/'failed' status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "verification_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          },
+          "result": {
+            "type": "string"
+          },
+          "completed_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "verification_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "increment_batch_processed_count",
+      "description": "Increment the processed_count for a batch job as verifications are completed.\n\nArgs:\n    job_id (str): The unique identifier of the batch job.\n\nReturns:\n    dict: \n        - If successful: {\n              \"success\": True,\n              \"message\": \"Processed count incremented for batch job <job_id>.\"\n          }\n        - If failed: {\n              \"success\": False,\n              \"error\": <reason string>\n          }\n\nConstraints:\n    - Batch job must exist.\n    - processed_count cannot exceed total_emails.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      }
+    },
+    {
+      "name": "refund_credits_for_failed_verification",
+      "description": "Refund credits to an account if a verification request fails.\nArgs:\n    verification_id (str): The ID of the failed verification record.\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Refunded 1 credit for failed verification.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<description of failure>\"\n    }\nConstraints:\n    - The verification record must exist.\n    - The verification's status must be \"failed\".\n    - The record must correspond to an existing account.\n    - Credits are refunded (1 credit) only once per failed verification per policy.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "verification_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "verification_id"
+        ]
+      }
+    },
+    {
+      "name": "suspend_or_restore_account",
+      "description": "Change the standing/status of an account: suspend or restore/reactivate.\n\nArgs:\n    account_id (str): The unique account identifier for the target account.\n    action (str): \"suspend\" to suspend the account, \"restore\"/\"reactivate\" to make it active.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"message\": \"Account <account_id> suspended/restored.\"}\n        - On failure: {\"success\": False, \"error\": \"reason\"}\n\nConstraints:\n    - Account must exist.\n    - 'suspend' is valid only if not already suspended.\n    - 'restore'/'reactivate' is valid only if account is currently suspended.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "action"
+        ]
+      }
+    }
+  ]
+}

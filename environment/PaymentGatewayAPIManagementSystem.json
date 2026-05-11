@@ -1,0 +1,659 @@
+{
+  "env_name": "PaymentGatewayAPIManagementSystem",
+  "description": "An online payment gateway API management system is a platform that handles digital payment transactions and provides programmatic access to its operations through an API. It maintains stateful records of products, channels, transaction statuses, and other merchant-specific entities, supporting actions such as querying data, initiating payments, and monitoring system health. This environment enables merchants and service providers to integrate, automate, and manage their payment processes efficiently.",
+  "initial_parameter_schema": {
+    "apis": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "api_name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "last_checked_time": {
+            "type": "string"
+          },
+          "response_times": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "availability_history": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "api_name",
+          "status",
+          "last_checked_time",
+          "response_times",
+          "availability_history"
+        ]
+      }
+    },
+    "channels": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "api_name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "configuration": {
+            "type": "object"
+          },
+          "supported_currency": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "channel_id",
+          "name",
+          "api_name",
+          "status",
+          "configuration",
+          "supported_currency"
+        ]
+      }
+    },
+    "products": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "availability_status": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    "authorize_user_for_entity": {
+      "type": "string"
+    },
+    "authorizations": {
+      "type": "string"
+    }
+  },
+  "tool_state_dependencies": {
+    "get_api_info": [
+      "apis"
+    ],
+    "get_api_status": [
+      "apis"
+    ],
+    "get_channel_info_by_id": [
+      "channels"
+    ],
+    "get_channel_status": [
+      "channels"
+    ],
+    "get_product_info_by_id": [
+      "products"
+    ],
+    "check_product_exists": [
+      "products"
+    ],
+    "check_channel_exists": [
+      "channels"
+    ],
+    "list_all_apis": [
+      "apis"
+    ],
+    "list_all_channels": [
+      "channels"
+    ],
+    "list_all_products": [
+      "products"
+    ],
+    "update_api_status": [
+      "apis"
+    ],
+    "log_api_check_time": [
+      "apis"
+    ],
+    "update_channel_status": [
+      "channels"
+    ],
+    "modify_channel_configuration": [
+      "authorize_user_for_entity",
+      "channels"
+    ],
+    "add_product": [
+      "products"
+    ],
+    "update_product_details": [
+      "products"
+    ],
+    "delete_product": [
+      "authorize_user_for_entity",
+      "products"
+    ],
+    "add_channel": [
+      "apis",
+      "channels"
+    ],
+    "delete_channel": [
+      "authorize_user_for_entity",
+      "channels"
+    ],
+    "add_api_integration": [
+      "apis"
+    ],
+    "delete_api_integration": [
+      "apis",
+      "authorize_user_for_entity",
+      "channels"
+    ],
+    "update_api_availability_history": [
+      "apis"
+    ],
+    "authorize_user_for_entity": [
+      "apis",
+      "authorizations",
+      "channels",
+      "products"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_api_info",
+      "description": "Retrieve all current operational and health metrics for a specified API by name.\n\nArgs:\n    api_name (str): The name of the API to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": APIInfo,  # Complete dictionary describing the API's status and metrics\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g., API not found)\n    }\n\nConstraints:\n    - The given api_name must correspond to an existing API entity in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_name"
+        ]
+      }
+    },
+    {
+      "name": "get_api_status",
+      "description": "Retrieve the current operational status (e.g., active, degraded, offline) of the specified API.\n\nArgs:\n    api_name (str): The unique name/identifier of the API.\n\nReturns:\n    dict:\n        {\"success\": True, \"data\": str}  # status string on success\n        or\n        {\"success\": False, \"error\": str}  # reason for failure (e.g., API not found)\n\nConstraints:\n    - The api_name must correspond to an existing API entity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_name"
+        ]
+      }
+    },
+    {
+      "name": "get_channel_info_by_id",
+      "description": "Retrieve the complete configuration and metadata for a channel by its channel_id.\n\nArgs:\n    channel_id (str): Unique identifier for the channel.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": ChannelInfo\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": \"Channel not found\"\n        }\n\nConstraints:\n    - The channel_id must correspond to an existing channel entity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id"
+        ]
+      }
+    },
+    {
+      "name": "get_channel_status",
+      "description": "Get the current operational status of a specified channel by channel_id.\n\nArgs:\n    channel_id (str): The unique identifier of the payment channel.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"channel_id\": str,\n            \"status\": str\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g., channel not found)\n    }\n\nConstraints:\n    - channel_id must exist in the channels dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id"
+        ]
+      }
+    },
+    {
+      "name": "get_product_info_by_id",
+      "description": "Retrieve all the details (pricing, metadata, etc.) for a product by its product_id.\n\nArgs:\n    product_id (str): The unique identifier of the product.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ProductInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Product does not exist\"\n    }\n\nConstraints:\n    - Valid product_id must correspond to an existing product entity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "check_product_exists",
+      "description": "Verify if a product with the specified product_id exists.\n\nArgs:\n    product_id (str): The unique identifier of the product.\n\nReturns:\n    dict:\n      - If product exists: { \"success\": True, \"exists\": True }\n      - If not exists:     { \"success\": True, \"exists\": False }\n      - If input is invalid (e.g., None or empty): treat as not exists\n\nConstraints:\n    - Checks presence of product_id in self.products.\n    - No exceptions are raised; always returns a dict.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "check_channel_exists",
+      "description": "Verify if a channel with the specified channel_id exists.\n\nArgs:\n    channel_id (str): The unique identifier of the channel.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": bool  # True if channel exists, False otherwise\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if invalid input\n    }\n\nConstraints:\n    - channel_id should be a non-empty string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_apis",
+      "description": "Retrieve a list of all registered APIs and their top-level summaries.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[APIInfo],  # All API entities' information (may be empty if none exist)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_all_channels",
+      "description": "Retrieve a summary list of all channels managed by the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ChannelInfo],  # All channels currently managed, possibly empty\n    }\n\nConstraints:\n    - Returns all channels; does not perform authorization check as no user/session info is provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_all_products",
+      "description": "List all products registered on the platform.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ProductInfo]  # List of product info dicts (may be empty if no products registered)\n    }\n\nConstraints:\n    - No authorization, filtering, or input parameters are required for this operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "update_api_status",
+      "description": "Change the status and health information for a specific API.\n\nArgs:\n    api_name (str): Name of the API whose status is to be updated.\n    new_status (str): The new operational status (e.g. 'online', 'offline', 'degraded').\n\nReturns:\n    dict: {\n      \"success\": True,\n      \"message\": \"API status updated from <old_status> to <new_status>\"\n    }\n    or\n    {\n      \"success\": False,\n      \"error\": \"API not found\"\n    }\n\nConstraints:\n    - API name must already exist.\n    - Updates the status and last_checked_time; logs the change in availability_history.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_name": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_name",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "log_api_check_time",
+      "description": "Record a monitoring check on an API with timestamp and availability result.\n\nArgs:\n    api_name (str): Name/identifier of the API to log check for.\n    timestamp (str): ISO8601 timestamp string for the check event.\n    result (str): The result of the check (\"available\", \"unavailable\", etc.).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"API check logged successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - API must exist in self.apis.\n    - Will update the API's last_checked_time and append to availability_history.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_name": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_name",
+          "timestamp",
+          "result"
+        ]
+      }
+    },
+    {
+      "name": "update_channel_status",
+      "description": "Update the status field of a channel.\n\nArgs:\n    channel_id (str): The unique identifier for the channel to update.\n    new_status (str): The new status to be set for the channel\n        (e.g., \"active\", \"inactive\", \"maintenance\").\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Channel status updated\"\n            }\n        On error (channel not found):\n            {\n                \"success\": False,\n                \"error\": \"Channel does not exist\"\n            }\n\nConstraints:\n    - channel_id must exist in the system.\n    - Status is updated unconditionally (caller ensures logic).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "modify_channel_configuration",
+      "description": "Change (replace) the configuration settings of a specified payment channel.\n\nArgs:\n    channel_id (str): Unique identifier of the channel to modify.\n    new_configuration (Dict[str, Any]): New configuration settings for the channel.\n    user_id (str): The ID of the user requesting the change, for authorization.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Channel configuration updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - channel_id must refer to an existing channel.\n    - Only an authorized user/merchant can change a channel's configuration.\n    - Status must update in response to configuration updates (set to \"updated\").",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          },
+          "new_configuration": {
+            "type": "object"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id",
+          "new_configuration",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "add_product",
+      "description": "Add a new product to the platform.\n\nArgs:\n    product_id (str): Unique product identifier.\n    name (str): Product name.\n    price (float): Product price.\n    currency (str): ISO currency code.\n    availability_status (str): Whether the product is available.\n    metadata (dict): Miscellaneous additional product fields.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Product <id> successfully added.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The product_id must be unique (must not already exist).\n    - The provided data types should be correct.\n    - (Optionally) Authorization should be checked before adding a product.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "availability_status": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "product_id",
+          "name",
+          "price",
+          "currency",
+          "availability_status",
+          "metadata"
+        ]
+      }
+    },
+    {
+      "name": "update_product_details",
+      "description": "Update details (fields) of a product by product_id.\n\nArgs:\n    product_id (str): The unique identifier of the product to update.\n    name (str, optional): New product name.\n    price (float, optional): New product price.\n    currency (str, optional): New currency code.\n    availability_status (str, optional): New availability status.\n    metadata (dict, optional): New metadata dictionary to replace existing.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Product details updated successfully.\"\n    } on success,\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    } on failure.\n\nConstraints:\n    - product_id must exist.\n    - Only allowed fields may be updated.\n    - Field types must match definition.\n    - At least one field must be provided for update.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "availability_status": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "product_id",
+          "name",
+          "price",
+          "currency",
+          "availability_status",
+          "metadata"
+        ]
+      }
+    },
+    {
+      "name": "delete_product",
+      "description": "Remove a product from active offerings (soft-delete or hard-delete).\n\nArgs:\n    product_id (str): The unique product identifier to remove.\n    user_id (Optional[str]): ID of the user requesting the operation (for authorization).\n    hard_delete (bool): If True, the product will be permanently deleted (removed from records);\n                        If False, it will only be deactivated (soft-delete).\n                    \nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Product <id> deleted.\" }\n        On failure:\n            { \"success\": False, \"error\": \"...\"}\n\nConstraints:\n    - The product ID must correspond to an existing product.\n    - Only authorized users/merchants can delete products.\n    - Soft-delete sets availability_status to \"deleted\".\n    - Hard-delete removes product from platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "hard_delete": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "add_channel",
+      "description": "Registers a new payment channel in the system.\n\nArgs:\n    channel_id (str): Unique identifier for the channel.\n    name (str): Channel's display name.\n    api_name (str): Name of the API this channel operates over (must exist).\n    status (str): Initial status of the channel.\n    configuration (dict): Channel configuration details.\n    supported_currency (List[str]): List of ISO currency codes supported by this channel.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"message\": \"Channel <channel_id> added successfully.\"\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": \"<reason>\"\n        }\n\nConstraints:\n    - Channel ID must not already exist in the system.\n    - The referenced api_name must already exist in the system.\n    - Channel info must contain all required fields.\n    - (Authorization checks could be enforced if user context is provided.)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "api_name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "configuration": {
+            "type": "object"
+          },
+          "supported_currency": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "channel_id",
+          "name",
+          "api_name",
+          "status",
+          "configuration",
+          "supported_currency"
+        ]
+      }
+    },
+    {
+      "name": "delete_channel",
+      "description": "Remove a channel from the system.\n\nArgs:\n    channel_id (str): The unique identifier of the channel to be removed.\n    user_id (str): The ID of the user/merchant requesting the deletion.\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"message\": \"Channel <channel_id> deleted successfully\"\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": \"<reason>\"\n        }\n\nConstraints:\n    - The channel_id must exist.\n    - Only authorized users/merchants can delete the channel.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "add_api_integration",
+      "description": "Register a new third-party payment API for the system to monitor and use.\n\nArgs:\n    api_name (str): Unique name/identifier for the API.\n    status (str, optional): Initial API status, default is \"inactive\". Supported values include inactive, active, error, unknown, online, offline, and degraded.\n    last_checked_time (str, optional): ISO8601 string for last checked time, default empty.\n    response_times (List[float], optional): List of response time measurements. Defaults to empty.\n    availability_history (List[str], optional): List of availability timestamps. Defaults to empty.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"API integration added successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <description>\n    }\n\nConstraints:\n    - api_name must be unique.\n    - api_name must not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "last_checked_time": {
+            "type": "string"
+          },
+          "response_times": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "availability_history": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "api_name",
+          "status",
+          "last_checked_time"
+        ]
+      }
+    },
+    {
+      "name": "delete_api_integration",
+      "description": "Remove an API integration from the management system.\n\nArgs:\n    api_name (str): Name (unique identifier) of the API integration to be deleted.\n    user_id (str): ID of the user/merchant requesting deletion.\n\nReturns:\n    dict: \n      - On success: { \"success\": True, \"message\": \"API integration '<api_name>' deleted successfully.\" }\n      - On failure: { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - api_name must exist in the system.\n    - Only authorized users/merchants may delete the API.\n    - An API integration cannot be deleted if there are Channels referencing it.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_name": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_name",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "update_api_availability_history",
+      "description": "Add an event to an API’s availability history for status tracking.\n\nArgs:\n    api_name (str): The name of the API integration to update.\n    event_timestamp (str): The ISO8601 timestamp marking the availability event.\n    availability_state (Optional[str]): Optional; e.g., \"available\" or \"unavailable\".\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"API availability history updated\"\n    }\n    on failure:\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The api_name must correspond to an existing API integration.\n    - The event will be appended to the API's availability_history.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_name": {
+            "type": "string"
+          },
+          "event_timestamp": {
+            "type": "string"
+          },
+          "availability_state": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_name",
+          "event_timestamp"
+        ]
+      }
+    },
+    {
+      "name": "authorize_user_for_entity",
+      "description": "Grant access permission to a product, channel, or API entity for a particular authorized user or merchant.\n\nArgs:\n    entity_type (str): One of \"product\", \"channel\", or \"api\".\n    entity_id (str): For 'product' = product_id, for 'channel' = channel_id, for 'api' = api_name.\n    user_id (str): The user or merchant identifier to authorize.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User <user_id> is now authorized for <entity_type> <entity_id>\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The entity_type must be \"product\", \"channel\", or \"api\".\n    - The entity_id must exist for the given entity_type.\n    - When the environment provides a fixed operational identity set for the case, user_id must be one of those valid user or merchant identifiers.\n    - Authorizations are tracked and idempotent (no duplicate grants).\n\nState change: Adds user_id to the set of authorized users for the specified entity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entity_type": {
+            "type": "string"
+          },
+          "entity_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity_type",
+          "entity_id",
+          "user_id"
+        ]
+      }
+    }
+  ]
+}

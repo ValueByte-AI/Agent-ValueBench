@@ -1,0 +1,469 @@
+{
+  "env_name": "MusicCatalogDatabase",
+  "description": "A music catalog database is an organized repository that maintains comprehensive records of artists, albums, and individual tracks. It supports structured relationships and metadata, allowing for efficient retrieval, browsing, and management of musical content. This environment is central to digital music distribution, streaming platforms, and media libraries, providing the backbone for user and system queries.",
+  "initial_parameter_schema": {
+    "artists": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "artist_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "profile": {
+            "type": "string"
+          },
+          "genre": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "years_active": {
+            "type": "string"
+          },
+          "etc": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "albums": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "album_id": {
+            "type": "string"
+          },
+          "artist_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "release_date": {
+            "type": "string"
+          },
+          "genre": {
+            "type": "string"
+          },
+          "cover_art": {
+            "type": "string"
+          },
+          "etc": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "tracks": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "track_id": {
+            "type": "string"
+          },
+          "album_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "number"
+          },
+          "track_number": {
+            "type": "integer"
+          },
+          "composer": {
+            "type": "string"
+          },
+          "featuring_artists": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "etc": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_artist_by_id": [
+      "artists"
+    ],
+    "list_artists_by_ids": [
+      "artists"
+    ],
+    "get_albums_by_artist_id": [
+      "albums",
+      "artists"
+    ],
+    "get_album_by_id": [
+      "albums"
+    ],
+    "get_tracks_by_album_id": [
+      "albums",
+      "tracks"
+    ],
+    "get_tracks_by_artist_id": [
+      "albums",
+      "artists",
+      "tracks"
+    ],
+    "get_track_by_id": [
+      "tracks"
+    ],
+    "composite_artist_full_info": [
+      "albums",
+      "artists",
+      "tracks"
+    ],
+    "add_artist": [
+      "artists"
+    ],
+    "update_artist": [
+      "artists"
+    ],
+    "delete_artist": [
+      "albums",
+      "artists",
+      "tracks"
+    ],
+    "add_album": [
+      "albums",
+      "artists"
+    ],
+    "update_album": [
+      "albums",
+      "artists"
+    ],
+    "delete_album": [
+      "albums",
+      "tracks"
+    ],
+    "add_track": [
+      "albums",
+      "tracks"
+    ],
+    "update_track": [
+      "albums",
+      "tracks"
+    ],
+    "delete_track": [
+      "tracks"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_artist_by_id",
+      "description": "Retrieve artist metadata/profile using artist_id.\n\nArgs:\n    artist_id (str): Unique identifier for the artist.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": ArtistInfo }\n        - On failure: { \"success\": False, \"error\": \"Artist not found\" }\n\nConstraints:\n    - artist_id must correspond to an existing artist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "artist_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artist_id"
+        ]
+      }
+    },
+    {
+      "name": "list_artists_by_ids",
+      "description": "Retrieve metadata/profile for a list of artist_ids.\n\nArgs:\n    artist_ids (list of str): The artist_ids to look up.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ArtistInfo],  # List of artist metadata; empty if none found.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of error\n    }\n\nConstraints:\n    - Only existing artist_ids will appear in the output.\n    - Input must be a list of strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "artist_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "artist_ids"
+        ]
+      }
+    },
+    {
+      "name": "get_albums_by_artist_id",
+      "description": "Retrieve all albums associated with a given artist_id.\n\nArgs:\n    artist_id (str): The unique ID of the artist.\n\nReturns:\n    dict:\n        On success:\n            {\n              \"success\": True,\n              \"data\": List[AlbumInfo]  # List may be empty if artist has no albums\n            }\n        On error:\n            {\n              \"success\": False,\n              \"error\": str  # Explanation, e.g. artist not found\n            }\nConstraints:\n    - artist_id must exist in self.artists.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "artist_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artist_id"
+        ]
+      }
+    },
+    {
+      "name": "get_album_by_id",
+      "description": "Retrieve album metadata/profile using the provided album_id.\n\nArgs:\n    album_id (str): Unique identifier for the desired album.\n\nReturns:\n    dict:\n      - On success: {\"success\": True, \"data\": AlbumInfo}\n      - On failure: {\"success\": False, \"error\": \"Album not found\"}\n\nConstraints:\n    - album_id must uniquely identify an existing album in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "album_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "album_id"
+        ]
+      }
+    },
+    {
+      "name": "get_tracks_by_album_id",
+      "description": "Retrieve all tracks associated with a given album_id.\n\nArgs:\n    album_id (str): The ID of the album whose tracks should be retrieved.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TrackInfo]  # List of tracks (may be empty if no tracks belong to the album)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g., album does not exist\n    }\n\nConstraints:\n    - album_id must exist in the catalog.\n    - Only tracks whose album_id matches are considered.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "album_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "album_id"
+        ]
+      }
+    },
+    {
+      "name": "get_tracks_by_artist_id",
+      "description": "Retrieve all tracks for a given artist by traversing the albums.\n\nArgs:\n    artist_id (str): The unique identifier of the artist.\n\nReturns:\n    dict:\n        If artist exists:\n            { \"success\": True, \"data\": List[TrackInfo] }\n        If artist does not exist:\n            { \"success\": False, \"error\": \"Artist not found\" }\n\nConstraints:\n    - The specified artist_id must exist in the music catalog.\n    - Traverses albums by that artist and returns all associated tracks.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "artist_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artist_id"
+        ]
+      }
+    },
+    {
+      "name": "get_track_by_id",
+      "description": "Retrieve metadata for a single track by its unique identifier.\n\nArgs:\n    track_id (str): The unique ID of the track to retrieve.\n\nReturns:\n    dict: \n        - On success: {\n            \"success\": True,\n            \"data\": TrackInfo (track metadata)\n          }\n        - On failure (not found): {\n            \"success\": False,\n            \"error\": \"Track not found\"\n          }\n\nConstraints:\n    - track_id must exist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "track_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "track_id"
+        ]
+      }
+    },
+    {
+      "name": "composite_artist_full_info",
+      "description": "Retrieve an artist's profile, all their albums, and all tracks associated with each album.\n\nArgs:\n    artist_id (str): Unique identifier of the artist.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"artist\": ArtistInfo,\n                    \"albums\": [\n                        {\n                            \"album\": AlbumInfo,\n                            \"tracks\": List[TrackInfo]\n                        }, \n                        ...\n                    ]\n                }\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": \"Artist does not exist\"\n            }\n\nConstraints:\n    - The specified artist_id must exist in the database.\n    - Only albums for the artist and their tracks are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "artist_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artist_id"
+        ]
+      }
+    },
+    {
+      "name": "add_artist",
+      "description": "Add a new artist to the music catalog.\n\nArgs:\n    artist_info (dict): Dictionary with artist attributes, must include 'artist_id'.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Artist <artist_id> added\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - artist_id must be present and unique within the catalog.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "artist_info": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "artist_info"
+        ]
+      }
+    },
+    {
+      "name": "update_artist",
+      "description": "Updates the metadata/profile of an existing artist.\n\nArgs:\n    artist_id (str): The unique ID of the artist to update.\n    updates (dict): Fields and values to update for the artist.\n        - Must not contain 'artist_id' (immutable).\n        - Only known ArtistInfo fields (including 'etc') will be updated.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Artist <artist_id> updated.\" }\n        - On error: { \"success\": False, \"error\": \"Reason\" }\n\nConstraints:\n    - Artist must exist.\n    - artist_id cannot be modified.\n    - No operation if updates dict is empty or contains no valid keys.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "artist_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "artist_id",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "delete_artist",
+      "description": "Delete an artist and cascade delete all dependent albums and tracks.\n\nArgs:\n    artist_id (str): Unique identifier for the artist to be deleted.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Artist and all associated albums and tracks deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Artist not found\"\n    }\n\nConstraints:\n    - If artist exists, delete all albums belonging to the artist and all tracks belonging to those albums, then the artist record itself.\n    - If artist does not exist: return error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "artist_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artist_id"
+        ]
+      }
+    },
+    {
+      "name": "add_album",
+      "description": "Add a new album to the catalog.\n\nArgs:\n    album_info (AlbumInfo): Dictionary containing album metadata.\n        Must include 'album_id' (unique) and 'artist_id' (existing).\n\nReturns:\n    dict: \n        {\"success\": True, \"message\": \"Album <album_id> added.\"}\n        or\n        {\"success\": False, \"error\": str}\n\nConstraints:\n    - album_id must be unique (not yet in self.albums)\n    - artist_id must exist in self.artists",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "album_info": {
+            "type": "object",
+            "properties": {
+              "album_id": {
+                "type": "string"
+              },
+              "artist_id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "release_date": {
+                "type": "string"
+              },
+              "genre": {
+                "type": "string"
+              },
+              "cover_art": {
+                "type": "string"
+              },
+              "etc": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "album_id",
+              "artist_id",
+              "title",
+              "release_date",
+              "genre",
+              "cover_art",
+              "etc"
+            ]
+          }
+        },
+        "required": [
+          "album_info"
+        ]
+      }
+    },
+    {
+      "name": "update_album",
+      "description": "Update metadata fields for a specified album.\n\nArgs:\n    album_id (str): The unique ID of the album to update.\n    updates (dict): Dictionary of AlbumInfo fields to update (e.g., title, release_date, genre, cover_art, artist_id, etc.).\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Album updated successfully.\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Album must exist in catalog.\n    - If changing artist_id, the new artist_id must exist.\n    - Unknown fields in updates are ignored.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "album_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "album_id",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "delete_album",
+      "description": "Delete an album and cascade delete all dependent tracks.\n\nArgs:\n    album_id (str): The identifier of the album to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Album and all dependent tracks deleted successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Album does not exist\"\n    }\n\nConstraints:\n    - Album must exist to be deleted.\n    - All tracks referencing the album (album_id) are also deleted, to maintain constraints.\n    - Guarantees: no orphaned tracks left after deletion.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "album_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "album_id"
+        ]
+      }
+    },
+    {
+      "name": "add_track",
+      "description": "Add a new track to the music catalog.\n\nArgs:\n    track_info (dict): Dictionary containing track metadata. Must contain at least:\n        - track_id (str): Unique ID for the track\n        - album_id (str): The album the track belongs to (must exist)\n        - title (str): Track title (recommended)\n        - duration (float): Duration in seconds (optional)\n        - track_number (int): Position on album (optional)\n        - composer (str): Composer info (optional)\n        - featuring_artists (List[str]): Featuring artists (optional)\n        - etc (dict): Any additional track metadata (optional)\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Track <track_id> added successfully\" }\n        On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - track_id must not duplicate any existing track\n    - album_id must point to an existing album\n    - track_id and album_id must be provided in input",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "track_info": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "track_info"
+        ]
+      }
+    },
+    {
+      "name": "update_track",
+      "description": "Update the specified fields/metadata of a given track.\n\nArgs:\n    track_id (str): The ID of the track to update.\n    updates (dict): Dictionary of fields and values to update (keys may include\n                    title, duration, track_number, composer, featuring_artists, album_id, etc, or fields in 'etc').\n\nReturns:\n    dict: On success:\n        { \"success\": True, \"message\": \"Track updated successfully.\" }\n    On failure:\n        { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - The specified track must exist.\n    - If album_id is being updated, it must reference an existing album.\n    - Only valid fields for tracks may be updated; updating track_id itself is not permitted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "track_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "track_id",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "delete_track",
+      "description": "Delete a track from the catalog.\n\nArgs:\n    track_id (str): The unique identifier of the track to be deleted.\n\nReturns:\n    dict:\n        On success:\n        {\n            \"success\": True,\n            \"message\": \"Track <track_id> deleted.\"\n        }\n        On failure (track does not exist):\n        {\n            \"success\": False,\n            \"error\": \"Track with id <track_id> does not exist.\"\n        }\n\nConstraints:\n    - Track ID must exist in the catalog to be deleted.\n    - No cascade or dependent check required for tracks.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "track_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "track_id"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,537 @@
+{
+  "env_name": "EventMonitoringAnalyticsSystem",
+  "description": "An event monitoring and analytics system maintains records of events identified by unique IDs, along with associated metrics, timestamps, and data points that can be visualized or analyzed. The environment offers operations for recording event occurrences, querying event-specific data, and retrieving information for reporting or graphical presentation. Commonly used in IT, business intelligence, and monitoring scenarios, it facilitates real-time and historical analysis of event-driven data.",
+  "initial_parameter_schema": {
+    "events": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "metrics": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "event_id",
+          "name",
+          "description",
+          "created_at",
+          "metrics"
+        ]
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "metric_name": {
+            "type": "string"
+          },
+          "event_id": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "metric_name",
+          "event_id",
+          "unit",
+          "description"
+        ]
+      }
+    },
+    "datapoints": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "datapoint_id": {
+            "type": "string"
+          },
+          "event_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "metric_name": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "datapoint_id",
+          "event_id",
+          "timestamp",
+          "metric_name",
+          "value"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_event_by_id": [
+      "events"
+    ],
+    "list_events": [
+      "events"
+    ],
+    "get_metrics_by_event_id": [
+      "events",
+      "metrics"
+    ],
+    "get_metric_info": [
+      "metrics"
+    ],
+    "list_datapoints_by_event": [
+      "datapoints",
+      "events"
+    ],
+    "list_datapoints_by_metric": [
+      "datapoints",
+      "events",
+      "metrics"
+    ],
+    "get_datapoint_by_id": [
+      "datapoints"
+    ],
+    "get_latest_datapoint": [
+      "datapoints",
+      "events",
+      "metrics"
+    ],
+    "get_event_graph_points": [
+      "datapoints",
+      "events"
+    ],
+    "create_event": [
+      "events"
+    ],
+    "create_metric": [
+      "events",
+      "metrics"
+    ],
+    "record_datapoint": [
+      "datapoints",
+      "events",
+      "metrics"
+    ],
+    "update_event_info": [
+      "events"
+    ],
+    "update_metric_info": [
+      "metrics"
+    ],
+    "delete_event": [
+      "datapoints",
+      "events",
+      "metrics"
+    ],
+    "delete_datapoint": [
+      "datapoints"
+    ],
+    "bulk_record_datapoints": [
+      "datapoints",
+      "events",
+      "metrics"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_event_by_id",
+      "description": "Retrieve metadata for a specific event by event_id.\n\nArgs:\n    event_id (str): The unique identifier of the event.\n\nReturns:\n    dict: {\n        'success': True,\n        'data': EventInfo  # Metadata for the event if found\n    }\n    or\n    {\n        'success': False,\n        'error': str  # Reason for failure\n    }\n\nConstraints:\n    - event_id must correspond to an existing Event in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "list_events",
+      "description": "Retrieve a list of all events and their metadata.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[EventInfo]  # List of all events (may be empty if none exist)\n    }\n\nNotes:\n    - No input parameters.\n    - This operation simply returns all current events.\n    - No error is returned if there are no events (data will be an empty list).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_metrics_by_event_id",
+      "description": "Retrieve all MetricInfo dictionaries associated with a specific event.\n\nArgs:\n    event_id (str): The unique identifier of the event.\n\nReturns:\n    dict:\n        success: True and data: list of MetricInfo if event exists,\n                (data will be empty if no metrics found)\n        On failure, success: False and error reason.\nConstraints:\n    - event_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "get_metric_info",
+      "description": "Retrieve the full metadata (MetricInfo) for a specific metric of a given event.\n\nArgs:\n    event_id (str): The unique ID of the event to which the metric belongs.\n    metric_name (str): The metric's name.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": MetricInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"Metric not found for event\"\n    }\n\nConstraints:\n    - The metric must exist (identified by event_id and metric_name).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "metric_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "metric_name"
+        ]
+      }
+    },
+    {
+      "name": "list_datapoints_by_event",
+      "description": "Retrieve all datapoints for a given event, with optional filtering by metric name and timestamp range.\n\nArgs:\n    event_id (str): ID of the event whose datapoints are being queried.\n    metric_name (str, optional): If provided, only datapoints with this metric_name are returned.\n    start_time (float, optional): If provided, only datapoints with timestamp >= start_time are returned.\n    end_time (float, optional): If provided, only datapoints with timestamp <= end_time are returned.\n\nReturns:\n    dict:\n      - {\"success\": True, \"data\": List[DataPointInfo]}\n      - {\"success\": False, \"error\": str}\n\nConstraints:\n    - event_id must refer to an existing event.\n    - If metric_name is given, it must be associated with the event.\n    - Time filters are optional; if set, must be float timestamps.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "metric_name": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "list_datapoints_by_metric",
+      "description": "Retrieve all datapoints for a specific metric in an event, optionally filterable by timestamp.\n\nArgs:\n    event_id (str): The unique ID of the event.\n    metric_name (str): The name of the metric associated with the event.\n    timestamp_from (float, optional): Filter to datapoints with timestamp >= this value.\n    timestamp_to (float, optional): Filter to datapoints with timestamp <= this value.\n\nReturns:\n    dict: \n        { \"success\": True, \"data\": [List[DataPointInfo]] }\n        or\n        { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - event_id must exist in the system.\n    - metric (event_id + metric_name) must exist in the system.\n    - Returns only DataPoints matching event_id and metric_name, filtered by the optional timestamp range.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "metric_name": {
+            "type": "string"
+          },
+          "timestamp_from": {
+            "type": "number"
+          },
+          "timestamp_to": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "event_id",
+          "metric_name"
+        ]
+      }
+    },
+    {
+      "name": "get_datapoint_by_id",
+      "description": "Fetch the attributes of a DataPoint by its unique datapoint_id.\n\nArgs:\n    datapoint_id (str): The identifier of the DataPoint to retrieve.\n\nReturns:\n    dict:\n        - If found: { \"success\": True, \"data\": DataPointInfo }\n        - If not found: { \"success\": False, \"error\": \"DataPoint not found\" }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "datapoint_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "datapoint_id"
+        ]
+      }
+    },
+    {
+      "name": "get_latest_datapoint",
+      "description": "Retrieve the most recent datapoint for a given event/metric pair.\n\nArgs:\n    event_id (str): The unique identifier for the event.\n    metric_name (str): The name of the metric within the event.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": DataPointInfo  # The most recent datapoint info\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error\n    }\n\nConstraints:\n    - The event must exist.\n    - The metric must exist for the specified event.\n    - If there are no datapoints for this event/metric, return error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "metric_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "metric_name"
+        ]
+      }
+    },
+    {
+      "name": "get_event_graph_points",
+      "description": "Retrieve datapoints filtered and formatted for visualization for a specific event.\n\nArgs:\n    event_id (str): Event identifier.\n    metric_names (List[str], optional): List of metric_names to restrict datapoints. \n                                        If None, include all metrics for the event.\n    start_time (float, optional): Earliest timestamp to include (inclusive).\n    end_time (float, optional): Latest timestamp to include (inclusive).\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": List[DataPointInfo]  # May be empty. Sorted by timestamp ascending.\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - The event_id must exist, unless the event was deleted under a configured compliance workflow that preserves a read-only visualization snapshot for post-delete retrieval.\n    - If metric_names provided, must be subset of the event's metrics (or the preserved snapshot's metrics, when a compliant snapshot exists).\n    - If specified, start_time must be <= end_time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "metric_names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "start_time": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "create_event",
+      "description": "Create a new event with the specified metadata.\n\nArgs:\n    event_id (str): Unique identifier for the event.\n    name (str): Human-readable event name.\n    description (str): Description of the event.\n    created_at (str): Creation timestamp (ISO/date string recommended).\n    metrics (list, optional): List of metric names to associate at creation (may be empty/None).\n\nReturns:\n    dict: {\n        'success': True,\n        'message': 'Event <event_id> created.'\n    }\n    or\n    {\n        'success': False,\n        'error': <reason>\n    }\n\nConstraints:\n    - event_id must be unique in self.events.\n    - All parameters except metrics are required.\n    - If metrics is not provided, will be set as an empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "metrics": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "event_id",
+          "name",
+          "description",
+          "created_at"
+        ]
+      }
+    },
+    {
+      "name": "create_metric",
+      "description": "Create a new metric under an existing event.\n\nArgs:\n    event_id (str): The ID of the event to associate the metric with. Must already exist.\n    metric_name (str): The unique name of the metric under this event.\n    unit (str): The unit of the metric.\n    description (str): Description of the metric.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Metric created successfully\" }\n        On error:   { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Event with event_id must exist.\n    - (event_id, metric_name) combination must not already exist.\n    - metric_name must be added to the EventInfo.metrics list if success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "metric_name": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "metric_name",
+          "unit",
+          "description"
+        ]
+      }
+    },
+    {
+      "name": "record_datapoint",
+      "description": "Add a new datapoint for the given event and metric at the specified timestamp.\n\nArgs:\n    event_id (str): ID of the event.\n    metric_name (str): Name of the metric for this event.\n    timestamp (float): UNIX timestamp at which value was observed.\n    value (float): Value to record.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Datapoint recorded successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - event_id must exist in the environment.\n    - metric (event_id, metric_name) must exist for the event.\n    - timestamp must be > last timestamp for this event_id+metric_name (if any datapoints exist).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "metric_name": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "value": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "event_id",
+          "metric_name",
+          "timestamp",
+          "value"
+        ]
+      }
+    },
+    {
+      "name": "update_event_info",
+      "description": "Modify the metadata for an existing event.\n\nArgs:\n    event_id (str): Unique identifier of the event to update.\n    name (str, optional): New name for the event.\n    description (str, optional): New description for the event.\n\nReturns:\n    dict: \n        On success: {\"success\": True, \"message\": \"Event info updated successfully\"}\n        On failure: {\"success\": False, \"error\": \"reason\"}\n\nConstraints:\n    - The event with event_id must already exist.\n    - Only 'name' and 'description' are updatable via this operation.\n    - Does not update event_id, created_at, or metrics.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "update_metric_info",
+      "description": "Modify metadata (unit, description) for an existing metric.\n\nArgs:\n    event_id (str): The event identifier that owns the metric.\n    metric_name (str): Name of the metric to update.\n    unit (str, optional): New unit string for the metric (if updating).\n    description (str, optional): New description for the metric (if updating).\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Metric metadata updated successfully.\" }\n        On error:   { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The metric identified by (event_id, metric_name) must exist.\n    - Only unit and description can be modified (not event_id or metric_name).\n    - At least one updatable field (unit or description) must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "metric_name": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "metric_name"
+        ]
+      }
+    },
+    {
+      "name": "delete_event",
+      "description": "Remove an event, as well as all metrics and datapoints associated with it.\n\nArgs:\n    event_id (str): The unique identifier of the event to delete.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True,\n            \"message\": \"Event and all associated metrics/data points deleted.\"\n        }\n        On error: {\n            \"success\": False,\n            \"error\": \"Event does not exist.\"\n        }\n\nConstraints:\n    - Event must exist.\n    - All metrics where metric_info.event_id == event_id are deleted.\n    - All datapoints where datapoint_info.event_id == event_id are deleted.\n    - If the environment is configured to preserve a compliant read-only visualization snapshot for a deleted event, that snapshot remains queryable through get_event_graph_points after deletion, but the live event/metric/datapoint records are still removed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_datapoint",
+      "description": "Remove an existing DataPoint from the analytics system.\n\nArgs:\n    datapoint_id (str): The unique identifier for the DataPoint to be deleted.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Datapoint <datapoint_id> deleted successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Datapoint not found\"\n    }\n\nConstraints:\n    - The DataPoint must exist before it can be deleted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "datapoint_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "datapoint_id"
+        ]
+      }
+    },
+    {
+      "name": "bulk_record_datapoints",
+      "description": "Efficiently add multiple datapoints for one or more events/metrics in a batch operation, with validation.\n\nArgs:\n    datapoints (list): List[dict] or List[DataPointInfo].\n        Each element must contain: datapoint_id, event_id, timestamp, metric_name, value.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"<N> datapoints recorded successfully\"\n            }\n        On failure (validation error):\n            {\n                \"success\": False,\n                \"error\": \"Detailed error message(s)\"\n            }\n\nConstraints:\n    - Each datapoint must refer to an existing event_id.\n    - Each datapoint's metric_name must be registered to the event.\n    - Each datapoint_id must be unique in the system and within the batch.\n    - Optionally, timestamps for (event_id, metric_name) should be monotonically increasing.\n    - If any validation fails, no datapoints from the batch are recorded.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "datapoints": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "datapoint_id": {
+                  "type": "string"
+                },
+                "event_id": {
+                  "type": "string"
+                },
+                "timestamp": {
+                  "type": "number"
+                },
+                "metric_name": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "datapoint_id",
+                "event_id",
+                "timestamp",
+                "metric_name",
+                "value"
+              ]
+            }
+          }
+        },
+        "required": [
+          "datapoints"
+        ]
+      }
+    }
+  ]
+}

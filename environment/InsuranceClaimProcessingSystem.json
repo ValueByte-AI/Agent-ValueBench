@@ -1,0 +1,500 @@
+{
+  "env_name": "InsuranceClaimProcessingSystem",
+  "description": "An insurance claim processing system maintains records of submitted claims, associated customer information, and supporting documents. It provides structured workflows for verifying claim legitimacy, validating submitted documents, and updating claim statuses. The system supports operations such as document upload, review, validation, and tracking, ensuring compliance with regulatory and business requirements.",
+  "initial_parameter_schema": {
+    "customers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_information": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "name",
+          "contact_information",
+          "account_status"
+        ]
+      }
+    },
+    "claims": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "claim_type": {
+            "type": "string"
+          },
+          "submission_date": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "assigned_reviewer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id",
+          "customer_id",
+          "claim_type",
+          "submission_date",
+          "status",
+          "assigned_reviewer_id"
+        ]
+      }
+    },
+    "claim_documents": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "claim_id": {
+            "type": "string"
+          },
+          "document_type": {
+            "type": "string"
+          },
+          "file_name": {
+            "type": "string"
+          },
+          "upload_date": {
+            "type": "string"
+          },
+          "validity_status": {
+            "type": "string"
+          },
+          "reviewer_comment": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "claim_id",
+          "document_type",
+          "file_name",
+          "upload_date",
+          "validity_status",
+          "reviewer_comment"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "permission": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "role",
+          "permission"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_customer_by_id": [
+      "customers"
+    ],
+    "list_claims_by_customer": [
+      "claims",
+      "customers"
+    ],
+    "get_claim_by_id": [
+      "claims"
+    ],
+    "list_documents_by_claim": [
+      "claim_documents",
+      "claims"
+    ],
+    "get_document_by_type_and_filename": [
+      "claim_documents",
+      "claims"
+    ],
+    "get_document_by_id": [
+      "claim_documents"
+    ],
+    "check_document_validity_status": [
+      "claim_documents"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "check_user_permission": [
+      "users"
+    ],
+    "list_claim_documents_by_status": [
+      "claim_documents"
+    ],
+    "get_claim_status": [
+      "claims"
+    ],
+    "upload_claim_document": [
+      "claim_documents",
+      "claims"
+    ],
+    "validate_claim_document": [
+      "claim_documents",
+      "users"
+    ],
+    "add_reviewer_comment_to_document": [
+      "claim_documents",
+      "users"
+    ],
+    "assign_claim_reviewer": [
+      "claims",
+      "users"
+    ],
+    "update_claim_status": [
+      "claim_documents",
+      "claims"
+    ],
+    "delete_claim_document": [
+      "claim_documents",
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_customer_by_id",
+      "description": "Retrieve information for a specific customer by their customer_id.\n\nArgs:\n    customer_id (str): Unique ID of the customer.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": CustomerInfo\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Error message if customer is not found.\n        }\n\nConstraints:\n    - Customer with the provided customer_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "list_claims_by_customer",
+      "description": "Retrieve all claims submitted by a specific customer.\n\nArgs:\n    customer_id (str): The ID of the customer whose claims are to be listed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ClaimInfo]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g. customer not found)\n    }\nConstraints:\n    - The provided customer_id must exist in the system.\n    - Returns all claims where claim['customer_id'] == customer_id.\n    - If the customer has no claims, returns an empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "get_claim_by_id",
+      "description": "Retrieve information for a specific claim by its claim_id.\n\nArgs:\n    claim_id (str): Unique identifier for the claim.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ClaimInfo,  # If claim exists\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"Claim not found\" if the claim_id is invalid/missing\n    }\n\nConstraints:\n    - claim_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id"
+        ]
+      }
+    },
+    {
+      "name": "list_documents_by_claim",
+      "description": "List all documents associated with a particular claim.\n\nArgs:\n    claim_id (str): The unique identifier for the claim.\n\nReturns:\n    dict:\n        - On success:\n            { \"success\": True, \"data\": List[ClaimDocumentInfo] }\n        - On failure:\n            { \"success\": False, \"error\": str }\nConstraints:\n    - The claim with claim_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id"
+        ]
+      }
+    },
+    {
+      "name": "get_document_by_type_and_filename",
+      "description": "Retrieve a claim document by document_type and file_name for a specified claim.\n\nArgs:\n    claim_id (str): The ID of the claim to which the document belongs.\n    document_type (str): The type of document (e.g., 'ID Proof', 'Form').\n    file_name (str): The name of the document file.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ClaimDocumentInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g. claim or document not found)\n    }\nConstraints:\n    - The claim with claim_id must exist.\n    - The claim document must match all three: claim_id, document_type, file_name.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "document_type": {
+            "type": "string"
+          },
+          "file_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id",
+          "document_type",
+          "file_name"
+        ]
+      }
+    },
+    {
+      "name": "get_document_by_id",
+      "description": "Retrieve full details of a claim document by its document_id.\n\nArgs:\n    document_id (str): Unique identifier for the claim document.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ClaimDocumentInfo  # Document details if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If document_id does not exist\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id"
+        ]
+      }
+    },
+    {
+      "name": "check_document_validity_status",
+      "description": "Query the current validity status of a specified claim document.\n\nArgs:\n    document_id (str): The unique identifier of the claim document.\n\nReturns:\n    dict:\n        - If found: { \"success\": True, \"data\": str } (validity_status such as 'valid', 'pending', 'invalid', etc.)\n        - If not found: { \"success\": False, \"error\": \"ClaimDocument not found\" }\n\nConstraints:\n    - The claim document must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve details and permissions for an internal user (reviewer/staff).\n\nArgs:\n    user_id (str): The unique ID of the user.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": UserInfo  # User information and permissions\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": \"User not found\"\n            }\n\nConstraints:\n    - The user_id must exist in the users dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "check_user_permission",
+      "description": "Check whether the given user has sufficient permission or role to validate/change\nthe status of a ClaimDocument.\n\nArgs:\n    user_id (str): The unique ID of the user to check.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": bool }\n          (True if the user has authorization, False otherwise)\n        - On error: { \"success\": False, \"error\": str }\n          (e.g. user not found)\n\nConstraints:\n    - Only users with specific role(s) or permission(s) are considered authorized\n      to validate/change ClaimDocument status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_claim_documents_by_status",
+      "description": "List all claim documents that have a specific validity_status.\n\nArgs:\n    validity_status (str): The document validity status to filter by ('pending', 'valid', 'invalid', etc).\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[ClaimDocumentInfo],  # Can be empty if no matches.\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str,\n            }\n\nConstraints:\n    - validity_status must be provided (non-empty string).\n    - No additional constraints apply.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "validity_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "validity_status"
+        ]
+      }
+    },
+    {
+      "name": "get_claim_status",
+      "description": "Retrieve the current status of a claim by its claim_id.\n\nArgs:\n    claim_id (str): The unique identifier for the claim.\n\nReturns:\n    dict:\n        If successful:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"claim_id\": str,\n                    \"status\": str\n                }\n            }\n        If claim not found:\n            {\n                \"success\": False,\n                \"error\": \"Claim not found\"\n            }\nConstraints:\n    - The claim_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id"
+        ]
+      }
+    },
+    {
+      "name": "upload_claim_document",
+      "description": "Upload and associate a new document (with document_type, file_name, etc.) to a claim.\n\nArgs:\n    claim_id (str): The ID of the claim to which the document will be added.\n    document_type (str): The type/category of the document (e.g. 'invoice', 'report').\n    file_name (str): The file name of the uploaded document.\n    upload_date (str): The upload timestamp (recommended ISO string).\n    reviewer_comment (str, optional): Any initial comment; defaults to empty.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Document uploaded and associated with claim.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <error_reason>\n    }\n\nConstraints:\n    - claim_id must refer to an existing claim.\n    - document_type and file_name must be provided (non-empty).\n    - Each ClaimDocument must have an associated document_type and file_name.\n    - (No explicit check for unique file_name/type for claim unless specified)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "document_type": {
+            "type": "string"
+          },
+          "file_name": {
+            "type": "string"
+          },
+          "upload_date": {
+            "type": "string"
+          },
+          "reviewer_comment": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id",
+          "document_type",
+          "file_name",
+          "upload_date"
+        ]
+      }
+    },
+    {
+      "name": "validate_claim_document",
+      "description": "Update the validity_status of a claim document.\n\nArgs:\n    document_id (str): The ID of the document to validate.\n    new_status (str): The new validity status (e.g., \"valid\", \"invalid\", \"pending\").\n    user_id (str): The user performing the validation.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Document validity status updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<error description>\"\n    }\n\nConstraints:\n    - Only authorized review-capable users may perform this operation (for example reviewer/admin/adjuster roles or permissions containing review/validate/admin).\n    - Claim document must exist.\n    - Status must be an allowed value (\"valid\", \"invalid\", \"pending\").",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "new_status",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "add_reviewer_comment_to_document",
+      "description": "Attach or update a reviewer comment on a claim document.\n\nArgs:\n    user_id (str): The internal staff/reviewer making the comment.\n    document_id (str): The claim document being commented on.\n    comment (str): The comment to attach or update.\n\nReturns:\n    dict: \n        On success:\n            {\"success\": True, \"message\": \"Reviewer comment updated on document <document_id>.\"}\n        On failure:\n            {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - Document must exist.\n    - user_id must exist and user must be authorized to annotate claim documents (review-capable staff or explicit write-comment staff).\n    - Reviewer comment is overwritten if already present.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "document_id": {
+            "type": "string"
+          },
+          "comment": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "document_id",
+          "comment"
+        ]
+      }
+    },
+    {
+      "name": "assign_claim_reviewer",
+      "description": "Assign or re-assign a claim to an internal reviewer.\n\nArgs:\n    claim_id (str): The ID of the claim to be assigned.\n    reviewer_id (str): The user ID of the reviewer.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Success message describing the assignment\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error\n    }\n\nConstraints:\n    - claim_id must exist in the system.\n    - reviewer_id must exist in the system.\n    - The user must have permission/role to act as a reviewer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "reviewer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id",
+          "reviewer_id"
+        ]
+      }
+    },
+    {
+      "name": "update_claim_status",
+      "description": "Change the overall status of a claim (e.g., to 'approved', 'rejected', etc.),\nsubject to document validity.\n\nArgs:\n    claim_id (str): The ID of the claim to update.\n    new_status (str): The new status to set (e.g., \"approved\", \"rejected\").\n\nReturns:\n    dict: {\n      \"success\": True, \"message\": \"Claim status updated to <new_status>\"\n    }\n    or\n    {\n      \"success\": False, \"error\": \"reason\"\n    }\n\nConstraints:\n    - If new_status == \"approved\", each attached document_type must have at least one associated claim document with validity_status == \"valid\".\n    - The claim must exist.\n    - If there are no claim documents, can't approve the claim.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "delete_claim_document",
+      "description": "Remove a document from a claim, only if requested by an admin user or a user with sufficient delete authority.\n\nArgs:\n    document_id (str): The unique ID of the claim document to delete.\n    user_id (str): The ID of the user requesting the deletion.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Claim document <document_id> deleted.\" }\n        - On failure: { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - The specified document must exist.\n    - The specified user must exist and be authorized (for example admin role/permission or a permission string containing delete).\n    - The document is removed from the claim_documents mapping.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "user_id"
+        ]
+      }
+    }
+  ]
+}

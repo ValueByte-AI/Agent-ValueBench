@@ -1,0 +1,485 @@
+{
+  "env_name": "CardDeckSimulator",
+  "description": "A card deck simulator is an environment that manages one or more decks of playing cards, supporting operations such as creating new decks, shuffling, dealing, and customizing the set of cards in play. The simulator maintains the state of the deck, including the cards currently included and their order. It is widely used for implementing games, practicing probability, or facilitating card-based activities in a controlled, programmable manner.",
+  "initial_parameter_schema": {
+    "decks": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "deck_id": {
+            "type": "string"
+          },
+          "card_list": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "creation_tim": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deck_id",
+          "card_list",
+          "name",
+          "creation_tim"
+        ]
+      }
+    },
+    "cards": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          },
+          "suit": {
+            "type": "string"
+          },
+          "rank": {
+            "type": "string"
+          },
+          "deck_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "suit",
+          "rank",
+          "deck_id"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "list_decks": [
+      "decks"
+    ],
+    "get_deck_info": [
+      "decks"
+    ],
+    "get_deck_card_list": [
+      "decks"
+    ],
+    "get_card_info": [
+      "cards"
+    ],
+    "list_cards_in_deck": [
+      "cards",
+      "decks"
+    ],
+    "check_card_in_deck": [
+      "cards",
+      "decks"
+    ],
+    "find_duplicate_cards": [
+      "cards",
+      "decks"
+    ],
+    "count_cards_in_deck": [
+      "decks"
+    ],
+    "create_deck": [
+      "cards",
+      "decks"
+    ],
+    "remove_card_from_deck": [
+      "cards",
+      "decks"
+    ],
+    "remove_cards_by_rank": [
+      "cards",
+      "decks"
+    ],
+    "remove_cards_by_suit": [
+      "cards",
+      "decks"
+    ],
+    "add_card_to_deck": [
+      "cards",
+      "decks"
+    ],
+    "shuffle_deck": [
+      "decks"
+    ],
+    "deal_cards_from_deck": [
+      "cards",
+      "decks"
+    ],
+    "empty_deck": [
+      "cards",
+      "decks"
+    ],
+    "delete_deck": [
+      "cards",
+      "decks"
+    ]
+  },
+  "tools": [
+    {
+      "name": "list_decks",
+      "description": "List all decks currently in the simulator along with their basic metadata.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[dict],  # Each dict contains: deck_id, name, creation_tim\n    }\n\n    If no decks exist, returns data as an empty list.\n\nConstraints:\n    - No input parameters.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_deck_info",
+      "description": "Retrieve complete metadata (including card order) for a specific deck.\n\nArgs:\n    deck_id (str): Unique identifier for the deck.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": DeckInfo,   # Complete metadata for the deck, including card_list (order)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,       # Reason (e.g., deck does not exist)\n    }\n\nConstraints:\n    - Deck must exist in the simulator.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "deck_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deck_id"
+        ]
+      }
+    },
+    {
+      "name": "get_deck_card_list",
+      "description": "Retrieve the ordered list of card_ids for a given deck.\n\nArgs:\n    deck_id (str): The identifier of the deck to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str],  # Ordered list of card_ids in the deck (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # An error description, e.g., deck not found\n    }\n\nConstraints:\n    - The deck with the given deck_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "deck_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deck_id"
+        ]
+      }
+    },
+    {
+      "name": "get_card_info",
+      "description": "Retrieve full information for a card (suit, rank, deck membership) by card_id.\n\nArgs:\n    card_id (str): The unique identifier of the card.\n\nReturns:\n    dict: On success:\n              {\n                \"success\": True,\n                \"data\": CardInfo  # All info for the card\n              }\n          On error (card_id not found):\n              {\n                \"success\": False,\n                \"error\": \"Card not found\"\n              }\nConstraints:\n    - card_id must exist in the simulator.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id"
+        ]
+      }
+    },
+    {
+      "name": "list_cards_in_deck",
+      "description": "List all CardInfo entries for cards currently in the specified deck, in their deck order.\nSupports optional filtering by suit and/or rank.\n\nArgs:\n    deck_id (str): The deck whose cards to list.\n    suit (str, optional): Only return cards with this suit (if provided).\n    rank (str, optional): Only return cards with this rank (if provided).\n\nReturns:\n    dict:\n        - On success: {\n              \"success\": True,\n              \"data\": [CardInfo, ...]  # In card_list deck order, filtered as requested.\n          }\n        - On error: {\n              \"success\": False,\n              \"error\": <error message>\n          }\n\nConstraints:\n    - deck_id must exist in self.decks.\n    - Only cards currently in this deck as per deck's card_list should be returned.\n    - Filtering by suit/rank is applied to cards in this deck only.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "deck_id": {
+            "type": "string"
+          },
+          "suit": {
+            "type": "string"
+          },
+          "rank": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deck_id"
+        ]
+      }
+    },
+    {
+      "name": "check_card_in_deck",
+      "description": "Determine whether a given card (by card_id or suit+rank) exists in the specified deck.\n\nArgs:\n    deck_id (str): The deck to search within.\n    card_id (str, optional): The card's unique identifier (priority over suit+rank).\n    suit (str, optional): Suit of the card (required with rank if card_id not given).\n    rank (str, optional): Rank of the card (required with suit if card_id not given).\n\nReturns:\n    dict:\n        - success (bool): Whether the check was performed.\n        - data (bool): True if the card exists in the deck; False otherwise.\n        - error (str): Present (and success=False) if input is invalid or deck does not exist.\n\nConstraints:\n    - Deck must exist.\n    - Must provide either card_id OR both suit and rank.\n    - Only current members of deck's card_list count for presence.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "deck_id": {
+            "type": "string"
+          },
+          "card_id": {
+            "type": "string"
+          },
+          "suit": {
+            "type": "string"
+          },
+          "rank": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deck_id"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "card_id"
+            ]
+          },
+          {
+            "required": [
+              "suit",
+              "rank"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "find_duplicate_cards",
+      "description": "Detect cards with duplicate (suit, rank) combinations within the specified deck.\nReturns the suit+rank and associated card_ids for each duplicate group.\n\nArgs:\n    deck_id (str): The deck to check for duplicates.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": Dict[str, List[str]],  # \"suit|rank\": [card_ids, ...] where len > 1\n    }\n    Or, if deck does not exist:\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - Only cards present in the deck's current card_list are considered.\n    - If no duplicates are found, data will be an empty dict.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "deck_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deck_id"
+        ]
+      }
+    },
+    {
+      "name": "count_cards_in_deck",
+      "description": "Return the number of cards currently in the specified deck.\n\nArgs:\n    deck_id (str): The identifier of the deck.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": int,  # Number of cards in the current deck (possibly 0)\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": str  # Error message if deck not found\n        }\n\nConstraints:\n    - The deck_id must exist in the simulator's decks.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "deck_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deck_id"
+        ]
+      }
+    },
+    {
+      "name": "create_deck",
+      "description": "Instantiate a new deck and optionally initialize with a default or custom set of cards.\n\nArgs:\n    deck_id (str): Unique identifier for the new deck.\n    name (str, optional): Friendly name for the deck.\n    initial_cards (list of dict, optional): Each dict must have 'suit' and 'rank'. Card_id will be auto-generated.\n        If None, deck is empty. If 'default' (str), create standard 52-card set.\n    allow_duplicates (bool, optional): If True, allows duplicate (suit, rank) in this deck.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Deck created.\",\n        \"deck_id\": deck_id\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": error_message\n    }\n\nConstraints:\n    - No duplicate deck_id.\n    - No (suit, rank) duplicates in initial_cards unless allow_duplicates is True.\n    - Card_id is globally unique (per card).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "deck_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "initial_cards": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "allow_duplicates": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "deck_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_card_from_deck",
+      "description": "Remove a specific card from a deck.\n\nArgs:\n    deck_id (str): The deck to remove the card from.\n    card_id (str, optional): ID of the card to remove.\n    suit (str, optional): Card suit (e.g., 'Hearts').\n    rank (str, optional): Card rank (e.g., 'Ace', '10', 'Jack').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Removed card <card_id> from deck <deck_id>\"\n    } or {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - deck must exist\n    - card_id must identify an existing card in that deck OR\n      suit and rank must match at least one existing card in that deck.\n    - Only the first suit/rank match is removed.\n    - Removes the card from both `deck.card_list` and `self.cards`.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "deck_id": {
+            "type": "string"
+          },
+          "card_id": {
+            "type": "string"
+          },
+          "suit": {
+            "type": "string"
+          },
+          "rank": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deck_id"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "card_id"
+            ]
+          },
+          {
+            "required": [
+              "suit",
+              "rank"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "remove_cards_by_rank",
+      "description": "Remove all cards of specified rank(s) from the deck with ID deck_id.\n\nArgs:\n    deck_id (str): The deck to remove cards from.\n    ranks (list of str): The card ranks to remove (e.g., [\"Jack\", \"Ace\"]).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Removed N cards of ranks [ranks] from deck [deck_id]\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - If deck does not exist, fail with error message.\n    - If ranks param is not a non-empty list of strings, fail.\n    - Only cards currently present in the specified deck are affected.\n    - Card order in deck is maintained for remaining cards.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "deck_id": {
+            "type": "string"
+          },
+          "ranks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "deck_id",
+          "ranks"
+        ]
+      }
+    },
+    {
+      "name": "remove_cards_by_suit",
+      "description": "Remove all cards of the specified suit from the given deck.\n\nArgs:\n    deck_id (str): The ID of the deck to operate on.\n    suit (str): The suit to remove (e.g., 'Spades', 'Hearts', ...).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Removed X cards of suit Y from deck Z\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Deck must exist.\n    - All cards of the given suit will be removed from the deck and the environment (no card duplication).\n    - Operation is idempotent: removing a suit that's not present is still successful.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "deck_id": {
+            "type": "string"
+          },
+          "suit": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deck_id",
+          "suit"
+        ]
+      }
+    },
+    {
+      "name": "add_card_to_deck",
+      "description": "Add a new or existing card to the specified position in a deck,\nenforcing the no-duplicate (suit+rank) constraint.\n\nArgs:\n    deck_id (str): The ID of the target deck.\n    card_id (str): The unique identifier for the card.\n    suit (str, optional): The card's suit (required if new card).\n    rank (str, optional): The card's rank (required if new card).\n    position (int, optional): Position to insert (0-based). Defaults to end of card_list.\n\nReturns:\n    dict: Success structure (see below).\n        {\n            \"success\": True,\n            \"message\": str\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str\n        }\nConstraints:\n    - Target deck must exist.\n    - No duplicate (suit, rank) allowed within a deck.\n    - If card_id not in self.cards, suit & rank are required.\n    - Card inserted at position (append if out of bounds or not provided).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "deck_id": {
+            "type": "string"
+          },
+          "card_id": {
+            "type": "string"
+          },
+          "suit": {
+            "type": "string"
+          },
+          "rank": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "deck_id",
+          "card_id"
+        ]
+      }
+    },
+    {
+      "name": "shuffle_deck",
+      "description": "Randomly reorder the card_list of a specified deck.\n\nArgs:\n    deck_id (str): The unique identifier for the deck to shuffle.\n\nReturns:\n    dict: On success, {\n              \"success\": True,\n              \"message\": \"Deck shuffled successfully.\"\n          }\n          On failure, {\n              \"success\": False,\n              \"error\": <reason>\n          }\n\nConstraints:\n    - The deck must exist.\n    - Only the order of card_list is changed.\n    - No cards are added or removed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "deck_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deck_id"
+        ]
+      }
+    },
+    {
+      "name": "deal_cards_from_deck",
+      "description": "Remove and return one or more cards from the specified deck.\n\nArgs:\n    deck_id (str): The deck to deal cards from.\n    count (int, default=1): Number of cards to deal.\n    position (Union[str, int], default=\"top\"):\n        - If \"top\" (default), deal cards starting from the top (index 0).\n        - If integer, starting index in deck's card_list.\n\nReturns:\n    dict: If successful:\n        {\n            \"success\": True,\n            \"dealt_cards\": List[CardInfo]\n        }\n        If error:\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - Deck must exist and have enough cards.\n    - Position must be valid (\"top\" or integer in range).\n    - `count` must be > 0 and not exceed available cards from position.\n\nNotes:\n    - Dealt cards are removed from the deck's sequence.\n    - Cards remain in global cards, but are no longer included in the deck's card_list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "deck_id": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ]
+          }
+        },
+        "required": [
+          "deck_id"
+        ]
+      }
+    },
+    {
+      "name": "empty_deck",
+      "description": "Remove all cards from a deck, leaving it empty (without deleting the deck).\n\nArgs:\n    deck_id (str): Identifier of the deck to be emptied.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"All cards removed from deck <deck_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - The deck with the given deck_id must exist.\n    - The deck remains; only its cards are removed.\n    - All CardInfo entries belonging to this deck_id are removed from self.cards and the deck's card_list is emptied.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "deck_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deck_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_deck",
+      "description": "Permanently remove a deck, and optionally its cards, from the simulator.\n\nArgs:\n    deck_id (str): The ID of the deck to remove.\n    delete_cards (bool, optional): If True, also remove all cards belonging to this deck. If False, cards are left in the simulator (potentially with invalid deck_id).\n\nReturns:\n    dict:\n        On success:\n          { \"success\": True, \"message\": \"Deleted deck <deck_id> (and its cards if applicable).\" }\n        On failure:\n          { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Deck must exist.\n    - Card deletion only affects cards belonging to this deck.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "deck_id": {
+            "type": "string"
+          },
+          "delete_cards": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "deck_id"
+        ]
+      }
+    }
+  ]
+}

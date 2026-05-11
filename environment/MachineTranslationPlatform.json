@@ -1,0 +1,425 @@
+{
+  "env_name": "MachineTranslationPlatform",
+  "description": "A machine translation platform is a software system that provides automated translation of text or content between multiple languages. It maintains state about supported languages, usage statistics, and may offer APIs or user interfaces for performing and managing translations. These platforms are widely integrated into websites, applications, and productivity tools to improve accessibility and reach for a global user base.",
+  "initial_parameter_schema": {
+    "languages": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "language_code": {
+            "type": "string"
+          },
+          "language_name": {
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "language_code",
+          "language_name",
+          "is_active"
+        ]
+      }
+    },
+    "translation_tools": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "tool_id": {
+            "type": "string"
+          },
+          "tool_name": {
+            "type": "string"
+          },
+          "supported_languages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "tool_id",
+          "tool_name",
+          "supported_languages"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "company_name": {
+            "type": "string"
+          },
+          "usage_statistics": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "user_id",
+          "company_name",
+          "usage_statistics"
+        ]
+      }
+    },
+    "translation_requests": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "source_language": {
+            "type": "string"
+          },
+          "target_language": {
+            "type": "string"
+          },
+          "content_length": {
+            "type": "integer"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "user_id",
+          "source_language",
+          "target_language",
+          "content_length",
+          "timestamp",
+          "status"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_translation_tool_by_name": [
+      "translation_tools"
+    ],
+    "get_supported_languages_by_tool": [
+      "translation_tools"
+    ],
+    "get_language_info_by_code": [
+      "languages"
+    ],
+    "list_active_languages": [
+      "languages"
+    ],
+    "list_active_languages_supported_by_tool": [
+      "languages",
+      "translation_tools"
+    ],
+    "get_user_by_company": [
+      "users"
+    ],
+    "get_usage_statistics_by_user": [
+      "users"
+    ],
+    "aggregate_usage_statistics_by_company": [
+      "users"
+    ],
+    "list_translation_requests_by_user": [
+      "translation_requests",
+      "users"
+    ],
+    "activate_language": [
+      "languages"
+    ],
+    "deactivate_language": [
+      "languages"
+    ],
+    "update_translation_tool_supported_languages": [
+      "languages",
+      "translation_tools"
+    ],
+    "update_usage_statistics": [
+      "users"
+    ],
+    "add_translation_request": [
+      "languages",
+      "translation_requests",
+      "users"
+    ],
+    "update_translation_request_status": [
+      "translation_requests"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_translation_tool_by_name",
+      "description": "Retrieve information about a translation tool given its name.\n\nArgs:\n    tool_name (str): Name of the translation tool.\n\nReturns:\n    dict:\n        - { \"success\": True, \"data\": TranslationToolInfo } if found.\n        - { \"success\": False, \"error\": \"Translation tool not found\" } if not found.\n\nConstraints:\n    - tool_name matching is case sensitive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tool_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tool_name"
+        ]
+      }
+    },
+    {
+      "name": "get_supported_languages_by_tool",
+      "description": "Get the list of language codes supported by a specific translation tool.\n\nArgs:\n    tool_id (str): The unique ID of the translation tool.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"data\": List[str]} (language codes supported)\n        - On failure: {\"success\": False, \"error\": str}\nConstraints:\n    - tool_id must exist in self.translation_tools.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tool_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tool_id"
+        ]
+      }
+    },
+    {
+      "name": "get_language_info_by_code",
+      "description": "Retrieve LanguageInfo for a given language code, including language name and is_active status.\n\nArgs:\n    language_code (str): Language code to look up.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": LanguageInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Returns info regardless of is_active status.\n    - Returns error if language code does not exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "language_code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "language_code"
+        ]
+      }
+    },
+    {
+      "name": "list_active_languages",
+      "description": "Retrieve all languages with is_active = True.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[LanguageInfo],  # List (possibly empty) of LanguageInfo for active languages\n    }\n\nConstraints:\n    - Lists only languages with is_active = True.\n    - No error: returns empty data if no active languages.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_active_languages_supported_by_tool",
+      "description": "Retrieve all languages (names and codes) that are both currently active and supported by the given translation tool.\n\nArgs:\n    tool_id (str): The unique identifier of the translation tool.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": [\n            {\"language_code\": str, \"language_name\": str}, ...\n        ]\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # e.g., \"Translation tool not found\"\n    }\n\nConstraints:\n    - Only languages that are in both the tool's supported_languages list and are active (is_active = True) are included.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tool_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tool_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_company",
+      "description": "List users associated with a specific company name.\n\nArgs:\n    company_name (str): The company name to query users for.\n\nReturns:\n    dict\n        - On success: { \"success\": True, \"data\": List[UserInfo] }.\n          The list may be empty if no users are found for the company.\n        - On error: { \"success\": False, \"error\": str } if input is invalid.\n\nConstraints:\n    - company_name must be a non-empty string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_name"
+        ]
+      }
+    },
+    {
+      "name": "get_usage_statistics_by_user",
+      "description": "Retrieve usage statistics for a given user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict:\n        - { \"success\": True, \"data\": usage_statistics } if user exists\n        - { \"success\": False, \"error\": \"User not found\" } if invalid user_id\n\nConstraints:\n    - The user must exist in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "aggregate_usage_statistics_by_company",
+      "description": "Aggregate usage statistics for all users belonging to the specified company.\n\nArgs:\n    company_name (str): The company for which to aggregate usage statistics.\n\nReturns:\n    dict with:\n      - success: True and data: aggregated usage statistics dictionary if users found\n      - success: False and error message if no users found for the company\n\nDetails:\n    - Aggregation by summing numeric values per usage_statistics key across all users in the company.\n    - If statistics contain non-numeric values, those keys are ignored in aggregation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_name"
+        ]
+      }
+    },
+    {
+      "name": "list_translation_requests_by_user",
+      "description": "Retrieve all translation requests submitted by a specific user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TranslationRequestInfo]  # List of requests for the user (possibly empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g., user not found\n    }\n\nConstraints:\n    - The user_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "activate_language",
+      "description": "Set a language's `is_active` status to True, making it available for translation.\n\nArgs:\n    language_code (str): The language code to activate.\n\nReturns:\n    dict: \n        { \"success\": True, \"message\": \"Language <language_code> activated\" }\n        OR\n        { \"success\": False, \"error\": <reason> }\nConstraints:\n    - Language must exist in self.languages.\n    - Language must not already be active.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "language_code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "language_code"
+        ]
+      }
+    },
+    {
+      "name": "deactivate_language",
+      "description": "Set a language's is_active status to False (remove it from available languages).\n\nArgs:\n    language_code (str): The code of the language to deactivate.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Language <code> deactivated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Language must exist in the system.\n    - Language is set to inactive if it is currently active.\n    - No effect if already inactive (return error).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "language_code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "language_code"
+        ]
+      }
+    },
+    {
+      "name": "update_translation_tool_supported_languages",
+      "description": "Modify the list of supported language codes for a specified translation tool.\n\nArgs:\n    tool_id (str): The unique identifier for the translation tool.\n    supported_languages (List[str]): The new list of language codes to support.\n\nReturns:\n    dict: \n        - On success: {\n              \"success\": True,\n              \"message\": \"Supported languages updated for tool <tool_id>\"\n          }\n        - On failure: {\n              \"success\": False,\n              \"error\": \"<description of error>\"\n          }\n\nConstraints:\n    - tool_id must exist in self.translation_tools.\n    - Each language code in supported_languages must be present in self.languages.\n    - This operation does not check if the languages are active.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tool_id": {
+            "type": "string"
+          },
+          "supported_languages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "tool_id",
+          "supported_languages"
+        ]
+      }
+    },
+    {
+      "name": "update_usage_statistics",
+      "description": "Add to or modify the usage statistics record for a given user.\n\nArgs:\n    user_id (str): The ID of the user whose stats should be updated.\n    stats_update (dict): Key-value pairs describing stat updates.\n        - If the value is numeric and exists, increment; else set/overwrite.\n        - If non-numeric, simply set/overwrite.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # on success, describes user updated,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # error reason, e.g. user not found\n    }\n\nConstraints:\n    - User must exist.\n    - No checks on stats_update shape; all valid Python keys/values handled.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "stats_update": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "user_id",
+          "stats_update"
+        ]
+      }
+    },
+    {
+      "name": "add_translation_request",
+      "description": "Record a new translation request event in the platform.\n\nArgs:\n    request_id (str): Unique id for the translation request.\n    user_id (str): The user's id making the request.\n    source_language (str): Source language code.\n    target_language (str): Target language code.\n    content_length (int): Length of the content to be translated.\n    timestamp (str): Request timestamp.\n    status (str): Status of the translation.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"message\": \"Translation request recorded\"\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": \"reason\"\n        }\n\nConstraints:\n    - request_id must be unique (not already present)\n    - user_id must exist\n    - source_language and target_language must exist and be active\n    - content_length must be a non-negative integer",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "source_language": {
+            "type": "string"
+          },
+          "target_language": {
+            "type": "string"
+          },
+          "content_length": {
+            "type": "integer"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "user_id",
+          "source_language",
+          "target_language",
+          "content_length",
+          "timestamp",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "update_translation_request_status",
+      "description": "Update the status field of a translation request.\n\nArgs:\n    request_id (str): The identifier of the translation request to update.\n    new_status (str): The new status value (e.g., \"completed\", \"failed\", \"pending\").\n\nReturns:\n    dict:\n      - On success: {\n            \"success\": True,\n            \"message\": \"Translation request <request_id> status updated to <new_status>.\"\n        }\n      - On failure: {\n            \"success\": False,\n            \"error\": \"<reason>\"\n        }\nConstraints:\n    - The translation request must exist.\n    - new_status must be a non-empty string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "new_status"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,658 @@
+{
+  "env_name": "MovieDatabaseManagementSystem",
+  "description": "A movie database management system is structured to store, organize, and retrieve information about films, actors, production data, and award histories. It tracks movies via unique IDs and maintains relational or object-based state for associated entities, such as awards and nominations. The system supports operations like searching, aggregating results, and generating summaries based on stored records.",
+  "initial_parameter_schema": {
+    "movies": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "movie_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "release_year": {
+            "type": "integer"
+          },
+          "production_data": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "movie_id"
+        ]
+      }
+    },
+    "awards": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "award_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "organization": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "award_id"
+        ]
+      }
+    },
+    "award_nominations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "nomination_id": {
+            "type": "string"
+          },
+          "movie_id": {
+            "type": "string"
+          },
+          "award_id": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "year": {
+            "type": "integer"
+          },
+          "outcome": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "nomination_id",
+          "movie_id",
+          "award_id",
+          "category",
+          "year",
+          "outcome"
+        ]
+      }
+    },
+    "actors": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "actor_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "birthday": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "actor_id",
+          "name",
+          "birthday"
+        ]
+      }
+    },
+    "movie_casts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "movie_id": {
+              "type": "string"
+            },
+            "actor_id": {
+              "type": "string"
+            },
+            "role_name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "movie_id",
+            "actor_id",
+            "role_name"
+          ]
+        }
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_movie_by_id": [
+      "movies"
+    ],
+    "list_movies": [
+      "movies"
+    ],
+    "get_award_by_id": [
+      "awards"
+    ],
+    "list_awards": [
+      "awards"
+    ],
+    "get_nominations_by_movie_id": [
+      "award_nominations",
+      "movies"
+    ],
+    "get_nominations_by_award_id": [
+      "award_nominations",
+      "awards"
+    ],
+    "get_nomination_by_id": [
+      "award_nominations"
+    ],
+    "get_actor_by_id": [
+      "actors"
+    ],
+    "list_actors": [
+      "actors"
+    ],
+    "get_cast_by_movie_id": [
+      "actors",
+      "movie_casts",
+      "movies"
+    ],
+    "get_movies_by_actor_id": [
+      "actors",
+      "movie_casts",
+      "movies"
+    ],
+    "summarize_awards_for_movie": [
+      "award_nominations",
+      "awards",
+      "movies"
+    ],
+    "add_movie": [
+      "movies"
+    ],
+    "update_movie": [
+      "movies"
+    ],
+    "delete_movie": [
+      "award_nominations",
+      "movie_casts",
+      "movies"
+    ],
+    "add_award": [
+      "awards"
+    ],
+    "update_award": [
+      "awards"
+    ],
+    "add_award_nomination": [
+      "award_nominations",
+      "awards",
+      "movies"
+    ],
+    "update_award_nomination": [
+      "award_nominations"
+    ],
+    "delete_award_nomination": [
+      "award_nominations"
+    ],
+    "add_actor": [
+      "actors"
+    ],
+    "update_actor": [
+      "actors"
+    ],
+    "add_movie_cast": [
+      "actors",
+      "movie_casts",
+      "movies"
+    ],
+    "remove_movie_cast": [
+      "movie_casts",
+      "movies"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_movie_by_id",
+      "description": "Retrieve movie metadata for the given movie_id.\n\nArgs:\n    movie_id (str): Unique movie identifier.\n\nReturns:\n    dict:\n        Success:\n            {\n                \"success\": True,\n                \"data\": MovieInfo\n            }\n        Failure (movie_id not found):\n            {\n                \"success\": False,\n                \"error\": \"Movie not found\"\n            }\n\nConstraints:\n    - movie_id must be present in the database.\n    - movie_id is unique for each movie.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "movie_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "movie_id"
+        ]
+      }
+    },
+    {
+      "name": "list_movies",
+      "description": "Get a list of all movies in the database.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MovieInfo]    # List containing all movies, may be empty.\n    }\n\nThere are no input parameters or specific constraints for this operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_award_by_id",
+      "description": "Retrieve an award's details given the unique award_id.\n\nArgs:\n    award_id (str): Unique identifier of the award.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": AwardInfo  # Award's details\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Award not found\"\n            }\n\nConstraints:\n    - award_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "award_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "award_id"
+        ]
+      }
+    },
+    {
+      "name": "list_awards",
+      "description": "Return all awards registered in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AwardInfo],  # List of all award records; may be empty if none exist\n    }\n\nConstraints:\n    - None (listing; no argument and no structural error state)",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_nominations_by_movie_id",
+      "description": "List all award nominations associated with a given movie_id.\n\nArgs:\n    movie_id (str): The unique ID of the movie whose nominations are to be retrieved.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AwardNominationInfo],\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,  # reason for failure (e.g., movie does not exist)\n    }\n\nConstraints:\n    - movie_id must exist in the system.\n    - All award nominations returned are associated with this movie_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "movie_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "movie_id"
+        ]
+      }
+    },
+    {
+      "name": "get_nominations_by_award_id",
+      "description": "List all award nominations for a specific award_id.\n\nArgs:\n    award_id (str): The ID of the award whose nominations should be listed.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"data\": List[AwardNominationInfo]}  # May be empty.\n        On failure:\n            {\"success\": False, \"error\": str}  # Award does not exist.\n\nConstraints:\n    - award_id must exist in the awards dictionary.\n    - If no nominations are found for this award_id, returns an empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "award_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "award_id"
+        ]
+      }
+    },
+    {
+      "name": "get_nomination_by_id",
+      "description": "Retrieve detailed information for a specific AwardNomination by its unique nomination_id.\n\nArgs:\n    nomination_id (str): The unique identifier for the award nomination.\n\nReturns:\n    dict:\n      - On success: {\"success\": True, \"data\": AwardNominationInfo}\n      - On failure: {\"success\": False, \"error\": \"Nomination not found.\"}",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "nomination_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "nomination_id"
+        ]
+      }
+    },
+    {
+      "name": "get_actor_by_id",
+      "description": "Retrieve actor record by `actor_id`.\n\nArgs:\n    actor_id (str): The unique identifier for the actor.\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"data\": ActorInfo }\n        - On error: {\"success\": False, \"error\": \"Actor not found\"}\n\nConstraints:\n    - actor_id must exist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "actor_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "actor_id"
+        ]
+      }
+    },
+    {
+      "name": "list_actors",
+      "description": "Get the complete list of actors in the movie database.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ActorInfo]  # All actors (may be empty if none exist)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_cast_by_movie_id",
+      "description": "Retrieve the cast list (actors and roles) for a specific movie.\n\nArgs:\n    movie_id (str): The unique identifier for the movie.\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"data\": [\n                {\n                    \"actor_id\": str,\n                    \"name\": str,\n                    \"birthday\": str,\n                    \"role_name\": str\n                },\n                ...\n            ]\n        }\n        On failure (movie not found):\n        {\n            \"success\": False,\n            \"error\": \"Movie not found\"\n        }\n\nConstraints:\n    - movie_id must refer to an existing Movie.\n    - Only actors present in the Actor registry are listed.\n    - Returns an empty list if the movie has no cast.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "movie_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "movie_id"
+        ]
+      }
+    },
+    {
+      "name": "get_movies_by_actor_id",
+      "description": "List all movies in which a given actor appears.\n\nArgs:\n    actor_id (str): The unique identifier of the actor.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MovieInfo]  # All MovieInfo entries where this actor appears.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g., actor not found)\n    }\n\nConstraints:\n    - actor_id must exist in self.actors.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "actor_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "actor_id"
+        ]
+      }
+    },
+    {
+      "name": "summarize_awards_for_movie",
+      "description": "Aggregate and format all awards/nominations for a movie as a summary.\nGroups nominations by outcome, award organization, category, and year.\n\nArgs:\n    movie_id (str): Unique identifier of the movie.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": dict  # Summary structure: grouped by organization, with categories, outcomes etc.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The movie_id must exist in the database.\n    - If the movie has no nominations, data will be an empty dict.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "movie_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "movie_id"
+        ]
+      }
+    },
+    {
+      "name": "add_movie",
+      "description": "Add a new movie record to the database.\n\nArgs:\n    movie_id (str): Unique identifier for the movie.\n    title (str): Title of the movie.\n    release_year (int): Year the movie was released.\n    production_data (str): Production details of the movie.\n\nReturns:\n    dict: \n        On success: \n            { \"success\": True, \"message\": \"Movie added successfully.\" }\n        On failure (duplicate movie_id): \n            { \"success\": False, \"error\": \"Movie ID already exists.\" }\n\nConstraints:\n    - movie_id must be unique for each movie.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "movie_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "release_year": {
+            "type": "integer"
+          },
+          "production_data": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "movie_id",
+          "title",
+          "release_year",
+          "production_data"
+        ]
+      }
+    },
+    {
+      "name": "update_movie",
+      "description": "Modify metadata of an existing movie.\n\nArgs:\n    movie_id (str): Unique identifier of the movie to update.\n    title (str, optional): New title for the movie.\n    release_year (int, optional): New release year.\n    production_data (str, optional): New production data.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"message\": \"Movie updated successfully.\"}\n        On failure:\n            {\"success\": False, \"error\": <reason>}\nConstraints:\n    - movie_id must already exist.\n    - Only title, release_year, production_data are updatable.\n    - Type checks for updatable fields must pass if those fields are provided (not None).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "movie_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "release_year": {
+            "type": "integer"
+          },
+          "production_data": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "movie_id",
+          "title",
+          "release_year",
+          "production_data"
+        ]
+      }
+    },
+    {
+      "name": "delete_movie",
+      "description": "Remove a movie record (by `movie_id`) as well as all related award nominations and cast records.\n\nArgs:\n    movie_id (str): The ID of the movie to delete.\n\nReturns:\n    dict:\n        - {\"success\": True, \"message\": str} on success.\n        - {\"success\": False, \"error\": str} if the movie does not exist.\n\nConstraints:\n    - The movie must exist in the database.\n    - All award nominations referencing the movie must be deleted.\n    - All cast records for the movie must be deleted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "movie_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "movie_id"
+        ]
+      }
+    },
+    {
+      "name": "add_award",
+      "description": "Add a new award to the award registry.\n\nArgs:\n    award_id (str): Unique identifier for the award.\n    name (str): The name of the award (e.g., \"Best Picture\").\n    organization (str): The organization granting the award (e.g., \"Academy Awards\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Award added successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description\n    }\n\nConstraints:\n    - award_id must be unique (must not already exist in self.awards).\n    - award_id, name, organization must be non-empty strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "award_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "organization": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "award_id",
+          "name",
+          "organization"
+        ]
+      }
+    },
+    {
+      "name": "update_award",
+      "description": "Modify details of an existing award. Only 'name' and/or 'organization' fields can be updated.\n\nArgs:\n    award_id (str): The unique ID of the award to update.\n    name (str, optional): The new name of the award. Leave as None to not update.\n    organization (str, optional): The new organization for the award. Leave as None to not update.\n\nReturns:\n    dict:\n      - On success: { \"success\": True, \"message\": \"Award updated successfully.\" }\n      - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - award_id must exist in the system.\n    - At least one of 'name' or 'organization' must be provided to update.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "award_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "organization": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "award_id",
+          "name",
+          "organization"
+        ]
+      }
+    },
+    {
+      "name": "add_award_nomination",
+      "description": "Add a new AwardNomination entry, ensuring movie_id and award_id exist,\noutcome is valid, and nomination_id is unique.\n\nArgs:\n    nomination_id (str): Unique ID for the nomination\n    movie_id (str): Refers to an existing Movie\n    award_id (str): Refers to an existing Award\n    category (str): Award category (no strict validation here)\n    year (int): Year of the nomination\n    outcome (str): 'won', 'nominated', or 'lost'\n\nReturns:\n    dict: Success or failure with details/message.\n    {\n      \"success\": True, \"message\": \"Award nomination added.\"\n    }\n    or\n    {\n      \"success\": False, \"error\": <reason>\n    }\n\nConstraints:\n    - nomination_id must be unique\n    - movie_id/award_id must exist\n    - outcome in {\"won\", \"nominated\", \"lost\"}",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "nomination_id": {
+            "type": "string"
+          },
+          "movie_id": {
+            "type": "string"
+          },
+          "award_id": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "year": {
+            "type": "integer"
+          },
+          "outcome": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "nomination_id",
+          "movie_id",
+          "award_id",
+          "category",
+          "year",
+          "outcome"
+        ]
+      }
+    },
+    {
+      "name": "update_award_nomination",
+      "description": "Change the outcome, year, or category of an AwardNomination (subject to constraints).\n\nArgs:\n    nomination_id (str): The unique identifier for the AwardNomination to update.\n    outcome (str, optional): New outcome status; must be one of 'won', 'nominated', or 'lost' if specified.\n    year (int, optional): New nomination year (must be integer).\n    category (str, optional): New nomination category.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Award nomination updated successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the failure.\n    }\n\nConstraints:\n  - nomination_id must exist\n  - If provided, outcome must be one of {'won', 'nominated', 'lost'}\n  - If provided, year must be an integer\n  - If provided, category ideally should only be one permitted by the award's organization",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "nomination_id": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string"
+          },
+          "year": {
+            "type": "integer"
+          },
+          "category": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "nomination_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_award_nomination",
+      "description": "Remove an AwardNomination from the database, given its nomination_id.\n\nArgs:\n    nomination_id (str): The unique ID of the nomination to be deleted.\n\nReturns:\n    dict: \n        If successful:\n            {\"success\": True, \"message\": \"Award nomination <nomination_id> has been deleted.\"}\n        If not found:\n            {\"success\": False, \"error\": \"Nomination ID does not exist.\"}\n\nConstraints:\n    - Nomination ID must exist in self.award_nominations.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "nomination_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "nomination_id"
+        ]
+      }
+    },
+    {
+      "name": "add_actor",
+      "description": "Add a new actor to the actor registry.\n\nArgs:\n    actor_id (str): Unique identifier for the actor.\n    name (str): The actor's full name.\n    birthday (str): The actor's birthday (expected format: 'YYYY-MM-DD').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Actor <actor_id> added.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Actor with id <actor_id> already exists.\"\n    }\n\nConstraints:\n    - actor_id must be unique in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "actor_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "birthday": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "actor_id"
+        ]
+      }
+    },
+    {
+      "name": "update_actor",
+      "description": "Edit an existing actor's info.\n\nArgs:\n    actor_id (str): The unique identifier of the actor to update.\n    name (str, optional): Updated name for the actor.\n    birthday (str, optional): Updated birthday for the actor.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Actor <actor_id> updated successfully\"\n    } or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure\"\n    }\n\nConstraints:\n    - actor_id must exist in the system.\n    - At least one updatable field (name or birthday) must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "actor_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "birthday": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "actor_id",
+          "name",
+          "birthday"
+        ]
+      }
+    },
+    {
+      "name": "add_movie_cast",
+      "description": "Add a new association between a movie and an actor (i.e., add cast member with specified role).\n\nArgs:\n    movie_id (str): Unique identifier of the movie.\n    actor_id (str): Unique identifier of the actor.\n    role_name (str): Name of the role played by the actor in the movie.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Actor <actor_id> added as '<role_name>' to movie <movie_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The movie_id must correspond to an existing movie.\n    - The actor_id must correspond to an existing actor.\n    - The same (movie_id, actor_id, role_name) combination should not already exist in the movie's cast.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "movie_id": {
+            "type": "string"
+          },
+          "actor_id": {
+            "type": "string"
+          },
+          "role_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "movie_id",
+          "actor_id",
+          "role_name"
+        ]
+      }
+    },
+    {
+      "name": "remove_movie_cast",
+      "description": "Remove an actor from a movie's cast list.\n\nArgs:\n    movie_id (str): Unique identifier for the movie.\n    actor_id (str): Unique identifier for the actor to be removed.\n\nReturns:\n    dict: \n        If removal is successful:\n            {\n                \"success\": True,\n                \"message\": \"Actor removed from movie cast.\"\n            }\n        If a problem occurs:\n            {\n                \"success\": False,\n                \"error\": \"<reason>\"\n            }\n\nConstraints:\n- The movie_id must exist.\n- The actor_id must appear in the cast list for the given movie.\n- If actor_id does not exist in the cast, an error is returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "movie_id": {
+            "type": "string"
+          },
+          "actor_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "movie_id",
+          "actor_id"
+        ]
+      }
+    }
+  ]
+}

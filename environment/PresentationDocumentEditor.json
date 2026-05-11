@@ -1,0 +1,745 @@
+{
+  "env_name": "PresentationDocumentEditor",
+  "description": "A Presentation Document Editor is a software environment designed for creating and modifying presentation documents composed of slides. It maintains state for each document, including slides, master slides (which define templates and themes), and associated resources such as images and text. Typical operations include adding, modifying, or retrieving slides and masters, applying themes, and managing hierarchies within the document.",
+  "initial_parameter_schema": {
+    "documents": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "list_of_slide_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "list_of_master_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "document_id",
+          "name",
+          "list_of_slide_ids",
+          "list_of_master_ids",
+          "metadata"
+        ]
+      }
+    },
+    "slides": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "slide_id": {
+            "type": "string"
+          },
+          "document_id": {
+            "type": "string"
+          },
+          "content_elements": {},
+          "applied_master_id": {
+            "type": "string"
+          },
+          "slide_order": {
+            "type": "integer"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "slide_id",
+          "document_id",
+          "content_elements",
+          "applied_master_id",
+          "slide_order",
+          "metadata"
+        ]
+      }
+    },
+    "masters": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "master_id": {
+            "type": "string"
+          },
+          "document_id": {
+            "type": "string"
+          },
+          "layout_definition": {},
+          "theme": {},
+          "associated_slide_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "master_id",
+          "document_id",
+          "layout_definition",
+          "theme",
+          "associated_slide_ids",
+          "metadata"
+        ]
+      }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "data": {},
+          "associated_slide_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "associated_master_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "resource_id",
+          "type",
+          "data",
+          "associated_slide_ids",
+          "associated_master_ids",
+          "metadata"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_document_by_name": [
+      "documents"
+    ],
+    "get_document_by_id": [
+      "documents"
+    ],
+    "list_documents": [
+      "documents"
+    ],
+    "list_masters_for_document": [
+      "documents",
+      "masters"
+    ],
+    "get_master_slide_by_id": [
+      "masters"
+    ],
+    "list_slides_for_document": [
+      "documents",
+      "slides"
+    ],
+    "get_slide_by_id": [
+      "slides"
+    ],
+    "list_resources_for_document": [
+      "documents",
+      "resources"
+    ],
+    "get_resource_by_id": [
+      "resources"
+    ],
+    "list_slides_for_master": [
+      "masters"
+    ],
+    "check_master_ids_valid_for_document": [
+      "documents",
+      "masters"
+    ],
+    "get_slide_master": [
+      "masters",
+      "slides"
+    ],
+    "get_slide_order_in_document": [
+      "documents",
+      "slides"
+    ],
+    "add_document": [
+      "documents"
+    ],
+    "remove_document": [
+      "documents",
+      "masters",
+      "resources",
+      "slides"
+    ],
+    "add_master_to_document": [
+      "documents",
+      "masters"
+    ],
+    "remove_master_from_document": [
+      "documents",
+      "masters",
+      "slides"
+    ],
+    "update_master_slide": [
+      "masters"
+    ],
+    "add_slide_to_document": [
+      "documents",
+      "masters",
+      "slides"
+    ],
+    "remove_slide_from_document": [
+      "documents",
+      "masters",
+      "resources",
+      "slides"
+    ],
+    "update_slide_content": [
+      "slides"
+    ],
+    "set_slide_master": [
+      "masters",
+      "slides"
+    ],
+    "reorder_slides_in_document": [
+      "documents",
+      "slides"
+    ],
+    "add_resource": [
+      "masters",
+      "resources",
+      "slides"
+    ],
+    "remove_resource": [
+      "masters",
+      "resources",
+      "slides"
+    ],
+    "associate_resource_with_slide": [
+      "resources",
+      "slides"
+    ],
+    "associate_resource_with_master": [
+      "masters",
+      "resources"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_document_by_name",
+      "description": "Retrieve a document's details by its name.\n\nArgs:\n    name (str): The exact name of the document to look up.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": DocumentInfo  # Document info dictionary if found\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Reason, e.g., document not found\n        }\n\nConstraints:\n    - Document name comparison is case-sensitive and must be exact.\n    - If multiple documents have the same name (should not happen), the first found is returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_document_by_id",
+      "description": "Retrieve a document's details using its document_id.\n\nArgs:\n    document_id (str): The unique identifier of the document.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": DocumentInfo  # Whole info dict for the document\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Document not found\"\n            }\n\nConstraints:\n    - document_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id"
+        ]
+      }
+    },
+    {
+      "name": "list_documents",
+      "description": "Retrieve all presentation documents present in the environment.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[DocumentInfo],  # List of document info (may be empty if no documents)\n        }\n\nThis operation does not fail; if there are no documents, data is an empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_masters_for_document",
+      "description": "Retrieve all master slides (MasterSlideInfo dicts) associated with a document, given its document_id.\n\nArgs:\n    document_id (str): The unique identifier of the document.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[MasterSlideInfo],  # One per valid master referenced by the document\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason (e.g., document does not exist)\n            }\n\nConstraints:\n    - The document must exist.\n    - Only valid (existing in self.masters) master slides referenced by document are included.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id"
+        ]
+      }
+    },
+    {
+      "name": "get_master_slide_by_id",
+      "description": "Retrieve a master slide's metadata/info given its master_id.\n\nArgs:\n    master_id (str): The unique identifier of the master slide to fetch.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True,\n            \"data\": MasterSlideInfo\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": \"Master slide not found\"\n        }\n\nConstraints:\n    - master_id must correspond to a known master slide.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "master_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "master_id"
+        ]
+      }
+    },
+    {
+      "name": "list_slides_for_document",
+      "description": "Retrieve all slides (metadata) belonging to a document identified by document_id.\n\nArgs:\n    document_id (str): The ID of the document to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SlideInfo]   # List of slides for the document (may be empty if none)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g., document does not exist)\n    }\n\nConstraints:\n    - The specified document_id must exist in the editor.\n    - Only slides belonging to the document are included in the result.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id"
+        ]
+      }
+    },
+    {
+      "name": "get_slide_by_id",
+      "description": "Retrieve a slide (with metadata and content) by its unique slide_id.\n\nArgs:\n    slide_id (str): The unique identifier of the slide.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": SlideInfo  # Slide information (including metadata and content)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description, e.g., \"Slide not found\"\n    }\n\nConstraints:\n    - slide_id must exist in the editor's slides.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "slide_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "slide_id"
+        ]
+      }
+    },
+    {
+      "name": "list_resources_for_document",
+      "description": "Retrieve all resources associated with any slide or master of a document.\n\nArgs:\n    document_id (str): The unique identifier of the document to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ResourceInfo],   # All resources associated (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,  # If document does not exist\n    }\n\nConstraints:\n    - The document must exist.\n    - Resources are included if they are linked to at least one slide or master in the document.\n    - Duplicate resources (associated to both a slide and master for the doc) are returned only once.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id"
+        ]
+      }
+    },
+    {
+      "name": "get_resource_by_id",
+      "description": "Retrieve details about a resource by its resource_id.\n\nArgs:\n    resource_id (str): The unique identifier for the resource.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ResourceInfo  # resource details\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g. \"Resource not found\"\n    }\n\nConstraints:\n    - The resource must exist in the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_id"
+        ]
+      }
+    },
+    {
+      "name": "list_slides_for_master",
+      "description": "Retrieve all slide IDs for slides that use the given master slide.\n\nArgs:\n    master_id (str): The ID of the master slide.\n\nReturns:\n    dict: \n        - If found: { \"success\": True, \"data\": List[str] }\n        - If master not found: { \"success\": False, \"error\": \"Master slide does not exist\" }\n\nConstraints:\n    - The master_id must exist in the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "master_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "master_id"
+        ]
+      }
+    },
+    {
+      "name": "check_master_ids_valid_for_document",
+      "description": "Check whether all master_ids referenced in a document are valid MasterSlide entities.\n\nArgs:\n    document_id (str): The ID of the document to check.\n\nReturns:\n    dict:\n        success: True/False\n        data: {\n            \"all_valid\": bool,\n            \"invalid_master_ids\": List[str]\n        }\n        OR\n        error: str (if document does not exist)\n\nConstraints:\n    - The document must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id"
+        ]
+      }
+    },
+    {
+      "name": "get_slide_master",
+      "description": "Retrieve the master slide applied to the given slide.\n\nArgs:\n    slide_id (str): Identifier of the slide.\n\nReturns:\n    dict:\n        - On success: {\n              \"success\": True,\n              \"data\": MasterSlideInfo  # Master slide applied to the slide\n          }\n        - On error: {\n              \"success\": False,\n              \"error\": str  # Description of the error\n          }\n\nConstraints:\n    - The slide must exist.\n    - The slide must have an applied_master_id that refers to a valid master slide.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "slide_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "slide_id"
+        ]
+      }
+    },
+    {
+      "name": "get_slide_order_in_document",
+      "description": "Get the order/position for all slides in a specified document.\n\nArgs:\n    document_id (str): The id of the document whose slides' order is to be retrieved.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[Dict[str, Any]],  # [{\"slide_id\": str, \"slide_order\": int}, ...]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g., document does not exist)\n    }\n\nConstraints:\n    - document_id must exist.\n    - Only slides referenced by the document and actually belonging to it are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id"
+        ]
+      }
+    },
+    {
+      "name": "add_document",
+      "description": "Create a new document in the editor.\n\nArgs:\n    document_id (str): Unique identifier for the new document.\n    name (str): Name of the document.\n    metadata (Dict[str, Any], optional): Optional metadata dictionary for the document.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Document added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g., document_id conflict)\n    }\n\nConstraints:\n    - The document_id must be unique (not already present).\n    - Masters/slides lists are initialized empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "document_id",
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "remove_document",
+      "description": "Delete a document and all its associated slides, master slides, and resources.\n- Slides: Remove all slides belonging to the document.\n- Masters: Remove all master slides belonging to the document.\n- Resources: Remove associations with deleted slides/masters. \n  Delete the resource itself if it is not associated with any slides or masters afterwards.\n\nArgs:\n    document_id (str): ID of the document to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Document and all associated data removed.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id"
+        ]
+      }
+    },
+    {
+      "name": "add_master_to_document",
+      "description": "Create a new master slide and associate it with a document.\n\nArgs:\n    document_id (str): ID of the document to add the master slide to.\n    layout_definition (Any): The layout definition for the master slide.\n    theme (Any): Theme data for the master slide.\n    metadata (Optional[Dict[str, Any]]): Optional metadata for the master slide.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Master slide added to document\",\n        \"master_id\": <new_master_id>\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The given document must exist.\n    - The new master slide gets a unique master_id.\n    - The document's list_of_master_ids is updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "layout_definition": {},
+          "theme": {},
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "document_id",
+          "layout_definition",
+          "theme"
+        ]
+      }
+    },
+    {
+      "name": "remove_master_from_document",
+      "description": "Delete a master slide from the specified document and remove its association from all slides.\nSets applied_master_id to \"\" on affected slides.\n\nArgs:\n    document_id (str): The ID of the document.\n    master_id (str): The ID of the master slide to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Master slide removed from document, associations updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<error reason>\"\n    }\n\nConstraints:\n    - Document must exist.\n    - Master must exist and belong to the document.\n    - Master must be referenced in document's list_of_master_ids.\n    - Affected slides must have their applied_master_id cleared.\n    - Master is removed from self.masters and document's master list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "master_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "master_id"
+        ]
+      }
+    },
+    {
+      "name": "update_master_slide",
+      "description": "Modify layout, theme, or metadata of an existing master slide.\n\nArgs:\n    master_id (str): The ID of the master slide to update.\n    layout_definition (Any, optional): New layout definition to apply.\n    theme (Any, optional): New theme to apply.\n    metadata (dict, optional): New metadata dictionary to apply.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Master slide updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Master slide not found.\"\n    }\n\nConstraints:\n    - master_id must refer to an existing master slide.\n    - Only supplied attributes are updated; unspecified ones are left unchanged.\n    - If no updatable attributes are supplied, the call is a no-op (still success).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "master_id": {
+            "type": "string"
+          },
+          "layout_definition": {},
+          "theme": {},
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "master_id"
+        ]
+      }
+    },
+    {
+      "name": "add_slide_to_document",
+      "description": "Adds a new slide to the specified document at the given order, applying the specified master slide.\n\nArgs:\n    document_id (str): The target document ID.\n    slide_id (str): The unique new slide ID.\n    content_elements (Any): Slide content.\n    applied_master_id (str): The master slide to apply (must belong to the document).\n    slide_order (int): The (1-based) position for the new slide.\n    metadata (dict): Optional slide metadata.\n\nReturns:\n    dict: success True/False, message or error.\n        On success: {\n            \"success\": True,\n            \"message\": \"Slide <slide_id> added to document <document_id> at order <slide_order>.\"\n        }\n        On error: {\n            \"success\": False,\n            \"error\": \"Reason\"\n        }\n\nConstraints:\n    - document_id must exist.\n    - slide_id must be unique.\n    - applied_master_id must exist, and must belong to document_id.\n    - slide_order must be in [1, len(list_of_slide_ids)+1]",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "slide_id": {
+            "type": "string"
+          },
+          "content_elements": {},
+          "applied_master_id": {
+            "type": "string"
+          },
+          "slide_order": {
+            "type": "integer"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "document_id",
+          "slide_id",
+          "content_elements",
+          "applied_master_id",
+          "slide_order"
+        ]
+      }
+    },
+    {
+      "name": "remove_slide_from_document",
+      "description": "Remove a slide from a document and update all relevant references.\n\nArgs:\n    document_id (str): The ID of the document.\n    slide_id (str): The ID of the slide to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Success info\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message\n    }\n\nConstraints:\n    - The document must exist.\n    - The slide must exist and belong to the stated document.\n    - Updates all references: master's associated_slide_ids, resource's associated_slide_ids, and removes slide.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "slide_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "slide_id"
+        ]
+      }
+    },
+    {
+      "name": "update_slide_content",
+      "description": "Change the content elements and/or metadata of an existing slide.\n\nArgs:\n    slide_id (str): Identifier of the slide to update.\n    new_content_elements (Any, optional): New value for content_elements; if None, content is unchanged.\n    new_metadata (Dict[str, Any], optional): New metadata dictionary; if None, metadata is unchanged. An empty dict clears metadata; otherwise keys provided overwrite/update existing metadata and null values remove keys.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Slide content updated successfully\" }\n        On failure: { \"success\": False, \"error\": \"Slide not found\" }\n\nConstraints:\n    - The slide must exist.\n    - At least one of content or metadata must be provided for change.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "slide_id": {
+            "type": "string"
+          },
+          "new_content_elements": {},
+          "new_metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "slide_id"
+        ]
+      }
+    },
+    {
+      "name": "set_slide_master",
+      "description": "Assign or change the master slide for a specific slide.\n\nArgs:\n    slide_id (str): The identifier of the slide to update.\n    master_id (str): The identifier of the master slide to assign.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Success message,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description (e.g., slide/master missing, or document mismatch)\n    }\n\nConstraints:\n    - Both slide and master must exist.\n    - Slide and master must belong to the same document.\n    - Slide association with masters must be updated consistently.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "slide_id": {
+            "type": "string"
+          },
+          "master_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "slide_id",
+          "master_id"
+        ]
+      }
+    },
+    {
+      "name": "reorder_slides_in_document",
+      "description": "Rearrange the order of slides within a document.\n\nArgs:\n    document_id (str): The ID of the document whose slides are to be reordered.\n    new_slide_order (List[str]): List of slide IDs in the desired new order.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Slides reordered successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<error reason>\"\n    }\n\nConstraints:\n    - Document must exist.\n    - All slide IDs in new_slide_order must belong to the document.\n    - No extra, missing, or duplicate slide IDs.\n    - Updates DocumentInfo.list_of_slide_ids and each SlideInfo.slide_order accordingly.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "new_slide_order": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "document_id",
+          "new_slide_order"
+        ]
+      }
+    },
+    {
+      "name": "add_resource",
+      "description": "Add a resource (e.g., image, text) to the environment and associate it with specific slides and/or master slides.\n\nArgs:\n    resource_id (str): Unique identifier for the new resource.\n    type (str): The type of resource (e.g. 'image', 'text').\n    data (Any): The data/content of the resource.\n    associated_slide_ids (List[str]): List of slide IDs to associate with this resource.\n    associated_master_ids (List[str]): List of master slide IDs to associate with this resource.\n    metadata (Dict[str, Any], optional): Additional metadata for this resource.\n\nReturns:\n    dict:\n        On success:\n          {\"success\": True, \"message\": \"Resource <resource_id> added and associated with slides and/or masters.\"}\n        On failure:\n          {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - resource_id must be unique.\n    - All associated_slide_ids must exist in self.slides.\n    - All associated_master_ids must exist in self.masters.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "data": {},
+          "associated_slide_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "associated_master_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "resource_id",
+          "type",
+          "data",
+          "associated_slide_ids",
+          "associated_master_ids"
+        ]
+      }
+    },
+    {
+      "name": "remove_resource",
+      "description": "Delete a resource and remove its associations from all slides and master slides.\n\nArgs:\n    resource_id (str): The unique id of the resource to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Resource deleted and associations removed\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The resource must exist in self.resources.\n    - Remove resource_id from any SlideInfo.associated_slide_ids and MasterSlideInfo.associated_master_ids.\n    - Clean up all associations; do not leave dangling references.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_id"
+        ]
+      }
+    },
+    {
+      "name": "associate_resource_with_slide",
+      "description": "Link an existing resource to a slide.\n\nArgs:\n    resource_id (str): The ID of the resource to associate.\n    slide_id (str): The ID of the slide to link to.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Resource <resource_id> associated with slide <slide_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Both resource and slide must exist.\n    - An association should not duplicate (operation is idempotent).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string"
+          },
+          "slide_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_id",
+          "slide_id"
+        ]
+      }
+    },
+    {
+      "name": "associate_resource_with_master",
+      "description": "Link an existing resource to a master slide.\n\nArgs:\n    resource_id (str): The ID of the resource to associate.\n    master_id (str): The ID of the master slide to associate with.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Resource <resource_id> associated with master slide <master_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <error message>\n    }\n\nConstraint:\n    - Both resource_id and master_id must exist.\n    - Duplicate associations are ignored.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string"
+          },
+          "master_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_id",
+          "master_id"
+        ]
+      }
+    }
+  ]
+}

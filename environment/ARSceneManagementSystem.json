@@ -1,0 +1,466 @@
+{
+  "env_name": "ARSceneManagementSystem",
+  "description": "An AR scene management system maintains collections of augmented reality scenes, each containing multiple virtual objects with unique identifiers and configurable attributes such as position, scale, and rotation. The environment supports dynamic editing, allowing users to add, remove, or update objects within scenes, while persisting scene structures and metadata for later retrieval and visualization. It is commonly used for prototyping, development, and deployment of interactive AR experiences.",
+  "initial_parameter_schema": {
+    "scenes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "scene_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "object_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "scene_id",
+          "name",
+          "metadata",
+          "object_ids"
+        ]
+      }
+    },
+    "objects": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "object_id": {
+            "type": "string"
+          },
+          "scene_id": {
+            "type": "string"
+          },
+          "file_reference": {
+            "type": "string"
+          },
+          "position": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "scale": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "rotation": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "object_id",
+          "scene_id",
+          "file_reference",
+          "position",
+          "scale",
+          "rotation",
+          "metadata"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_scene_by_id": [
+      "scenes"
+    ],
+    "list_all_scenes": [
+      "scenes"
+    ],
+    "get_scene_object_ids": [
+      "scenes"
+    ],
+    "get_object_by_id": [
+      "objects"
+    ],
+    "list_objects_in_scene": [
+      "objects",
+      "scenes"
+    ],
+    "check_object_id_uniqueness": [
+      "scenes"
+    ],
+    "validate_transform_attributes": [],
+    "get_scene_metadata": [
+      "scenes"
+    ],
+    "get_object_metadata": [
+      "objects"
+    ],
+    "remove_object_from_scene": [
+      "objects",
+      "scenes"
+    ],
+    "add_object_to_scene": [
+      "objects",
+      "scenes"
+    ],
+    "update_object_attributes": [
+      "objects"
+    ],
+    "update_scene_metadata": [
+      "scenes"
+    ],
+    "update_object_metadata": [
+      "objects"
+    ],
+    "delete_scene": [
+      "objects",
+      "scenes"
+    ],
+    "duplicate_scene": [
+      "objects",
+      "scenes"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_scene_by_id",
+      "description": "Retrieve the full details (SceneInfo dictionary) of a scene given its scene_id.\n\nArgs:\n    scene_id (str): The unique identifier for the target scene.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": SceneInfo,  # Complete info of the scene if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"Scene not found\"\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scene_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scene_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_scenes",
+      "description": "Retrieve a list of all AR scenes in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SceneInfo]  # List of all scenes (may be empty if none exist)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_scene_object_ids",
+      "description": "Retrieve the list of object_ids contained in a specific scene.\n\nArgs:\n    scene_id (str): The identifier of the scene.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": List[str],  # List of object_ids (may be empty if no objects)\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str,  # \"Scene does not exist\"\n            }\nConstraints:\n    - The scene_id must refer to an existing scene in the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scene_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scene_id"
+        ]
+      }
+    },
+    {
+      "name": "get_object_by_id",
+      "description": "Retrieve the full ARObjectInfo for a given object_id.\n\nArgs:\n    object_id (str): The identifier of the AR object to retrieve.\n\nReturns:\n    dict: \n        - { \"success\": True, \"data\": ARObjectInfo } if object exists\n        - { \"success\": False, \"error\": \"Object not found\" } if it doesn't\n\nConstraints:\n    - object_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "object_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "object_id"
+        ]
+      }
+    },
+    {
+      "name": "list_objects_in_scene",
+      "description": "Retrieve full details (ARObjectInfo dicts) of all ARObjects in a specific scene.\n\nArgs:\n    scene_id (str): The identifier of the target AR scene.\n\nReturns:\n    dict:\n        - success: True and data: List[ARObjectInfo] if scene exists (may be empty if none in scene).\n        - success: False and error: error message if scene not found.\n\nConstraints:\n    - The specified scene_id must exist.\n    - Only objects listed in the scene's object_ids and present in self.objects are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scene_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scene_id"
+        ]
+      }
+    },
+    {
+      "name": "check_object_id_uniqueness",
+      "description": "Check whether a given object_id is unique within the specified scene.\n\nArgs:\n    scene_id (str): The identifier of the scene to check within.\n    object_id (str): The object_id to check for uniqueness.\n\nReturns:\n    dict:\n      - If scene does not exist: {\"success\": False, \"error\": \"Scene does not exist\"}\n      - If scene exists: {\"success\": True, \"is_unique\": bool}\n        'is_unique' is True if object_id is NOT present in scene's object_ids, else False.\n\nConstraints:\n    - Only checks against the provided scene.\n    - Scene must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scene_id": {
+            "type": "string"
+          },
+          "object_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scene_id",
+          "object_id"
+        ]
+      }
+    },
+    {
+      "name": "validate_transform_attributes",
+      "description": "Validate that position, scale, and rotation attributes are correctly formatted and within allowed value ranges.\n\nArgs:\n    position (list of float): [x, y, z] coordinates. Must be of length 3, floats.\n    scale (list of float): [sx, sy, sz] scale factors. Must be of length 3, non-negative floats.\n    rotation (list of float): [rx, ry, rz] rotation (Euler angles assumed). Must be of length 3, floats.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": { \"valid\": True }\n    }\n    or (if invalid)\n    {\n        \"success\": True,\n        \"data\": { \"valid\": False, \"reason\": \"<reason>\" }\n    }\n\nConstraints:\n    - Position, scale, and rotation must each be a list of 3 floats.\n    - Scale must be non-negative.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "scale": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "rotation": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "required": [
+          "position",
+          "scale",
+          "rotation"
+        ]
+      }
+    },
+    {
+      "name": "get_scene_metadata",
+      "description": "Retrieve the metadata dictionary for a specified scene.\n\nArgs:\n    scene_id (str): The unique identifier for the scene.\n\nReturns:\n    dict: If successful,\n            {\"success\": True, \"data\": <scene metadata dict>}\n          If scene not found,\n            {\"success\": False, \"error\": \"Scene not found\"}\n\nConstraints:\n    - The scene_id must exist in the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scene_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scene_id"
+        ]
+      }
+    },
+    {
+      "name": "get_object_metadata",
+      "description": "Retrieve the metadata dictionary for the specified ARObject.\n\nArgs:\n    object_id (str): The unique identifier of the ARObject.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True,\n            \"data\": Dict[str, Any]  # The metadata dictionary for the ARObject\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": \"Object ID does not exist\"\n        }\nConstraints:\n    - object_id must exist in self.objects.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "object_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "object_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_object_from_scene",
+      "description": "Detach the specified ARObject from the given scene and remove its reference.\nDoes not affect other objects.\n\nArgs:\n    scene_id (str): The ID of the scene from which to remove the object.\n    object_id (str): The ID of the ARObject to remove.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"message\": \"Object <object_id> removed from scene <scene_id>.\"\n        }\n    or\n        {\n            \"success\": False,\n            \"error\": <reason>\n        }\n\nConstraints:\n    - Scene must exist.\n    - Object must exist and be part of the specified scene.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scene_id": {
+            "type": "string"
+          },
+          "object_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scene_id",
+          "object_id"
+        ]
+      }
+    },
+    {
+      "name": "add_object_to_scene",
+      "description": "Instantiate and attach a new ARObject to an existing scene.\n\nArgs:\n    scene_id (str): ID of the scene to add the object to.\n    object_id (str): Unique identifier for the new object (within the scene).\n    file_reference (str): File/model reference for the AR object.\n    position (list of float): [x, y, z] coordinates.\n    scale (list of float): [sx, sy, sz], must be non-negative.\n    rotation (list of float): [rx, ry, rz] or quaternion.\n    metadata (dict): Additional metadata for the object.\n\nReturns:\n    dict: \n      - { \"success\": True, \"message\": \"ARObject <object_id> added to scene <scene_id>\" }\n      - or { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - scene_id must exist.\n    - object_id must be unique within its scene.\n    - scale must be a list of 3 non-negative floats.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scene_id": {
+            "type": "string"
+          },
+          "object_id": {
+            "type": "string"
+          },
+          "file_reference": {
+            "type": "string"
+          },
+          "position": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "scale": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "rotation": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "scene_id",
+          "object_id",
+          "file_reference",
+          "position",
+          "scale",
+          "rotation",
+          "metadata"
+        ]
+      }
+    },
+    {
+      "name": "update_object_attributes",
+      "description": "Change an ARObject’s attributes (position, scale, rotation, file_reference) while validating constraints.\n\nArgs:\n    object_id (str): The ID of the ARObject to update.\n    position (list, optional): [x, y, z] position values.\n    scale (list, optional): [sx, sy, sz] scale values, must be all non-negative.\n    rotation (list, optional): [rx, ry, rz] rotation values.\n    file_reference (str, optional): Path or reference to the asset file.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Object attributes updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - object_id must exist.\n    - scale must be all non-negative numbers.\n    - position, scale, rotation (if provided) must be lists of 3 floats each.\n    - file_reference, if provided, must be a string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "object_id": {
+            "type": "string"
+          },
+          "position": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "scale": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "rotation": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "file_reference": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "object_id",
+          "position",
+          "scale",
+          "rotation",
+          "file_reference"
+        ]
+      }
+    },
+    {
+      "name": "update_scene_metadata",
+      "description": "Modify or add metadata entries for a specified scene.\nThe new_metadata entries will update (overwrite or add to) the existing scene metadata.\n\nArgs:\n    scene_id (str): The unique identifier for the scene whose metadata is to be updated.\n    new_metadata (Dict[str, Any]): Dictionary of new or updated metadata entries. Keys will overwrite or add to existing metadata.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Scene metadata updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Scene does not exist\"\n    }\n\nConstraints:\n    - The target scene must already exist.\n    - Metadata changes persist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scene_id": {
+            "type": "string"
+          },
+          "new_metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "scene_id",
+          "new_metadata"
+        ]
+      }
+    },
+    {
+      "name": "update_object_metadata",
+      "description": "Modify or add metadata entries to a specific ARObject, persisting changes.\n\nArgs:\n    object_id (str): The unique identifier of the AR object whose metadata is to be updated.\n    new_metadata (Dict[str, Any]): Dictionary of metadata entries to add or update (key-value pairs).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Metadata updated for object <object_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The provided object_id must exist.\n    - The update should preserve all other existing metadata entries unless overwritten.\n    - New metadata entries are added, existing ones are updated in place.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "object_id": {
+            "type": "string"
+          },
+          "new_metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "object_id",
+          "new_metadata"
+        ]
+      }
+    },
+    {
+      "name": "delete_scene",
+      "description": "Permanently remove a scene and all its associated ARObjects.\n\nArgs:\n    scene_id (str): The ID of the scene to be removed.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Scene <scene_id> and all associated ARObjects deleted\" }\n        - On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - The scene must exist.\n    - All ARObjects belonging to the scene must be deleted.\n    - No effect on other scenes or unrelated ARObjects.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scene_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scene_id"
+        ]
+      }
+    },
+    {
+      "name": "duplicate_scene",
+      "description": "Create a copy of an existing scene and all its AR objects with a new scene_id.\n\nArgs:\n    source_scene_id (str): The scene_id of the scene to duplicate.\n    new_scene_id (str): The scene_id for the duplicated scene (must not already exist).\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Scene duplicated successfully\",\n                \"new_scene_id\": <new_scene_id>,\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": <reason>\n            }\n\nConstraints:\n    - `source_scene_id` must exist in the state.\n    - `new_scene_id` must not already exist.\n    - All objects are duplicated, with new object_ids unique within the new scene.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "source_scene_id": {
+            "type": "string"
+          },
+          "new_scene_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_scene_id",
+          "new_scene_id"
+        ]
+      }
+    }
+  ]
+}

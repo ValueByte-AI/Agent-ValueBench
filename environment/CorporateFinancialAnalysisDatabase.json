@@ -1,0 +1,431 @@
+{
+  "env_name": "CorporateFinancialAnalysisDatabase",
+  "description": "A corporate financial analysis database stores structured financial information about companies, typically indexed by unique identifiers. It maintains historical records such as balance sheets, ratios, and performance metrics across multiple financial periods. The system supports data retrieval, calculation of financial indicators, and benchmarking for reporting and investment decisions.",
+  "initial_parameter_schema": {
+    "companies": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sector": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "financial_periods": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "period_id": {
+            "type": "string"
+          },
+          "company_id": {
+            "type": "string"
+          },
+          "year": {
+            "type": "integer"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "period_id",
+          "company_id",
+          "year",
+          "start_date",
+          "end_date"
+        ]
+      }
+    },
+    "financial_metrics": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "metric_id": {
+            "type": "string"
+          },
+          "company_id": {
+            "type": "string"
+          },
+          "period_id": {
+            "type": "string"
+          },
+          "metric_name": {
+            "type": "string"
+          },
+          "metric_val": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "metric_id",
+          "company_id",
+          "period_id",
+          "metric_name",
+          "metric_val"
+        ]
+      }
+    },
+    "financial_statement_entries": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "entry_id": {
+            "type": "string"
+          },
+          "company_id": {
+            "type": "string"
+          },
+          "period_id": {
+            "type": "string"
+          },
+          "entry_type": {
+            "type": "string"
+          },
+          "val": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "entry_id",
+          "company_id",
+          "period_id",
+          "entry_type",
+          "val"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_company_by_id": [
+      "companies"
+    ],
+    "list_company_periods": [
+      "companies",
+      "financial_periods"
+    ],
+    "get_latest_period_for_company": [
+      "companies",
+      "financial_periods"
+    ],
+    "list_metrics_for_company_period": [
+      "companies",
+      "financial_metrics",
+      "financial_periods"
+    ],
+    "get_metric_by_name": [
+      "companies",
+      "financial_metrics",
+      "financial_periods"
+    ],
+    "list_statement_entries_for_company_period": [
+      "companies",
+      "financial_periods",
+      "financial_statement_entries"
+    ],
+    "get_statement_entry_by_type": [
+      "financial_statement_entries"
+    ],
+    "check_metric_exists": [
+      "companies",
+      "financial_metrics",
+      "financial_periods"
+    ],
+    "add_or_update_financial_metric": [
+      "companies",
+      "financial_metrics",
+      "financial_periods"
+    ],
+    "remove_financial_metric": [
+      "companies",
+      "financial_metrics",
+      "financial_periods"
+    ],
+    "add_financial_statement_entry": [
+      "companies",
+      "financial_periods",
+      "financial_statement_entries"
+    ],
+    "update_financial_statement_entry": [
+      "companies",
+      "financial_periods",
+      "financial_statement_entries"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_company_by_id",
+      "description": "Retrieve detailed company information using the company_id.\n\nArgs:\n    company_id (str): The unique identifier for the target company.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": CompanyInfo  # Detailed info dictionary for the company\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description if not found\n    }\n\nConstraints:\n    - company_id must exist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id"
+        ]
+      }
+    },
+    {
+      "name": "list_company_periods",
+      "description": "List all financial periods (with ids and dates) for a given company.\n\nArgs:\n    company_id (str): Unique company identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[FinancialPeriodInfo],  # possibly empty if no periods\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"Company does not exist\"\n    }\n\nConstraints:\n    - The company_id must exist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id"
+        ]
+      }
+    },
+    {
+      "name": "get_latest_period_for_company",
+      "description": "Identify and return the most recent (latest) financial period for a given company.\n\nArgs:\n    company_id (str): Unique identifier of the company.\n\nReturns:\n    dict: \n        On success:\n          {\n            \"success\": True, \n            \"data\": FinancialPeriodInfo  # Info for latest period\n          }\n        On failure:\n          {\n            \"success\": False, \n            \"error\": str  # Reason for failure, e.g., company/period not found\n          }\n\nConstraints:\n    - The company must exist in the database.\n    - The latest period is determined by the greatest 'year', and if there are duplicates, the latest 'end_date'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id"
+        ]
+      }
+    },
+    {
+      "name": "list_metrics_for_company_period",
+      "description": "List all financial metrics for a company in a specific financial period.\n\nArgs:\n    company_id (str): Unique identifier of the company.\n    period_id (str): Unique identifier of the financial period (must match the company_id).\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": List[FinancialMetricInfo],  # possibly empty if no metrics exist\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # reason (e.g. company or period invalid)\n            }\n\nConstraints:\n    - The company_id must exist in the companies dictionary.\n    - The period_id must exist and must belong to the specified company.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          },
+          "period_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id",
+          "period_id"
+        ]
+      }
+    },
+    {
+      "name": "get_metric_by_name",
+      "description": "Retrieve the value and metadata for a specific metric (e.g., ROA) assigned to a given company and financial period.\n\nArgs:\n    company_id (str): Unique identifier of the company.\n    period_id (str): Unique identifier of the financial period.\n    metric_name (str): The name of the requested metric (case-sensitive).\n\nReturns:\n    dict:\n        { \"success\": True, \"data\": FinancialMetricInfo } if metric exists,\n        or { \"success\": False, \"error\": <reason> } if not found or parameters invalid.\n\nConstraints:\n    - Only returns metrics where company_id and period_id are registered and metric_name matches.\n    - Enforces referential integrity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          },
+          "period_id": {
+            "type": "string"
+          },
+          "metric_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id",
+          "period_id",
+          "metric_name"
+        ]
+      }
+    },
+    {
+      "name": "list_statement_entries_for_company_period",
+      "description": "List all financial statement entries (entry_type and value) for the given company and period.\n\nArgs:\n    company_id (str): The unique identifier of the company.\n    period_id (str): The unique identifier of the financial period.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": [\n                    {\"entry_type\": str, \"val\": float},\n                    ...\n                ]\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": str\n            }\n\nConstraints:\n    - Both company_id and period_id must exist.\n    - The period_id must correspond to the given company_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          },
+          "period_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id",
+          "period_id"
+        ]
+      }
+    },
+    {
+      "name": "get_statement_entry_by_type",
+      "description": "Retrieve a specific financial statement entry (e.g., net income, total assets)\nfor a company and a period by entry type.\n\nArgs:\n    company_id (str): The unique identifier of the company.\n    period_id (str): The identifier of the financial period.\n    entry_type (str): The financial statement entry type to retrieve.\n\nReturns:\n    dict:\n        - On success:\n            { \"success\": True, \"data\": FinancialStatementEntryInfo }\n        - If not found:\n            { \"success\": False, \"error\": \"No such financial statement entry for the given company, period, and entry_type\" }\n\nConstraints:\n    - The returned entry must match all of: company_id, period_id, and entry_type.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          },
+          "period_id": {
+            "type": "string"
+          },
+          "entry_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id",
+          "period_id",
+          "entry_type"
+        ]
+      }
+    },
+    {
+      "name": "check_metric_exists",
+      "description": "Check if a particular financial metric (by name) exists for a company and period.\n\nArgs:\n    company_id (str): The company's unique identifier.\n    period_id (str): The financial period's unique identifier.\n    metric_name (str): The name of the financial metric.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"exists\": bool  # True if matching metric exists, else False\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": str    # Reason for error (company/period not found)\n        }\n\nConstraints:\n    - The given company_id and period_id must exist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          },
+          "period_id": {
+            "type": "string"
+          },
+          "metric_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id",
+          "period_id",
+          "metric_name"
+        ]
+      }
+    },
+    {
+      "name": "add_or_update_financial_metric",
+      "description": "Add a new or update an existing financial metric for the specified company and period.\n\nArgs:\n    company_id (str): The company's unique ID.\n    period_id (str): The financial period's unique ID.\n    metric_name (str): Name of the financial metric (e.g., ROA).\n    metric_val (float): Value to set for the metric.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\nConstraints:\n    - company_id must refer to an existing company\n    - period_id must refer to an existing period, and that period must belong to company_id.\n    - Only one metric per (company_id, period_id, metric_name); update if exists, otherwise add as new.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          },
+          "period_id": {
+            "type": "string"
+          },
+          "metric_name": {
+            "type": "string"
+          },
+          "metric_val": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "company_id",
+          "period_id",
+          "metric_name",
+          "metric_val"
+        ]
+      }
+    },
+    {
+      "name": "remove_financial_metric",
+      "description": "Remove a financial metric for a given company and period, identified by metric_name.\n\nArgs:\n    company_id (str): The company identifier.\n    period_id (str): The financial period identifier.\n    metric_name (str): The metric name to remove (e.g., \"ROA\", \"ROE\").\n\nReturns:\n    dict: {\n      \"success\": True,\n      \"message\": str  # Confirmation with details\n    }\n    or\n    {\n      \"success\": False,\n      \"error\": str    # Error message\n    }\n\nConstraints:\n    - The specified company_id and period_id must exist.\n    - The metric to remove must exactly match company_id, period_id, and metric_name.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          },
+          "period_id": {
+            "type": "string"
+          },
+          "metric_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id",
+          "period_id",
+          "metric_name"
+        ]
+      }
+    },
+    {
+      "name": "add_financial_statement_entry",
+      "description": "Insert a new financial statement entry for a company and period.\n\nArgs:\n    entry_id (str): Unique identifier for the statement entry.\n    company_id (str): The associated company's unique ID.\n    period_id (str): The financial period's unique ID.\n    entry_type (str): The type/category of the financial statement entry (e.g., 'net_income').\n    val (float): The value of the entry.\n\nReturns:\n    dict: {\n        'success': True,\n        'message': 'Financial statement entry added.'\n    }\n    or\n    {\n        'success': False,\n        'error': str\n    }\n\nConstraints:\n    - entry_id must be unique.\n    - company_id and period_id must refer to existing records.\n    - period_id must belong to the given company_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entry_id": {
+            "type": "string"
+          },
+          "company_id": {
+            "type": "string"
+          },
+          "period_id": {
+            "type": "string"
+          },
+          "entry_type": {
+            "type": "string"
+          },
+          "val": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "entry_id",
+          "company_id",
+          "period_id",
+          "entry_type",
+          "val"
+        ]
+      }
+    },
+    {
+      "name": "update_financial_statement_entry",
+      "description": "Update the value of an existing financial statement entry for a company and period.\n\nArgs:\n    company_id (str): The company's unique identifier.\n    period_id (str): The period's unique identifier.\n    entry_type (str): The type of statement entry (e.g., 'net_income').\n    new_val (float): The new value to set for the entry.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Financial statement entry updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The referenced company_id and period_id must be valid (exist in their respective tables).\n    - The entry must exist; only updating existing entries is allowed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string"
+          },
+          "period_id": {
+            "type": "string"
+          },
+          "entry_type": {
+            "type": "string"
+          },
+          "new_val": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "company_id",
+          "period_id",
+          "entry_type",
+          "new_val"
+        ]
+      }
+    }
+  ]
+}

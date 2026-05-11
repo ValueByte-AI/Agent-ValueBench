@@ -1,0 +1,496 @@
+{
+  "env_name": "LiquidationMonitoringModule",
+  "description": "A cryptocurrency trading platform liquidation monitoring module collects, stores, and analyzes liquidation events from various exchanges. It maintains up-to-date records of transactions, including details such as coin, exchange, side, size, price, and time, and supports aggregation, statistical analysis, and real-time reporting. Its scope covers cross-exchange tracking, enabling traders and analysts to monitor market dynamics and assess risk.",
+  "initial_parameter_schema": {
+    "liquidation_events": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "coin": {
+            "type": "string"
+          },
+          "exchange": {
+            "type": "string"
+          },
+          "side": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "size": {
+            "type": "number"
+          },
+          "price": {
+            "type": "number"
+          },
+          "time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "event_id",
+          "coin",
+          "exchange",
+          "side",
+          "quantity",
+          "size",
+          "price",
+          "time"
+        ]
+      }
+    },
+    "exchanges": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "exchange_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exchange_id",
+          "name",
+          "status"
+        ]
+      }
+    },
+    "coins": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "coin_symbol": {
+            "type": "string"
+          },
+          "coin_name": {
+            "type": "string"
+          },
+          "asset_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "coin_symbol",
+          "coin_name",
+          "asset_type"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "list_all_coins": [
+      "coins"
+    ],
+    "list_all_exchanges": [
+      "exchanges"
+    ],
+    "get_exchange_by_name": [
+      "exchanges"
+    ],
+    "get_coin_info": [
+      "coins"
+    ],
+    "list_all_liquidation_events": [
+      "liquidation_events"
+    ],
+    "list_liquidation_events_by_coin": [
+      "coins",
+      "liquidation_events"
+    ],
+    "list_liquidation_events_by_exchange": [
+      "exchanges",
+      "liquidation_events"
+    ],
+    "list_liquidation_events_by_side": [
+      "liquidation_events"
+    ],
+    "get_latest_liquidation_event_for_exchange": [
+      "exchanges",
+      "liquidation_events"
+    ],
+    "get_latest_liquidation_event_for_coin": [
+      "coins",
+      "liquidation_events"
+    ],
+    "summarize_liquidation_statistics_by_coin": [
+      "coins",
+      "liquidation_events"
+    ],
+    "summarize_liquidation_statistics_by_exchange": [
+      "exchanges",
+      "liquidation_events"
+    ],
+    "get_liquidation_event_details": [
+      "liquidation_events"
+    ],
+    "add_liquidation_event": [
+      "coins",
+      "exchanges",
+      "liquidation_events"
+    ],
+    "update_liquidation_event": [
+      "coins",
+      "exchanges",
+      "liquidation_events"
+    ],
+    "delete_liquidation_event": [
+      "liquidation_events"
+    ],
+    "add_exchange": [
+      "exchanges"
+    ],
+    "update_exchange_status": [
+      "exchanges"
+    ],
+    "add_coin": [
+      "coins"
+    ],
+    "update_coin_info": [
+      "coins"
+    ]
+  },
+  "tools": [
+    {
+      "name": "list_all_coins",
+      "description": "Retrieve the list of all tradeable coins/assets being monitored.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CoinInfo]  # list of CoinInfo dictionaries (may be empty if none tracked)\n    }\nConstraints:\n    - No constraints; all coins in self.coins are considered.\n    - Always succeeds, even if no coins present.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_all_exchanges",
+      "description": "Retrieve all exchanges currently tracked in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ExchangeInfo],  # List of all exchange info dicts (may be empty)\n    }\n\nConstraints:\n    - No parameters required.\n    - Always succeeds, returns all exchanges tracked.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_exchange_by_name",
+      "description": "Retrieve the exchange_id and full information for the exchange with the given human-readable name.\n\nArgs:\n    name (str): The human-readable name of the exchange (e.g., \"Binance\").\n\nReturns:\n    dict:\n        - On success: {\n              \"success\": True,\n              \"data\": {\n                  \"exchange_id\": str,\n                  \"exchange_info\": ExchangeInfo\n              }\n          }\n        - On failure: {\n              \"success\": False,\n              \"error\": \"Exchange not found\"\n          }\n\nConstraints:\n    - Exchange name comparison is case-sensitive.\n    - If multiple exchanges have the same name (unexpected), the first found is returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_coin_info",
+      "description": "Retrieve metadata for a coin given its symbol.\n\nArgs:\n    coin_symbol (str): The coin's symbol (e.g., \"BTC\", \"ETH\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": CoinInfo  # Metadata for the coin\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description (e.g., coin not found)\n    }\n\nConstraints:\n    - The coin symbol must exist in the module.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "coin_symbol": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "coin_symbol"
+        ]
+      }
+    },
+    {
+      "name": "list_all_liquidation_events",
+      "description": "Retrieve all liquidation events currently stored in the monitoring module.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[LiquidationEventInfo]  # (may be empty if no events)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_liquidation_events_by_coin",
+      "description": "Retrieve all liquidation events for a specified coin.\n\nArgs:\n    coin_symbol (str): Symbol of the coin to filter events by (e.g., \"BTC\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[LiquidationEventInfo],  # All event records for this coin (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error reason, e.g. \"Coin not found\"\n    }\n\nConstraints:\n    - Only returns events for coins present in self.coins.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "coin_symbol": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "coin_symbol"
+        ]
+      }
+    },
+    {
+      "name": "list_liquidation_events_by_exchange",
+      "description": "Retrieve all liquidation events for the specified exchange.\n\nArgs:\n    exchange_id (str): The unique identifier of the exchange.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[LiquidationEventInfo],  # All events for the exchange (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If the exchange does not exist\n    }\n\nConstraints:\n    - The exchange must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "exchange_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exchange_id"
+        ]
+      }
+    },
+    {
+      "name": "list_liquidation_events_by_side",
+      "description": "Retrieve all liquidation events filtered by side/direction.\n\nArgs:\n    side (str): The direction to filter events by. Allowed values: \"long\", \"short\", \"buy\", \"sell\".\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"data\": [LiquidationEventInfo, ...] }\n        - On failure: { \"success\": False, \"error\": str }\nConstraints:\n    - 'side' value must be one of the allowed values (\"long\", \"short\", \"buy\", \"sell\").",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "side": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "side"
+        ]
+      }
+    },
+    {
+      "name": "get_latest_liquidation_event_for_exchange",
+      "description": "Retrieve the most recent liquidation event for a specified exchange.\n\nArgs:\n    exchange_name (str): The name of the exchange to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": LiquidationEventInfo | None  # Most recent event info or None if no events\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., exchange not found\n    }\n\nConstraints:\n    - The exchange must exist in the system.\n    - If there are no liquidation events for the exchange, return data=None.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "exchange_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exchange_name"
+        ]
+      }
+    },
+    {
+      "name": "get_latest_liquidation_event_for_coin",
+      "description": "Retrieve the most recent liquidation event for the specified coin.\n\nArgs:\n    coin_symbol (str): The symbol of the coin (e.g., \"BTC\", \"ETH\").\n\nReturns:\n    dict: \n        Success case:\n            {\n                \"success\": True,\n                \"data\": LiquidationEventInfo  # The latest liquidation event for the given coin\n            }\n        Failure cases:\n            {\n                \"success\": False,\n                \"error\": str  # \"Coin not found\" or \"No liquidation events for coin\"\n            }\n\nConstraints:\n    - The coin must exist in the module.\n    - The result is the liquidation event for this coin with the greatest 'time' value.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "coin_symbol": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "coin_symbol"
+        ]
+      }
+    },
+    {
+      "name": "summarize_liquidation_statistics_by_coin",
+      "description": "For all coins, provide total liquidation value, total amount, mean value, and median value.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[Dict[str, <...>]], # Per-coin statistics:\n            [\n                {\n                    'coin_symbol': str,\n                    'coin_name': str,\n                    'total_value': float,\n                    'total_amount': float,\n                    'mean_value': float,\n                    'median_value': float,\n                },\n                ...\n            ]\n    }\nConstraints:\n    - All statistics are computed over current liquidation events grouped by coin.\n    - Coins with no liquidation events will have zero in all fields.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "summarize_liquidation_statistics_by_exchange",
+      "description": "For each exchange, provide statistics (total, mean, median) of liquidation event size and quantity.\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            exchange_id: {\n                \"exchange_name\": str,\n                \"count\": int,\n                \"total_size\": float,\n                \"mean_size\": float or None,\n                \"median_size\": float or None,\n                \"total_quantity\": float,\n                \"mean_quantity\": float or None,\n                \"median_quantity\": float or None\n            },\n            ...\n        }\n    }\n    or\n    {\"success\": False, \"error\": str}\nConstraints:\n    - Aggregates only for exchanges present in liquidation events and existing in exchanges list.\n    - For exchanges with no liquidation events, fields will use 0 or None as appropriate.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_liquidation_event_details",
+      "description": "Retrieve full details for a specific liquidation event by event_id.\n\nArgs:\n    event_id (str): The unique identifier for the liquidation event.\n\nReturns:\n    dict: \n        - If found: { \"success\": True, \"data\": LiquidationEventInfo }\n        - If not found: { \"success\": False, \"error\": \"Liquidation event not found\" }\n\nConstraints:\n    - The event_id must exist in the stored liquidation events.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "add_liquidation_event",
+      "description": "Adds a new liquidation event to the platform.\n\nArgs:\n    event_id (str): Unique identifier for the event.\n    coin (str): Coin symbol (must exist in tracked coins).\n    exchange (str): Exchange name (must exist in tracked exchanges).\n    side (str): Direction (\"long\", \"short\", \"buy\", \"sell\").\n    quantity (float): Quantity involved.\n    size (float): Size/value of the liquidation.\n    price (float): Price at liquidation.\n    time (float): Unix timestamp when the event occurred.\n\nReturns:\n    dict: { \"success\": True, \"message\": ... } on success,\n          { \"success\": False, \"error\": ... } on error.\n\nConstraints:\n    - event_id must be unique.\n    - coin must refer to an existing coin (by symbol).\n    - exchange must refer to an existing exchange (by name).\n    - side must be one of: \"long\", \"short\", \"buy\", \"sell\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "coin": {
+            "type": "string"
+          },
+          "exchange": {
+            "type": "string"
+          },
+          "side": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "size": {
+            "type": "number"
+          },
+          "price": {
+            "type": "number"
+          },
+          "time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "event_id",
+          "coin",
+          "exchange",
+          "side",
+          "quantity",
+          "size",
+          "price",
+          "time"
+        ]
+      }
+    },
+    {
+      "name": "update_liquidation_event",
+      "description": "Modify the data for an existing liquidation event.\n\nArgs:\n    event_id (str): The unique identifier of the liquidation event to update.\n    updates (dict): Dictionary of fields (as keys) to update with their new values.\n                    Allowed fields: coin, exchange, side, quantity, size, price, time.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Liquidation event updated\" }\n        On failure: { \"success\": False, \"error\": <description> }\n\nConstraints:\n    - event_id must exist in self.liquidation_events\n    - Only allowed fields can be updated; event_id cannot be changed\n    - When updating coin, value must exist in self.coins\n    - When updating exchange, value must exist in self.exchanges (by name)\n    - When updating side, the value must be in {\"long\", \"short\", \"buy\", \"sell\"}\n    - When updating quantity, size, price, value must be valid float\n    - When updating time, value must be valid float (unix timestamp)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "event_id",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "delete_liquidation_event",
+      "description": "Remove a liquidation event from the system.\n\nArgs:\n    event_id (str): The unique identifier of the liquidation event to delete.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Liquidation event <event_id> deleted.\"\n            }\n        On failure (nonexistent event):\n            {\n                \"success\": False,\n                \"error\": \"Liquidation event <event_id> does not exist.\"\n            }\n\nConstraints:\n    - The event_id must exist in the system.\n    - All statistics and queries immediately reflect this deletion.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "add_exchange",
+      "description": "Register a new exchange to be monitored.\n\nArgs:\n    exchange_id (str): Unique identifier for the exchange.\n    name (str): Name of the exchange (e.g., \"Binance\").\n    status (str): Current status of exchange (e.g., \"active\", \"inactive\").\n\nReturns:\n    dict: On success:\n              { \"success\": True, \"message\": \"Exchange <name> (<exchange_id>) added successfully.\" }\n          On error:\n              { \"success\": False, \"error\": \"<error message>\" }\n\nConstraints:\n    - The exchange_id must be unique (not already present).\n    - exchange_id and name must be non-empty strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "exchange_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exchange_id",
+          "name",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "update_exchange_status",
+      "description": "Update the status (e.g., active/inactive) of an exchange.\n\nArgs:\n    exchange_id (str): The unique identifier of the exchange to update.\n    status (str): The new status to set for the exchange.\n\nReturns:\n    dict: \n        - If successful: { \"success\": True, \"message\": \"Exchange status updated.\" }\n        - If exchange_id does not exist: { \"success\": False, \"error\": \"Exchange does not exist.\" }\n\nConstraints:\n    - The exchange_id must refer to an existing exchange.\n    - No restriction on status values is specified; sets to given value verbatim.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "exchange_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exchange_id",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "add_coin",
+      "description": "Add a new coin/asset to the monitored coin list.\n\nArgs:\n    coin_symbol (str): The unique short symbol for the coin (e.g., \"BTC\").\n    coin_name (str): The full name of the coin (e.g., \"Bitcoin\").\n    asset_type (str): The type of asset (e.g., \"crypto\").\n\nReturns:\n    dict: \n        - If success: { \"success\": True, \"message\": \"Coin <coin_symbol> added.\" }\n        - If failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - coin_symbol must be unique (cannot already exist in self.coins)\n    - None of the fields can be empty",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "coin_symbol": {
+            "type": "string"
+          },
+          "coin_name": {
+            "type": "string"
+          },
+          "asset_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "coin_symbol",
+          "coin_name",
+          "asset_type"
+        ]
+      }
+    },
+    {
+      "name": "update_coin_info",
+      "description": "Update the information of a tracked coin/asset.\n\nArgs:\n    coin_symbol (str): The symbol of the coin/asset to update.\n    coin_name (Optional[str]): The new display name (if updating).\n    asset_type (Optional[str]): The new asset type (if updating).\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"message\": \"Coin info for <coin_symbol> updated.\"}\n        On failure:\n            {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - coin_symbol must exist in the coins database.\n    - At least one of coin_name or asset_type must be provided for update.\n    - Only coin_name and asset_type fields are updatable.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "coin_symbol": {
+            "type": "string"
+          },
+          "coin_name": {
+            "type": "string"
+          },
+          "asset_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "coin_symbol",
+          "coin_name",
+          "asset_type"
+        ]
+      }
+    }
+  ]
+}

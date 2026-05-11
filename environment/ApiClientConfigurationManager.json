@@ -1,0 +1,539 @@
+{
+  "env_name": "ApiClientConfigurationManager",
+  "description": "An API client configuration manager oversees the parameters and behaviors associated with connecting to and interacting with one or more APIs from an application. It maintains state for properties such as endpoints, authentication credentials, timeouts, and optional features like caching, retries, and logging. This system allows dynamic adjustment of these settings to tailor API interactions for performance, reliability, or consistency.",
+  "initial_parameter_schema": {
+    "api_clients": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "endpoint_url": {
+            "type": "string"
+          },
+          "authentication": {
+            "type": "object",
+            "properties": {
+              "auth_type": {
+                "type": "string"
+              },
+              "credentials": {},
+              "token_expiration": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "auth_type",
+              "credentials",
+              "token_expiration"
+            ]
+          },
+          "timeout": {
+            "type": "number"
+          },
+          "caching_enabled": {
+            "type": "boolean"
+          },
+          "retry_policy": {
+            "type": "object",
+            "properties": {
+              "max_retries": {
+                "type": "integer"
+              },
+              "backoff_strategy": {
+                "type": "string"
+              },
+              "retryable_status_codes": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                }
+              }
+            },
+            "required": [
+              "max_retries",
+              "backoff_strategy",
+              "retryable_status_codes"
+            ]
+          },
+          "logging_enabled": {
+            "type": "boolean"
+          },
+          "additional_features": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "client_id",
+          "name",
+          "endpoint_url",
+          "authentication",
+          "timeout",
+          "caching_enabled",
+          "retry_policy",
+          "logging_enabled",
+          "additional_features"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_api_client_by_name": [
+      "api_clients"
+    ],
+    "get_api_client_by_id": [
+      "api_clients"
+    ],
+    "list_all_api_clients": [
+      "api_clients"
+    ],
+    "check_client_feature_status": [
+      "api_clients"
+    ],
+    "check_client_endpoint_uniqueness": [
+      "api_clients"
+    ],
+    "get_authentication_info": [
+      "api_clients"
+    ],
+    "get_retry_policy_info": [
+      "api_clients"
+    ],
+    "set_caching_enabled": [
+      "api_clients"
+    ],
+    "set_logging_enabled": [
+      "api_clients"
+    ],
+    "set_retry_policy": [
+      "api_clients"
+    ],
+    "update_timeout": [
+      "api_clients"
+    ],
+    "update_authentication_info": [
+      "api_clients"
+    ],
+    "update_endpoint_url": [
+      "api_clients"
+    ],
+    "add_api_client": [
+      "api_clients"
+    ],
+    "remove_api_client": [
+      "api_clients"
+    ],
+    "set_additional_feature": [
+      "api_clients"
+    ],
+    "update_api_client_name": [
+      "api_clients"
+    ],
+    "update_api_client_id": [
+      "api_clients"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_api_client_by_name",
+      "description": "Retrieve ApiClientInfo for the specified client by its unique name.\n\nArgs:\n    name (str): The unique name of the API client.\n\nReturns:\n    dict: \n      - If found: { \"success\": True, \"data\": ApiClientInfo }\n      - If not found: { \"success\": False, \"error\": \"API client with that name does not exist.\" }\nConstraints:\n    - Client names are unique (at most one match expected).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_api_client_by_id",
+      "description": "Retrieve ApiClientInfo for the specified client by its unique client_id.\n\nArgs:\n    client_id (str): The unique identifier of the API client.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ApiClientInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason the client could not be found\n    }\n\nConstraints:\n    - client_id must exist in the api_clients dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_api_clients",
+      "description": "Return a list of all configured API clients.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ApiClientInfo],  # List of all API client configurations (may be empty)\n    }\n\nConstraints:\n    - None for this operation (read-only).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "check_client_feature_status",
+      "description": "Query the enabled status of a specified feature (e.g., 'caching', 'logging', 'retries') for a given ApiClient.\n\nArgs:\n    client_id (str): The client_id for the API client to query.\n    feature (str): The feature to check ('caching', 'logging', or 'retries').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"enabled\": bool | dict,  # bool for caching/logging, bool or dict info for retries\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - client_id must exist.\n    - feature must be one of: 'caching', 'logging', 'retries'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "feature": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id",
+          "feature"
+        ]
+      }
+    },
+    {
+      "name": "check_client_endpoint_uniqueness",
+      "description": "Checks if the provided endpoint_url is unique across all configured ApiClients.\n\nArgs:\n    endpoint_url (str): The endpoint URL to check for uniqueness.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": bool  # True if unique (not present), False otherwise\n        }\nConstraints:\n    - endpoint_url uniqueness is determined by comparing with all ApiClient's endpoint_url values.\n    - Performs a string equality check.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "endpoint_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "endpoint_url"
+        ]
+      }
+    },
+    {
+      "name": "get_authentication_info",
+      "description": "Retrieve authentication information (auth_type, credentials, token_expiration) for a specific ApiClient.\n\nArgs:\n    client_id (str): The unique identifier of the ApiClient.\n\nReturns:\n    dict:\n        - {\"success\": True, \"data\": AuthenticationInfo}\n        - {\"success\": False, \"error\": <reason>}\nConstraints:\n    - client_id must match an existing ApiClient.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id"
+        ]
+      }
+    },
+    {
+      "name": "get_retry_policy_info",
+      "description": "Retrieve the retry policy settings for a specific ApiClient.\n\nArgs:\n    client_id (str): The unique identifier of the ApiClient.\n\nReturns:\n    dict:\n        - On success: {\n              \"success\": True,\n              \"data\": RetryPolicyInfo  # The retry policy configuration for the specified client\n          }\n        - On failure: {\n              \"success\": False,\n              \"error\": \"ApiClient not found\"\n          }\n\nConstraints:\n    - client_id must exist in the configuration manager.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id"
+        ]
+      }
+    },
+    {
+      "name": "set_caching_enabled",
+      "description": "Set the caching_enabled flag for a specific ApiClient.\n\nArgs:\n    client_id (str): Unique identifier for the ApiClient.\n    enabled (bool): The value to set for caching_enabled.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Caching enabled flag set to <enabled> for ApiClient <client_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"ApiClient with client_id <client_id> not found.\"\n    }\n\nConstraints:\n    - Only updates the caching_enabled property for the specified ApiClient.\n    - Does not affect other features or clients.\n    - ApiClient must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "client_id",
+          "enabled"
+        ]
+      }
+    },
+    {
+      "name": "set_logging_enabled",
+      "description": "Set the logging_enabled flag for a specific ApiClient.\n\nArgs:\n    client_id (str): The unique identifier for the ApiClient.\n    enabled (bool): The desired state of the logging_enabled flag.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Logging enabled set to <enabled> for ApiClient <client_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"ApiClient with client_id <client_id> does not exist\"\n    }\n\nConstraints:\n    - Modifies only the logging_enabled attribute for the specified ApiClient.\n    - Does not affect unrelated configuration settings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "client_id",
+          "enabled"
+        ]
+      }
+    },
+    {
+      "name": "set_retry_policy",
+      "description": "Update the retry policy parameters for a specific ApiClient.\n\nArgs:\n    client_id (str): The unique client identifier.\n    max_retries (int): Maximum number of retry attempts (must be >= 0).\n    backoff_strategy (str): Retry backoff algorithm/strategy.\n    retryable_status_codes (list): List of HTTP status codes (ints) to retry.\n\nReturns:\n    dict: \n        On success:\n        {\n            \"success\": True,\n            \"message\": \"Retry policy updated for client_id <client_id>\"\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": \"reason\"\n        }\n\nConstraints:\n    - Only updates the retry_policy for the specified ApiClient.\n    - Does not affect other features or clients.\n    - max_retries must be >= 0.\n    - backoff_strategy must be a non-empty string.\n    - retryable_status_codes must be a list of valid HTTP status codes (ints, 100-599).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "max_retries": {
+            "type": "integer"
+          },
+          "backoff_strategy": {
+            "type": "string"
+          },
+          "retryable_status_codes": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          }
+        },
+        "required": [
+          "client_id",
+          "max_retries",
+          "backoff_strategy",
+          "retryable_status_codes"
+        ]
+      }
+    },
+    {
+      "name": "update_timeout",
+      "description": "Change the timeout setting (in seconds) for a particular ApiClient.\n\nArgs:\n    client_id (str): The unique client ID identifying the ApiClient.\n    timeout (float): The new timeout value in seconds (must be > 0).\n\nReturns:\n    dict: \n        On success:\n            {\"success\": True, \"message\": \"Timeout updated for client <client_id>\"}\n        On failure:\n            {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - client_id must exist in api_clients.\n    - timeout must be a positive number.\n    - Only modifies the timeout for the specified ApiClient.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "timeout": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "client_id",
+          "timeout"
+        ]
+      }
+    },
+    {
+      "name": "update_authentication_info",
+      "description": "Update the authentication information (auth_type, credentials, token_expiration)\nfor the specified ApiClient.\n\nArgs:\n    client_id (str): The identifier for the ApiClient to update.\n    auth_type (str): Authentication method/type (e.g., 'APIKey', 'OAuth').\n    credentials (Any): Credentials required for the given auth_type.\n    token_expiration (Optional[str]): Optional expiration time for the auth token.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Authentication info updated for ApiClient <client_id>\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": <reason>\n            }\n\nConstraints:\n    - client_id must exist in api_clients.\n    - auth_type must be non-empty.\n    - credentials must be non-empty.\n    - Does not update unrelated settings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "auth_type": {
+            "type": "string"
+          },
+          "credentials": {},
+          "token_expiration": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id",
+          "auth_type",
+          "credentials"
+        ]
+      }
+    },
+    {
+      "name": "update_endpoint_url",
+      "description": "Change the endpoint_url for a given ApiClient, ensuring uniqueness across all clients.\n\nArgs:\n    client_id (str): The unique identifier of the ApiClient to update.\n    new_endpoint_url (str): The new endpoint URL to set.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Success message on update,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message: client not found, endpoint not unique, etc.\n    }\n\nConstraints:\n    - Each ApiClient's endpoint_url must be unique.\n    - Only update the target client; others are unaffected.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "new_endpoint_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id",
+          "new_endpoint_url"
+        ]
+      }
+    },
+    {
+      "name": "add_api_client",
+      "description": "Add/register a new ApiClient configuration, enforcing constraints (unique name/client_id and unique endpoint_url).\n\nArgs:\n    client_id (str): Unique identifier for the ApiClient.\n    name (str): Unique name for the ApiClient.\n    endpoint_url (str): Unique API endpoint.\n    authentication (AuthenticationInfo): Authentication settings.\n    timeout (float): Timeout in seconds.\n    caching_enabled (bool): Whether caching is enabled.\n    retry_policy (RetryPolicyInfo): Retry configuration.\n    logging_enabled (bool): Whether logging is enabled.\n    additional_features (dict): Extra per-client features.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"ApiClient <client_id> added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str (Cause of failure)\n    }\n\nConstraints:\n    - client_id and name must be unique.\n    - endpoint_url must be unique across all clients.\n    - Do not overwrite existing clients.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "endpoint_url": {
+            "type": "string"
+          },
+          "authentication": {
+            "type": "object",
+            "properties": {
+              "auth_type": {
+                "type": "string"
+              },
+              "credentials": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object"
+                  }
+                ]
+              },
+              "token_expiration": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "auth_type",
+              "credentials"
+            ]
+          },
+          "timeout": {
+            "type": "number"
+          },
+          "caching_enabled": {
+            "type": "boolean"
+          },
+          "retry_policy": {
+            "type": "object",
+            "properties": {
+              "max_retries": {
+                "type": "integer"
+              },
+              "backoff_strategy": {
+                "type": "string"
+              },
+              "retryable_status_codes": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                }
+              }
+            },
+            "required": [
+              "max_retries",
+              "backoff_strategy",
+              "retryable_status_codes"
+            ]
+          },
+          "logging_enabled": {
+            "type": "boolean"
+          },
+          "additional_features": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "client_id",
+          "name",
+          "endpoint_url",
+          "authentication",
+          "timeout",
+          "caching_enabled",
+          "retry_policy",
+          "logging_enabled",
+          "additional_features"
+        ]
+      }
+    },
+    {
+      "name": "remove_api_client",
+      "description": "Remove a specific ApiClient by client_id or name.\n\nArgs:\n    client_id (str, optional): The unique client_id of the ApiClient to remove.\n    name (str, optional): The unique name of the ApiClient to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"ApiClient '<identifier>' removed successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Description of reason for failure\"\n    }\n\nConstraints:\n    - Must provide at least one of client_id or name.\n    - If both provided, they must refer to the same ApiClient.\n    - The ApiClient must exist.\n    - Removal only affects the specified ApiClient.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "set_additional_feature",
+      "description": "Enable, disable, or set a specified additional feature for a given ApiClient.\n\nArgs:\n    client_id (str): The unique ID of the ApiClient.\n    feature_name (str): The name/key of the feature to set.\n    feature_value (Any): The value to set for this feature.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Feature '<feature_name>' updated for ApiClient '<client_id>'\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"ApiClient with client_id '<client_id>' does not exist.\"\n    }\n\nConstraints:\n    - Only modifies the given client's additional_features, does not affect others.\n    - client_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "feature_name": {
+            "type": "string"
+          },
+          "feature_value": {}
+        },
+        "required": [
+          "client_id",
+          "feature_name",
+          "feature_value"
+        ]
+      }
+    },
+    {
+      "name": "update_api_client_name",
+      "description": "Change the 'name' of an ApiClient, ensuring the new name is unique among all ApiClients.\n\nArgs:\n    client_id (str): The client_id of the ApiClient to update.\n    new_name (str): The new name to assign to the ApiClient.\n\nReturns:\n    dict: \n        On success:\n            {\"success\": True, \"message\": \"ApiClient name updated successfully\"}\n        On error:\n            {\"success\": False, \"error\": \"...\"}\nConstraints:\n    - client_id must exist.\n    - new_name must be unique (not used by any other ApiClient).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "new_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id",
+          "new_name"
+        ]
+      }
+    },
+    {
+      "name": "update_api_client_id",
+      "description": "Change the client_id of an existing ApiClient, ensuring uniqueness.\n\nArgs:\n    old_client_id (str): The client_id of the ApiClient to update.\n    new_client_id (str): The new client_id to assign.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"message\": \"ApiClient client_id updated from <old> to <new>.\"\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": <reason>\n            }\n\nConstraints:\n    - Each ApiClient must have a unique client_id.\n    - The old_client_id must exist.\n    - The new_client_id must not already exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "old_client_id": {
+            "type": "string"
+          },
+          "new_client_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "old_client_id",
+          "new_client_id"
+        ]
+      }
+    }
+  ]
+}

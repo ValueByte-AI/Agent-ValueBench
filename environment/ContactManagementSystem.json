@@ -1,0 +1,443 @@
+{
+  "env_name": "ContactManagementSystem",
+  "description": "A contact management system organizes and stores personal or professional contact records, each uniquely indexed by an identifier. It maintains stateful information such as names, phone numbers, emails, and addresses, and supports operations for searching, updating, adding, or deleting contacts. Such systems are widely used for keeping track of communications and relationships in both individual and organizational contexts.",
+  "initial_parameter_schema": {
+    "contacts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "phone_numbers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "emails": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "addresses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "contact_id"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_contact_by_id": [
+      "contacts"
+    ],
+    "get_contacts_by_ids": [
+      "contacts"
+    ],
+    "search_contacts_by_name": [
+      "contacts"
+    ],
+    "search_contacts_by_phone": [
+      "contacts"
+    ],
+    "search_contacts_by_email": [
+      "contacts"
+    ],
+    "search_contacts_by_address": [
+      "contacts"
+    ],
+    "list_all_contacts": [
+      "contacts"
+    ],
+    "add_contact": [
+      "contacts"
+    ],
+    "update_contact": [
+      "contacts"
+    ],
+    "update_contact_partial": [
+      "contacts"
+    ],
+    "add_phone_to_contact": [
+      "contacts"
+    ],
+    "add_email_to_contact": [
+      "contacts"
+    ],
+    "add_address_to_contact": [
+      "contacts"
+    ],
+    "remove_phone_from_contact": [
+      "contacts"
+    ],
+    "remove_email_from_contact": [
+      "contacts"
+    ],
+    "remove_address_from_contact": [
+      "contacts"
+    ],
+    "delete_contact": [
+      "contacts"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_contact_by_id",
+      "description": "Retrieve the complete contact information for a given contact_id.\n\nArgs:\n    contact_id (str): The unique identifier for the contact.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": ContactInfo\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": \"Contact not found\"\n        }\n\nConstraints:\n    - contact_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "contact_id"
+        ]
+      }
+    },
+    {
+      "name": "get_contacts_by_ids",
+      "description": "Retrieve contact information for a list of contact_ids in a single batch.\n\nArgs:\n    contact_ids (list[str]): List of unique contact identifiers to look up.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ContactInfo]  # Only the contacts found are returned. List may be empty.\n    }\n\nConstraints:\n    - If contact_ids is empty, returns an empty list.\n    - If a contact_id does not exist, it is skipped (no error).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "contact_ids"
+        ]
+      }
+    },
+    {
+      "name": "search_contacts_by_name",
+      "description": "Find contacts whose name matches or partially matches the provided string (case-insensitive).\n\nArgs:\n    name_query (str): The substring or full string to search for in contact names.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ContactInfo],  # List of matching contacts (may be empty)\n    }\n\nConstraints:\n    - The match is case-insensitive and partial (substring search).\n    - No error if there are no matches; an empty list is returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name_query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name_query"
+        ]
+      }
+    },
+    {
+      "name": "search_contacts_by_phone",
+      "description": "Finds and returns all contacts containing a specific phone number.\n\nArgs:\n    phone_number (str): The phone number to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ContactInfo],  # Contacts whose phone_numbers contain the given number\n    }\n\nConstraints:\n    - Exact match in contact's phone_numbers list.\n    - No error is raised if no contacts are found; returns an empty list in that case.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "phone_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "phone_number"
+        ]
+      }
+    },
+    {
+      "name": "search_contacts_by_email",
+      "description": "Find all contacts containing the specified email address.\n\nArgs:\n    email (str): The email address to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ContactInfo],  # List of contacts with the given email, may be empty\n    }\n\nConstraints:\n    - Email can appear in multiple contacts.\n    - No error is returned if no contact matches (returns empty list).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      }
+    },
+    {
+      "name": "search_contacts_by_address",
+      "description": "Find contacts associated with a specific address substring.\n\nArgs:\n    address_query (str): Substring to search for within all addresses on each contact.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ContactInfo],  # All contacts where at least one address contains the substring.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description if invalid input.\n    }\n\nConstraints:\n    - Searches are case-insensitive.\n    - Address_query must be a non-empty string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "address_query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "address_query"
+        ]
+      }
+    },
+    {
+      "name": "list_all_contacts",
+      "description": "Retrieve the information of all contacts currently stored in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ContactInfo]  # List of all contacts; empty if none exist\n    }\n\nConstraints:\n    - No parameters required.\n    - Always succeeds; returns [] if no contacts are present.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "add_contact",
+      "description": "Create a new contact with a unique contact_id and associated information.\n\nArgs:\n    contact_id (str): Unique identifier for the contact.\n    name (str): Contact person's name.\n    phone_numbers (List[str]): List of phone numbers for the contact.\n    emails (List[str]): List of email addresses for the contact.\n    addresses (List[str]): List of street/postal addresses.\n\nReturns:\n    dict: { \"success\": True, \"message\": \"Contact <contact_id> added\" }\n          OR\n          { \"success\": False, \"error\": \"Contact ID already exists\" }\n\nConstraints:\n    - contact_id must be unique in the system.\n    - phone_numbers, emails, addresses must be lists (empty lists allowed).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "phone_numbers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "emails": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "addresses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "contact_id"
+        ]
+      }
+    },
+    {
+      "name": "update_contact",
+      "description": "Update all information of the contact with the given contact_id.\n\nArgs:\n    contact_id (str): Unique identifier of the contact to update.\n    name (str): New name.\n    phone_numbers (List[str]): Full list of new phone numbers.\n    emails (List[str]): Full list of new email addresses.\n    addresses (List[str]): Full list of new addresses.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Contact (<contact_id>) updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Contact does not exist.\"\n    }\n\nConstraints:\n    - The contact must already exist (contact_id present in the system).\n    - Entire contact information is replaced with the provided data.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "phone_numbers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "emails": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "addresses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "contact_id",
+          "name",
+          "phone_numbers",
+          "emails",
+          "addresses"
+        ]
+      }
+    },
+    {
+      "name": "update_contact_partial",
+      "description": "Partially update specific fields for an existing contact.\n\nArgs:\n    contact_id (str): The unique identifier for the contact.\n    name (Optional[str]): New name (overwrites previous).\n    phone_numbers (Optional[List[str]]): New list of phone numbers (overwrites previous).\n    emails (Optional[List[str]]): New list of emails (overwrites previous).\n    addresses (Optional[List[str]]): New list of addresses (overwrites previous).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Updated contact fields: ...\"  # which fields were updated\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # error description\n    }\nConstraints:\n    - contact_id must exist.\n    - Input types for each field must be correct if provided.\n    - Each contact remains unique by contact_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "phone_numbers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "emails": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "addresses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "contact_id",
+          "name",
+          "phone_numbers",
+          "emails",
+          "addresses"
+        ]
+      }
+    },
+    {
+      "name": "add_phone_to_contact",
+      "description": "Add a new phone number to the specified contact.\n\nArgs:\n    contact_id (str): The unique identifier of the contact record.\n    phone_number (str): The phone number to add.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Phone number added to contact.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The contact with `contact_id` must exist.\n    - The `phone_number` must not already be present for the contact.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string"
+          },
+          "phone_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "contact_id",
+          "phone_number"
+        ]
+      }
+    },
+    {
+      "name": "add_email_to_contact",
+      "description": "Add a new email address to an existing contact.\n\nArgs:\n    contact_id (str): The unique identifier of the contact to update.\n    email (str): The email address to add.\n\nReturns:\n    dict: \n        { \"success\": True, \"message\": \"Email added to contact.\" }\n        or\n        { \"success\": False, \"error\": \"Reason for failure.\" }\n\nConstraints:\n    - The contact identified by contact_id must exist.\n    - Do not add duplicate emails to a contact.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "contact_id",
+          "email"
+        ]
+      }
+    },
+    {
+      "name": "add_address_to_contact",
+      "description": "Add a new address to an existing contact.\n\nArgs:\n    contact_id (str): Unique identifier for the contact.\n    address (str): New address to be added.\n\nReturns:\n    dict:\n        {\"success\": True, \"message\": \"Address added to contact <contact_id>\"}\n        or\n        {\"success\": False, \"error\": \"Contact not found\"}\n        or\n        {\"success\": False, \"error\": \"Address already exists for contact\"}\n\nConstraints:\n    - Contact must exist.\n    - Address will not be added if it already exists in the contact's address list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "contact_id",
+          "address"
+        ]
+      }
+    },
+    {
+      "name": "remove_phone_from_contact",
+      "description": "Remove a phone number from the specified contact's record.\n\nArgs:\n    contact_id (str): Unique identifier of the contact.\n    phone_number (str): The phone number to remove.\n\nReturns:\n    dict: {\"success\": True, \"message\": \"...\"} on success,\n          {\"success\": False, \"error\": \"...\"} on failure.\n\nConstraints:\n    - The contact must exist (contact_id must be present in the system).\n    - The phone number must already be associated with the contact.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string"
+          },
+          "phone_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "contact_id",
+          "phone_number"
+        ]
+      }
+    },
+    {
+      "name": "remove_email_from_contact",
+      "description": "Remove an email address from a contact's record.\n\nArgs:\n    contact_id (str): The unique identifier of the contact.\n    email (str): The email address to remove.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"message\": \"Email removed from contact.\"}\n        On failure:\n            {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - The contact must exist.\n    - The specified email must exist in the contact's emails list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "contact_id",
+          "email"
+        ]
+      }
+    },
+    {
+      "name": "remove_address_from_contact",
+      "description": "Remove an address from a contact's record.\n\nArgs:\n    contact_id (str): Unique identifier of the contact.\n    address (str): The address to remove from contact's addresses.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Address removed from contact.\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The contact must exist.\n    - The address must be present in the contact's addresses list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "contact_id",
+          "address"
+        ]
+      }
+    },
+    {
+      "name": "delete_contact",
+      "description": "Permanently delete a contact from the system by contact_id.\n\nArgs:\n    contact_id (str): The unique identifier of the contact to delete.\n\nReturns:\n    dict: \n        - { \"success\": True, \"message\": \"Contact deleted\" } on success\n        - { \"success\": False, \"error\": \"Contact not found\" } if contact_id does not exist\n\nConstraints:\n    - Ensures only existing contacts can be deleted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "contact_id"
+        ]
+      }
+    }
+  ]
+}

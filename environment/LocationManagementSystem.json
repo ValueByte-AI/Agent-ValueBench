@@ -1,0 +1,433 @@
+{
+  "env_name": "LocationManagementSystem",
+  "description": "A Location Management System maintains a structured, hierarchical representation of geographic or organizational locations, each uniquely identified and potentially available in multiple languages. The environment supports querying for locations by ID, traversing parent-child relationships, and retrieving names or properties at various hierarchy levels. Such systems are widely used in logistics, mapping, enterprise resource planning, and other domains that require standardized location handling.",
+  "initial_parameter_schema": {
+    "locations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "parent_location_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "level": {
+            "type": "integer"
+          },
+          "prop": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "location_id",
+          "parent_location_id",
+          "level",
+          "prop"
+        ]
+      }
+    },
+    "location_names": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id",
+          "language",
+          "name"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_location_by_id": [
+      "locations"
+    ],
+    "get_location_name": [
+      "location_names",
+      "locations"
+    ],
+    "get_child_locations": [
+      "locations"
+    ],
+    "get_parent_location": [
+      "locations"
+    ],
+    "get_ancestor_locations": [
+      "locations"
+    ],
+    "get_descendant_locations": [
+      "locations"
+    ],
+    "list_locations_by_level": [
+      "locations"
+    ],
+    "get_hierarchical_structure": [
+      "location_names",
+      "locations"
+    ],
+    "is_supported_language_for_location": [
+      "location_names",
+      "locations"
+    ],
+    "add_location": [
+      "locations"
+    ],
+    "update_location": [
+      "locations"
+    ],
+    "delete_location": [
+      "location_names",
+      "locations"
+    ],
+    "add_location_name": [
+      "location_names",
+      "locations"
+    ],
+    "update_location_name": [
+      "location_names"
+    ],
+    "delete_location_name": [
+      "location_names"
+    ],
+    "move_location": [
+      "locations"
+    ],
+    "validate_hierarchy": [
+      "locations"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_location_by_id",
+      "description": "Retrieve all metadata (LocationInfo) for a given location_id.\n\nArgs:\n    location_id (str): Unique identifier for the location.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": LocationInfo,  # If location_id is found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If the location_id does not exist\n    }\n\nConstraints:\n    - location_id must exist in the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      }
+    },
+    {
+      "name": "get_location_name",
+      "description": "Retrieve the name of a location in the specified language, if available.\n\nArgs:\n    location_id (str): The unique identifier of the location.\n    language (str): The language code to retrieve the name in.\n\nReturns:\n    dict: \n       - On success: {\n            \"success\": True,\n            \"data\": LocationNameInfo\n         }\n       - On failure (location/language not found): {\n            \"success\": False,\n            \"error\": str\n         }\n\nConstraints:\n    - location_id must exist in the system.\n    - Name retrieval only succeeds for supported languages per location (i.e., entry must exist in location_names).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      }
+    },
+    {
+      "name": "get_child_locations",
+      "description": "List all direct child locations for a given location_id.\n\nArgs:\n    location_id (str): The ID of the parent location.\n\nReturns:\n    dict: \n        - { \"success\": True, \"data\": [LocationInfo, ...] } on success (data may be empty if no children),\n        - { \"success\": False, \"error\": \"Location not found\" } if location_id is invalid.\n\nConstraints:\n    - location_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      }
+    },
+    {
+      "name": "get_parent_location",
+      "description": "Retrieve the immediate parent LocationInfo of the given location_id.\n\nArgs:\n    location_id (str): The location's unique identifier.\n\nReturns:\n    dict:\n        - {\"success\": True, \"data\": LocationInfo} if parent exists\n        - {\"success\": True, \"data\": None} if location is root (no parent)\n        - {\"success\": False, \"error\": str} if location_id invalid or parent data missing\n\nConstraints:\n    - location_id must exist in the system.\n    - Parent location_id (if present) must exist, else error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      }
+    },
+    {
+      "name": "get_ancestor_locations",
+      "description": "Retrieve all ancestor locations up to the root for the given location_id.\n\nArgs:\n    location_id (str): The ID of the location from which to start tracing ancestors.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[LocationInfo],  # Ordered from immediate parent to root (excluding the input location)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g. location not found, hierarchy error\n    }\n\nConstraints:\n    - The location_id must exist.\n    - No cycles in the hierarchy (if a cycle is detected, error reported).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      }
+    },
+    {
+      "name": "get_descendant_locations",
+      "description": "Retrieve all descendant locations (at any depth) for a given location_id.\n\nArgs:\n    location_id (str): The unique identifier of the location whose descendants are to be found.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[LocationInfo]  # All descendant locations. May be empty if none.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the reason for failure\n    }\n\nConstraints:\n    - location_id must exist in self.locations.\n    - Structure is acyclic; traversal is guaranteed to terminate.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      }
+    },
+    {
+      "name": "list_locations_by_level",
+      "description": "Retrieve all locations at a specific hierarchy level.\n\nArgs:\n    level (int): The hierarchical level to retrieve locations for (typically 0 or positive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[LocationInfo]  # List of LocationInfo for the given level (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g. invalid level\n    }\n\nConstraints:\n    - The input `level` must be a non-negative integer.\n    - Output is the full info for all locations with that level.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "level"
+        ]
+      }
+    },
+    {
+      "name": "get_hierarchical_structure",
+      "description": "Retrieve the full hierarchical subtree starting from the specified location_id, including for each node:\n    - All location info\n    - Optionally the location name in a specified language (if available)\n    - Children recursively\n\nArgs:\n    location_id (str): Root location for the hierarchy query.\n    language (str, optional): If supplied, provide the name in this language (if defined) per location.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": <tree-structured dict rooted at location_id>\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Root location must exist.\n    - Each child is included under 'children'.\n    - If language is requested, include 'name' field in each node where available.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id",
+          "language"
+        ]
+      }
+    },
+    {
+      "name": "is_supported_language_for_location",
+      "description": "Check if a specified language is supported (i.e., a name exists) for a location.\n\nArgs:\n    location_id (str): Unique location identifier.\n    language (str): Language code to check.\n\nReturns:\n    dict:\n        On success: {\n            \"success\": True,\n            \"data\": { \"supported\": bool }\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - Fails if location_id does not exist.\n    - Supported means a LocationName exists for (location_id, language).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id",
+          "language"
+        ]
+      }
+    },
+    {
+      "name": "add_location",
+      "description": "Add a new location to the system, ensuring uniqueness and correct hierarchy constraints.\n\nArgs:\n    location_id (str): Unique identifier for the location.\n    parent_location_id (Optional[str]): ID of the parent location, or None for root.\n    level (int): The depth in the hierarchy. Should be 0 for root, else parent's level + 1.\n    prop (dict): Meta-data for the location.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Location <location_id> added.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - location_id must be unique (not already in self.locations).\n    - parent_location_id must be None (for root) or an existing location_id.\n    - level must be 0 if root, else parent level + 1.\n    - parent_location_id cannot be the same as location_id (no cycles).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "parent_location_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "level": {
+            "type": "integer"
+          },
+          "prop": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "location_id",
+          "parent_location_id",
+          "level",
+          "prop"
+        ]
+      }
+    },
+    {
+      "name": "update_location",
+      "description": "Update the metadata, parent, or level of an existing location.\n\nArgs:\n    location_id (str): The unique ID of the location to update.\n    parent_location_id (Optional[str]): New parent location ID, if changing the parent.\n    level (Optional[int]): New hierarchy level for this location.\n    prop (Optional[dict]): New property dictionary for this location.\n\nReturns:\n    dict: \n      - On success: { \"success\": True, \"message\": \"Location updated.\" }\n      - On failure: { \"success\": False, \"error\": <reason str> }\n\nConstraints:\n    - location_id must exist.\n    - parent_location_id, if provided, must exist and must not be self.\n    - Level consistent: if parent is specified, level == parent's level + 1.\n    - No cycles can be introduced by reparenting.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "parent_location_id": {
+            "type": "string"
+          },
+          "level": {
+            "type": "integer"
+          },
+          "prop": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_location",
+      "description": "Removes a location and all its descendants from the system (cascading delete).\nAlso removes all associated LocationNameInfo for those locations.\n\nArgs:\n    location_id (str): The unique ID of the location to delete.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Location <id> and its descendants deleted.\" }\n        - On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - location_id must exist.\n    - All descendants are removed recursively (cascading delete).\n    - All names for deleted locations are also removed.\n    - No cycles are assumed in parent-child relationships.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      }
+    },
+    {
+      "name": "add_location_name",
+      "description": "Add a name for a location in a given language.\n\nArgs:\n    location_id (str): Unique identifier of the location.\n    language (str): Language code (e.g., \"en\", \"fr\") for the name.\n    name (str): Name of the location in the specified language.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"message\": \"Location name added for location_id in language.\"}\n        On failure:\n            {\"success\": False, \"error\": <reason>}\nConstraints:\n    - location_id must exist in self.locations.\n    - (location_id, language) must NOT already exist in self.location_names.\n    - No explicit restriction on language code or name in the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id",
+          "language",
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "update_location_name",
+      "description": "Update the name for a given location in a specific language.\n\nArgs:\n    location_id (str): Unique identifier of the location.\n    language (str): Target language for which the name is being updated.\n    name (str): The new name for the location.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Location name updated for location_id <location_id> in language <language>.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Location name for this language does not exist.\"\n            }\n\nConstraints:\n    - The (location_id, language) entry must already exist.\n    - Only supported languages for a location may be updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id",
+          "language",
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "delete_location_name",
+      "description": "Remove the name for a location in a specific language.\n\nArgs:\n    location_id (str): The unique identifier for the location.\n    language (str): The language code of the name to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": f\"Location name deleted for location_id={location_id}, language={language}\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Location name in specified language does not exist\"\n    }\n\nConstraints:\n    - The (location_id, language) pair must exist in location_names to be removed.\n    - Operation does not affect location hierarchy or other languages.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id",
+          "language"
+        ]
+      }
+    },
+    {
+      "name": "move_location",
+      "description": "Change the parent of a location, ensuring no cycles, correct hierarchy, and correct level adjustment.\n\nArgs:\n    location_id (str): The location to move.\n    new_parent_location_id (Optional[str]): The new parent location's ID, or None for root.\n\nReturns:\n    dict: \n        { \"success\": True, \"message\": \"Location moved successfully.\" }\n        OR\n        { \"success\": False, \"error\": str }\n\nConstraints:\n    - Both IDs must exist (unless new_parent_location_id is None, which means move to root).\n    - Cannot move under self or any descendant (must not introduce cycle).\n    - Level of moved node and all descendants must update.\n    - If new_parent_location_id is None, level must be 0.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "new_parent_location_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "location_id",
+          "new_parent_location_id"
+        ]
+      }
+    },
+    {
+      "name": "validate_hierarchy",
+      "description": "Validate the acyclicity and level consistency of the location hierarchy or a subtree.\n\nArgs:\n    starting_location_id (str, optional): Starting node for subtree validation.\n        If None, checks the entire structure.\n\nReturns:\n    dict: On success:\n              { \"success\": True, \"message\": \"Hierarchy is acyclic and levels are consistent.\" }\n          On failure:\n              { \"success\": False, \"error\": <description(s)> }\nConstraints:\n    - No cycles allowed in the hierarchy (tree/DAG).\n    - Each location's `level` must be one more than its parent (or 0 for root).\n    - parent_location_id must be either None (root) or a valid location_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "starting_location_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+        ]
+      }
+    }
+  ]
+}

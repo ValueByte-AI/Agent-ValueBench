@@ -1,0 +1,541 @@
+{
+  "env_name": "LibraryManagementSystem",
+  "description": "A Library Management System organizes collections of books and other resources by assigning unique identifiers, tracking their metadata, and recording inventory changes. It typically supports operations for adding, deleting, searching, and updating book entries, as well as managing user interactions like borrowing and returning items. The system maintains persistent state, enabling libraries to efficiently manage their resources and provide services to patrons.",
+  "initial_parameter_schema": {
+    "books": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "publisher": {
+            "type": "string"
+          },
+          "year": {
+            "type": "integer"
+          },
+          "genre": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id",
+          "title",
+          "author",
+          "publisher",
+          "year",
+          "genre",
+          "status",
+          "location"
+        ]
+      }
+    },
+    "patrons": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "patron_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_details": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patron_id",
+          "name",
+          "contact_details",
+          "account_status"
+        ]
+      }
+    },
+    "loan_records": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "loan_id": {
+            "type": "string"
+          },
+          "book_id": {
+            "type": "string"
+          },
+          "patron_id": {
+            "type": "string"
+          },
+          "checkout_date": {
+            "type": "string"
+          },
+          "due_date": {
+            "type": "string"
+          },
+          "return_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "loan_id",
+          "book_id",
+          "patron_id",
+          "checkout_date",
+          "due_date",
+          "return_date",
+          "status"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_book_by_id": [
+      "books"
+    ],
+    "list_books": [
+      "books"
+    ],
+    "get_book_status": [
+      "books"
+    ],
+    "list_books_by_status": [
+      "books"
+    ],
+    "get_loan_records_for_book": [
+      "books",
+      "loan_records"
+    ],
+    "get_patron_by_id": [
+      "patrons"
+    ],
+    "get_loan_record_by_id": [
+      "loan_records"
+    ],
+    "list_active_loans_for_book": [
+      "books",
+      "loan_records"
+    ],
+    "list_all_loan_records": [
+      "loan_records"
+    ],
+    "remove_book": [
+      "books",
+      "loan_records"
+    ],
+    "update_loan_record_status": [
+      "books",
+      "loan_records"
+    ],
+    "invalidate_loan_records_for_book": [
+      "books",
+      "loan_records"
+    ],
+    "add_book": [
+      "books"
+    ],
+    "update_book_info": [
+      "books"
+    ],
+    "add_loan_record": [
+      "books",
+      "loan_records",
+      "patrons"
+    ],
+    "remove_loan_record": [
+      "loan_records"
+    ],
+    "update_patron_info": [
+      "patrons"
+    ],
+    "add_patron": [
+      "patrons"
+    ],
+    "remove_patron": [
+      "loan_records",
+      "patrons"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_book_by_id",
+      "description": "Retrieve detailed information for a specific book using its book_id.\n\nArgs:\n    book_id (str): Unique identifier for the book.\n\nReturns:\n    dict: \n        { \"success\": True, \"data\": BookInfo }\n        OR\n        { \"success\": False, \"error\": \"Book not found\" }\nConstraints:\n    - The book_id must exist in the collection.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id"
+        ]
+      }
+    },
+    {
+      "name": "list_books",
+      "description": "Retrieve a list of all books in the collection.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BookInfo]  # List of all books in the library (empty if none)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_book_status",
+      "description": "Retrieve the current status ('available' or 'on_loan') of a book by its ID.\n\nArgs:\n    book_id (str): The unique identifier for the book.\n\nReturns:\n    dict:\n        - On success: {\n            \"success\": True,\n            \"data\": {\n                \"book_id\": str,\n                \"status\": str  # 'available' or 'on_loan'\n            }\n        }\n        - On failure: {\n            \"success\": False,\n            \"error\": \"Book not found\"\n        }\n\nConstraints:\n    - The book_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id"
+        ]
+      }
+    },
+    {
+      "name": "list_books_by_status",
+      "description": "List all books filtered by their status.\n\nArgs:\n    status (str): The status to filter books by. Must be either 'available' or 'on_loan'.\n\nReturns:\n    dict:\n        - On success: {\n              \"success\": True,\n              \"data\": List[BookInfo]  # List of books with the given status\n          }\n        - On error (invalid status): {\n              \"success\": False,\n              \"error\": \"Invalid status: must be 'available' or 'on_loan'.\"\n          }\n\nConstraints:\n    - Only supports status 'available' or 'on_loan'.\n    - No side effects; information query only.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "get_loan_records_for_book",
+      "description": "Retrieve all loan records (LoanRecordInfo) associated with the given book_id.\n\nArgs:\n    book_id (str): The unique identifier for the book.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[LoanRecordInfo],  # List may be empty if no records\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description, e.g. book does not exist\n    }\n\nConstraints:\n    - Only books present in the collection can be queried.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id"
+        ]
+      }
+    },
+    {
+      "name": "get_patron_by_id",
+      "description": "Retrieve detailed information for a specific patron using patron_id.\n\nArgs:\n    patron_id (str): The unique identifier of the patron.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": PatronInfo  # Patron metadata if patron exists\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if patron does not exist\n    }\n\nConstraints:\n    - patron_id must exist in the system for success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patron_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patron_id"
+        ]
+      }
+    },
+    {
+      "name": "get_loan_record_by_id",
+      "description": "Retrieve details for a specific loan record using the provided loan_id.\n\nArgs:\n    loan_id (str): Identifier of the loan record.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"data\": LoanRecordInfo }\n        On failure: { \"success\": False, \"error\": \"Loan record not found\" }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "loan_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "loan_id"
+        ]
+      }
+    },
+    {
+      "name": "list_active_loans_for_book",
+      "description": "List all active loan records for a given book.\n\nArgs:\n    book_id (str): The unique identifier of the book to query.\n\nReturns:\n    dict: \n      On success:\n        {\n          \"success\": True,\n          \"data\": List[LoanRecordInfo]  # Active ('active' or 'overdue') loans for this book\n        }\n      On error:\n        {\n          \"success\": False,\n          \"error\": \"Book does not exist\"\n        }\nConstraints:\n    - book_id must exist in the collection; otherwise, operation fails.\n    - \"Active\" means loan record status is 'active' or 'overdue'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_loan_records",
+      "description": "Retrieve all loan records currently in the library system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[LoanRecordInfo]  # List of all loan records (may be empty)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "remove_book",
+      "description": "Permanently delete a book from the library collection after validating all constraints.\n\nArgs:\n    book_id (str): The unique identifier of the book to be removed.\n\nReturns:\n    dict: On success:\n              { \"success\": True, \"message\": \"Book <book_id> removed and related loan records invalidated\" }\n          On failure:\n              { \"success\": False, \"error\": <str> }\n\nConstraints:\n    - The book must exist.\n    - The book must have status 'available' (not on loan).\n    - All related loan records (if any) must be invalidated (their 'status' set to 'invalidated').",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id"
+        ]
+      }
+    },
+    {
+      "name": "update_loan_record_status",
+      "description": "Update the status field of all loan records associated with the given book_id.\n\nArgs:\n    book_id (str): The unique identifier of the book whose loan records will be updated.\n    new_status (str): The new status to set for each loan record (e.g., 'invalidated', 'cancelled').\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Updated status of N loan records for book_id X to 'Y'\"\n            }\n            (or, if no records)\n            {\n                \"success\": True,\n                \"message\": \"No loan records found for book_id X.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Book with id X does not exist.\"\n            }\n\nConstraints:\n    - Book with book_id must exist.\n    - Only the status field in LoanRecordInfo is updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "invalidate_loan_records_for_book",
+      "description": "Mark all loan records for the specified book as invalid or update their state accordingly.\n\nArgs:\n    book_id (str): The unique identifier of the book whose loan records should be invalidated.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"All loan records for book <book_id> have been invalidated or updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The book_id must exist in the system.\n    - Only loan records with book_id matching the input should be affected.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id"
+        ]
+      }
+    },
+    {
+      "name": "add_book",
+      "description": "Add a new book to the collection with all required attributes, ensuring a unique book_id.\n\nArgs:\n    book_id (str): Unique identifier for the book.\n    title (str): Title of the book.\n    author (str): Author of the book.\n    publisher (str): Publisher of the book.\n    year (int): Year of publication.\n    genre (str): Genre/category of the book.\n    status (str): 'available' or 'on_loan'.\n    location (str): Physical or logical location in the library.\n\nReturns:\n    dict: \n    - On success: { \"success\": True, \"message\": \"Book <book_id> added.\" }\n    - On error:   { \"success\": False, \"error\": \"Reason for failure.\" }\n\nConstraints:\n    - book_id must be unique.\n    - All fields must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "publisher": {
+            "type": "string"
+          },
+          "year": {
+            "type": "integer"
+          },
+          "genre": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id",
+          "title",
+          "author",
+          "publisher",
+          "year",
+          "genre",
+          "status",
+          "location"
+        ]
+      }
+    },
+    {
+      "name": "update_book_info",
+      "description": "Modify metadata or status for an existing book.\n\nArgs:\n    book_id (str): The unique identifier of the book to update.\n    updates (dict): Dictionary of field names (str) and new values to update.\n                    Allowed fields: 'title', 'author', 'publisher', 'year',\n                    'genre', 'status', 'location'.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Book info updated for book_id: <book_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Book must exist (book_id in self.books).\n    - book_id cannot be changed via this operation.\n    - Only mutable fields can be updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "book_id",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "add_loan_record",
+      "description": "Add a new loan record after validating the referenced book and patron exist.\n\nArgs:\n    loan_id (str): Unique loan record identifier.\n    book_id (str): ID of the book being loaned.\n    patron_id (str): ID of the patron borrowing the book.\n    checkout_date (str): The checkout date (ISO string).\n    due_date (str): Book due date (ISO string).\n    return_date (Optional[str]): Return date (ISO string) or None.\n    status (str): Loan status ('active', 'returned', 'overdue', etc.).\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Loan record added successfully.\" }\n        On error: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - loan_id must be unique among loan_records.\n    - book_id must exist in books.\n    - patron_id must exist in patrons.\n    - LoanRecords must refer to valid book_id and patron_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "loan_id": {
+            "type": "string"
+          },
+          "book_id": {
+            "type": "string"
+          },
+          "patron_id": {
+            "type": "string"
+          },
+          "checkout_date": {
+            "type": "string"
+          },
+          "due_date": {
+            "type": "string"
+          },
+          "return_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "loan_id",
+          "book_id",
+          "patron_id",
+          "checkout_date",
+          "due_date",
+          "return_date",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "remove_loan_record",
+      "description": "Delete or archive a loan record from the system.\n\nArgs:\n    loan_id (str): The unique identifier of the loan record to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Loan record removed.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The loan record must exist in the system.\n    - No restrictions based on status: any loan record (active, returned, or overdue) may be removed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "loan_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "loan_id"
+        ]
+      }
+    },
+    {
+      "name": "update_patron_info",
+      "description": "Modify information or account status for a library patron.\n\nArgs:\n    patron_id (str): The unique ID for the patron to update.\n    name (str, optional): The new name for the patron.\n    contact_details (str, optional): Updated contact information.\n    account_status (str, optional): New account status (e.g., 'active', 'suspended').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Patron information updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Patron not found.\"\n    }\n\nConstraints:\n    - Patron must exist.\n    - Only the specified fields are updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patron_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_details": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patron_id"
+        ]
+      }
+    },
+    {
+      "name": "add_patron",
+      "description": "Add a new patron to the library system.\n\nArgs:\n    patron_id (str): Unique identifier for the patron.\n    name (str): Patron's full name.\n    contact_details (str): Patron's contact info (e.g., phone/email).\n    account_status (str): Initial status of the patron account (e.g., 'active').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Patron <id> added.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Patron ID already exists.\"\n    }\n\nConstraints:\n    - patron_id must be unique (not already in the system).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patron_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_details": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patron_id",
+          "name",
+          "contact_details",
+          "account_status"
+        ]
+      }
+    },
+    {
+      "name": "remove_patron",
+      "description": "Remove a patron from the library system. All existing loan records with this patron \nwill be marked as 'invalidated' in their status field.\n\nArgs:\n    patron_id (str): Unique identifier of the patron to remove.\n\nReturns:\n    dict: \n      - On success: { \"success\": True, \"message\": \"Patron removed.\" }\n      - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Patron must exist in self.patrons to be removed.\n    - All associated loan records will have their status set to \"invalidated\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patron_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patron_id"
+        ]
+      }
+    }
+  ]
+}

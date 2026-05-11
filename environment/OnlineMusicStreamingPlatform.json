@@ -1,0 +1,838 @@
+{
+  "env_name": "OnlineMusicStreamingPlatform",
+  "description": "An online music streaming platform like Gaana maintains a dynamic, searchable catalog of songs, albums, and artists, each with associated metadata such as release date, genre, and popularity. It enables users to search for tracks, browse recent releases, and discover music based on various criteria. Typical operations include searching by artist or song, filtering and sorting results, and accessing music streams or metadata updates.",
+  "initial_parameter_schema": {
+    "songs": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "song_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "release_date": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "number"
+          },
+          "genre": {
+            "type": "string"
+          },
+          "popularity": {
+            "type": "number"
+          },
+          "album_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "song_id",
+          "title",
+          "release_date",
+          "duration",
+          "genre",
+          "popularity",
+          "album_id"
+        ]
+      }
+    },
+    "artists": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "artist_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "bio": {
+            "type": "string"
+          },
+          "popularity": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "artist_id",
+          "name",
+          "bio",
+          "popularity"
+        ]
+      }
+    },
+    "albums": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "album_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "release_date": {
+            "type": "string"
+          },
+          "cover_image": {
+            "type": "string"
+          },
+          "artist_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "album_id",
+          "title",
+          "release_date",
+          "cover_image",
+          "artist_id"
+        ]
+      }
+    },
+    "song_artist_relationships": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "song_id": {
+            "type": "string"
+          },
+          "artist_id": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "song_id",
+          "artist_id",
+          "role"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          },
+          "search_history": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "account_status",
+          "search_history"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "search_artist_by_name": [
+      "artists"
+    ],
+    "get_artist_by_id": [
+      "artists"
+    ],
+    "list_songs_by_artist_id": [
+      "artists",
+      "song_artist_relationships",
+      "songs"
+    ],
+    "get_song_artist_relationships_by_artist_id": [
+      "artists",
+      "song_artist_relationships"
+    ],
+    "get_song_by_id": [
+      "songs"
+    ],
+    "get_songs_by_album_id": [
+      "albums",
+      "songs"
+    ],
+    "get_album_by_id": [
+      "albums"
+    ],
+    "list_albums_by_artist_id": [
+      "albums",
+      "artists"
+    ],
+    "search_song_by_title": [
+      "song_artist_relationships",
+      "songs"
+    ],
+    "sort_songs_by_release_date": [
+      "songs"
+    ],
+    "get_latest_song_by_artist_id": [
+      "artists",
+      "song_artist_relationships",
+      "songs"
+    ],
+    "list_all_genres": [
+      "songs"
+    ],
+    "get_song_popularity": [
+      "songs"
+    ],
+    "get_album_release_date": [
+      "albums"
+    ],
+    "get_artist_popularity": [
+      "artists"
+    ],
+    "get_user_by_username": [
+      "users"
+    ],
+    "get_user_search_history": [
+      "users"
+    ],
+    "update_song_metadata": [
+      "albums",
+      "songs"
+    ],
+    "update_artist_metadata": [
+      "artists"
+    ],
+    "update_album_metadata": [
+      "albums",
+      "artists"
+    ],
+    "add_song": [
+      "albums",
+      "artists",
+      "song_artist_relationships",
+      "songs"
+    ],
+    "add_artist": [
+      "artists"
+    ],
+    "add_album": [
+      "albums",
+      "artists"
+    ],
+    "associate_song_with_artist": [
+      "artists",
+      "song_artist_relationships",
+      "songs"
+    ],
+    "remove_song": [
+      "song_artist_relationships",
+      "songs"
+    ],
+    "remove_artist": [
+      "albums",
+      "artists",
+      "song_artist_relationships",
+      "songs"
+    ],
+    "remove_album": [
+      "albums",
+      "song_artist_relationships",
+      "songs"
+    ],
+    "update_user_search_history": [
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "search_artist_by_name",
+      "description": "Search for artists by artist name (supports partial and case-insensitive matches).\nReturns a list of ArtistInfo dicts with artist_id and associated metadata.\n\nArgs:\n    name (str): Full or partial name of the artist to search (case-insensitive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ArtistInfo]  # List of matching artists, can be empty if no matches\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_artist_by_id",
+      "description": "Retrieve detailed metadata for a given artist_id.\n\nArgs:\n    artist_id (str): Unique identifier of the artist.\n\nReturns:\n    dict:\n        If artist exists:\n            {\n                \"success\": True,\n                \"data\": ArtistInfo\n            }\n        If artist does not exist:\n            {\n                \"success\": False,\n                \"error\": \"Artist not found\"\n            }\nConstraints:\n    - artist_id must exist in the platform's artist registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "artist_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artist_id"
+        ]
+      }
+    },
+    {
+      "name": "list_songs_by_artist_id",
+      "description": "List all songs associated with an artist via SongArtistRelationship.\nOptionally filter by role (e.g., \"primary artist\", \"featured artist\").\n\nArgs:\n    artist_id (str): The ID of the artist to query.\n    role (str, optional): Filter by role in the relationship. If None, include all roles.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": [SongInfo, ...]  # List of associated song metadata (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message, e.g., \"Artist does not exist\"\n    }\n\nConstraints:\n    - The artist_id must exist in the artists dictionary.\n    - Any valid relationship matching the artist_id is considered.\n    - Only include songs existing in the current catalog.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "artist_id": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artist_id",
+          "role"
+        ]
+      }
+    },
+    {
+      "name": "get_song_artist_relationships_by_artist_id",
+      "description": "Retrieve all SongArtistRelationship entries for a specific artist.\n\nArgs:\n    artist_id (str): The ID of the artist for whom relationships are requested.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SongArtistRelationshipInfo]  # All matching relationships (possibly empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If artist does not exist\n    }\n\nConstraints:\n    - artist_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "artist_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artist_id"
+        ]
+      }
+    },
+    {
+      "name": "get_song_by_id",
+      "description": "Fetch full song metadata from the catalog for a given song_id.\n\nArgs:\n    song_id (str): The unique identifier of the song to retrieve.\n\nReturns:\n    dict:\n        On success: {\n            \"success\": True,\n            \"data\": SongInfo\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": \"Song not found\"\n        }\n\nConstraints:\n    - song_id must exist in the catalog.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "song_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "song_id"
+        ]
+      }
+    },
+    {
+      "name": "get_songs_by_album_id",
+      "description": "List all songs in a specified album.\n\nArgs:\n    album_id (str): The album's unique identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SongInfo]  # songs in the album, empty if none found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # error description, e.g., album not found\n    }\nConstraints:\n    - album_id must exist in albums registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "album_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "album_id"
+        ]
+      }
+    },
+    {
+      "name": "get_album_by_id",
+      "description": "Fetch full album metadata by album_id.\n\nArgs:\n    album_id (str): The unique ID of the album to retrieve.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": AlbumInfo,      # Album metadata if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str           # \"Album not found\"\n    }\n\nConstraints:\n    - Returns only if album_id exists.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "album_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "album_id"
+        ]
+      }
+    },
+    {
+      "name": "list_albums_by_artist_id",
+      "description": "List all albums associated with the specified artist.\n\nArgs:\n    artist_id (str): ID of the artist whose albums are to be listed.\n\nReturns:\n    dict:\n        \"success\": True and \"data\": List[AlbumInfo] upon successful retrieval (may be empty if none)\n        OR\n        \"success\": False and \"error\": str if artist does not exist\nConstraints:\n    - artist_id must exist in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "artist_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artist_id"
+        ]
+      }
+    },
+    {
+      "name": "search_song_by_title",
+      "description": "Search for songs by their title, with optional filtering by artist, album, or genre.\n\nArgs:\n    title (str): The song title or partial title to search for (case-insensitive, substring match).\n    artist_id (str, optional): If provided, only include songs associated with this artist.\n    album_id (str, optional): If provided, only include songs from this album.\n    genre (str, optional): If provided, only include songs of this genre.\n\nReturns:\n    dict:\n        If successful,\n            {\n                \"success\": True,\n                \"data\": List[SongInfo],  # list may be empty if no matches found\n            }\n        If failure,\n            {\n                \"success\": False,\n                \"error\": str,\n            }\nConstraints:\n    - Songs must always be associated with at least one artist.\n    - All filters are optional.\n    - Search is case-insensitive and substring-based.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "artist_id": {
+            "type": "string"
+          },
+          "album_id": {
+            "type": "string"
+          },
+          "genre": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      }
+    },
+    {
+      "name": "sort_songs_by_release_date",
+      "description": "Sort the given list of song IDs by their release_date (ascending or descending).\n\nArgs:\n    song_ids (list of str): List of song IDs to be sorted.\n    order (str): 'asc' for earliest first, 'desc' for latest first. Case-insensitive.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"data\": [SongInfo, ...] } (sorted list of song metadata)\n        - On error: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - All song_ids must exist.\n    - 'order' must be 'asc' or 'desc' (case-insensitive).\n    - release_date must be parsed and sorted as dates.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "song_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "order": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "song_ids",
+          "order"
+        ]
+      }
+    },
+    {
+      "name": "get_latest_song_by_artist_id",
+      "description": "Retrieve the most recently released song for the specified artist.\n\nArgs:\n    artist_id (str): The unique id of the artist.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": SongInfo    # Song metadata of most recently released song\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str        # Reason for failure (\"Artist not found\", \"Artist has no songs\")\n    }\n\nConstraints:\n    - Artist must exist in the platform.\n    - If artist has no associated songs, operation fails gracefully.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "artist_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artist_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_genres",
+      "description": "Retrieve a list of all unique, non-blank music genres available on the platform.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str]  # Unique genre names (may be empty if no songs or no genres present)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_song_popularity",
+      "description": "Retrieve the current popularity metric for a given song.\n\nArgs:\n    song_id (str): The unique identifier of the song.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": float  # Popularity metric of the song\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if song is not found\n    }\n\nConstraints:\n    - song_id must refer to an existing song in the catalog.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "song_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "song_id"
+        ]
+      }
+    },
+    {
+      "name": "get_album_release_date",
+      "description": "Retrieve the release date for a specified album.\n\nArgs:\n    album_id (str): The unique identifier for the album.\n\nReturns:\n    dict: \n     - If the album exists:\n         { \"success\": True, \"data\": str }  # data is the album release date (ISO string)\n     - If the album does not exist:\n         { \"success\": False, \"error\": \"Album not found\" }\n\nConstraints:\n    - The specified album_id must exist in the album registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "album_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "album_id"
+        ]
+      }
+    },
+    {
+      "name": "get_artist_popularity",
+      "description": "Retrieve the popularity metric for a given artist.\n\nArgs:\n    artist_id (str): Unique identifier for the artist.\n\nReturns:\n    dict: \n        On success: {\"success\": True, \"data\": <popularity (float)> }\n        On failure: {\"success\": False, \"error\": \"Artist not found\"}\n\nConstraints:\n    - artist_id must exist in the artist registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "artist_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artist_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_username",
+      "description": "Retrieve user info by username, including search history and account status.\n\nArgs:\n    username (str): The username to look up.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"data\": UserInfo }\n        - On failure: { \"success\": False, \"error\": \"User not found\" }\n\nConstraints:\n    - Username comparison is case-sensitive.\n    - Returns complete UserInfo (including search_history and account_status).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "get_user_search_history",
+      "description": "Retrieve a user's search history (list of search query strings).\n\nArgs:\n    username (str): The username of the user whose history is queried.\n\nReturns:\n    dict: \n    {\n        \"success\": True,\n        \"data\": List[str]  # List of search query strings, possibly empty\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Explanation, e.g. user not found\n    }\n\nConstraints:\n    - Username must exist in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "update_song_metadata",
+      "description": "Edit metadata of a song by its song_id.\n\nArgs:\n    song_id (str): The ID of the song to update.\n    title (str, optional): New title.\n    release_date (str, optional): New release date (ISO format, \"YYYY-MM-DD\").\n    genre (str, optional): New genre.\n    popularity (float, optional): New popularity score.\n    duration (float, optional): New song duration (seconds, float).\n    album_id (str, optional): New album ID to associate song with.\n\nReturns:\n    dict, with keys:\n        - success (bool): True if operation succeeded, else False.\n        - message (str): Success message if successful.\n        - error (str): Error message if unsuccessful.\n\nConstraints:\n    - song_id must exist.\n    - release_date (if given) must be a valid ISO date.\n    - album_id (if given) must exist.\n    - At least one valid field must be provided to update.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "song_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "release_date": {
+            "type": "string"
+          },
+          "genre": {
+            "type": "string"
+          },
+          "popularity": {
+            "type": "number"
+          },
+          "duration": {
+            "type": "number"
+          },
+          "album_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "song_id"
+        ]
+      }
+    },
+    {
+      "name": "update_artist_metadata",
+      "description": "Edit artist info (name, bio, popularity).\n\nArgs:\n    artist_id (str): The ID of the artist to update.\n    name (str, optional): New artist name (if updating).\n    bio (str, optional): New artist bio (if updating).\n    popularity (float, optional): New popularity score (if updating).\n\nReturns:\n    dict:\n        - success (bool): Operation status.\n        - message (str): Success message if operation succeeded.\n        - error (str): Error message if failed.\n\nConstraints:\n    - artist_id must exist in the registry.\n    - At least one of name, bio, or popularity must be provided.\n    - If popularity is given, it must be a float >= 0.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "artist_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "bio": {
+            "type": "string"
+          },
+          "popularity": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "artist_id"
+        ]
+      }
+    },
+    {
+      "name": "update_album_metadata",
+      "description": "Edit album details such as title, cover image, release_date, and artist_id.\n\nArgs:\n    album_id (str): The unique ID of the album to update.\n    title (str, optional): New title for the album.\n    release_date (str, optional): New release date (ISO date string).\n    cover_image (str, optional): New cover image reference.\n    artist_id (str, optional): New artist_id to associate with this album.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Album metadata updated successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - album_id must exist in the albums registry.\n    - If artist_id is updated, it must exist in the artists registry.\n    - If release_date is updated, it should be a valid ISO date string.\n    - At least one field must be specified for update.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "album_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "release_date": {
+            "type": "string"
+          },
+          "cover_image": {
+            "type": "string"
+          },
+          "artist_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "album_id"
+        ]
+      }
+    },
+    {
+      "name": "add_song",
+      "description": "Add a new song to the catalog, ensuring it is associated with at least one artist.\n\nArgs:\n    song_info (SongInfo): The metadata for the new song (all fields required).\n    artist_relationships (List[SongArtistRelationshipInfo]): List of artist associations\n        (each must match the new song's song_id and reference valid artist_id).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Song added to catalog and associated with artists.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - song_id must be unique.\n    - At least one artist association must be provided, and all artist_ids must exist.\n    - album_id (if not empty) must exist.\n    - release_date must be a valid ISO format date.\n    - Each relationship's song_id must match the song being added.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "song_info": {
+            "type": "object",
+            "properties": {
+              "song_id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "release_date": {
+                "type": "string"
+              },
+              "duration": {
+                "type": "number"
+              },
+              "genre": {
+                "type": "string"
+              },
+              "popularity": {
+                "type": "number"
+              },
+              "album_id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "song_id",
+              "title",
+              "release_date",
+              "duration",
+              "genre",
+              "popularity",
+              "album_id"
+            ]
+          },
+          "artist_relationships": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "song_id": {
+                  "type": "string"
+                },
+                "artist_id": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "song_id",
+                "artist_id",
+                "role"
+              ]
+            }
+          }
+        },
+        "required": [
+          "song_info",
+          "artist_relationships"
+        ]
+      }
+    },
+    {
+      "name": "add_artist",
+      "description": "Add a new artist entry to the platform.\n\nArgs:\n    artist_id (str): Unique identifier for the artist.\n    name (str): Artist's name (need not be unique).\n    bio (str): Short biography or description.\n    popularity (float): Popularity score.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Artist added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason string>\n    }\n\nConstraints:\n    - artist_id must be unique (not already in self.artists).\n    - All fields must be provided and be of correct type.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "artist_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "bio": {
+            "type": "string"
+          },
+          "popularity": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "artist_id",
+          "name",
+          "bio",
+          "popularity"
+        ]
+      }
+    },
+    {
+      "name": "add_album",
+      "description": "Create a new album entity, associated with a given artist.\n\nArgs:\n    album_id (str): Unique identifier for the new album (must not already exist).\n    title (str): Album title.\n    release_date (str): Album release date (ISO date string).\n    cover_image (str): Cover image URL or identifier.\n    artist_id (str): The artist's unique id the album is associated with (must exist).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Album <album_id> created successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error.\n    }\n\nConstraints:\n    - The album_id must not already exist.\n    - The artist_id must exist in the platform.\n    - The release_date must be a valid, non-empty ISO date string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "album_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "release_date": {
+            "type": "string"
+          },
+          "cover_image": {
+            "type": "string"
+          },
+          "artist_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "album_id",
+          "title",
+          "release_date",
+          "cover_image",
+          "artist_id"
+        ]
+      }
+    },
+    {
+      "name": "associate_song_with_artist",
+      "description": "Add a relationship entry between a song and an artist, specifying the role.\n\nArgs:\n    song_id (str): ID of the song.\n    artist_id (str): ID of the artist.\n    role (str): Role string (e.g., \"primary artist\", \"featured artist\")\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Relationship added successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure\"\n    }\n\nConstraints:\n    - song_id must exist in self.songs\n    - artist_id must exist in self.artists\n    - The specific (song_id, artist_id, role) relationship must not already exist",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "song_id": {
+            "type": "string"
+          },
+          "artist_id": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "song_id",
+          "artist_id",
+          "role"
+        ]
+      }
+    },
+    {
+      "name": "remove_song",
+      "description": "Delete a song from the catalog and remove its artist relationships.\n\nArgs:\n    song_id (str): The unique identifier for the song to remove.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Song and its relationships removed successfully.\"\n            }\n        On failure (song does not exist):\n            {\n                \"success\": False,\n                \"error\": \"Song not found.\"\n            }\n\nConstraints:\n    - Removes SongInfo entry from the catalog.\n    - Removes all SongArtistRelationship entries for this song_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "song_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "song_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_artist",
+      "description": "Remove an artist from the platform and dissociate from all songs and albums.\n\nArgs:\n    artist_id (str): Artist ID to be removed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Artist <artist_id> removed and dissociated from all songs/albums.\"\n    } OR {\n        \"success\": False,\n        \"error\": <error-reason>\n    }\n\nConstraints:\n    - Cannot remove an artist if their removal would leave any song without at least one artist.\n    - All SongArtistRelationships with this artist are removed.\n    - For all albums where artist_id matches, dissociate by setting artist_id to empty string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "artist_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artist_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_album",
+      "description": "Remove an album by its album_id and dissociate all contained songs.\nAlso removes SongArtistRelationships associated with those songs.\n\nArgs:\n    album_id (str): The ID of the album to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Confirmation of removal\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str     # Error reason\n    }\n\nConstraints:\n    - The album must exist.\n    - All songs belonging to this album are removed.\n    - Associated entries in song_artist_relationships are also removed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "album_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "album_id"
+        ]
+      }
+    },
+    {
+      "name": "update_user_search_history",
+      "description": "Add (append) new entries or clear a user's search history.\n\nArgs:\n    user_id (str): Identifier for the user whose history is to be updated.\n    add_entry (str, optional): Single search query to be appended.\n    add_entries (list of str, optional): Multiple search queries to be appended.\n    clear (bool, optional): If True, search history is cleared before any additions. Default is False.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User search history updated.\",\n    }\n    or \n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - User must exist.\n    - If neither add_entry/add_entries nor clear is passed, returns error.\n    - If both clear and add_* are passed, performs clear before additions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "add_entry": {
+            "type": "string"
+          },
+          "add_entries": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "clear": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    }
+  ]
+}

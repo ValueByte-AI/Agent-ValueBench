@@ -1,0 +1,401 @@
+{
+  "env_name": "VirtualCardManagementSystem",
+  "description": "A virtual card management system enables users to create and oversee digital payment cards for individuals or businesses. These cards can be issued with custom attributes like spending limits, merchant restrictions, and unique identifiers, allowing for secure and controlled transactions. The system's persistent state includes card records, spending policies, and transaction histories, supporting operations such as card creation, retrieval, and deletion.",
+  "initial_parameter_schema": {
+    "virtual_cards": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "merchant": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "spending_limit": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string"
+          },
+          "creation_date": {
+            "type": "string"
+          },
+          "expiration_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "user_id",
+          "spending_limit",
+          "status",
+          "creation_date",
+          "expiration_date"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "email",
+          "account_status"
+        ]
+      }
+    },
+    "transactions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "card_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+    "merchant": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+          "transaction_date": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "card_id",
+          "amount",
+          "merchant",
+          "transaction_date",
+          "status"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_name": [
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "list_virtual_cards_by_user": [
+      "users",
+      "virtual_cards"
+    ],
+    "get_virtual_card_by_merchant": [
+      "users",
+      "virtual_cards"
+    ],
+    "get_virtual_card_by_id": [
+      "virtual_cards"
+    ],
+    "list_active_virtual_cards_by_user": [
+      "users",
+      "virtual_cards"
+    ],
+    "get_transaction_history_for_card": [
+      "transactions",
+      "virtual_cards"
+    ],
+    "create_virtual_card": [
+      "users",
+      "virtual_cards"
+    ],
+    "set_virtual_card_status": [
+      "virtual_cards"
+    ],
+    "update_virtual_card_spending_limit": [
+      "virtual_cards"
+    ],
+    "delete_virtual_card": [
+      "virtual_cards"
+    ],
+    "update_virtual_card_merchant_restriction": [
+      "virtual_cards"
+    ],
+    "update_virtual_card_expiration_date": [
+      "virtual_cards"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_name",
+      "description": "Retrieve user info object(s) whose name matches the provided name.\n\nArgs:\n    name (str): Name of the user(s) to search for.\n\nReturns:\n    dict: \n      - If found: {\"success\": True, \"data\": List[UserInfo]} (possibly empty list)\n      - If no user found: {\"success\": False, \"error\": \"No user found with the given name\"}\n\nNotes:\n    - Multiple users may share the same name; all matches are returned in a list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve the full user information for a specified user_id.\n\nArgs:\n    user_id (str): The unique identifier for the user (_id in UserInfo).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo  # The corresponding user's info dict.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If user_id not found.\n    }\n\nConstraints:\n    - user_id must exist in the users dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_virtual_cards_by_user",
+      "description": "Retrieve all virtual cards belonging to a specified user.\n\nArgs:\n    user_id (str): The unique user identifier.\n\nReturns:\n    dict:\n        - success: True, with 'data' a list of VirtualCardInfo dicts for cards where card['user_id'] == user_id.\n        - success: False, with 'error' if the user_id does not exist.\n\nConstraints:\n    - User with user_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_virtual_card_by_merchant",
+      "description": "Retrieve a user's virtual card that is restricted to the specified merchant.\n\nArgs:\n    user_id (str): The user's unique identifier.\n    merchant (str): The merchant name that the virtual card is restricted to.\n\nReturns:\n    dict: \n        { \"success\": True, \"data\": VirtualCardInfo }\n        OR\n        { \"success\": False, \"error\": str } if user or matching card not found.\n\nConstraints:\n    - The user must exist.\n    - The card must belong to the user and have merchant restriction equal to merchant.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "merchant": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "merchant"
+        ]
+      }
+    },
+    {
+      "name": "get_virtual_card_by_id",
+      "description": "Retrieve detailed information about a virtual card by its card_id.\n\nArgs:\n    card_id (str): The unique identifier of the virtual card.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": VirtualCardInfo\n            }\n        On failure (card_id not found):\n            {\n                \"success\": False,\n                \"error\": \"Virtual card not found\"\n            }\n\nConstraints:\n    - card_id must exist in the system.\n    - No restriction on card status (all statuses may be retrieved).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id"
+        ]
+      }
+    },
+    {
+      "name": "list_active_virtual_cards_by_user",
+      "description": "List all virtual cards with 'active' status for a specified user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict:\n        - If user exists:\n            {\n                \"success\": True,\n                \"data\": List[VirtualCardInfo]  # May be empty if the user has no active cards\n            }\n        - If user does not exist:\n            {\n                \"success\": False,\n                \"error\": \"User does not exist\"\n            }\n\nConstraints:\n    - User must exist in the system.\n    - Only cards with status == 'active' and belonging to user_id are included.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_transaction_history_for_card",
+      "description": "Retrieve all transactions associated with a given card.\n\nArgs:\n    card_id (str): The unique ID of the virtual card.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TransactionInfo],  # List of transactions for this card, possibly empty\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error (e.g. card does not exist)\n    }\n\nConstraints:\n    - The provided card_id must exist in the virtual_cards storage.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id"
+        ]
+      }
+    },
+    {
+      "name": "create_virtual_card",
+      "description": "Create a new virtual card for a user with specified attributes, enforcing:\n  - spending_limit >= 0,\n  - unique card_id,\n  - user_id must exist.\n\nArgs:\n    card_id (str): Unique identifier for the virtual card.\n    user_id (str): The user's unique identifier (owner of the card).\n    merchant (Optional[str]): Merchant restriction (None for no restriction).\n    spending_limit (float): Spending cap for the card (must be >=0).\n    status (str): Initial card status (typically 'active').\n    creation_date (str): ISO datetime when the card is created.\n    expiration_date (str): ISO datetime when the card expires.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Virtual card created successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+    "merchant": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+          "spending_limit": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string"
+          },
+          "creation_date": {
+            "type": "string"
+          },
+          "expiration_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "user_id",
+          "spending_limit",
+          "status",
+          "creation_date",
+          "expiration_date"
+        ]
+      }
+    },
+    {
+      "name": "set_virtual_card_status",
+      "description": "Change the status of a virtual card (e.g., activate, block, expire).\n\nArgs:\n    card_id (str): Unique identifier for the virtual card.\n    new_status (str): New status value for the card (\"active\", \"blocked\", \"expired\", etc.).\n\nReturns:\n    dict: \n        On success:\n            { \"success\": True, \"message\": \"Status of virtual card <card_id> changed to <new_status>.\" }\n        On failure:\n            { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - The card must exist.\n    - No restrictions on allowed statuses beyond presence (for robustness).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "update_virtual_card_spending_limit",
+      "description": "Adjust the spending limit of an existing virtual card.\n\nArgs:\n    card_id (str): The unique identifier of the target virtual card.\n    new_spending_limit (float): The new spending limit value (must be non-negative).\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Spending limit updated.\" }\n        On failure:\n            { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Card must exist.\n    - new_spending_limit must be >= 0.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          },
+          "new_spending_limit": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "card_id",
+          "new_spending_limit"
+        ]
+      }
+    },
+    {
+      "name": "delete_virtual_card",
+      "description": "Delete (remove) a virtual card specified by its card_id.\n\nArgs:\n    card_id (str): Unique identifier of the virtual card to delete.\n\nReturns:\n    dict: \n     - If successful: {\"success\": True, \"message\": \"Virtual card <card_id> deleted.\"}\n     - If not found: {\"success\": False, \"error\": \"Card not found.\"}\n\nConstraints:\n    - Only existing cards can be deleted.\n    - Deletion does not remove transaction history (transactions referencing this card_id are retained).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id"
+        ]
+      }
+    },
+    {
+      "name": "update_virtual_card_merchant_restriction",
+      "description": "Change the merchant restriction for the specified virtual card.\n\nArgs:\n    card_id (str): Unique identifier for the virtual card.\n    merchant (str): New merchant restriction. If '', None, or string 'None', removes restriction.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Merchant restriction updated for card <card_id>.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": <description of the problem>\n            }\n\nConstraints:\n    - card_id must exist.\n    - Allow change regardless of card status (following provided rules).\n    - merchant can be None, empty string, or any string. None means no restriction.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          },
+    "merchant": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+        },
+        "required": [
+          "card_id",
+          "merchant"
+        ]
+      }
+    },
+    {
+      "name": "update_virtual_card_expiration_date",
+      "description": "Change the expiration date of a specified virtual card.\n\nArgs:\n    card_id (str): ID of the virtual card to update.\n    new_expiration_date (str): New expiration date to be set (string format, validated elsewhere).\n\nReturns:\n    dict: \n        - { \"success\": True, \"message\": \"Expiration date for card <card_id> updated to <new_expiration_date>\" }\n        - or { \"success\": False, \"error\": \"Virtual card not found\" }\n\nConstraints:\n    - card_id must exist in the system.\n    - No validation on date format is enforced here.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string"
+          },
+          "new_expiration_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "new_expiration_date"
+        ]
+      }
+    }
+  ]
+}

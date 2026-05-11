@@ -1,0 +1,497 @@
+{
+  "env_name": "SocialMediaNotificationSystem",
+  "description": "A social media notification system records and manages user-generated events such as messages, likes, and comments, pairing them with notification mechanisms (like bells or popups) to alert users of new actions. It maintains stateful data regarding which notifications have been delivered, viewed, or missed, supporting queries and updates based on user interaction. Typical operations include triggering notifications, marking them as read, and fetching unread messages for individual users.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "notification_preference": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "notification_preference"
+        ]
+      }
+    },
+    "events": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "actor_id": {
+            "type": "string"
+          },
+          "target_id": {
+            "type": "string"
+          },
+          "related_content_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "event_type",
+          "actor_id",
+          "target_id",
+          "related_content_id",
+          "timestamp"
+        ]
+      }
+    },
+    "notifications": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "notification_id": {
+            "type": "string"
+          },
+          "recipient_user_id": {
+            "type": "string"
+          },
+          "event_id": {
+            "type": "string"
+          },
+          "delivery_status": {
+            "type": "string"
+          },
+          "viewed_status": {
+            "type": "string"
+          },
+          "delivered_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "viewed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "notification_id",
+          "recipient_user_id",
+          "event_id",
+          "delivery_status",
+          "viewed_status",
+          "delivered_at",
+          "viewed_at"
+        ]
+      }
+    },
+    "messages": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "sender_id": {
+            "type": "string"
+          },
+          "recipient_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "read_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id",
+          "sender_id",
+          "recipient_id",
+          "content",
+          "timestamp",
+          "read_status"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_username": [
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_user_notification_preference": [
+      "users"
+    ],
+    "get_events_for_user": [
+      "events",
+      "users"
+    ],
+    "get_notifications_for_user": [
+      "notifications",
+      "users"
+    ],
+    "get_notifications_by_status": [
+      "notifications",
+      "users"
+    ],
+    "get_missed_notifications_for_user": [
+      "notifications",
+      "users"
+    ],
+    "get_notification_details": [
+      "notifications"
+    ],
+    "get_messages_for_user": [
+      "messages",
+      "users"
+    ],
+    "get_unread_messages_for_user": [
+      "messages",
+      "users"
+    ],
+    "get_message_details": [
+      "messages"
+    ],
+    "mark_notification_as_viewed": [
+      "notifications"
+    ],
+    "mark_message_as_read": [
+      "messages"
+    ],
+    "trigger_notification_for_event": [
+      "events",
+      "notifications",
+      "users"
+    ],
+    "update_notification_delivery_status": [
+      "notifications"
+    ],
+    "update_notification_viewed_status": [
+      "notifications"
+    ],
+    "delete_notification": [
+      "notifications"
+    ],
+    "delete_message": [
+      "messages"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_username",
+      "description": "Retrieve a user's details given their username.\n\nArgs:\n    username (str): The username to search for.\n\nReturns:\n    dict:\n        - If found: {\"success\": True, \"data\": UserInfo (dict)}\n        - If not found: {\"success\": False, \"error\": \"User not found\"}\n\nConstraints:\n    - Usernames are assumed to be unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve a user's details (UserInfo dict) by their unique _id.\n\nArgs:\n    user_id (str): The unique user ID.\n\nReturns:\n    dict:\n        {\"success\": True, \"data\": UserInfo} if found,\n        {\"success\": False, \"error\": \"User not found\"} otherwise.\n\nConstraints:\n    - User ID must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_notification_preference",
+      "description": "Retrieve the notification preference setting of a user.\n\nArgs:\n    user_id (str, optional): The unique user ID.\n    username (str, optional): The user's username.\n\nReturns:\n    dict: \n        On success: \n            { \"success\": True, \"data\": <notification_preference_value> }\n        On failure:\n            { \"success\": False, \"error\": <reason> }\n        \nConstraints:\n    - Exactly one of user_id or username must be provided.\n    - User must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          
+        ]
+      }
+    },
+    {
+      "name": "get_events_for_user",
+      "description": "Retrieve all events associated with a user, either as actor or target.\n\nArgs:\n    user_id (str): ID of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[EventInfo]  # May be empty if user has no associated events\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message, e.g., \"User not found\"\n    }\n\nConstraints:\n    - The user must exist in the system.\n    - Fetch events where the user is either actor_id or target_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_notifications_for_user",
+      "description": "Retrieve all notifications for a given user by user_id.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict:\n        success (bool): True if operation succeeded, False otherwise.\n        data (List[NotificationInfo]): List of notifications (possibly empty) for the user if successful.\n        error (str): Error message if failed.\n\nConstraints:\n    - user_id must exist in the system (self.users).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_notifications_by_status",
+      "description": "Retrieve notifications for a user filtered by delivery_status and/or viewed_status.\n\nArgs:\n    user_id (str): The recipient user's ID.\n    delivery_status (Optional[str]): If provided, filter by this delivery_status value.\n    viewed_status (Optional[str]): If provided, filter by this viewed_status value.\n\nReturns:\n    dict:\n    - If success: { \"success\": True, \"data\": List[NotificationInfo] }, possibly empty list.\n    - If failure: { \"success\": False, \"error\": str } (e.g., user does not exist)\n\nConstraints:\n    - User must exist.\n    - Will only return notifications for the given user and optional statuses.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "delivery_status": {
+            "type": "string"
+          },
+          "viewed_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_missed_notifications_for_user",
+      "description": "Fetch all \"missed\" notifications (delivered but not viewed) for a user.\n\nArgs:\n    user_id (str): The user ID whose missed notifications are to be retrieved.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[NotificationInfo]  # List of missed notifications, possibly empty\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - User must exist.\n    - \"Missed\" = delivery_status==\"delivered\" and viewed_status in {\"unread\", \"unviewed\"}",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_notification_details",
+      "description": "Retrieve detailed information for a notification with the given notification_id.\n\nArgs:\n    notification_id (str): The unique id of the notification to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": NotificationInfo  # Notification details if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g. notification not found\n    }\n\nConstraints:\n    - The notification_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "notification_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "notification_id"
+        ]
+      }
+    },
+    {
+      "name": "get_messages_for_user",
+      "description": "Retrieve all messages received by a user.\n\nArgs:\n    user_id (str): The unique identifier of the user whose messages are to be retrieved.\n\nReturns:\n    dict:\n        success (bool): True if query succeeds, else False.\n        data (List[MessageInfo]): List of message information objects (possibly empty if no messages found).\n        error (str, optional): Error message if operation fails (e.g., user does not exist).\n\nConstraints:\n    - The user must exist in the system (users dictionary).\n    - Returns all MessageInfo where recipient_id == user_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_unread_messages_for_user",
+      "description": "Retrieve messages for a user that have not yet been read (read_status = \"unread\").\n\nArgs:\n    user_id (str): The ID of the user to fetch unread messages for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MessageInfo],  # List of unread messages for the user (possibly empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if user does not exist\n    }\n\nConstraints:\n    - User with user_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_message_details",
+      "description": "Retrieve the content and status information of a message by its unique message_id.\n\nArgs:\n    message_id (str): Unique identifier of the message to retrieve.\n\nReturns:\n    dict:\n      - On success: {\"success\": True, \"data\": MessageInfo}\n      - On failure (not found): {\"success\": False, \"error\": \"Message not found\"}\n\nConstraints:\n    - Returns only the message's information based on ID (no read permission checking required).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id"
+        ]
+      }
+    },
+    {
+      "name": "mark_notification_as_viewed",
+      "description": "Marks a notification's viewed_status as 'read' if it has already been delivered.\n\nArgs:\n    notification_id (str): The unique ID of the notification to update.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Notification marked as read.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Only possible if the notification exists and its delivery_status is 'delivered'.\n    - Updates the viewed_at timestamp to current time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "notification_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "notification_id"
+        ]
+      }
+    },
+    {
+      "name": "mark_message_as_read",
+      "description": "Mark a message as 'read' if and only if the requesting user is the message's recipient.\n\nArgs:\n    message_id (str): The identifier of the message to update.\n    user_id (str): The ID of the user attempting to mark the message as read.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Message marked as read.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (not found, not the recipient)\n    }\n\nConstraints:\n    - Operation permitted only for the message's recipient.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "trigger_notification_for_event",
+      "description": "Create and deliver a new notification for a specific event to the corresponding recipient.\n\nArgs:\n    event_id (str): The ID of the event that triggers the notification.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Notification delivered\",\n                \"notification\": <NotificationInfo>,\n            }\n        On error:\n            {\n                \"success\": False,\n                \"error\": str\n            }\n\nConstraints:\n    - The event must exist.\n    - The target_id of the event must point to an existing user (as notification recipient).\n    - Each notification is linked to the event and recipient.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "update_notification_delivery_status",
+      "description": "Change the delivery_status of a notification. If setting to \"delivered\",\nset the delivered_at field to the current time (ISO format) if it is not already set.\n\nArgs:\n    notification_id (str): The ID of the notification to update.\n    new_delivery_status (str): The new status to assign (e.g., \"pending\", \"delivered\", \"failed\").\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"message\": \"...\"}\n        - On failure: {\"success\": False, \"error\": \"...\"}\nConstraints:\n    - Notification must exist.\n    - If status is set to \"delivered\", set delivered_at to current time if not already present.\n    - If status is changed from \"delivered\" to something else, clear delivered_at.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "notification_id": {
+            "type": "string"
+          },
+          "new_delivery_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "notification_id",
+          "new_delivery_status"
+        ]
+      }
+    },
+    {
+      "name": "update_notification_viewed_status",
+      "description": "Change the viewed_status of a notification if it exists and is already delivered.\n\nArgs:\n    notification_id (str): The ID of the notification to update.\n    new_status (str): The value to set for viewed_status (expected: \"read\" or \"unread\").\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": ... }\n        - On failure: { \"success\": False, \"error\": ... }\n\nConstraints:\n    - viewed_status can only be set if delivery_status is \"delivered\".\n    - notification_id must exist.\n    - viewed_at is updated to current time in ISO format if the status changes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "notification_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "notification_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "delete_notification",
+      "description": "Permanently remove a notification from the system.\n\nArgs:\n    notification_id (str): The ID of the notification to delete.\n\nReturns:\n    dict: \n        - If successful:\n            { \"success\": True, \"message\": \"Notification <notification_id> deleted\" }\n        - If not found:\n            { \"success\": False, \"error\": \"Notification not found\" }\n\nConstraints:\n    - Only deletes if the notification exists.\n    - This is an admin or system maintenance operation (no permission checks).\n    - No error is raised; gracefully handles not found case.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "notification_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "notification_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_message",
+      "description": "Permanently remove a message from the system (admin or system maintenance action).\n\nArgs:\n    message_id (str): The ID of the message to delete.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"message\": \"Message deleted successfully.\"\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": \"Message not found.\"\n        }\n\nConstraints:\n    - Message must exist to be deleted.\n    - This is an admin/system maintenance action; no user permission checks.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id"
+        ]
+      }
+    }
+  ]
+}

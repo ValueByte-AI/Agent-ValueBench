@@ -1,0 +1,584 @@
+{
+  "env_name": "FinancialComplianceMonitoringSystem",
+  "description": "A financial compliance monitoring system is designed to track, store, and query information related to regulatory requirements, such as lists of threshold securities, for publicly traded assets. It maintains updated datasets synchronized with financial regulations, supports operations to check the inclusion or status of specific securities, and integrates with broader workflows to ensure ongoing compliance. Such systems are widely used by brokerages, exchanges, and institutional investors to automate regulatory checks and reporting.",
+  "initial_parameter_schema": {
+    "securities": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "isin": {
+            "type": "string"
+          },
+          "cusip": {
+            "type": "string"
+          },
+          "exchange": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "name",
+          "isin",
+          "cusip",
+          "exchange"
+        ]
+      }
+    },
+    "regulations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "regulation_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "effective_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "regulation_id",
+          "name",
+          "description",
+          "effective_date"
+        ]
+      }
+    },
+    "compliance_lists": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string"
+          },
+          "regulation_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "last_updated": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "list_id",
+          "regulation_id",
+          "name",
+          "last_updated"
+        ]
+      }
+    },
+    "compliance_list_securities": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "list_id": {
+              "type": "string"
+            },
+            "symbol": {
+              "type": "string"
+            },
+            "added_date": {
+              "type": "string"
+            },
+            "removed_date": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "list_id",
+            "symbol",
+            "added_date",
+            "removed_date",
+            "status"
+          ]
+        }
+      }
+    },
+    "deleted_securities": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "isin": {
+            "type": "string"
+          },
+          "cusip": {
+            "type": "string"
+          },
+          "exchange": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "name",
+          "isin",
+          "cusip",
+          "exchange"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_compliance_list_by_name": [
+      "compliance_lists"
+    ],
+    "get_regulation_by_id": [
+      "regulations"
+    ],
+    "get_regulation_by_name": [
+      "regulations"
+    ],
+    "get_security_info_by_symbol": [
+      "securities"
+    ],
+    "check_symbol_in_compliance_list": [
+      "compliance_list_securities",
+      "compliance_lists",
+      "securities"
+    ],
+    "list_active_symbols_in_compliance_list": [
+      "compliance_list_securities",
+      "compliance_lists"
+    ],
+    "get_compliance_list_last_updated": [
+      "compliance_lists"
+    ],
+    "get_regulation_for_compliance_list": [
+      "compliance_lists",
+      "regulations"
+    ],
+    "get_compliance_lists_for_symbol": [
+      "compliance_list_securities",
+      "compliance_lists",
+      "securities"
+    ],
+    "get_compliance_list_audit_trail": [
+      "compliance_list_securities",
+      "compliance_lists",
+      "regulations"
+    ],
+    "synchronize_compliance_list": [
+      "compliance_list_securities",
+      "compliance_lists",
+      "regulations"
+    ],
+    "add_symbol_to_compliance_list": [
+      "compliance_list_securities",
+      "compliance_lists",
+      "securities"
+    ],
+    "remove_symbol_from_compliance_list": [
+      "compliance_list_securities"
+    ],
+    "update_symbol_status_in_compliance_list": [
+      "compliance_list_securities",
+      "compliance_lists",
+      "securities"
+    ],
+    "create_compliance_list": [
+      "compliance_list_securities",
+      "compliance_lists",
+      "regulations"
+    ],
+    "delete_compliance_list": [
+      "compliance_list_securities",
+      "compliance_lists"
+    ],
+    "update_regulation_info": [
+      "regulations"
+    ],
+    "add_security": [
+      "securities"
+    ],
+    "remove_security": [
+      "deleted_securities",
+      "securities"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_compliance_list_by_name",
+      "description": "Retrieve compliance list metadata and ID for the specified list name.\n\nArgs:\n    name (str): The name of the compliance list to retrieve (e.g., \"Regulation SHO threshold securities list\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ComplianceListInfo,  # Metadata for the matching compliance list\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason (e.g., list not found)\n    }\n\nConstraints:\n    - List name must match exactly (case-sensitive).\n    - List names are assumed unique. If not, returns first found.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_regulation_by_id",
+      "description": "Retrieve regulation information for a provided regulation_id.\n\nArgs:\n    regulation_id (str): The unique identifier of the regulation.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"data\": RegulationInfo }\n        - On failure: { \"success\": False, \"error\": str }\n\nConstraints:\n    - regulation_id must exist in the system's regulations.\n    - Regulatory references must be maintained accurately.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "regulation_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "regulation_id"
+        ]
+      }
+    },
+    {
+      "name": "get_regulation_by_name",
+      "description": "Retrieve regulation information by its name.\n\nArgs:\n    regulation_name (str): The name of the regulation to find.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": RegulationInfo  # Regulation details for the first found match\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description if regulation name not found\n    }\n\nConstraints:\n    - If multiple regulations match the provided name, the first match is returned.\n    - Regulation names are compared case-sensitively.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "regulation_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "regulation_name"
+        ]
+      }
+    },
+    {
+      "name": "get_security_info_by_symbol",
+      "description": "Retrieve details for a given security symbol (name, ISIN, CUSIP, exchange).\n\nArgs:\n    symbol (str): The security symbol to look up.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": SecurityInfo  # Metadata dictionary for the security symbol\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If security symbol is not found in the system\n    }\n\nConstraints:\n    - Each symbol is unique.\n    - No list membership or regulatory relationships are checked.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol"
+        ]
+      }
+    },
+    {
+      "name": "check_symbol_in_compliance_list",
+      "description": "Determine if a given symbol is currently actively included ('active' status) in a specific compliance list.\nReturns membership status and membership dates.\n\nArgs:\n    list_id (str): ID of the compliance list.\n    symbol (str): Security symbol to check.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"active\": bool,\n            \"membership_info\": ComplianceListSecurityInfo or None  # Details if present, else None\n        }\n    }\n    Or:\n    {\n        \"success\": False,\n        \"error\": str\n    }\nConstraints:\n    - Only symbols present and marked 'active' in the compliance list at query time are considered as included.\n    - list_id and symbol must exist.\n    - If symbol is not present in compliance_list_securities[list_id], membership_info is None.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string"
+          },
+          "symbol": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "list_id",
+          "symbol"
+        ]
+      }
+    },
+    {
+      "name": "list_active_symbols_in_compliance_list",
+      "description": "Return all symbols currently marked 'active' on a specific compliance list.\n\nArgs:\n    list_id (str): The identifier of the compliance list.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str], # List of symbol strings marked 'active'\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str # Description of the error\n    }\n\nConstraints:\n    - Only symbols present and marked 'active' on the compliance list at the time of query should be included.\n    - The specified compliance list must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "list_id"
+        ]
+      }
+    },
+    {
+      "name": "get_compliance_list_last_updated",
+      "description": "Get the last synchronization date for a given compliance list.\n\nArgs:\n    list_id (str): Unique identifier for the compliance list.\n\nReturns:\n    dict:\n        - success: True and data containing the last_updated string if the list exists.\n        - success: False and error message if the compliance list does not exist.\n\nConstraints:\n    - The specified compliance list must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "list_id"
+        ]
+      }
+    },
+    {
+      "name": "get_regulation_for_compliance_list",
+      "description": "Retrieve the regulation metadata associated with a given compliance list.\n\nArgs:\n    list_id (str): Identifier for the compliance list.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": RegulationInfo  # Regulation metadata for given compliance list\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g. compliance list or regulation not found)\n    }\n\nConstraints:\n    - The compliance list must exist.\n    - The regulation linked to the compliance list must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "list_id"
+        ]
+      }
+    },
+    {
+      "name": "get_compliance_lists_for_symbol",
+      "description": "List all compliance lists where a particular symbol is currently active.\n\nArgs:\n    symbol (str): The security symbol to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ComplianceListInfo],  # Info for each compliance list where 'symbol' is active\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., \"Symbol does not exist\"\n    }\n\nConstraints:\n    - Only lists where symbol is marked 'active' at query time are included.\n    - Symbol must exist in the securities dataset.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol"
+        ]
+      }
+    },
+    {
+      "name": "get_compliance_list_audit_trail",
+      "description": "Returns the complete membership history (add/remove/status changes)\nfor a given compliance list, including regulatory linkage details.\n\nArgs:\n    list_id (str): The identifier of the compliance list.\n\nReturns:\n    dict: {\n        'success': True,\n        'data': {\n            'compliance_list_info': ComplianceListInfo,\n            'regulation_info': RegulationInfo,\n            'membership_history': List[ComplianceListSecurityInfo]\n        }\n    }\n    or\n    {\n        'success': False,\n        'error': str\n    }\n\nConstraints:\n    - The compliance list must exist.\n    - Returns all current and historical (active/inactive) symbol memberships for the list.\n    - Includes full compliance list info and regulatory linkage.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "list_id"
+        ]
+      }
+    },
+    {
+      "name": "synchronize_compliance_list",
+      "description": "Update a compliance list's membership and last_updated field based on the latest regulatory data feed.\n\nArgs:\n    list_id (str): ID of the compliance list to synchronize.\n    latest_symbols (List[str] or set): Iterable of active symbol strings from the latest regulatory feed.\n\nReturns:\n    dict:\n        If successful: { \"success\": True, \"message\": \"Compliance list synchronized successfully.\" }\n        If error: { \"success\": False, \"error\": <error message> }\n\nConstraints:\n    - list_id must exist in self.compliance_lists.\n    - Compliance list must have a valid regulation_id.\n    - Only active symbols from regulatory feed are to be recorded as active.\n    - Removed symbols should have their status set to 'inactive' and removed_date updated.\n    - last_updated must be refreshed to now.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string"
+          },
+          "latest_symbols": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "list_id",
+          "latest_symbols"
+        ]
+      }
+    },
+    {
+      "name": "add_symbol_to_compliance_list",
+      "description": "Add a security (symbol) to a compliance list, marking as 'active' with current date.\n\nArgs:\n    list_id (str): The compliance list ID to add the symbol to.\n    symbol (str): The security symbol to add.\n\nReturns:\n    dict: \n        - On success: {\n            \"success\": True,\n            \"message\": f\"Symbol '{symbol}' added to compliance list '{list_id}' as active.\"\n          }\n        - On error: {\n            \"success\": False,\n            \"error\": str  # Error description\n          }\n\nConstraints:\n    - Compliance list (list_id) must exist.\n    - Security (symbol) must exist.\n    - Symbol must not already be 'active' in the compliance list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string"
+          },
+          "symbol": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "list_id",
+          "symbol"
+        ]
+      }
+    },
+    {
+      "name": "remove_symbol_from_compliance_list",
+      "description": "Mark a symbol as 'inactive' on a compliance list, updating the removed_date and status.\n\nArgs:\n    list_id (str): The identifier of the compliance list.\n    symbol (str): The security symbol to mark inactive.\n    removed_date (str): The date when the symbol is marked inactive (in YYYY-MM-DD or similar format).\n\nReturns:\n    dict: \n        - On success: \n            { \"success\": True, \"message\": \"Symbol {symbol} marked as inactive on compliance list {list_id}.\" }\n        - On failure: \n            { \"success\": False, \"error\": \"Reason for failure\" }\n\nConstraints:\n    - The compliance list and symbol must exist.\n    - Status and removed_date are updated (even if already inactive).\n    - Audit trail is maintained via removed_date and status history.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string"
+          },
+          "symbol": {
+            "type": "string"
+          },
+          "removed_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "list_id",
+          "symbol",
+          "removed_date"
+        ]
+      }
+    },
+    {
+      "name": "update_symbol_status_in_compliance_list",
+      "description": "Change the status of a symbol in a compliance list (e.g., re-activate or deactivate).\n\nArgs:\n    list_id (str): ID of the compliance list.\n    symbol (str): Symbol of the security.\n    status (str): New status ('active' or 'inactive').\n    current_date (str, optional): Date-time string for status update (used for added/removed date). If None, no change to added_date unless status is 'active' and previously inactive, or removed_date if status is 'inactive'.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"message\": \"Status for symbol updated in compliance list.\"\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": \"Reason why update failed.\"\n        }\n\nConstraints:\n    - Only updates mapping if it exists.\n    - Only known statuses ('active', 'inactive') are allowed.\n    - Updates appropriate date fields on status change.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string"
+          },
+          "symbol": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "current_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "list_id",
+          "symbol",
+          "status",
+          "current_date"
+        ]
+      }
+    },
+    {
+      "name": "create_compliance_list",
+      "description": "Create a new compliance list linked to an existing regulation.\n\nArgs:\n    list_id (str): Unique identifier for the compliance list.\n    regulation_id (str): Regulation to which this list is linked. Must exist.\n    name (str): Name of the compliance list.\n    last_updated (str): Timestamp when the compliance list was last updated (ISO format).\n\nReturns:\n    dict: \n        - On success: {\n            \"success\": True,\n            \"message\": \"Compliance list <list_id> successfully created and linked to regulation <regulation_id>.\"\n          }\n        - On failure: {\n            \"success\": False,\n            \"error\": str  # Error message\n          }\nConstraints:\n    - regulation_id must reference an existing regulation.\n    - list_id must be unique and not already exist in compliance_lists.\n    - Regulatory references are maintained for audit/reporting.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string"
+          },
+          "regulation_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "last_updated": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "list_id",
+          "regulation_id",
+          "name",
+          "last_updated"
+        ]
+      }
+    },
+    {
+      "name": "delete_compliance_list",
+      "description": "Remove an existing compliance list and its associated symbol entries.\nAdmin/audit log is assumed external or not implemented here.\n\nArgs:\n    list_id (str): The ID of the compliance list to delete.\n\nReturns:\n    dict: \n      { \"success\": True, \"message\": \"Compliance list <list_id> deleted.\" }\n      or\n      { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The compliance list must exist.\n    - All symbol associations (compliance_list_securities) for this list are removed.\n    - Regulation and audit trails are not affected.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "list_id"
+        ]
+      }
+    },
+    {
+      "name": "update_regulation_info",
+      "description": "Modify details of a regulation (description, name, effective_date).\n\nArgs:\n    regulation_id (str): ID of the regulation to update. (Required)\n    name (str, optional): New name. (If not provided, do not update)\n    description (str, optional): New description.\n    effective_date (str, optional): New effective date (format: yyyy-mm-dd or per RegulationInfo spec).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Regulation info updated successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure\"\n    }\n\nConstraints:\n    - regulation_id must exist.\n    - At least one field must be provided for update.\n    - Field names must match RegulationInfo.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "regulation_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "effective_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "regulation_id"
+        ]
+      }
+    },
+    {
+      "name": "add_security",
+      "description": "Add a new publicly traded security record to the system.\n\nArgs:\n    symbol (str): Unique ticker symbol for the security.\n    name (str): Full name of the security.\n    isin (str): International Securities Identification Number.\n    cusip (str): Committee on Uniform Securities Identification Procedures ID.\n    exchange (str): The exchange where the security is traded.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Security with symbol <symbol> added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <error message>\n    }\n\nConstraints:\n    - The symbol must not already exist (must be unique).\n    - All fields are required and must not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "isin": {
+            "type": "string"
+          },
+          "cusip": {
+            "type": "string"
+          },
+          "exchange": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "name",
+          "isin",
+          "cusip",
+          "exchange"
+        ]
+      }
+    },
+    {
+      "name": "remove_security",
+      "description": "Soft delete a security from the system for audit compliance.\n\nArgs:\n    symbol (str): The security's symbol to remove.\n\nReturns:\n    dict: Success and message if removed (soft deleted), or error reason.\n        {\n            \"success\": True,\n            \"message\": \"Security soft-deleted (audit log retained).\"\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": <reason>\n        }\n\nConstraints:\n    - Remove (soft delete) the security from active securities.\n    - Do NOT remove audit trails or compliance list mappings; all data is preserved for audit.\n    - If already deleted or does not exist, return failure.\n    - Audit-enabled: soft-deleted securities should be stored for retention.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol"
+        ]
+      }
+    }
+  ]
+}

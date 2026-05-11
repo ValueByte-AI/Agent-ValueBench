@@ -1,0 +1,394 @@
+{
+  "env_name": "SteamFriendManagementSystem",
+  "description": "The Steam social network environment tracks user accounts, manages friendship relationships, and records metadata such as the date friendships were formed. It allows users to connect, communicate, and organize their gaming activities with others. This system supports operations like friend requests, acceptance, deletion, and querying historical connection data.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          },
+          "account_creation_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "display_name",
+          "account_status",
+          "account_creation_date"
+        ]
+      }
+    },
+    "friendships": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "friendship_id": {
+            "type": "string"
+          },
+          "_id_1": {
+            "type": "string"
+          },
+          "user_id_2": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "date_friended": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "friendship_id",
+          "_id_1",
+          "user_id_2",
+          "status",
+          "date_friended"
+        ]
+      }
+    },
+    "friend_requests": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "requester_id": {
+            "type": "string"
+          },
+          "recipient_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "request_date": {
+            "type": "string"
+          },
+          "response_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requester_id",
+          "recipient_id",
+          "status",
+          "request_date",
+          "response_date"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_id": [
+      "users"
+    ],
+    "list_friends_by_user": [
+      "friendships",
+      "users"
+    ],
+    "get_friendship_info_between_users": [
+      "friendships"
+    ],
+    "get_date_became_friends": [
+      "friendships",
+      "users"
+    ],
+    "list_friend_requests_for_user": [
+      "friend_requests",
+      "users"
+    ],
+    "get_friend_request_info": [
+      "friend_requests"
+    ],
+    "send_friend_request": [
+      "friend_requests",
+      "friendships",
+      "users"
+    ],
+    "accept_friend_request": [
+      "friend_requests",
+      "friendships",
+      "users"
+    ],
+    "decline_friend_request": [
+      "friend_requests",
+      "users"
+    ],
+    "remove_friend": [
+      "friendships",
+      "users"
+    ],
+    "update_account_status": [
+      "users"
+    ],
+    "cancel_sent_friend_request": [
+      "friend_requests",
+      "users"
+    ],
+    "edit_friendship_metadata": [
+      "friendships"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve the profile and account status for a given Steam user by _id.\n\nArgs:\n    _id (str): The Steam ID of the user to look up.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo  # dict of user's profile and account status\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., \"User not found\"\n    }\nConstraints:\n    - Returns user info for an existing user with _id; fails if user does not exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id"
+        ]
+      }
+    },
+    {
+      "name": "list_friends_by_user",
+      "description": "List all friends' Steam IDs for the given user_id.\n\nArgs:\n    user_id (str): The Steam ID of the user whose friends are to be listed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str]  # List of friends' Steam IDs\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (\"User does not exist\")\n    }\n\nConstraints:\n    - The user must exist in the system.\n    - Friendships are bidirectional: find friendships where user_id is either _id_1 or user_id_2, status is 'accepted'/'active'.\n    - Returned friend IDs are sorted for deterministic output.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_friendship_info_between_users",
+      "description": "Retrieve friendship metadata (status, date_friended, etc.) between two users, order-insensitive.\n\nArgs:\n    user_id_1 (str): Steam ID of the first user.\n    user_id_2 (str): Steam ID of the second user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": FriendshipInfo  # friendship info if friendship exists\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # description of why the friendship info can't be found\n    }\n\nConstraints:\n    - Users cannot be friends with themselves.\n    - Friendship symmetric: (A, B) == (B, A)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id_1": {
+            "type": "string"
+          },
+          "user_id_2": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id_1",
+          "user_id_2"
+        ]
+      }
+    },
+    {
+      "name": "get_date_became_friends",
+      "description": "Returns the date two users became friends, if such a friendship exists and is active.\n\nArgs:\n    user_id_1 (str): Steam ID of first user\n    user_id_2 (str): Steam ID of second user\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"data\": {\n                \"date_became_friends\": <str>  # ISO date string\n            }\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": <str>  # Error message\n        }\n\nConstraints:\n    - Both users must exist.\n    - Users must not be the same.\n    - Only return date if an active friendship exists between them.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id_1": {
+            "type": "string"
+          },
+          "user_id_2": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id_1",
+          "user_id_2"
+        ]
+      }
+    },
+    {
+      "name": "list_friend_requests_for_user",
+      "description": "List all friend requests received or sent by the specified user.\n\nArgs:\n    user_id (str): The Steam ID of the user to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[FriendRequestInfo],  # May be empty if no requests\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g., user does not exist\n    }\n\nConstraints:\n    - The user must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_friend_request_info",
+      "description": "Retrieve information for a specific friend request between two users.\n\nArgs:\n    requester_id (str): The Steam ID of the user who sent the request.\n    recipient_id (str): The Steam ID of the intended recipient.\n    request_date (str, optional): The date of the request (exact match). \n        If omitted, retrieves the most recent friend request between the two users.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": FriendRequestInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g. if request not found)\n    }\n\nConstraints:\n    - Looks up by requester_id, recipient_id, and optionally request_date.\n    - If request_date is omitted, retrieves the latest request between the pair.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "requester_id": {
+            "type": "string"
+          },
+          "recipient_id": {
+            "type": "string"
+          },
+          "request_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requester_id",
+          "recipient_id"
+        ]
+      }
+    },
+    {
+      "name": "send_friend_request",
+      "description": "Initiate a new friend request from one user to another, if allowed.\n\nArgs:\n    requester_id (str): Steam ID of the user sending the request.\n    recipient_id (str): Steam ID of the intended recipient.\n\nReturns:\n    dict: \n        If successful:\n            {\n                \"success\": True,\n                \"message\": \"Friend request sent from <requester_id> to <recipient_id>\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": <reason>\n            }\n\nConstraints:\n    - Both users must exist and have active accounts (account_status == 'active').\n    - Users cannot send friend requests to themselves.\n    - Users cannot send duplicate requests if a pending request (in either direction) exists.\n    - Users cannot send a request if already friends.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "requester_id": {
+            "type": "string"
+          },
+          "recipient_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requester_id",
+          "recipient_id"
+        ]
+      }
+    },
+    {
+      "name": "accept_friend_request",
+      "description": "Accept a pending friend request, creating a friendship as per constraints.\n\nArgs:\n    requester_id (str): The Steam ID of the user who sent the friend request.\n    recipient_id (str): The Steam ID of the user accepting the friend request.\n    request_date (str): The ISO date/time string when the request was sent (unique per request).\n    response_date (str, optional): The ISO date/time string when the request is accepted. If omitted or empty, the system records the current system timestamp automatically.\n\nReturns:\n    dict: \n        On success: {\"success\": True, \"message\": \"Friend request accepted and friendship created.\"}\n        On failure: {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - Only users with valid, active accounts can accept friend requests.\n    - Cannot be friends with oneself.\n    - Friendships are only stored if a request is accepted.\n    - Friendship relationship is symmetric.\n    - If response_date is omitted, the system generates a current ISO 8601 timestamp.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "requester_id": {
+            "type": "string"
+          },
+          "recipient_id": {
+            "type": "string"
+          },
+          "request_date": {
+            "type": "string"
+          },
+          "response_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requester_id",
+          "recipient_id",
+          "request_date"
+        ]
+      }
+    },
+    {
+      "name": "decline_friend_request",
+      "description": "Decline or ignore a pending friend request without creating a friendship.\n\nArgs:\n    requester_id (str): ID of the user who sent the friend request.\n    recipient_id (str): ID of the user who received the friend request.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Friend request declined.\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Only users with valid, active accounts can decline friend requests.\n    - The request must exist and be pending.\n    - The system records an ISO 8601 response_date automatically when the decline is applied.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "requester_id": {
+            "type": "string"
+          },
+          "recipient_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requester_id",
+          "recipient_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_friend",
+      "description": "Terminate (delete) the friendship between two distinct users, if it exists.\n\nArgs:\n    user_id_1 (str): Steam ID of the first user.\n    user_id_2 (str): Steam ID of the second user.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Friendship between user_id_1 and user_id_2 has been removed.\" }\n        On failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Both user IDs must exist.\n    - Users must not be the same.\n    - Friendship must exist (regardless of order of user IDs).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id_1": {
+            "type": "string"
+          },
+          "user_id_2": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id_1",
+          "user_id_2"
+        ]
+      }
+    },
+    {
+      "name": "update_account_status",
+      "description": "Change the status of a user's account.\n\nArgs:\n    user_id (str): The Steam ID of the user whose account status should be changed.\n    new_status (str): The new status to assign (e.g., \"active\", \"suspended\", \"banned\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Account status updated successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Explanation of the failure.\n    }\n\nConstraints:\n    - The user_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "cancel_sent_friend_request",
+      "description": "Withdraw a pending friend request that the user has previously sent.\n\nArgs:\n    requester_id (str): Steam ID of user withdrawing sent request.\n    recipient_id (str): Steam ID of target user.\n    request_date (str): Date string of when the request was sent (unique identifier).\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Friend request cancelled successfully.\" }\n        - On error: { \"success\": False, \"error\": \"Error message.\" }\n\nConstraints:\n    - Only the original requester can cancel their own request.\n    - Both users must exist and be in active account status.\n    - The friend request must exist and be in 'pending' status to be cancelled.\n    - The system records an ISO 8601 response_date automatically when the cancellation is applied.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "requester_id": {
+            "type": "string"
+          },
+          "recipient_id": {
+            "type": "string"
+          },
+          "request_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requester_id",
+          "recipient_id",
+          "request_date"
+        ]
+      }
+    },
+    {
+      "name": "edit_friendship_metadata",
+      "description": "Edit metadata fields of a friendship (admin/system-level operation).\n\nArgs:\n    friendship_id (str): The unique ID of the friendship to modify.\n    metadata_updates (dict): Key-value pairs of metadata fields to update.\n                            Allowed fields: \"date_friended\", \"status\".\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Friendship <id> metadata updated\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - friendship_id must exist.\n    - Only \"date_friended\" and \"status\" fields can be edited.\n    - Friendship participants (_id_1, user_id_2) cannot be modified.\n    - At least one allowed field must be provided for update.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "friendship_id": {
+            "type": "string"
+          },
+          "metadata_updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "friendship_id",
+          "metadata_updates"
+        ]
+      }
+    }
+  ]
+}

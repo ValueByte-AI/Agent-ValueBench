@@ -1,0 +1,507 @@
+{
+  "env_name": "MutualFundNAVTrackingSystem",
+  "description": "A Mutual Fund NAV Tracking System is designed to record, update, and provide access to the latest Net Asset Values (NAVs) for various investment schemes across asset management companies. It maintains structured data about schemes, fund houses, asset classes, and their daily valuations. Typical operations include NAV updates, historical queries, fund filtering, and reporting for use by investors and financial professionals.",
+  "initial_parameter_schema": {
+    "fund_houses": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "fund_house_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fund_house_id",
+          "name"
+        ]
+      }
+    },
+    "schemes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "scheme_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "fund_house_id": {
+            "type": "string"
+          },
+          "asset_class_id": {
+            "type": "string"
+          },
+          "launch_date": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scheme_id",
+          "name",
+          "fund_house_id",
+          "asset_class_id",
+          "launch_date",
+          "status"
+        ]
+      }
+    },
+    "asset_classes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "asset_class_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "asset_class_id",
+          "name",
+          "description"
+        ]
+      }
+    },
+    "nav_records": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "nav_record_id": {
+            "type": "string"
+          },
+          "scheme_id": {
+            "type": "string"
+          },
+          "nav_value": {
+            "type": "number"
+          },
+          "nav_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "nav_record_id",
+          "scheme_id",
+          "nav_value",
+          "nav_date"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_fund_house_by_name": [
+      "fund_houses"
+    ],
+    "list_schemes_by_fund_house": [
+      "fund_houses",
+      "schemes"
+    ],
+    "get_scheme_by_name_and_fund_house": [
+      "fund_houses",
+      "schemes"
+    ],
+    "list_active_schemes_by_fund_house": [
+      "fund_houses",
+      "schemes"
+    ],
+    "get_scheme_status": [
+      "schemes"
+    ],
+    "get_latest_nav_for_scheme": [
+      "nav_records",
+      "schemes"
+    ],
+    "get_scheme_details": [
+      "asset_classes",
+      "fund_houses",
+      "schemes"
+    ],
+    "get_asset_class_info": [
+      "asset_classes"
+    ],
+    "get_nav_history_for_scheme": [
+      "nav_records",
+      "schemes"
+    ],
+    "add_nav_record": [
+      "nav_records",
+      "schemes"
+    ],
+    "update_scheme_status": [
+      "schemes"
+    ],
+    "add_scheme": [
+      "asset_classes",
+      "fund_houses",
+      "schemes"
+    ],
+    "update_scheme_details": [
+      "asset_classes",
+      "fund_houses",
+      "schemes"
+    ],
+    "add_fund_house": [
+      "fund_houses"
+    ],
+    "add_asset_class": [
+      "asset_classes"
+    ],
+    "remove_scheme": [
+      "schemes"
+    ],
+    "delete_nav_record": [
+      "nav_records"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_fund_house_by_name",
+      "description": "Retrieve fund house information and fund_house_id by specifying the fund house name.\n\nArgs:\n    name (str): The name of the fund house.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": FundHouseInfo  # all info fields, including fund_house_id\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description if not found\n    }\n\nConstraints:\n    - Fund house name must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "list_schemes_by_fund_house",
+      "description": "List all schemes belonging to the specified fund house.\nOptionally filter by scheme status ('active', 'inactive', or other status values).\n\nArgs:\n    fund_house_id (str): The unique identifier for the fund house.\n    status (str, optional): Restrict results to schemes with this status. If None, return all.\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"data\": List[SchemeInfo]}\n        - On error:   {\"success\": False, \"error\": str}\n\nConstraints:\n    - Fund house must exist.\n    - Each scheme is linked to a fund house by fund_house_id.\n    - If status is specified, only schemes with that status are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fund_house_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fund_house_id"
+        ]
+      }
+    },
+    {
+      "name": "get_scheme_by_name_and_fund_house",
+      "description": "Retrieve scheme info (SchemeInfo) using the scheme name and the associated fund house ID.\n\nArgs:\n    name (str): The name of the mutual fund scheme.\n    fund_house_id (str): The ID of the fund house.\n\nReturns:\n    dict:\n        Success: { \"success\": True, \"data\": SchemeInfo }\n        Failure: { \"success\": False, \"error\": \"Scheme not found for given name and fund house\" }\n                 or { \"success\": False, \"error\": \"Fund house does not exist\" }\n\nConstraints:\n    - fund_house_id must exist in the environment.\n    - The scheme must exist with the specified name and fund_house_id.\n    - If multiple schemes match (should not happen), return the first found.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "fund_house_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "fund_house_id"
+        ]
+      }
+    },
+    {
+      "name": "list_active_schemes_by_fund_house",
+      "description": "List all 'active' schemes under the specified fund house.\n\nArgs:\n    fund_house_id (str): The unique identifier for the fund house.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SchemeInfo]  # All active schemes for the given fund house, may be empty\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description if fund house does not exist\n    }\n\nConstraints:\n    - The fund house must exist in the system.\n    - Only schemes where status == 'active' are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fund_house_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fund_house_id"
+        ]
+      }
+    },
+    {
+      "name": "get_scheme_status",
+      "description": "Retrieve the current status (\"active\", \"inactive\", etc.) of the scheme identified by scheme_id.\n\nArgs:\n    scheme_id (str): The unique identifier of the mutual fund scheme.\n\nReturns:\n    dict:\n        On success:\n        {\n            \"success\": True,\n            \"data\": {\n                \"scheme_id\": str,\n                \"status\": str\n            }\n        }\n        On failure (e.g., scheme not found):\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - scheme_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scheme_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scheme_id"
+        ]
+      }
+    },
+    {
+      "name": "get_latest_nav_for_scheme",
+      "description": "Retrieve the most recent NAVRecord (NAV value and date) for a given scheme.\n\nArgs:\n    scheme_id (str): The ID of the mutual fund scheme.\n\nReturns:\n    - If a latest NAVRecord exists for the scheme:\n        {\"success\": True, \"data\": NAVRecordInfo}\n    - If the scheme does not exist:\n        {\"success\": False, \"error\": \"Scheme does not exist\"}\n    - If there is no NAVRecord for the scheme:\n        {\"success\": False, \"error\": \"No NAV records found for scheme\"}\nConstraints:\n    - Only the latest NAVRecord (by nav_date) for the scheme is returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scheme_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scheme_id"
+        ]
+      }
+    },
+    {
+      "name": "get_scheme_details",
+      "description": "Retrieve full details for a given scheme, including the scheme info,\nits associated fund house, and asset class.\n\nArgs:\n    scheme_id (str): The unique identifier for the scheme.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"scheme\": SchemeInfo,\n                    \"fund_house\": FundHouseInfo,\n                    \"asset_class\": AssetClassInfo\n                }\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str\n            }\nConstraints:\n    - scheme_id must exist in self.schemes.\n    - related fund_house_id and asset_class_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scheme_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scheme_id"
+        ]
+      }
+    },
+    {
+      "name": "get_asset_class_info",
+      "description": "Retrieve information about an asset class, given the asset_class_id or name.\n\nArgs:\n    asset_class_id (str, optional): The unique ID of the asset class.\n    name (str, optional): The name of the asset class (case-insensitive).\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"data\": AssetClassInfo}\n        - On failure: {\"success\": False, \"error\": str}\n\nConstraints:\n    - At least one of asset_class_id or name must be provided.\n    - If both are provided, they must refer to the same asset class.\n    - Name matches are case-insensitive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "asset_class_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          
+        ]
+      }
+    },
+    {
+      "name": "get_nav_history_for_scheme",
+      "description": "Retrieve the list of historical NAVRecords for a given scheme.\n\nArgs:\n    scheme_id (str): The scheme whose NAV history is desired.\n    start_date (str, optional): (Inclusive) Lower bound for nav_date, in 'YYYY-MM-DD' ISO format.\n    end_date (str, optional): (Inclusive) Upper bound for nav_date, in 'YYYY-MM-DD' ISO format.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[NAVRecordInfo] (sorted by nav_date ascending),\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints/rules:\n    - scheme_id must exist.\n    - If start_date/end_date provided, filter nav_records to those in the inclusive date range.\n    - If no records, returns empty list with success.\n    - Date filtering is lexicographical on ISO format.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scheme_id": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scheme_id"
+        ]
+      }
+    },
+    {
+      "name": "add_nav_record",
+      "description": "Add a new NAVRecord for a scheme.\n\nArgs:\n    nav_record_id (str): Unique identifier for the NAV record.\n    scheme_id (str): Scheme's unique ID. Must exist in the system.\n    nav_value (float): NAV value for the scheme.\n    nav_date (str): Date for the NAV value, YYYY-MM-DD (ISO-8601). Must be a valid calendar date.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"NAV record added for scheme <scheme_id> on date <nav_date>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - nav_record_id must be unique (not in self.nav_records)\n    - scheme_id must exist and link to a real Scheme\n    - nav_date must be a valid calendar date string (YYYY-MM-DD)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "nav_record_id": {
+            "type": "string"
+          },
+          "scheme_id": {
+            "type": "string"
+          },
+          "nav_value": {
+            "type": "number"
+          },
+          "nav_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "nav_record_id",
+          "scheme_id",
+          "nav_value",
+          "nav_date"
+        ]
+      }
+    },
+    {
+      "name": "update_scheme_status",
+      "description": "Change the status of a mutual fund scheme, e.g., activate or deactivate for inclusion/exclusion in default queries.\n\nArgs:\n    scheme_id (str): The identifier of the scheme to update.\n    status (str): The new status for the scheme (\"active\" or \"inactive\" are standard).\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Scheme status updated to <status>\" }\n        On failure:\n            { \"success\": False, \"error\": \"<error reason>\" }\n\nConstraints:\n    - The scheme must exist in the system.\n    - Status must be one of allowed values (\"active\", \"inactive\").\n      (Other statuses can be added as per system rules.)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scheme_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scheme_id",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "add_scheme",
+      "description": "Add a new scheme to the system, linking it to an existing fund house and asset class.\n\nArgs:\n    scheme_id (str): Unique identifier for the new scheme.\n    name (str): The scheme's name.\n    fund_house_id (str): ID of the fund house this scheme belongs to (must exist).\n    asset_class_id (str): ID of the asset class this scheme belongs to (must exist).\n    launch_date (str): Launch date in 'YYYY-MM-DD' format.\n    status (str): Scheme status (e.g. 'active'/'inactive').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Scheme added successfully\"\n    } on success, or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    } on failure.\n\nConstraints:\n    - scheme_id must be unique.\n    - fund_house_id and asset_class_id must refer to existing FundHouse and AssetClass.\n    - All fields required (non-empty).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scheme_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "fund_house_id": {
+            "type": "string"
+          },
+          "asset_class_id": {
+            "type": "string"
+          },
+          "launch_date": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scheme_id",
+          "name",
+          "fund_house_id",
+          "asset_class_id",
+          "launch_date",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "update_scheme_details",
+      "description": "Update attributes of an existing scheme.\n\nArgs:\n    scheme_id (str): The identifier of the scheme to update.\n    name (str, optional): New name for the scheme.\n    asset_class_id (str, optional): New asset class ID (must exist).\n    fund_house_id (str, optional): New fund house ID (must exist).\n    launch_date (str, optional): New launch date for the scheme.\n    status (str, optional): New status for the scheme.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Scheme details updated successfully\" }\n        - On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - The scheme must exist.\n    - asset_class_id (if provided) must exist.\n    - fund_house_id (if provided) must exist.\n    - At least one field to update must be provided.\n    - Only the allowed fields (name, asset_class_id, fund_house_id, launch_date, status) can be updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scheme_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "asset_class_id": {
+            "type": "string"
+          },
+          "fund_house_id": {
+            "type": "string"
+          },
+          "launch_date": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scheme_id"
+        ]
+      }
+    },
+    {
+      "name": "add_fund_house",
+      "description": "Add a new fund house (asset management company) to the system.\n\nArgs:\n    fund_house_id (str): Unique identifier for the fund house.\n    name (str): Name of the fund house.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Fund house <name> added with ID <fund_house_id>.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": <reason>\n            }\n\nConstraints:\n    - fund_house_id must be unique across all fund houses.\n    - Both fund_house_id and name must be non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fund_house_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fund_house_id",
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "add_asset_class",
+      "description": "Add a new asset class definition to the system.\n\nArgs:\n    asset_class_id (str): Unique identifier for the asset class.\n    name (str): Name of the asset class (e.g., 'equity', 'debt').\n    description (str): Description of the asset class.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Asset class added successfully.\"\n    }\n    or {\n        \"success\": False,\n        \"error\": \"Asset class ID already exists.\" or other validation error\n    }\n\nConstraints:\n    - asset_class_id must be unique (not already present in asset_classes).\n    - All parameters must be non-empty strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "asset_class_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "asset_class_id",
+          "name",
+          "description"
+        ]
+      }
+    },
+    {
+      "name": "remove_scheme",
+      "description": "Remove (deactivate) a Scheme so it will not appear in default active queries.\n\nArgs:\n    scheme_id (str): Unique identifier for the scheme to deactivate.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str   # Deactivation result,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Only marks the scheme as 'inactive' (does not hard-delete or remove NAV records).\n    - If scheme does not exist, returns error.\n    - If already inactive, operation is idempotent and still returns success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scheme_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scheme_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_nav_record",
+      "description": "Remove a specific NAVRecord from the system (administrative action).\n\nArgs:\n    nav_record_id (str): The unique identifier of the NAV record to be deleted.\n\nReturns:\n    dict:\n        - On success:\n            {\"success\": True, \"message\": \"NAVRecord <nav_record_id> deleted.\"}\n        - On failure:\n            {\"success\": False, \"error\": \"<error message>\"}\n\nConstraints:\n    - NAVRecord with nav_record_id must exist in the system.\n    - Deletion is an administrative action; only ensures record is removed if present.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "nav_record_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "nav_record_id"
+        ]
+      }
+    }
+  ]
+}

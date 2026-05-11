@@ -1,0 +1,545 @@
+{
+  "env_name": "MotorVehicleRegistrationDatabase",
+  "description": "A motor vehicle registration database is a structured repository that tracks information about vehicles, such as their registration numbers, owners, specifications, and legal status. It allows authorized users to search for and retrieve records based on unique identifiers like license plates or VINs. The system supports common operations such as registering new vehicles, updating ownership, and querying existing records for official or informational purposes.",
+  "initial_parameter_schema": {
+    "vehicles": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "registration_number": {
+            "type": "string"
+          },
+          "VIN": {
+            "type": "string"
+          },
+          "make": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "year": {
+            "type": "integer"
+          },
+          "color": {
+            "type": "string"
+          },
+          "engine_number": {
+            "type": "string"
+          },
+          "vehicle_type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "registration_number",
+          "VIN",
+          "make",
+          "model",
+          "year",
+          "color",
+          "engine_number",
+          "vehicle_type",
+          "status"
+        ]
+      }
+    },
+    "owners": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "owner_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "date_of_birth": {
+            "type": "string"
+          },
+          "license_number": {
+            "type": "string"
+          },
+          "contact_information": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "owner_id",
+          "name",
+          "address",
+          "date_of_birth",
+          "license_number",
+          "contact_information"
+        ]
+      }
+    },
+    "registrations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "registration_number": {
+            "type": "string"
+          },
+          "vehicle_id": {
+            "type": "string"
+          },
+          "owner_id": {
+            "type": "string"
+          },
+          "registration_date": {
+            "type": "string"
+          },
+          "expiration_date": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "registration_number",
+          "vehicle_id",
+          "owner_id",
+          "registration_date",
+          "expiration_date",
+          "status"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_vehicle_by_registration": [
+      "vehicles"
+    ],
+    "get_vehicle_by_vin": [
+      "vehicles"
+    ],
+    "list_vehicles_by_owner": [
+      "owners",
+      "registrations",
+      "vehicles"
+    ],
+    "get_owner_by_id": [
+      "owners"
+    ],
+    "get_owner_by_license": [
+      "owners"
+    ],
+    "get_registration_by_number": [
+      "registrations"
+    ],
+    "list_active_registrations": [
+      "registrations"
+    ],
+    "get_registration_status": [
+      "registrations"
+    ],
+    "get_vehicle_registration_history": [
+      "registrations",
+      "vehicles"
+    ],
+    "register_new_vehicle": [
+      "owners",
+      "registrations",
+      "vehicles"
+    ],
+    "update_vehicle_details": [
+      "vehicles"
+    ],
+    "transfer_registration": [
+      "owners",
+      "registrations"
+    ],
+    "expire_registration": [
+      "registrations"
+    ],
+    "revoke_registration": [
+      "registrations"
+    ],
+    "renew_registration": [
+      "registrations"
+    ],
+    "delete_vehicle_record": [
+      "registrations",
+      "vehicles"
+    ],
+    "add_owner": [
+      "owners"
+    ],
+    "update_owner_details": [
+      "owners"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_vehicle_by_registration",
+      "description": "Retrieve all details of a vehicle by its registration number.\n\nArgs:\n    registration_number (str): The vehicle's unique registration identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": VehicleInfo  # Vehicle's full details\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message such as not found\n    }\n\nConstraints:\n    - registration_number must exist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "registration_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "registration_number"
+        ]
+      }
+    },
+    {
+      "name": "get_vehicle_by_vin",
+      "description": "Retrieve vehicle details using the VIN (Vehicle Identification Number).\n\nArgs:\n    vin (str): The vehicle's VIN.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": VehicleInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - VIN must be present and valid for the vehicle.\n    - If VIN is not found, operation fails.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vin"
+        ]
+      }
+    },
+    {
+      "name": "list_vehicles_by_owner",
+      "description": "Retrieves all vehicles associated with a specific owner, identified by owner_id or name.\n\nArgs:\n    owner_id (str, optional): The unique owner identifier.\n    name (str, optional): The owner's name (may match multiple owners).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[VehicleInfo],  # List of matched vehicles (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message describing the issue\n    }\n\nConstraints:\n    - At least one of owner_id or name must be specified.\n    - If name is used, and matches multiple owners, returns vehicles for all such owners.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+        ]
+      }
+    },
+    {
+      "name": "get_owner_by_id",
+      "description": "Retrieve owner information using the specified owner_id.\n\nArgs:\n    owner_id (str): Unique identifier for the owner.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": OwnerInfo  # If the owner is found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., \"Owner not found\"\n    }\n\nConstraints:\n    - owner_id must exist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "owner_id"
+        ]
+      }
+    },
+    {
+      "name": "get_owner_by_license",
+      "description": "Retrieve owner information given their driver's license number.\n\nArgs:\n    license_number (str): The driver's license number to look up.\n\nReturns:\n    dict:\n      - On success: {\"success\": True, \"data\": OwnerInfo}\n      - On failure: {\"success\": False, \"error\": \"Owner not found with given license number.\"}\nConstraints:\n    - License number should be unique in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "license_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "license_number"
+        ]
+      }
+    },
+    {
+      "name": "get_registration_by_number",
+      "description": "Retrieve the full registration record for the given registration number.\n\nArgs:\n    registration_number (str): The unique registration number to look up.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": RegistrationInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Registration number not found\"\n    }\n\nConstraints:\n    - The registration_number must exist in the registrations database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "registration_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "registration_number"
+        ]
+      }
+    },
+    {
+      "name": "list_active_registrations",
+      "description": "Retrieve all registrations that have an 'active' status.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RegistrationInfo]  # List of active registration info (may be empty)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_registration_status",
+      "description": "Retrieve the current status of a registration (e.g., active, expired, revoked).\n\nArgs:\n    registration_number (str): The registration number to query.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True,\n            \"data\": {\n                \"registration_number\": str,\n                \"status\": str\n            }\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": \"Registration number not found\"\n        }\n\nConstraints:\n    - The registration_number must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "registration_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "registration_number"
+        ]
+      }
+    },
+    {
+      "name": "get_vehicle_registration_history",
+      "description": "Retrieve all past and current registration records for a given vehicle, using either registration_number or VIN.\n\nArgs:\n    registration_number (str, optional): Vehicle's registration number.\n    VIN (str, optional): Vehicle's VIN.\n\nReturns:\n    dict:\n        - If successful:\n            { \"success\": True, \"data\": List[RegistrationInfo] }\n        - On error:\n            { \"success\": False, \"error\": str }\n\nConstraints:\n    - At least one of registration_number or VIN must be provided.\n    - If both are provided, they must correspond to the same vehicle.\n    - Vehicle must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "registration_number": {
+            "type": "string"
+          },
+          "VIN": {
+            "type": "string"
+          }
+        },
+        "required": [
+        ]
+      }
+    },
+    {
+      "name": "register_new_vehicle",
+      "description": "Add a new vehicle and its initial registration to the system.\n\nArgs:\n    registration_number (str): Unique registration number for the vehicle.\n    VIN (str): Unique vehicle identification number.\n    make (str): Vehicle make (manufacturer).\n    model (str): Vehicle model.\n    year (int): Model year.\n    color (str): Color of the vehicle.\n    engine_number (str): Engine number.\n    vehicle_type (str): Type/category of the vehicle.\n    owner_id (str): Existing owner ID.\n    registration_date (str): Registration start date.\n    expiration_date (str): Registration expiration date.\n    status (str): Registration status ('active' by default).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Vehicle and registration created.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - registration_number must be unique; not in vehicles or registrations.\n    - VIN must be unique; not in vehicles.\n    - owner_id must exist.\n    - Registration status is usually 'active'.\n    - All fields required and not empty/None.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "registration_number": {
+            "type": "string"
+          },
+          "VIN": {
+            "type": "string"
+          },
+          "make": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "year": {
+            "type": "integer"
+          },
+          "color": {
+            "type": "string"
+          },
+          "engine_number": {
+            "type": "string"
+          },
+          "vehicle_type": {
+            "type": "string"
+          },
+          "owner_id": {
+            "type": "string"
+          },
+          "registration_date": {
+            "type": "string"
+          },
+          "expiration_date": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "registration_number",
+          "VIN",
+          "make",
+          "model",
+          "year",
+          "color",
+          "engine_number",
+          "vehicle_type",
+          "owner_id",
+          "registration_date",
+          "expiration_date"
+        ]
+      }
+    },
+    {
+      "name": "update_vehicle_details",
+      "description": "Modify details for an existing vehicle (e.g., color, make, model).\n\nArgs:\n    registration_number (str): Vehicle's unique registration number.\n    **kwargs: Fields and new values to update (e.g., color=\"Red\", model=\"Accord\")\n\nReturns:\n    dict:\n        {\"success\": True, \"message\": \"Vehicle details updated successfully.\"}\n        or\n        {\"success\": False, \"error\": \"reason\"}\n\nConstraints:\n    - Vehicle must exist.\n    - Cannot modify registration_number or VIN.\n    - Must update at least one allowed field.\n    - Allowed mutable fields: make, model, year, color, engine_number, vehicle_type, status",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "registration_number": {
+            "type": "string"
+          },
+          "kwargs": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "registration_number",
+          "kwargs"
+        ]
+      }
+    },
+    {
+      "name": "transfer_registration",
+      "description": "Transfer ownership/registration of a vehicle to a new owner (only if current registration is active).\n\nArgs:\n    registration_number (str): Registration to be transferred.\n    new_owner_id (str): The owner_id of the new owner.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str,  # Success description\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,    # Reason for failure\n    }\n\nConstraints:\n  - Only registrations with status 'active' can be transferred.\n  - Registration number and new_owner_id must exist.\n  - Expired or revoked registrations cannot be transferred.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "registration_number": {
+            "type": "string"
+          },
+          "new_owner_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "registration_number",
+          "new_owner_id"
+        ]
+      }
+    },
+    {
+      "name": "expire_registration",
+      "description": "Mark a registration as expired (status='expired').\n\nArgs:\n    registration_number (str): The unique registration number to expire.\n\nReturns:\n    dict:\n        Success: {\n            \"success\": True,\n            \"message\": \"Registration <registration_number> marked as expired.\"\n        }\n        Failure: {\n            \"success\": False,\n            \"error\": <string describing the failure>\n        }\n\nConstraints:\n    - Registration must exist.\n    - Cannot expire a registration that is already expired or revoked.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "registration_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "registration_number"
+        ]
+      }
+    },
+    {
+      "name": "revoke_registration",
+      "description": "Revoke a registration for legal or administrative reasons.\n\nArgs:\n    registration_number (str): The unique registration number to revoke.\n\nReturns:\n    dict:\n        - success (bool): True if the operation was successful, False otherwise.\n        - message (str): Success message if revoked, otherwise empty.\n        - error (str): Error message if any failure occurs.\n\nConstraints:\n    - The registration must exist.\n    - Only registrations that are neither already revoked nor expired can be revoked.\n    - Status is updated to 'revoked' upon successful operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "registration_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "registration_number"
+        ]
+      }
+    },
+    {
+      "name": "renew_registration",
+      "description": "Reactivate or extend an existing (not revoked) vehicle registration for a new period.\n\nArgs:\n    registration_number (str): The registration number to be renewed.\n    new_expiration_date (str, optional): The new expiration date in ISO/year-month-day format. If not provided, defaults to one year from today.\n    new_registration_date (str, optional): The new registration date. If not provided, defaults to today.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Registration renewed; new expiration: ...\",\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,\n    }\n\nConstraints:\n    - Registration must exist and must not be revoked.\n    - Only one active registration per vehicle is allowed (renewal for the same registration is fine).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "registration_number": {
+            "type": "string"
+          },
+          "new_expiration_date": {
+            "type": "string"
+          },
+          "new_registration_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "registration_number"
+        ]
+      }
+    },
+    {
+      "name": "delete_vehicle_record",
+      "description": "Remove a vehicle and all associated registration(s) from the system by registration_number.\n\nArgs:\n    registration_number (str): Unique registration number of the vehicle to remove.\n\nReturns:\n    dict: On success,\n        {\n            \"success\": True,\n            \"message\": \"Vehicle and associated registrations deleted.\"\n        }\n        On failure,\n        {\n            \"success\": False,\n            \"error\": \"Vehicle with registration_number ... does not exist.\"\n        }\n\nConstraints:\n    - Only removes record if vehicle exists.\n    - Deletes both vehicle and its registration(s).\n    - Assumes admin permissions (no explicit authorization check).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "registration_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "registration_number"
+        ]
+      }
+    },
+    {
+      "name": "add_owner",
+      "description": "Add a new owner to the owner records.\n\nArgs:\n    owner_id (str): Unique identifier for the owner.\n    name (str): Name of the owner.\n    address (str): Owner's address.\n    date_of_birth (str): Owner's date of birth.\n    license_number (str): Owner's driver's license number.\n    contact_information (str): Contact information for the owner.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Owner <owner_id> added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - owner_id must be unique (not already present in self.owners)\n    - All fields must be provided and non-empty",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "date_of_birth": {
+            "type": "string"
+          },
+          "license_number": {
+            "type": "string"
+          },
+          "contact_information": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "owner_id"
+        ]
+      }
+    },
+    {
+      "name": "update_owner_details",
+      "description": "Modify the personal information for an existing owner.\n\nArgs:\n    owner_id (str): ID of the owner record to update.\n    name (str, optional): New name for the owner.\n    address (str, optional): New address for the owner.\n    date_of_birth (str, optional): New date of birth for the owner.\n    license_number (str, optional): New driving license number for the owner.\n    contact_information (str, optional): New contact information.\n\nReturns:\n    dict:\n        If success:\n            { \"success\": True, \"message\": \"Owner details updated.\" }\n        If failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Only updates fields present in the OwnerInfo type.\n    - Fails if owner_id does not exist.\n    - Fails if no valid fields are given to update.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "date_of_birth": {
+            "type": "string"
+          },
+          "license_number": {
+            "type": "string"
+          },
+          "contact_information": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "owner_id",
+          "name",
+          "address",
+          "date_of_birth",
+          "license_number",
+          "contact_information"
+        ]
+      }
+    }
+  ]
+}

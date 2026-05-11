@@ -1,0 +1,646 @@
+{
+  "env_name": "TradingPlatformBackend",
+  "description": "A TradingView-like social trading platform backend manages user-generated trading ideas, comments, and user profiles in a structured and persistent manner. It keeps track of posts, unique identifiers, comment threads, timestamps, and user interactions. The backend supports key operations such as posting ideas, adding comments, retrieving discussions, and aggregating community feedback for users interested in financial markets.",
+  "initial_parameter_schema": {
+    "ideas": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "idea_id": {
+            "type": "string"
+          },
+          "author_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "vote_count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "idea_id",
+          "author_id",
+          "content",
+          "timestamp",
+          "visibility",
+          "tags",
+          "vote_count"
+        ]
+      }
+    },
+    "comments": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "comment_id": {
+            "type": "string"
+          },
+          "idea_id": {
+            "type": "string"
+          },
+          "author_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "parent_comment_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vote_count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "comment_id",
+          "idea_id",
+          "author_id",
+          "content",
+          "timestamp",
+          "parent_comment_id",
+          "vote_count"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "reputation": {
+            "type": "integer"
+          },
+          "profile_info": {
+            "type": "string"
+          },
+          "joined_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "reputation",
+          "profile_info",
+          "joined_date"
+        ]
+      }
+    },
+    "votes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "vote_id": {
+            "type": "string"
+          },
+          "voter_id": {
+            "type": "string"
+          },
+          "target_type": {
+            "type": "string"
+          },
+          "target_id": {
+            "type": "string"
+          },
+          "vote_value": {
+            "type": "integer"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vote_id",
+          "voter_id",
+          "target_type",
+          "target_id",
+          "vote_value",
+          "timestamp"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_idea_by_id": [
+      "ideas"
+    ],
+    "list_ideas_by_user": [
+      "ideas",
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_comments_for_idea": [
+      "comments",
+      "ideas"
+    ],
+    "get_comment_by_id": [
+      "comments"
+    ],
+    "list_comments_by_user": [
+      "comments",
+      "users"
+    ],
+    "get_votes_for_target": [
+      "comments",
+      "ideas",
+      "votes"
+    ],
+    "has_user_voted": [
+      "votes"
+    ],
+    "get_vote_count": [
+      "comments",
+      "ideas",
+      "votes"
+    ],
+    "create_idea": [
+      "ideas",
+      "users"
+    ],
+    "update_idea": [
+      "ideas"
+    ],
+    "delete_idea": [
+      "comments",
+      "ideas",
+      "votes"
+    ],
+    "create_comment": [
+      "comments",
+      "ideas",
+      "users"
+    ],
+    "update_comment": [
+      "comments"
+    ],
+    "delete_comment": [
+      "comments",
+      "votes"
+    ],
+    "cast_vote": [
+      "comments",
+      "ideas",
+      "users",
+      "votes"
+    ],
+    "update_vote": [
+      "comments",
+      "ideas",
+      "votes"
+    ],
+    "delete_vote": [
+      "comments",
+      "ideas",
+      "votes"
+    ],
+    "delete_user": [
+      "comments",
+      "ideas",
+      "users",
+      "votes"
+    ],
+    "update_user_profile": [
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_idea_by_id",
+      "description": "Fetch the details of a specific idea post using its unique idea_id.\n\nArgs:\n    idea_id (str): The UUID identifying the idea post.\n\nReturns:\n    dict: If successful, returns\n          { \"success\": True, \"data\": IdeaPostInfo }\n          If not found, returns\n          { \"success\": False, \"error\": \"Idea post not found\" }\n\nConstraints:\n    - The idea_id must correspond to an existing idea post.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "idea_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "idea_id"
+        ]
+      }
+    },
+    {
+      "name": "list_ideas_by_user",
+      "description": "Retrieve all idea posts authored by a particular user.\n\nArgs:\n    user_id (str): The unique identifier of the user whose ideas are requested.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[IdeaPostInfo],  # List of the user's ideas (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # E.g., User does not exist\n    }\n\nConstraints:\n    - User must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Obtain profile and reputation information for a given user.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n\nReturns:\n    dict:\n        - If user exists:\n            { \"success\": True, \"data\": UserInfo }\n        - If user not found:\n            { \"success\": False, \"error\": \"User not found\" }\n\nConstraints:\n    - user_id must exist in the users storage.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_comments_for_idea",
+      "description": "Retrieve all comments associated with a specific idea post, organized in threaded (parent/child) structure.\n\nArgs:\n    idea_id (str): The UUID of the idea post.\n\nReturns:\n    dict:\n        - If idea exists:\n            { \"success\": True, \"data\": [ <threaded comments tree> ] }\n        - If idea_id invalid:\n            { \"success\": False, \"error\": \"Idea not found\" }\n\nConstraints:\n    - idea_id must exist\n    - Threaded replies are nested recursively via 'replies' field.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "idea_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "idea_id"
+        ]
+      }
+    },
+    {
+      "name": "get_comment_by_id",
+      "description": "Retrieve the details of a specific comment using its comment_id.\n\nArgs:\n    comment_id (str): The UUID of the comment to retrieve.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": CommentInfo  # Details of the found comment\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Comment not found\"\n    }\n\nConstraints:\n    - comment_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "comment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "comment_id"
+        ]
+      }
+    },
+    {
+      "name": "list_comments_by_user",
+      "description": "List all comments authored by a specific user across the platform.\n\nArgs:\n    user_id (str): The user's unique identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CommentInfo],  # List of comments authored by the user, may be empty if none found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error if user does not exist\n    }\n\nConstraints:\n    - User with user_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_votes_for_target",
+      "description": "Retrieve all vote records (VoteInfo) for a given idea or comment.\n\nArgs:\n    target_type (str): \"idea\" or \"comment\"\n    target_id (str): UUID of the idea or comment\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[VoteInfo],  # List of votes (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description\n    }\nConstraints:\n    - target_type must be either \"idea\" or \"comment\".\n    - target_id must exist for the respective type.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_type": {
+            "type": "string"
+          },
+          "target_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_type",
+          "target_id"
+        ]
+      }
+    },
+    {
+      "name": "has_user_voted",
+      "description": "Check whether a user has already voted on a specific target (idea or comment).\n\nArgs:\n    user_id (str): The ID of the user.\n    target_type (str): Either 'idea' or 'comment'.\n    target_id (str): The ID of the idea or comment.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": bool,  # True if user has already voted; else False\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for error, such as invalid target_type\n    }\n\nConstraints:\n    - target_type must be 'idea' or 'comment'.\n    - Only one vote per user/target combination should exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "target_type": {
+            "type": "string"
+          },
+          "target_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "target_type",
+          "target_id"
+        ]
+      }
+    },
+    {
+      "name": "get_vote_count",
+      "description": "Get aggregate vote count (sum of vote_value) for the given idea or comment.\n\nArgs:\n    target_type (str): Either 'idea' or 'comment'\n    target_id (str): The UUID of the idea or comment.\n\nReturns:\n    dict:\n        success (bool): True if the vote count is retrieved, False otherwise.\n        data (int): The aggregate vote count (only if success=True).\n        error (str): Error message describing the failure (only if success=False).\n\nConstraints:\n    - target_type must be 'idea' or 'comment'.\n    - The target (idea or comment) must exist.\n\nNotes:\n    - If there are no votes for the target, the count is 0 (still successful).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_type": {
+            "type": "string"
+          },
+          "target_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_type",
+          "target_id"
+        ]
+      }
+    },
+    {
+      "name": "create_idea",
+      "description": "Add a new trading idea post for a user. Enforces:\n  - idea_id must be unique in the system.\n  - author_id must correspond to an existing user.\n\nArgs:\n    idea_id (str): Unique identifier (UUID) of the idea.\n    author_id (str): User ID of the idea's author.\n    content (str): Content of the trading idea.\n    timestamp (str): When the idea is posted.\n    visibility (str): Visibility status (e.g. \"public\", \"private\").\n    tags (list): List of tags/labels for the idea.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Idea created successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n  - idea_id must be unique.\n  - author_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "idea_id": {
+            "type": "string"
+          },
+          "author_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "idea_id",
+          "author_id",
+          "content",
+          "timestamp",
+          "visibility",
+          "tags"
+        ]
+      }
+    },
+    {
+      "name": "update_idea",
+      "description": "Edit the content, tags, and/or visibility of an existing idea post.\n\nArgs:\n    idea_id (str): The UUID of the idea post to update.\n    author_id (str): The user ID attempting the update (must be the post's author).\n    content (Optional[str]): New content for the idea post.\n    tags (Optional[List[str]]): New tags for the idea post.\n    visibility (Optional[str]): New visibility status for the idea post.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Idea updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The idea post must exist.\n    - Only the post's author can update it.\n    - At least one updatable field (content, tags, visibility) must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "idea_id": {
+            "type": "string"
+          },
+          "author_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "visibility": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "idea_id",
+          "author_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_idea",
+      "description": "Remove an idea post and handle cascading removal of associated comments and votes.\n\nArgs:\n    idea_id (str): The UUID of the idea to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Idea and all associated comments and votes deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Explanation if the idea does not exist\n    }\n\nConstraints:\n    - Idea must exist.\n    - All comments linked to this idea (by idea_id) are deleted.\n    - All votes linked to this idea (target_type 'idea', target_id == idea_id) are deleted.\n    - All votes on comments linked to this idea are also deleted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "idea_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "idea_id"
+        ]
+      }
+    },
+    {
+      "name": "create_comment",
+      "description": "Add a new comment to an idea post or as a reply to another comment.\n\nArgs:\n    comment_id (str): Unique UUID for this comment (must be unused).\n    idea_id (str): Target idea's UUID (must exist).\n    author_id (str): User ID of comment author (must exist).\n    content (str): The body of the comment.\n    timestamp (str): Timestamp for comment creation (ISO8601 or platform standard).\n    parent_comment_id (Optional[str]): If reply, the parent comment's UUID, else None.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Comment created successfully.\" }\n        On failure: { \"success\": False, \"error\": <error_reason> }\n\nConstraints:\n    - comment_id must be unique within the system.\n    - idea_id must exist in ideas.\n    - author_id must exist in users.\n    - If parent_comment_id is not None: it must exist in comments and have the same idea_id as the new comment (i.e., threading within an idea only).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "comment_id": {
+            "type": "string"
+          },
+          "idea_id": {
+            "type": "string"
+          },
+          "author_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "parent_comment_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "comment_id",
+          "idea_id",
+          "author_id",
+          "content",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "update_comment",
+      "description": "Edit the content of an existing comment.\n\nArgs:\n    comment_id (str): The comment's unique identifier (UUID).\n    new_content (str): The new content to replace the old comment's content.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Comment updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"Comment not found\"\n    }\n\nConstraints:\n    - The comment must exist.\n    - (Optionally) Only the author should be able to edit.\n    - The timestamp should be updated to the current time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "comment_id": {
+            "type": "string"
+          },
+          "new_content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "comment_id",
+          "new_content"
+        ]
+      }
+    },
+    {
+      "name": "delete_comment",
+      "description": "Remove a comment, recursively deleting all its reply comments (cascade) and all votes \nassociated with the comment or any reply-descendant.\n\nArgs:\n    comment_id (str): The UUID of the comment to be deleted.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Comment and associated replies/votes deleted.\" }\n        - On error:   { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - The provided comment_id must exist.\n    - All direct and nested reply comments, and all associated votes, must be deleted (cascade).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "comment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "comment_id"
+        ]
+      }
+    },
+    {
+      "name": "cast_vote",
+      "description": "Create a new vote from a user on an idea or comment, ensuring no duplicate voting.\n\nArgs:\n    voter_id (str): User ID of the voter.\n    target_type (str): 'idea' or 'comment'.\n    target_id (str): UUID of the post or comment.\n    vote_value (int): The value of the vote (typically 1 or -1).\n    timestamp (str): Timestamp of the vote.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Vote cast successfully\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - voter_id must exist in users.\n    - target_type must be 'idea' or 'comment'; the corresponding target_id must exist.\n    - The user cannot vote more than once on the same target.\n    - Updates vote_count on the target.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "voter_id": {
+            "type": "string"
+          },
+          "target_type": {
+            "type": "string"
+          },
+          "target_id": {
+            "type": "string"
+          },
+          "vote_value": {
+            "type": "integer"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "voter_id",
+          "target_type",
+          "target_id",
+          "vote_value",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "update_vote",
+      "description": "Change the value of an existing vote.\n\nArgs:\n    vote_id (str): UUID of the vote to update.\n    new_vote_value (int): The new vote value (e.g., 1 or -1).\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Vote updated.\" }\n        - On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - The vote must exist.\n    - The change must update the vote_count on the associated idea/comment.\n    - The target (idea or comment) must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vote_id": {
+            "type": "string"
+          },
+          "new_vote_value": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "vote_id",
+          "new_vote_value"
+        ]
+      }
+    },
+    {
+      "name": "delete_vote",
+      "description": "Remove a vote (by vote_id) from the system, and update the corresponding idea or comment's vote count.\n\nArgs:\n    vote_id (str): The unique identifier of the vote to be deleted.\n\nReturns:\n    dict: \n    - On success: { \"success\": True, \"message\": \"Vote deleted successfully.\" }\n    - On failure (not found): { \"success\": False, \"error\": \"Vote not found.\" }\n\nConstraints:\n    - If the vote is found, it is removed.\n    - The corresponding target's vote_count is decremented.\n    - If the target (idea/comment) no longer exists, finish without error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vote_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vote_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_user",
+      "description": "Remove a user and cascade delete or anonymize their authored ideas, comments, and votes.\n\nArgs:\n    user_id (str): The unique identifier of the user to delete.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"User and associated data deleted (cascade).\" }\n        On error: { \"success\": False, \"error\": \"User does not exist\" }\n\nConstraints:\n    - Removes all ideas, comments, and votes authored by the user (cascade).\n    - Deleting an idea cascades to remove associated comments and votes.\n    - Deleting a comment also recursively removes replies and associated votes.\n    - All votes cast by this user are deleted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "update_user_profile",
+      "description": "Edit a user's profile information and/or reputation.\n\nArgs:\n    user_id (str): ID of the user to update.\n    profile_info (Optional[str]): New profile info (if updating).\n    reputation (Optional[int]): New reputation score (if updating).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User profile information updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason for failure\"\n    }\n\nConstraints:\n    - User must exist in the system.\n    - At least one of 'profile_info' or 'reputation' must be provided.\n    - If 'reputation' is provided, it must be of int type.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "profile_info": {
+            "type": "string"
+          },
+          "reputation": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,605 @@
+{
+  "env_name": "PersonalDietNutritionTracker",
+  "description": "A personal diet and nutrition tracking application allows users to record meals, snacks, and beverages consumed throughout the day. It maintains ongoing logs linked to individual user profiles, often including food item databases, nutrition facts, and meal timing. The system enables goal setting, progress monitoring, and generation of dietary reports to aid users in managing their nutrition and health objectives.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "dietary_goals": {
+            "type": "object"
+          },
+          "profile_data": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "dietary_goals",
+          "profile_data"
+        ]
+      }
+    },
+    "food_items": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "food_item_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "nutritional_info": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "food_item_id",
+          "name",
+          "nutritional_info"
+        ]
+      }
+    },
+    "meal_entries": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "meal_entry_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "meal_type": {
+            "type": "string"
+          },
+          "no": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "meal_entry_id",
+          "user_id",
+          "timestamp",
+          "meal_type",
+          "no"
+        ]
+      }
+    },
+    "meal_entry_items": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "meal_entry_id": {
+              "type": "string"
+            },
+            "food_item_id": {
+              "type": "string"
+            },
+            "quantity": {
+              "type": "number"
+            },
+            "un": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "meal_entry_id",
+            "food_item_id",
+            "quantity",
+            "un"
+          ]
+        }
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_user_by_name": [
+      "users"
+    ],
+    "list_user_meal_entries": [
+      "meal_entries",
+      "users"
+    ],
+    "get_meal_entry_by_id": [
+      "meal_entries"
+    ],
+    "list_meal_items_for_entry": [
+      "meal_entries",
+      "meal_entry_items"
+    ],
+    "get_food_item_by_name": [
+      "food_items"
+    ],
+    "get_food_item_by_id": [
+      "food_items"
+    ],
+    "list_food_items": [
+      "food_items"
+    ],
+    "get_nutritional_info_for_food": [
+      "food_items"
+    ],
+    "get_user_nutritional_goals": [
+      "users"
+    ],
+    "get_daily_nutrition_summary": [
+      "food_items",
+      "meal_entries",
+      "meal_entry_items",
+      "users"
+    ],
+    "create_meal_entry": [
+      "meal_entries",
+      "meal_entry_items",
+      "users"
+    ],
+    "add_item_to_meal_entry": [
+      "food_items",
+      "meal_entries",
+      "meal_entry_items"
+    ],
+    "create_food_item": [
+      "food_items"
+    ],
+    "edit_meal_entry": [
+      "meal_entries",
+      "users"
+    ],
+    "edit_meal_entry_item": [
+      "food_items",
+      "meal_entries",
+      "meal_entry_items"
+    ],
+    "remove_meal_entry_item": [
+      "meal_entries",
+      "meal_entry_items"
+    ],
+    "delete_meal_entry": [
+      "meal_entries",
+      "meal_entry_items"
+    ],
+    "update_user_dietary_goals": [
+      "users"
+    ],
+    "update_food_item": [
+      "food_items"
+    ],
+    "duplicate_meal_entry": [
+      "meal_entries",
+      "meal_entry_items",
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user profile information and dietary goals by user ID.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo  # The user's profile and dietary goals\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"User not found\" if ID does not exist\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_name",
+      "description": "Retrieve user info using the user's name.\n\nArgs:\n    name (str): User's name to look up.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo  # whole user info dict\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"User not found\" if no such user\n    }\n\nNotes/Constraints:\n    - Will return the first user with the matching name (names may not be unique).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "list_user_meal_entries",
+      "description": "List all meal entries (with timestamps and types) for a given user.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n\nReturns:\n    dict:\n        success: True if query succeeded, False if not.\n        data: List[MealEntryInfo] (may be empty) if succeeded.\n        error: Reason if not successful.\n\nConstraints:\n    - The user_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_meal_entry_by_id",
+      "description": "Retrieve full details of a meal entry by its ID.\n\nArgs:\n    meal_entry_id (str): The unique ID of the meal entry.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": MealEntryInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"Meal entry not found\"\n    }\n\nConstraints:\n    - The meal_entry_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "meal_entry_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "meal_entry_id"
+        ]
+      }
+    },
+    {
+      "name": "list_meal_items_for_entry",
+      "description": "List all MealEntryItems (food, quantity, unit) for a given MealEntry.\n\nArgs:\n    meal_entry_id (str): The ID of the meal entry whose items are to be listed.\n\nReturns:\n    dict:\n        success: True and data (list of MealEntryItemInfo) if found.\n        success: False and error message if not found or invalid meal entry.\n\nConstraints:\n    - Meal entry must exist.\n    - Each valid meal entry should have at least one associated MealEntryItem.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "meal_entry_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "meal_entry_id"
+        ]
+      }
+    },
+    {
+      "name": "get_food_item_by_name",
+      "description": "Retrieve FoodItem record(s) by name.\n\nArgs:\n    name (str): The name to search for (case-insensitive).\n    fuzzy (bool, optional): If True, perform case-insensitive substring match (fuzzy).\n                           If False (default), match exact name (case-insensitive).\n\nReturns:\n    dict:\n        - { \"success\": True, \"data\": List[FoodItemInfo] }\n            (List is empty if no matches)\n        \nConstraints:\n    - Food items can be searched by any name, exact (default) or fuzzy.\n    - Match is always case-insensitive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "fuzzy": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "fuzzy"
+        ]
+      }
+    },
+    {
+      "name": "get_food_item_by_id",
+      "description": "Retrieve food item details by its unique ID.\n\nArgs:\n    food_item_id (str): The unique identifier of the food item.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": FoodItemInfo,  # The dictionary containing food item details.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., food item not found.\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "food_item_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "food_item_id"
+        ]
+      }
+    },
+    {
+      "name": "list_food_items",
+      "description": "List all available food items in the system/database.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[FoodItemInfo],  # All FoodItemInfo records (may be empty)\n    }\n\nConstraints:\n    - No user/context restrictions for listing foods.\n    - Handles empty database scenario gracefully.\n\nEdge Cases:\n    - If no food items in the system, returns empty list but success True.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_nutritional_info_for_food",
+      "description": "Retrieve nutritional information for a given food item by its ID.\n\nArgs:\n    food_item_id (str): The unique identifier for the food item.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": nutritional_info (dict)  # Nutritional values, e.g., {'calories': 120, ...}\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., Food item not found\n    }\n\nConstraints:\n    - The food item must exist in the food item database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "food_item_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "food_item_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_nutritional_goals",
+      "description": "Retrieve current dietary (nutritional) goals set by the specified user.\n\nArgs:\n    user_id (str): Unique identifier for the user.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": Dict[str, Any]  # Dietary goals (may be empty dict)\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": \"User not found\"\n            }\n\nConstraints:\n    - User must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_daily_nutrition_summary",
+      "description": "Retrieve the sum of logged nutrition for the user for a specific day.\n\nArgs:\n    user_id (str): The user whose daily summary to retrieve.\n    date (str): The target day, format 'YYYY-MM-DD'.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": Dict[str, float],    # sum of each nutrient, e.g. {\"calories\": 1410.0, \"protein\": 56.2, ...}\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str     # e.g., \"User does not exist\"\n        }\n\nConstraints:\n    - User must exist.\n    - Only meal entries from the specified day for this user are considered.\n    - Only valid food items are summed; missing food items are ignored.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "date"
+        ]
+      }
+    },
+    {
+      "name": "create_meal_entry",
+      "description": "Create a new MealEntry record for a user with the given type and timestamp.\n\nArgs:\n    user_id (str): Target user's ID.\n    meal_type (str): Type of the meal (e.g., breakfast, lunch, dinner, snack).\n    timestamp (str): ISO8601 or datetime string for when meal occurred.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Meal entry created\",\n                \"meal_entry_id\": <generated_id>\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": <description>\n            }\n\nConstraints:\n    - user_id must exist.\n    - meal_type and timestamp must be non-empty.\n    - meal_entry_id must be unique.\n    - Each meal entry will eventually require at least one MealEntryItem (not enforced here).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "meal_type": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "meal_type",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "add_item_to_meal_entry",
+      "description": "Add a MealEntryItem (food item, quantity, unit) to an existing MealEntry.\n\nArgs:\n    meal_entry_id (str): The meal entry to add to (must exist).\n    food_item_id (str): The food item to add (must exist).\n    quantity (float): The quantity of food (should be >0).\n    un (str): Unit of the quantity (e.g., 'g', 'ml').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Meal entry item added.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - meal_entry_id must exist.\n    - food_item_id must exist.\n    - If no meal_entry_items[meal_entry_id] list exists, create it.\n    - It is sensible to require quantity > 0.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "meal_entry_id": {
+            "type": "string"
+          },
+          "food_item_id": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "un": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "meal_entry_id",
+          "food_item_id",
+          "quantity",
+          "un"
+        ]
+      }
+    },
+    {
+      "name": "create_food_item",
+      "description": "Add a new food item to the food item database.\n\nArgs:\n    food_item_id (str): Unique identifier for the new food item.\n    name (str): Name of the food item.\n    nutritional_info (dict): Dictionary of nutrition information (e.g., {'calories': 120, 'protein': 6.5, ...}).\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Food item created\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - food_item_id must be unique.\n    - Name must be a non-empty string.\n    - nutritional_info must be provided as a dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "food_item_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "nutritional_info": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "food_item_id",
+          "name",
+          "nutritional_info"
+        ]
+      }
+    },
+    {
+      "name": "edit_meal_entry",
+      "description": "Edit details (e.g., meal_type, timestamp, no) of a MealEntry owned by the user.\n\nArgs:\n    meal_entry_id (str): ID of the meal entry to edit.\n    user_id (str): ID of the user requesting the edit (must own entry).\n    timestamp (str, optional): New timestamp.\n    meal_type (str, optional): New meal type (e.g., breakfast, lunch).\n    no (int, optional): Session number or similar.\n\nReturns:\n    dict: {\"success\": True, \"message\": \"...\"} on success,\n          {\"success\": False, \"error\": \"...\"} on failure.\n\nConstraints:\n    - Only allow the user who owns the meal entry to edit it.\n    - Meal entry must exist.\n    - At least one field (timestamp, meal_type, no) must be specified for update (optional for no-op).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "meal_entry_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "meal_type": {
+            "type": "string"
+          },
+          "no": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "meal_entry_id",
+          "user_id",
+          "timestamp",
+          "meal_type",
+          "no"
+        ]
+      }
+    },
+    {
+      "name": "edit_meal_entry_item",
+      "description": "Edit a food item, quantity, or unit for an existing MealEntryItem.\n\nArgs:\n    user_id (str): ID of the user performing the edit.\n    meal_entry_id (str): ID of the meal entry containing the item.\n    old_food_item_id (str): Food item ID of the item to be edited.\n    new_food_item_id (str, optional): New food item ID to update to (must exist in food item DB).\n    quantity (float, optional): New quantity for this meal item.\n    un (str, optional): New unit string for this meal item (e.g., 'g', 'ml').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Meal entry item updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <str>\n    }\nConstraints:\n    - Only the owner of the meal entry can edit items.\n    - Food item being edited must exist in meal_entry_items for the meal entry.\n    - If changing food_item_id, the new one must exist in food_items and be unique within the meal entry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "meal_entry_id": {
+            "type": "string"
+          },
+          "old_food_item_id": {
+            "type": "string"
+          },
+          "new_food_item_id": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "un": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "meal_entry_id",
+          "old_food_item_id",
+          "new_food_item_id",
+          "quantity",
+          "un"
+        ]
+      }
+    },
+    {
+      "name": "remove_meal_entry_item",
+      "description": "Remove a specific MealEntryItem (identified by meal_entry_id and food_item_id)\nfrom a MealEntry, ensuring at least one item remains.\nOnly allowed if the current user owns the meal entry.\n\nArgs:\n    meal_entry_id (str): The ID of the meal entry to modify.\n    food_item_id (str): The food item to remove from the meal entry.\n    current_user_id (str): The user requesting the removal (for ownership check).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Meal entry item removed.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Must not leave the meal entry with zero items.\n    - Only the meal entry owner can remove items.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "meal_entry_id": {
+            "type": "string"
+          },
+          "food_item_id": {
+            "type": "string"
+          },
+          "current_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "meal_entry_id",
+          "food_item_id",
+          "current_user_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_meal_entry",
+      "description": "Delete a MealEntry (with given meal_entry_id) owned by the given user_id.\nAlso removes all associated MealEntryItems.\n\nArgs:\n    user_id (str): The user performing the delete (must be the owner).\n    meal_entry_id (str): The MealEntry to delete.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Meal entry deleted successfully.\" }\n        On error:   { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Users can only delete their own meal entries.\n    - All associated MealEntryItems must be removed.\n    - Safe if no items exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "meal_entry_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "meal_entry_id"
+        ]
+      }
+    },
+    {
+      "name": "update_user_dietary_goals",
+      "description": "Set or modify the dietary/nutrition goals for a user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n    new_goals (dict): The new dietary/nutritional goals (e.g., {\"calories\": 2000, \"protein\": 150, ...}).\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Dietary goals updated for user id <user_id>\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"User not found\"\n            }\nConstraints:\n    - The user must exist in the system.\n    - new_goals can be any dictionary and will fully replace the user's previous dietary_goals.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "new_goals": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "user_id",
+          "new_goals"
+        ]
+      }
+    },
+    {
+      "name": "update_food_item",
+      "description": "Modify the name and/or nutritional info of an existing food item.\n\nArgs:\n    food_item_id (str): The ID of the food item to modify.\n    name (str, optional): New name for the food item.\n    nutritional_info (dict, optional): New nutritional info (replaces or updates existing).\n\nReturns:\n    dict:\n        - If success: {\"success\": True, \"message\": \"Food item updated successfully.\"}\n        - If failure: {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - Food item with food_item_id must already exist.\n    - At least one of 'name' or 'nutritional_info' must be provided.\n    - If provided, nutritional_info must be a dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "food_item_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "nutritional_info": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "food_item_id",
+          "name",
+          "nutritional_info"
+        ]
+      }
+    },
+    {
+      "name": "duplicate_meal_entry",
+      "description": "Create a new MealEntry by copying an existing one for convenience.\n\nArgs:\n    meal_entry_id (str): ID of the MealEntry to duplicate.\n    user_id (str): ID of user requesting duplication.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Meal entry duplicated.\",\n        \"new_meal_entry_id\": str,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,\n    }\n\nConstraints:\n    - Users can only duplicate their own meal entries.\n    - Original meal entry must exist and have at least one associated MealEntryItem.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "meal_entry_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "meal_entry_id",
+          "user_id"
+        ]
+      }
+    }
+  ]
+}

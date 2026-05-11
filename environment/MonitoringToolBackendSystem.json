@@ -1,0 +1,514 @@
+{
+  "env_name": "MonitoringToolBackendSystem",
+  "description": "A monitoring tool backend system manages and stores data on endpoints and their activities, typically associating this information with individual user accounts. It maintains records of endpoint statuses, historic data, and supports operations via APIs for retrieving, updating, and deleting endpoint-related information. This environment is integral in IT infrastructure, security, and performance monitoring, providing the foundation for analytics and alerting.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "account_status",
+          "contact_info"
+        ]
+      }
+    },
+    "endpoints": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "endpoint_id": {
+            "type": "string"
+          },
+          "hostname": {
+            "type": "string"
+          },
+          "ip_address": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "registered_timestamp": {
+            "type": "string"
+          },
+          "last_activity_timestamp": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "endpoint_id",
+          "hostname",
+          "ip_address",
+          "status",
+          "registered_timestamp",
+          "last_activity_timestamp",
+          "user_id"
+        ]
+      }
+    },
+    "endpoint_data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "endpoint_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "data_type": {
+            "type": "string"
+          },
+          "value": {},
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "endpoint_id",
+          "user_id",
+          "data_type",
+          "value",
+          "timestamp"
+        ]
+      }
+    },
+    "cleanup_aggregate_tables_after_deletion": {
+      "type": "string"
+    },
+    "aggregates": {
+      "type": "string"
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_id": [
+      "users"
+    ],
+    "check_user_account_status": [
+      "users"
+    ],
+    "list_endpoints_by_user": [
+      "endpoints",
+      "users"
+    ],
+    "get_endpoint_by_id": [
+      "endpoints"
+    ],
+    "check_endpoint_ownership": [
+      "endpoints"
+    ],
+    "list_endpoint_data_by_user": [
+      "endpoint_data",
+      "users"
+    ],
+    "list_endpoint_data_by_endpoint": [
+      "endpoint_data",
+      "endpoints"
+    ],
+    "get_endpoint_data": [
+      "endpoint_data",
+      "endpoints",
+      "users"
+    ],
+    "list_data_types_for_endpoint": [
+      "endpoint_data",
+      "endpoints"
+    ],
+    "get_endpoint_status": [
+      "endpoints"
+    ],
+    "get_endpoint_activity_history": [
+      "endpoint_data",
+      "endpoints"
+    ],
+    "remove_endpoint_data_by_user": [
+      "endpoint_data",
+      "endpoints",
+      "users"
+    ],
+    "remove_endpoint_data_by_endpoint": [
+      "cleanup_aggregate_tables_after_deletion",
+      "endpoint_data",
+      "endpoints",
+      "users"
+    ],
+    "remove_specific_endpoint_data": [
+      "endpoint_data",
+      "endpoints",
+      "users"
+    ],
+    "cleanup_aggregate_tables_after_deletion": [
+      "aggregates"
+    ],
+    "update_endpoint_status": [
+      "endpoints"
+    ],
+    "add_endpoint_data": [
+      "endpoint_data",
+      "endpoints",
+      "users"
+    ],
+    "update_endpoint_last_activity": [
+      "endpoints"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user details (UserInfo) using a user ID.\n\nArgs:\n    user_id (str): Unique identifier for the user.\n\nReturns:\n    dict:\n        - If user exists:\n            {\n                \"success\": True,\n                \"data\": UserInfo\n            }\n        - If user not found:\n            {\n                \"success\": False,\n                \"error\": \"User not found\"\n            }\n\nConstraints:\n    - User ID must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "check_user_account_status",
+      "description": "Check the account status (active, inactive, suspended, etc.) for a given user.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": { \"_id\": user_id, \"account_status\": <status> }\n            }\n        On failure (user not found):\n            {\n                \"success\": False,\n                \"error\": \"User not found\"\n            }\nConstraints:\n    - User with user_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_endpoints_by_user",
+      "description": "Retrieve all endpoints associated with a given user ID.\n\nArgs:\n    user_id (str): The user ID whose endpoints are to be retrieved.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[EndpointInfo],  # endpoints for user (may be empty if none)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # error reason, e.g. user does not exist\n    }\n\nConstraints:\n    - user_id must correspond to an existing user\n    - Only endpoints belonging to the given user are listed",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_endpoint_by_id",
+      "description": "Retrieve details for the specified endpoint using its unique ID.\n\nArgs:\n    endpoint_id (str): The unique identifier of the endpoint.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": EndpointInfo  # All metadata for the endpoint\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g., not found)\n    }\n\nConstraints:\n    - The provided endpoint_id must exist in the system.\n    - No additional permissions are required for this read operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "endpoint_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "endpoint_id"
+        ]
+      }
+    },
+    {
+      "name": "check_endpoint_ownership",
+      "description": "Confirm whether a given endpoint is owned by a specific user.\n\nArgs:\n    endpoint_id (str): The ID of the endpoint to check.\n    user_id (str): The user ID to check ownership against.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"is_owner\": bool  # True if endpoint is owned by user, else False\n            }\n        On failure (endpoint does not exist):\n            {\n                \"success\": False,\n                \"error\": str  # Error message\n            }\nConstraints:\n    - Endpoint must exist in the system.\n    - Ownership is determined by comparing endpoint's 'user_id' to the provided 'user_id'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "endpoint_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "endpoint_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_endpoint_data_by_user",
+      "description": "Retrieve all endpoint data records associated with the specified user ID.\n\nArgs:\n    user_id (str): User ID for which endpoint data should be listed.\n\nReturns:\n    dict:\n        - On success: {\n            \"success\": True,\n            \"data\": List[EndpointDataInfo]  # All records where user_id matches\n          }\n        - On failure: {\n            \"success\": False,\n            \"error\": str\n          }\n\nConstraints:\n    - User with user_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_endpoint_data_by_endpoint",
+      "description": "Retrieve all endpoint data records for a specific endpoint ID.\n\nArgs:\n    endpoint_id (str): The ID of the endpoint whose monitoring data is requested.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[EndpointDataInfo]  # List of data records for the endpoint (may be empty if none)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if the endpoint does not exist\n    }\n\nConstraints:\n    - The specified endpoint must exist (endpoint_id in self.endpoints).\n    - No permission check is enforced in this operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "endpoint_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "endpoint_id"
+        ]
+      }
+    },
+    {
+      "name": "get_endpoint_data",
+      "description": "Retrieve endpoint data filtered by user ID, endpoint ID, and optional criteria (data_type, start_time, end_time).\n\nArgs:\n    user_id (str): The user ID requesting data (must be endpoint owner).\n    endpoint_id (str): The target endpoint ID.\n    data_type (str, optional): Filter by data type.\n    start_time (str, optional): ISO/lexically comparable timestamp (inclusive lower bound).\n    end_time (str, optional): ISO/lexically comparable timestamp (inclusive upper bound).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": [EndpointDataInfo, ...]\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - The user must exist.\n    - The endpoint must exist and belong to the user.\n    - Data is filtered as specified.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "endpoint_id": {
+            "type": "string"
+          },
+          "data_type": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "endpoint_id",
+          "data_type",
+          "start_time",
+          "end_time"
+        ]
+      }
+    },
+    {
+      "name": "list_data_types_for_endpoint",
+      "description": "List distinct data types collected for a given endpoint \n(e.g., 'metrics', 'logs', 'events', etc.).\n\nArgs:\n    endpoint_id (str): The endpoint's unique identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str],  # Unique data_type values for the endpoint\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,       # \"Endpoint not found\"\n    }\n\nConstraints:\n    - The endpoint must exist in self.endpoints.\n    - All matching data_type values are listed uniquely.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "endpoint_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "endpoint_id"
+        ]
+      }
+    },
+    {
+      "name": "get_endpoint_status",
+      "description": "Query the current status of an endpoint (active, offline, etc.).\n\nArgs:\n    endpoint_id (str): The unique identifier for the endpoint.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"endpoint_id\": str,\n            \"status\": str\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g. \"Endpoint not found\"\n    }\n\nConstraints:\n    - The endpoint with the specified ID must exist.\n    - No permission checks required for this operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "endpoint_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "endpoint_id"
+        ]
+      }
+    },
+    {
+      "name": "get_endpoint_activity_history",
+      "description": "Retrieve a time-ordered (by timestamp ascending) list of activity or status logs for a given endpoint.\n\nArgs:\n    endpoint_id (str): The unique identifier of the endpoint.\n\nReturns:\n    dict: \n    - If successful:\n        {\n            \"success\": True,\n            \"data\": List[EndpointDataInfo],  # List may be empty\n        }\n    - If error (e.g. endpoint does not exist):\n        {\n            \"success\": False,\n            \"error\": str,\n        }\n\nConstraints:\n    - The specified endpoint_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "endpoint_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "endpoint_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_endpoint_data_by_user",
+      "description": "Delete all endpoint data for all endpoints owned by the specified user.\n\nArgs:\n    user_id (str): The user ID whose endpoint data is to be removed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"<N> endpoint data entries removed for user <user_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Only remove data associated with endpoints owned by the specified user.\n    - Operation is successful even if there is no data to remove.\n    - User must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_endpoint_data_by_endpoint",
+      "description": "Delete all data for a specific endpoint, if the requesting user owns the endpoint.\n\nArgs:\n    endpoint_id (str): The unique identifier of the endpoint.\n    user_id (str): The unique identifier of the requesting user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Description of the deletion (count, endpoint, etc.)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (not found, permission denied)\n    }\n\nConstraints:\n    - Endpoint must exist.\n    - User must exist.\n    - Only users who own the endpoint (endpoint.user_id == user_id) can delete its data.\n    - Data deletion only affects records for the given endpoint.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "endpoint_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "endpoint_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_specific_endpoint_data",
+      "description": "Delete endpoint data matching criteria: user, endpoint, data_type, and an optional time range.\n\nArgs:\n    user_id (str): The user requesting data removal.\n    endpoint_id (str): The endpoint whose data to remove.\n    data_type (str): The data type to remove (e.g., 'metrics', 'logs').\n    start_time (str, optional): Only remove data after or at this timestamp (inclusive).\n    end_time (str, optional): Only remove data before or at this timestamp (inclusive).\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Deleted X matching endpoint data records.\" }\n        - On error: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Endpoint must exist and belong to the user.\n    - Only data for this endpoint/user/data_type is removed.\n    - If start_time/end_time are supplied, only data inside this time range is removed.\n    - User must be owner of the endpoint to remove endpoint's data (no admin/backdoor logic).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "endpoint_id": {
+            "type": "string"
+          },
+          "data_type": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "endpoint_id",
+          "data_type",
+          "start_time",
+          "end_time"
+        ]
+      }
+    },
+    {
+      "name": "cleanup_aggregate_tables_after_deletion",
+      "description": "Cleans up/updates aggregate or summary records after deletion of endpoint data.\n\nArgs:\n    user_id (str, optional): If provided, cleanup for all aggregates/summaries associated with this user.\n    endpoint_id (str, optional): If provided, cleanup for all aggregates/summaries associated with this endpoint.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - At least one of user_id or endpoint_id must be provided.\n    - Aggregates for unrelated users/endpoints must not be changed.\n    - If the key does not exist, operation is a no-op but returns success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "endpoint_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "endpoint_id"
+        ]
+      }
+    },
+    {
+      "name": "update_endpoint_status",
+      "description": "Change the status of an endpoint (e.g., set to 'inactive' after deleted data).\n\nArgs:\n    endpoint_id (str): The ID of the endpoint whose status should be updated.\n    new_status (str): The new status value to set for the endpoint.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Endpoint status updated to <new_status>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - endpoint_id must exist in the system.\n    - Only the status of the specified endpoint is changed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "endpoint_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "endpoint_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "add_endpoint_data",
+      "description": "Insert new endpoint data for a specific endpoint and user.\n\nArgs:\n    endpoint_id (str): The unique identifier of the endpoint.\n    user_id (str): The unique identifier of the user.\n    data_type (str): The type of metric/log/event being inserted.\n    value (Any): The value of the data (could be numeric, string, dict, etc).\n    timestamp (str): Timestamp string (format should be consistent with system).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Endpoint data added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - user_id must exist in self.users.\n    - endpoint_id must exist in self.endpoints and be associated with user_id.\n    - All fields are required.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "endpoint_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "data_type": {
+            "type": "string"
+          },
+          "value": {},
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "endpoint_id",
+          "user_id",
+          "data_type",
+          "value",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "update_endpoint_last_activity",
+      "description": "Update the last_activity_timestamp for an endpoint.\n\nArgs:\n    endpoint_id (str): The ID of the endpoint whose activity timestamp is to be updated.\n    new_timestamp (str): The new timestamp to record (ISO8601, RFC3339, etc.).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Last activity timestamp updated for endpoint <endpoint_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Endpoint does not exist.\"\n    }\n\nConstraints:\n    - The specified endpoint_id must exist in self.endpoints.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "endpoint_id": {
+            "type": "string"
+          },
+          "new_timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "endpoint_id",
+          "new_timestamp"
+        ]
+      }
+    }
+  ]
+}

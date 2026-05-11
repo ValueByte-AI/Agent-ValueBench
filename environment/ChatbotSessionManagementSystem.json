@@ -1,0 +1,606 @@
+{
+  "env_name": "ChatbotSessionManagementSystem",
+  "description": "A chatbot session management system orchestrates and stores the lifecycle of interactive chat sessions between users and one or more chatbot agents. It maintains session state, tracks participants, logs exchanged messages, and allows for management and querying of both active and historical interactions. This environment is essential for customer support platforms, virtual assistants, and any application requiring concurrent, stateful conversations with chatbots.",
+  "initial_parameter_schema": {
+    "clients": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "client_slug": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id",
+          "client_slug",
+          "display_name",
+          "account_status"
+        ]
+      }
+    },
+    "agents": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "agent_id": {
+            "type": "string"
+          },
+          "agent_name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "agent_id",
+          "agent_name",
+          "version",
+          "is_active"
+        ]
+      }
+    },
+    "sessions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "client_id": {
+            "type": "string"
+          },
+          "agent_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "closed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "session_id",
+          "client_id",
+          "agent_id",
+          "status",
+          "created_at",
+          "closed_at"
+        ]
+      }
+    },
+    "messages": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "sender_type": {
+            "type": "string"
+          },
+          "sender_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id",
+          "session_id",
+          "sender_type",
+          "sender_id",
+          "timestamp",
+          "content"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_client_by_slug": [
+      "clients"
+    ],
+    "get_client_by_id": [
+      "clients"
+    ],
+    "list_all_clients": [
+      "clients"
+    ],
+    "get_agent_by_name": [
+      "agents"
+    ],
+    "get_agent_by_id": [
+      "agents"
+    ],
+    "list_active_agents": [
+      "agents"
+    ],
+    "list_sessions_by_client": [
+      "clients",
+      "sessions"
+    ],
+    "list_sessions_by_agent": [
+      "agents",
+      "sessions"
+    ],
+    "list_active_sessions_for_client": [
+      "clients",
+      "sessions"
+    ],
+    "list_active_sessions_by_client_and_agents": [
+      "clients",
+      "sessions"
+    ],
+    "get_session_details": [
+      "sessions"
+    ],
+    "list_messages_for_session": [
+      "messages",
+      "sessions"
+    ],
+    "list_all_messages_by_client": [
+      "clients",
+      "messages"
+    ],
+    "create_client": [
+      "clients"
+    ],
+    "create_chatbot_agent": [
+      "agents"
+    ],
+    "create_chat_session": [
+      "agents",
+      "clients",
+      "sessions"
+    ],
+    "close_chat_session": [
+      "sessions"
+    ],
+    "reopen_chat_session": [
+      "sessions"
+    ],
+    "send_message_in_session": [
+      "agents",
+      "clients",
+      "messages",
+      "sessions"
+    ],
+    "update_client_status": [
+      "clients"
+    ],
+    "update_agent_status": [
+      "agents"
+    ],
+    "delete_chat_session": [
+      "messages",
+      "sessions"
+    ],
+    "delete_message": [
+      "messages",
+      "sessions"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_client_by_slug",
+      "description": "Retrieve client information using the unique client_slug.\n\nArgs:\n    client_slug (str): The unique, human-friendly identifier for the client.\n\nReturns:\n    dict:\n        - If found: {\"success\": True, \"data\": ClientInfo}\n        - If not found: {\"success\": False, \"error\": \"Client not found\"}\n\nConstraints:\n    - client_slug must uniquely identify a client in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_slug": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_slug"
+        ]
+      }
+    },
+    {
+      "name": "get_client_by_id",
+      "description": "Retrieve client information using client_id.\n\nArgs:\n    client_id (str): The unique identifier of the client.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ClientInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - client_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_clients",
+      "description": "List all registered client entries.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ClientInfo]  # May be an empty list if there are no registered clients.\n    }\n\nConstraints:\n    - No constraints; returns all clients found in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_agent_by_name",
+      "description": "Retrieve chatbot agent information(s) matching the provided agent_name.\n\nArgs:\n    agent_name (str): Name of the chatbot agent to search for.\n\nReturns:\n    dict: \n        - On success:\n            {\n                \"success\": True,\n                \"data\": List[ChatbotAgentInfo],  # List of matching agents (could be empty if no match)\n            }\n        - On failure (no agent found):\n            {\n                \"success\": False,\n                \"error\": \"No agent with that name\"\n            }\nConstraints:\n    - The system may contain multiple agents with the same agent_name but different IDs or versions.\n    - Returns all matching agents in a list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agent_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_name"
+        ]
+      }
+    },
+    {
+      "name": "get_agent_by_id",
+      "description": "Retrieve chatbot agent information given an agent_id.\n\nArgs:\n    agent_id (str): Unique identifier for the chatbot agent.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ChatbotAgentInfo  # Chatbot agent's information\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason why lookup failed (not found)\n    }\n\nConstraints:\n    - agent_id must correspond to an existing agent.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agent_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id"
+        ]
+      }
+    },
+    {
+      "name": "list_active_agents",
+      "description": "Returns all currently active chatbot agent entries.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ChatbotAgentInfo]  # a list of all active agents (can be empty)\n    }\n\nConstraints:\n    - Only agents with 'is_active' set to True are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_sessions_by_client",
+      "description": "Retrieve all chat sessions associated with the given client_id.\n\nArgs:\n    client_id (str): Unique identifier for the client.\n\nReturns:\n    dict with:\n        - success: True if retrieval succeeds, False if client does not exist.\n        - data: List[ChatSessionInfo] if success (may be empty).\n        - error: error description if not successful.\n\nConstraints:\n    - client_id must exist in the system (self.clients).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id"
+        ]
+      }
+    },
+    {
+      "name": "list_sessions_by_agent",
+      "description": "Retrieve all chat sessions (with metadata) associated with a specific agent_id.\n\nArgs:\n    agent_id (str): The identifier of the chatbot agent.\n\nReturns:\n    dict:\n        success: True and data: List[ChatSessionInfo] if successful (possibly empty).\n        Or success: False and error: str reason if agent_id is not known.\n\nConstraints:\n    - agent_id must exist as a key in self.agents.\n    - All sessions where session.agent_id == agent_id are included, regardless of status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agent_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id"
+        ]
+      }
+    },
+    {
+      "name": "list_active_sessions_for_client",
+      "description": "List all active chat sessions for the specified client.\n\nArgs:\n    client_id (str): Unique identifier of the client.\n\nReturns:\n    dict:\n        - On success:\n            {\"success\": True, \"data\": List[ChatSessionInfo]} \n              # List is empty if no active sessions\n        - On failure:\n            {\"success\": False, \"error\": str}\n\nConstraints:\n    - The given client_id must exist in the system.\n    - Only sessions with status == 'active' are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id"
+        ]
+      }
+    },
+    {
+      "name": "list_active_sessions_by_client_and_agents",
+      "description": "Lists all active chat sessions for a given client that involve any of the specified agent_ids.\n\nArgs:\n    client_id (str): The ID of the client whose sessions are to be listed.\n    agent_ids (List[str]): A list of agent IDs. Only sessions involving agents in this list will be considered.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ChatSessionInfo],  # All matching active sessions (possibly empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # E.g., client does not exist\n    }\n\nConstraints:\n    - Client must exist in the system.\n    - Only returns sessions with status == \"active\" involving given agent_ids.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "agent_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "client_id",
+          "agent_ids"
+        ]
+      }
+    },
+    {
+      "name": "get_session_details",
+      "description": "Retrieve full information for a chat session by session_id.\n\nArgs:\n    session_id (str): The unique identifier of the chat session.\n\nReturns:\n    dict:\n        - If found:\n            {\"success\": True, \"data\": ChatSessionInfo}\n        - If not found:\n            {\"success\": False, \"error\": \"Session does not exist\"}\n\nConstraints:\n    - The provided session_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "list_messages_for_session",
+      "description": "Retrieve all messages exchanged within a specific chat session.\n\nArgs:\n    session_id (str): The unique identifier of the chat session.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MessageInfo],   # List of all messages for the session (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"Session does not exist\"\n    }\n\nConstraints:\n    - The session must exist in the system.\n    - All returned messages are linked to the provided session_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_messages_by_client",
+      "description": "Retrieve all messages sent by a particular client (across all sessions).\n\nArgs:\n    client_id (str): The unique identifier of the target client.\n\nReturns:\n    dict:\n        Success: { \"success\": True, \"data\": List[MessageInfo] }\n        Failure: { \"success\": False, \"error\": str }\n\nConstraints:\n    - The client_id must exist in the system.\n    - Messages are filtered based on sender_type == \"client\" and sender_id == client_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id"
+        ]
+      }
+    },
+    {
+      "name": "create_client",
+      "description": "Register a new client in the system.\n\nArgs:\n    client_id (str): Unique identifier for the client.\n    client_slug (str): Unique, human-readable string for the client.\n    display_name (str): Name to display for the client.\n    account_status (str): Status of the client account (e.g., 'active').\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Client created successfully\" }\n        On failure: { \"success\": False, \"error\": str }\n\nConstraints:\n    - client_id must not already exist.\n    - client_slug must be unique across all clients.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "client_slug": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id",
+          "client_slug",
+          "display_name",
+          "account_status"
+        ]
+      }
+    },
+    {
+      "name": "create_chatbot_agent",
+      "description": "Register a new chatbot agent.\n\nArgs:\n    agent_id (str): Unique identifier for the agent.\n    agent_name (str): The display name of the chatbot agent.\n    version (str): The version string of the agent.\n    is_active (bool): Indicates if agent is active.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Chatbot agent created successfully.\" }\n        - On error:   { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - agent_id must be unique across the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agent_id": {
+            "type": "string"
+          },
+          "agent_name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "agent_id",
+          "agent_name",
+          "version",
+          "is_active"
+        ]
+      }
+    },
+    {
+      "name": "create_chat_session",
+      "description": "Create a new chat session between an existing client and agent.\n\nArgs:\n    client_id (str): The unique identifier of the client.\n    agent_id (str): The unique identifier of the chatbot agent.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Chat session created\",\n        \"session_id\": str,\n        \"session_info\": ChatSessionInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Both client and agent must exist before the chat session is created.\n    - Creates a new session with status=\"active\", sets created_at to now, and closed_at=None.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "agent_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id",
+          "agent_id"
+        ]
+      }
+    },
+    {
+      "name": "close_chat_session",
+      "description": "Mark a chat session as closed and record the closed_at timestamp.\n\nArgs:\n    session_id (str): The unique identifier of the chat session.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Session closed successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # error message: e.g., 'Session does not exist', 'Session already closed'\n    }\n\nConstraints:\n    - The session must exist.\n    - Only non-closed sessions may be closed.\n    - closed_at timestamp is set to current time (ISO 8601).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "reopen_chat_session",
+      "description": "Reopen a closed chat session (change status to 'active' and clear closed_at).\n\nArgs:\n    session_id (str): The ID of the chat session to reopen.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Session <session_id> reopened.\" }\n        On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Session must exist.\n    - Session must not already be active.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "send_message_in_session",
+      "description": "Add a message to an existing chat session. Sender must be either the client or agent associated\nwith the session, and the session must be active.\n\nArgs:\n    session_id (str): Target chat session.\n    sender_type (str): 'client' or 'agent'.\n    sender_id (str): ID of the sender (client_id or agent_id).\n    content (str): Message content (non-empty).\n    timestamp (str, optional): ISO8601 timestamp string. If not supplied, uses current time.\n\nReturns:\n    dict: { \"success\": True, \"message\": \"Message sent in session <session_id>\" }\n          or\n          { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - Session must exist and be active.\n    - Sender must exist and be associated with the session.\n    - Content must not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "sender_type": {
+            "type": "string"
+          },
+          "sender_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "sender_type",
+          "sender_id",
+          "content"
+        ]
+      }
+    },
+    {
+      "name": "update_client_status",
+      "description": "Change the account status of a client.\n\nArgs:\n    client_id (str): The unique identifier for the client to update.\n    new_status (str): The new status value to assign to the client.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Client account status updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Client not found.\"\n    }\n\nConstraints:\n    - client_id must refer to an existing client.\n    - new_status can be any string (no constraints specified).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "update_agent_status",
+      "description": "Activate or deactivate a chatbot agent.\n\nArgs:\n    agent_id (str): The unique identifier of the agent to update.\n    is_active (bool): True to activate, False to deactivate the agent.\n\nReturns:\n    dict: \n        - On success: \n            {\n                \"success\": True,\n                \"message\": \"Agent status updated to active.\" | \"Agent status updated to deactivated.\"\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": \"Agent not found.\"\n            }\nConstraints:\n    - The agent must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agent_id": {
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "agent_id",
+          "is_active"
+        ]
+      }
+    },
+    {
+      "name": "delete_chat_session",
+      "description": "Remove a chat session and all its associated messages, if permitted.\n\nArgs:\n    session_id (str): The ID of the session to delete.\n\nReturns:\n    dict:\n        - If successful:\n            { \"success\": True, \"message\": \"Chat session <session_id> deleted.\" }\n        - If failure (session does not exist or deletion not permitted):\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - The session must exist.\n    - Only non-active (status != 'active') sessions can be deleted.\n    - All messages associated with the session are deleted as well.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_message",
+      "description": "Remove a specific message from the system.\n\nArgs:\n    message_id (str): The unique identifier of the message to be deleted.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Message <message_id> deleted.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The message must exist in the system.\n    - The message must be linked to an existing chat session (extra check for consistency, though the environment should maintain this).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id"
+        ]
+      }
+    }
+  ]
+}

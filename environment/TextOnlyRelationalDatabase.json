@@ -1,0 +1,438 @@
+{
+  "env_name": "TextOnlyRelationalDatabase",
+  "description": "A text-only relational database organizes all stored information into tables consisting solely of text fields. This environment allows users to define schema, insert, query, and manipulate string-based records, supporting operations like searching, joining, and filtering textual data. It is commonly used in scenarios where all entries must remain in a plain text format, facilitating straightforward text analysis or archiving.",
+  "initial_parameter_schema": {
+    "tables": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string"
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "column_name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "column_name"
+              ]
+            }
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "field_values": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "field_values"
+              ]
+            }
+          }
+        },
+        "required": [
+          "table_name",
+          "columns",
+          "records"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "list_tables": [
+      "tables"
+    ],
+    "get_table_schema": [
+      "tables"
+    ],
+    "list_table_records": [
+      "tables"
+    ],
+    "get_table_record_count": [
+      "tables"
+    ],
+    "get_table_column_names": [
+      "tables"
+    ],
+    "find_records_by_value": [
+      "tables"
+    ],
+    "search_records": [
+      "tables"
+    ],
+    "join_tables_on_column": [
+      "tables"
+    ],
+    "get_all_text_entries": [
+      "tables"
+    ],
+    "create_table": [
+      "tables"
+    ],
+    "drop_table": [
+      "tables"
+    ],
+    "add_column_to_table": [
+      "tables"
+    ],
+    "remove_column_from_table": [
+      "tables"
+    ],
+    "insert_record": [
+      "tables"
+    ],
+    "update_record": [
+      "tables"
+    ],
+    "delete_record": [
+      "tables"
+    ],
+    "bulk_insert_records": [
+      "tables"
+    ],
+    "truncate_table": [
+      "tables"
+    ]
+  },
+  "tools": [
+    {
+      "name": "list_tables",
+      "description": "Retrieve the names of all tables in the database.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str]  # List of all table names (empty if no tables exist)\n    }\nConstraints:\n    - None.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_table_schema",
+      "description": "Retrieve the schema (list of column names) of the specified table.\n\nArgs:\n    table_name (str): The name of the table to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str]   # List of column names in the table (may be empty)\n    } on success,\n    or\n    {\n        \"success\": False,\n        \"error\": str        # Error message if table doesn't exist\n    } on failure.\n\nConstraints:\n    - The table must exist (table_name must be present in self.tables).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "table_name"
+        ]
+      }
+    },
+    {
+      "name": "list_table_records",
+      "description": "Retrieve all records (rows) from the specified table, with each record's field values as text.\n\nArgs:\n    table_name (str): The name of the table from which to fetch records.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"data\": List[Dict[str, str]]}\n          (Where each dict is a record mapping column names to text values)\n        - On failure: {\"success\": False, \"error\": str}\n\nConstraints:\n    - The specified table must exist.\n    - All field values are strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "table_name"
+        ]
+      }
+    },
+    {
+      "name": "get_table_record_count",
+      "description": "Return the number of records in a specific table.\n\nArgs:\n    table_name (str): Name of the table to count records for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": int  # The number of records in the table\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If table does not exist\n    }\n\nConstraints:\n    - The table must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "table_name"
+        ]
+      }
+    },
+    {
+      "name": "get_table_column_names",
+      "description": "List all column names for a specified table.\n\nArgs:\n    table_name (str): Name of the table.\n\nReturns:\n    dict: \n        On success:\n            {\"success\": True, \"data\": [column_name1, column_name2, ...]}\n        On failure: \n            {\"success\": False, \"error\": \"Table does not exist\"}\n\nConstraints:\n    - Table must exist.\n    - Column names are text, unique within the table.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "table_name"
+        ]
+      }
+    },
+    {
+      "name": "find_records_by_value",
+      "description": "Query for records in a table where a specific column matches a given text value.\n\nArgs:\n    table_name (str): The target table to search.\n    column_name (str): The column on which to match the value.\n    value (str): The text value that must exactly match in the given column.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"data\": List[RecordInfo] }\n        On error:   { \"success\": False, \"error\": \"...\" }\n\nConstraints:\n    - Table must exist.\n    - column_name must exist within the table's schema.\n    - All matchings are for exact text value.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string"
+          },
+          "column_name": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "table_name",
+          "column_name",
+          "value"
+        ]
+      }
+    },
+    {
+      "name": "search_records",
+      "description": "Query and filter records in a table based on substring or pattern match in specified columns.\n\nArgs:\n    table_name (str): The name of the table to search within.\n    columns (List[str]): A list of column names to search in. All columns must exist on the table.\n    pattern (str): The substring or pattern to match (plain substring search).\n\nReturns:\n    dict:\n        - On success:\n            {\n              \"success\": True,\n              \"data\": List[RecordInfo]  # records where any of the specified columns contains the pattern as a substring\n            }\n        - On failure:\n            {\n              \"success\": False,\n              \"error\": str  # error message (table or column not found, etc.)\n            }\n\nConstraints:\n    - The table must exist.\n    - All columns must exist in the table's schema.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string"
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "pattern": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "table_name",
+          "columns",
+          "pattern"
+        ]
+      }
+    },
+    {
+      "name": "join_tables_on_column",
+      "description": "Perform a text-based (inner) join between two tables using a shared column name.\n\nArgs:\n    left_table_name (str): The name of the first table.\n    right_table_name (str): The name of the second table.\n    column_name (str): The column name to join on (must exist in both tables).\n\nReturns:\n    dict:\n        If success:\n            {\n                \"success\": True,\n                \"data\": List[Dict[str, str]]  # Each dict is a joined record:\n                # Keys are:\n                #   - All columns of left table, with 'left.' prefix (except join column: plain name)\n                #   - All columns of right table, with 'right.' prefix (except join column: plain name)\n                #   - The join column is included once (plain name)\n            }\n        If error:\n            {\n                \"success\": False,\n                \"error\": str  # Reason for failure\n            }\n\nConstraints:\n    - Both tables must exist.\n    - Both tables must have the join column.\n    - Output dict keys for columns besides join column should be prefixed for disambiguation if duplicated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "left_table_name": {
+            "type": "string"
+          },
+          "right_table_name": {
+            "type": "string"
+          },
+          "column_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "left_table_name",
+          "right_table_name",
+          "column_name"
+        ]
+      }
+    },
+    {
+      "name": "get_all_text_entries",
+      "description": "Retrieve all text field values from all tables (table-wise full record scan).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": Dict[str, List[str]],  # Mapping table_name -> flat list of all text values in all records (row scan order).\n    }\n\nNotes:\n    - If there are no tables, returns empty data dict.\n    - If a table has no records, the value is an empty list for that table.\n    - Each list is a flat list of all string field values, row by row, field order follows the table's column schema.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "create_table",
+      "description": "Define and add a new table with the given name and schema.\n\nArgs:\n    table_name (str): The name for the new table (must be unique).\n    column_names (List[str]): List of text column names (must be unique, non-empty).\n\nReturns:\n    dict: { \"success\": True, \"message\": \"...\" }\n          or { \"success\": False, \"error\": \"...\" }\n\nConstraints:\n    - Table name must be unique (not already present).\n    - Each column name must be non-empty and unique within the list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string"
+          },
+          "column_names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "table_name",
+          "column_names"
+        ]
+      }
+    },
+    {
+      "name": "drop_table",
+      "description": "Removes the specified table and all its records from the database.\n\nArgs:\n    table_name (str): The name of the table to remove.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Table '<table_name>' dropped.\" }\n        - On failure: { \"success\": False, \"error\": \"Table does not exist.\" }\n\nConstraints:\n    - Table must exist in the database for deletion.\n    - Operation is irreversible and removes all associated records and schema.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "table_name"
+        ]
+      }
+    },
+    {
+      "name": "add_column_to_table",
+      "description": "Adds a new column to an existing table. The column name must be unique within the table.\nFor all existing records in the table, the value for the new column is set to the empty string.\n\nArgs:\n    table_name (str): The name of the table to add the column to.\n    column_name (str): The name of the new column to add.\n\nReturns:\n    dict: On success:\n            {\"success\": True, \"message\": \"Column '<column_name>' added to table '<table_name>'.\"}\n          On failure:\n            {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - Table must exist.\n    - Column name must be unique within the table.\n    - All existing records get the new column with value ''.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string"
+          },
+          "column_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "table_name",
+          "column_name"
+        ]
+      }
+    },
+    {
+      "name": "remove_column_from_table",
+      "description": "Remove a column from a table schema and update all records by deleting the corresponding field.\n\nArgs:\n    table_name (str): The name of the table from which to remove the column.\n    column_name (str): The column to be removed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Column '<column_name>' removed from table '<table_name>' and all records updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str (reason for failure)\n    }\n\nConstraints:\n    - table_name must exist in the database.\n    - column_name must exist in the table schema.\n    - All records' field_values must have the column removed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string"
+          },
+          "column_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "table_name",
+          "column_name"
+        ]
+      }
+    },
+    {
+      "name": "insert_record",
+      "description": "Add a new record to the specified table with string values for every schema column.\n\nArgs:\n    table_name (str): The target table's name.\n    field_values (Dict[str, str]): Mapping from column name to value (all must be strings).\n\nReturns:\n    dict with:\n      - success: True/False\n      - message: Success message if successful\n      - error: String explaining the error if failed\n\nConstraints:\n  - Table must exist.\n  - Each column in the table schema must be supplied with a value (can be '').\n  - No extra keys allowed besides schema columns.\n  - All values in field_values must be str.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string"
+          },
+          "field_values": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "table_name",
+          "field_values"
+        ]
+      }
+    },
+    {
+      "name": "update_record",
+      "description": "Change the text value(s) of fields in an existing record in a table.\n\nArgs:\n    table_name (str): Name of the table to update record in.\n    record_index (int): Index (0-based) of the target record within the table's record list.\n    new_values (Dict[str, str]): Mapping of column name(s) to the new text value(s) to set. Only these columns will be updated.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Record updated successfully\" }\n        - On error: { \"success\": False, \"error\": \"<error message>\" }\n\nConstraints:\n    - Table must exist.\n    - Record index must be valid.\n    - Columns in new_values must exist in the table's schema.\n    - All new_values must be strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string"
+          },
+          "record_index": {
+            "type": "integer"
+          },
+          "new_values": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "table_name",
+          "record_index",
+          "new_values"
+        ]
+      }
+    },
+    {
+      "name": "delete_record",
+      "description": "Remove a specific record from a table.\n\nArgs:\n    table_name (str): The name of the table.\n    record (Dict[str, str]): The record to delete, as a mapping of column names to string values.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Record deleted from table <table_name>\" }\n        - If table does not exist: { \"success\": False, \"error\": \"Table does not exist\" }\n        - If record does not exist: { \"success\": False, \"error\": \"Record not found in table\" }\n\nConstraints:\n    - Table must exist.\n    - Record is identified by full match of all field values.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string"
+          },
+          "record": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "table_name",
+          "record"
+        ]
+      }
+    },
+    {
+      "name": "bulk_insert_records",
+      "description": "Insert multiple records into the specified table, ensuring all field values are text (str) and\neach record matches the table schema exactly.\n\nArgs:\n    table_name (str): Name of table to insert records into.\n    records (List[Dict[str, str]]): List of dicts, each representing a record (\"column_name\": str value).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"X records inserted into table 'table_name'\"\n    } or (on error)\n    {\n        \"success\": False,\n        \"error\": \"Descriptive error message\"\n    }\n\nConstraints:\n    - The table must exist.\n    - All keys in each record must be exactly the same as the columns in the table schema\n      (no missing or extra columns).\n    - All values must be strings.\n    - All-or-nothing: if any record is invalid, no records are inserted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string"
+          },
+          "records": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "table_name",
+          "records"
+        ]
+      }
+    },
+    {
+      "name": "truncate_table",
+      "description": "Remove all records from the specified table, but keep the table schema (columns) intact.\n\nArgs:\n    table_name (str): The name of the table to truncate.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"All records removed from table '<table_name>'.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The table must exist (table_name in self.tables).\n    - Does NOT delete the table or its columns; only empties the records.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "table_name"
+        ]
+      }
+    }
+  ]
+}

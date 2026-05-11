@@ -1,0 +1,475 @@
+{
+  "env_name": "CityBusRouteManagementSystem",
+  "description": "A city bus route and stop management system stores comprehensive information about bus stops, routes, schedules, and geographic locations. It tracks each stop’s name, ID, coordinates, and associated routes, enabling querying and reporting based on location and keywords. This environment supports operations such as searching for stops, retrieving stop metadata, and assisting riders with navigation and transit planning.",
+  "initial_parameter_schema": {
+    "bus_stops": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "stop_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "associated_route_id": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "stop_id"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "name"
+            ]
+          },
+          {
+            "required": [
+              "latitude"
+            ]
+          },
+          {
+            "required": [
+              "longitude"
+            ]
+          },
+          {
+            "required": [
+              "associated_route_id"
+            ]
+          }
+        ]
+      }
+    },
+    "routes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "route_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "list_of_stop_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "schedule_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "route_id",
+          "name",
+          "list_of_stop_ids",
+          "schedule_info"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "search_bus_stops_by_keyword": [
+      "bus_stops"
+    ],
+    "get_bus_stop_info": [
+      "bus_stops"
+    ],
+    "list_all_bus_stops": [
+      "bus_stops"
+    ],
+    "get_bus_stops_by_location": [
+      "bus_stops"
+    ],
+    "get_bus_stops_by_route_id": [
+      "bus_stops",
+      "routes"
+    ],
+    "get_route_info": [
+      "routes"
+    ],
+    "list_all_routes": [
+      "routes"
+    ],
+    "get_routes_for_stop": [
+      "bus_stops",
+      "routes"
+    ],
+    "add_bus_stop": [
+      "bus_stops"
+    ],
+    "update_bus_stop_info": [
+      "bus_stops",
+      "routes"
+    ],
+    "remove_bus_stop": [
+      "bus_stops",
+      "routes"
+    ],
+    "add_route": [
+      "bus_stops",
+      "routes"
+    ],
+    "update_route_info": [
+      "bus_stops",
+      "routes"
+    ],
+    "remove_route": [
+      "bus_stops",
+      "routes"
+    ],
+    "associate_stop_with_route": [
+      "bus_stops",
+      "routes"
+    ],
+    "disassociate_stop_from_route": [
+      "bus_stops",
+      "routes"
+    ]
+  },
+  "tools": [
+    {
+      "name": "search_bus_stops_by_keyword",
+      "description": "Search bus stops where the name or related fields (name or stop_id) match the given keyword, case-insensitive.\n\nArgs:\n    keyword (str): The keyword to search for.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[BusStopInfo]  # List of bus stops whose name or stop_id matches the keyword (case-insensitive).\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Description of the error (e.g. missing or invalid input).\n        }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "keyword": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "keyword"
+        ]
+      }
+    },
+    {
+      "name": "get_bus_stop_info",
+      "description": "Retrieve the complete metadata for a specified bus stop.\n\nArgs:\n    stop_id (str): The unique identifier of the bus stop.\n\nReturns:\n    dict: \n        - If found: {\"success\": True, \"data\": BusStopInfo}\n        - If not found: {\"success\": False, \"error\": \"Bus stop not found\"}\n\nConstraints:\n    - Bus stop with stop_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stop_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "stop_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_bus_stops",
+      "description": "Retrieve all bus stops in the system with their metadata.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BusStopInfo],   # List may be empty if there are no bus stops.\n    }\n\nNotes:\n    - This function never fails unless there is a programmatic/system error,\n      in which case a failure message will be returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_bus_stops_by_location",
+      "description": "Retrieve all bus stops within a certain distance (in kilometers) of a given latitude/longitude.\n\nArgs:\n    latitude (float): Reference latitude (degrees, -90 to 90).\n    longitude (float): Reference longitude (degrees, -180 to 180).\n    distance (float): Search radius in kilometers (must be > 0).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BusStopInfo]  # List (possibly empty) of stops within given radius\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str\n    }\nConstraints:\n    - All arguments must be provided and valid.\n    - Uses Haversine formula for distance.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "distance": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude",
+          "distance"
+        ]
+      }
+    },
+    {
+      "name": "get_bus_stops_by_route_id",
+      "description": "List all stops served by the specified route.\n\nArgs:\n    route_id (str): The ID of the route whose stops are to be listed.\n\nReturns:\n    dict:\n        - If route exists:\n            {\n                \"success\": True,\n                \"data\": List[BusStopInfo]  # All stops for the route (may be empty)\n            }\n        - If route does not exist:\n            {\n                \"success\": False,\n                \"error\": \"Route does not exist\"\n            }\nConstraints:\n    - Route with route_id must exist.\n    - If the route's stop list contains invalid stop ids, those stops are ignored in the output.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "route_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "route_id"
+        ]
+      }
+    },
+    {
+      "name": "get_route_info",
+      "description": "Retrieve details for a route including name, stop sequence, and schedule info.\n\nArgs:\n    route_id (str): The unique route identifier.\n\nReturns:\n    dict: \n        Success: {\n            \"success\": True,\n            \"data\": RouteInfo  # Route metadata (name, list_of_stop_ids, schedule_info)\n        }\n        Failure: {\n            \"success\": False,\n            \"error\": str  # Reason (e.g., route does not exist)\n        }\nConstraints:\n    - The route must exist in the system (route_id in self.routes).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "route_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "route_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_routes",
+      "description": "Retrieve a full list of all bus routes in the system with their metadata.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RouteInfo]  # List of all route metadata (could be empty if no routes)\n    }\n\nConstraints:\n    - None. Returns all stored routes. If none exist, returns empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_routes_for_stop",
+      "description": "For a given bus stop (by stop_id), returns a list of all route IDs and names that serve the stop.\n\nArgs:\n    stop_id (str): The unique identifier for the bus stop.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ { \"route_id\": str, \"name\": str } ]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The bus stop must exist in the system.\n    - Only return route info for routes existing in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stop_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "stop_id"
+        ]
+      }
+    },
+    {
+      "name": "add_bus_stop",
+      "description": "Add a new bus stop with metadata.\n\nArgs:\n    stop_id (str): Unique identifier for the bus stop.\n    name (str): Name of the bus stop.\n    latitude (float): Geographic latitude (-90 <= latitude <= 90).\n    longitude (float): Geographic longitude (-180 <= longitude <= 180).\n    associated_route_id (List[str]): List of associated route_ids.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Bus stop <stop_id> added.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - stop_id must be unique.\n    - latitude/longitude must be non-null and within valid ranges.\n    - associated_route_id should not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stop_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "associated_route_id": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "stop_id",
+          "name",
+          "latitude",
+          "longitude",
+          "associated_route_id"
+        ]
+      }
+    },
+    {
+      "name": "update_bus_stop_info",
+      "description": "Modify a stop’s name, coordinates, or associated routes.\nAt least one of the updatable fields must be provided.\nConstraints:\n  - Bus stop must exist (stop_id).\n  - If latitude/longitude are provided, they must not be None.\n  - If associated_route_id is provided, it must be a non-empty list of valid route_id strings.\n  - After the update, associated_route_id must remain non-empty (unless 'out of service' logic is separately specified).\n\nArgs:\n    stop_id (str): The unique stop id to update.\n    name (str, optional): New name for the stop.\n    latitude (float, optional): New latitude (must not be None if provided).\n    longitude (float, optional): New longitude (must not be None if provided).\n    associated_route_id (List[str], optional): New list of route_ids for this stop.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Bus stop info updated for stop_id <stop_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stop_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "associated_route_id": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "stop_id",
+          "name",
+          "latitude",
+          "longitude",
+          "associated_route_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_bus_stop",
+      "description": "Remove a bus stop from the system, provided it does not violate\nuniqueness or association constraints.\n\nArgs:\n    stop_id (str): Unique identifier for the bus stop.\n\nReturns:\n    dict:\n        On success: \n            {\n                \"success\": True,\n                \"message\": \"Bus stop removed successfully.\"\n            }\n        On failure: \n            {\n                \"success\": False,\n                \"error\": <str: reason>\n            }\n\nConstraints:\n    - Stop must exist.\n    - Stop cannot be removed if still associated with any route (i.e., appears in any RouteInfo['list_of_stop_ids']).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stop_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "stop_id"
+        ]
+      }
+    },
+    {
+      "name": "add_route",
+      "description": "Add a new route to the system.\n\nArgs:\n    route_id (str): Unique identifier for the route.\n    name (str): Official name of the route.\n    list_of_stop_ids (list of str): Ordered list of stop_ids to be included in the route.\n    schedule_info (str): String containing route schedule information.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"message\": \"Route <route_id> added.\"}\n        - On failure: {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - route_id must be unique (not present in self.routes).\n    - Every stop_id in list_of_stop_ids must exist in self.bus_stops.\n    - Each stop will be updated to associate with this route if not already associated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "route_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "list_of_stop_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "schedule_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "route_id"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "name"
+            ]
+          },
+          {
+            "required": [
+              "list_of_stop_ids"
+            ]
+          },
+          {
+            "required": [
+              "schedule_info"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "update_route_info",
+      "description": "Modify a route’s name, stop sequence, or schedule info.\n\nArgs:\n    route_id (str): The ID of the route to update.\n    name (Optional[str]): New name for the route (if provided).\n    list_of_stop_ids (Optional[List[str]]): New ordered list of stop IDs (if provided).\n    schedule_info (Optional[str]): New schedule info (if provided).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Route info updated successfully\"\n    }\n    or {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - route_id must exist.\n    - If list_of_stop_ids is provided, all stop IDs must exist.\n    - Maintain consistency: bus stops must have route in their associated_route_id if present in list_of_stop_ids, and remove if no longer present.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "route_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "list_of_stop_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "schedule_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "route_id",
+          "name",
+          "list_of_stop_ids",
+          "schedule_info"
+        ]
+      }
+    },
+    {
+      "name": "remove_route",
+      "description": "Remove a route from the system, ensuring no stops are left with zero associated routes,\nunless such stops are designated 'out of service' (not handled in this schema).\n\nArgs:\n    route_id (str): The unique identifier for the route to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": f\"Route {route_id} removed.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of error.\n    }\n\nConstraints:\n    - Cannot leave any bus stop with zero associated routes if this is the only route.\n    - Route must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "route_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "route_id"
+        ]
+      }
+    },
+    {
+      "name": "associate_stop_with_route",
+      "description": "Add a route ID to the set of associated routes for a bus stop.\n\nArgs:\n    stop_id (str): The ID of the bus stop.\n    route_id (str): The ID of the route to associate with the stop.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Route <route_id> associated with stop <stop_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - The stop and route must exist.\n    - No duplicate associations are added.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stop_id": {
+            "type": "string"
+          },
+          "route_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "stop_id",
+          "route_id"
+        ]
+      }
+    },
+    {
+      "name": "disassociate_stop_from_route",
+      "description": "Remove a route from a stop’s associated_route_id. This operation is prohibited\nif it would leave the stop without any associated routes (and there is no 'out of service' flag).\n\nArgs:\n    stop_id (str): The unique identifier for the bus stop.\n    route_id (str): The route to remove from this stop's associations.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Route disassociated from stop.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure.\n    }\n\nConstraints:\n    - Both stop_id and route_id must exist.\n    - route_id must be in the stop's associated_route_id list.\n    - At least one route must remain associated, otherwise, disassociation is prohibited.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stop_id": {
+            "type": "string"
+          },
+          "route_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "stop_id",
+          "route_id"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,473 @@
+{
+  "env_name": "SoftwareDeploymentManagementSystem",
+  "description": "A software deployment management system coordinates and tracks the release of application versions across different environments such as production or staging. It maintains records of build artifacts, version histories, deployment targets, and logs of deployment actions. Typical operations include deploying, rolling back, and monitoring application releases to ensure consistent and traceable software delivery.",
+  "initial_parameter_schema": {
+    "build_artifacts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "artifact_id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "creation_time": {
+            "type": "string"
+          },
+          "checksum": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artifact_id",
+          "version",
+          "creation_time",
+          "checksum",
+          "status"
+        ]
+      }
+    },
+    "deployment_environments": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "environment_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "configuration": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "environment_id",
+          "name",
+          "status",
+          "configuration"
+        ]
+      }
+    },
+    "deployment_records": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "deployment_id": {
+            "type": "string"
+          },
+          "artifact_id": {
+            "type": "string"
+          },
+          "environment_id": {
+            "type": "string"
+          },
+          "deployed_at": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "performed_by": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deployment_id",
+          "artifact_id",
+          "environment_id",
+          "deployed_at",
+          "status",
+          "performed_by"
+        ]
+      }
+    },
+    "deployment_logs": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "deployment_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "level": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "deployment_id",
+            "timestamp",
+            "message",
+            "level"
+          ]
+        }
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "list_build_artifacts": [
+      "build_artifacts"
+    ],
+    "get_build_artifact_by_id": [
+      "build_artifacts"
+    ],
+    "list_ready_or_approved_build_artifacts": [
+      "build_artifacts"
+    ],
+    "get_latest_build_artifact": [
+      "build_artifacts"
+    ],
+    "list_deployment_environments": [
+      "deployment_environments"
+    ],
+    "get_environment_by_id": [
+      "deployment_environments"
+    ],
+    "get_active_deployment_for_environment": [
+      "deployment_environments",
+      "deployment_records"
+    ],
+    "list_deployment_records": [
+      "deployment_records"
+    ],
+    "get_deployment_record_by_id": [
+      "deployment_records"
+    ],
+    "list_deployment_records_for_environment": [
+      "deployment_environments",
+      "deployment_records"
+    ],
+    "list_previous_deployments_for_environment": [
+      "deployment_environments",
+      "deployment_records"
+    ],
+    "get_deployment_log": [
+      "deployment_logs",
+      "deployment_records"
+    ],
+    "get_latest_deployment_record_for_environment": [
+      "deployment_environments",
+      "deployment_records"
+    ],
+    "deploy_build_artifact": [
+      "build_artifacts",
+      "deployment_environments",
+      "deployment_logs",
+      "deployment_records"
+    ],
+    "rollback_deployment": [
+      "build_artifacts",
+      "deployment_environments",
+      "deployment_logs",
+      "deployment_records"
+    ],
+    "update_build_artifact_status": [
+      "build_artifacts"
+    ],
+    "update_environment_status": [
+      "deployment_environments"
+    ],
+    "log_deployment_action": [
+      "deployment_logs",
+      "deployment_records"
+    ]
+  },
+  "tools": [
+    {
+      "name": "list_build_artifacts",
+      "description": "Retrieve all build artifacts with their metadata.\n\nArgs:\n    None\n\nReturns:\n    dict:\n        - success (bool): True if retrieval is successful.\n        - data (List[BuildArtifactInfo]): List of all build artifacts' info; may be empty if none exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_build_artifact_by_id",
+      "description": "Retrieve details for a specific build artifact via its artifact_id.\n\nArgs:\n    artifact_id (str): The unique identifier for the build artifact.\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"data\": BuildArtifactInfo}\n        - On failure: {\"success\": False, \"error\": \"Build artifact not found\"}\n\nConstraints:\n    - The artifact_id must correspond to an existing build artifact in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "artifact_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artifact_id"
+        ]
+      }
+    },
+    {
+      "name": "list_ready_or_approved_build_artifacts",
+      "description": "Retrieve all build artifacts eligible for deployment (status: \"ready\" or \"approved\").\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[BuildArtifactInfo]  # List of artifacts with eligible status (may be empty)\n        }\nConstraints:\n    - Only artifacts with status \"ready\" or \"approved\" are included.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_latest_build_artifact",
+      "description": "Find the most recent eligible build artifact by creation_time.\n\nEligibility: Only 'ready' or 'approved' artifacts are considered (per constraints).\nAmong all eligible artifacts, the one with the latest (max) creation_time is selected.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": BuildArtifactInfo  # Info for the most recent eligible artifact\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If no eligible artifacts exist or other error\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_deployment_environments",
+      "description": "Retrieve all defined deployment environments.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DeploymentEnvironmentInfo]  # List of environments (may be empty)\n    }\n\nConstraints:\n    - No constraints; this is a query operation.\n    - Returns an empty list if no environments are defined.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_environment_by_id",
+      "description": "Get details of a deployment environment using environment_id.\n\nArgs:\n    environment_id (str): The unique identifier of the deployment environment.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"data\": DeploymentEnvironmentInfo}\n        - On failure: {\"success\": False, \"error\": str}\n\nConstraints:\n    - The specified environment_id must exist in the deployment_environments dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "environment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "environment_id"
+        ]
+      }
+    },
+    {
+      "name": "get_active_deployment_for_environment",
+      "description": "Retrieve the currently active deployed artifact in a particular environment.\n\nArgs:\n    environment_id (str): ID of the deployment environment.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": DeploymentRecordInfo or None   # The active deployment record, or None if none active.\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Description of error (e.g. environment not found)\n            }\n\nConstraints:\n    - The environment must exist.\n    - There should be at most one active deployed artifact per environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "environment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "environment_id"
+        ]
+      }
+    },
+    {
+      "name": "list_deployment_records",
+      "description": "Retrieve all deployment records (deployment history) in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DeploymentRecordInfo],  # May be an empty list if no records exist\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_deployment_record_by_id",
+      "description": "Get details of a specific deployment record by its deployment_id.\n\nArgs:\n    deployment_id (str): The identifier for the deployment record.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": DeploymentRecordInfo  # details for the specified deployment_id\n            }\n        On failure (deployment_id not found):\n            {\n                \"success\": False,\n                \"error\": \"Deployment record not found\"\n            }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "deployment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deployment_id"
+        ]
+      }
+    },
+    {
+      "name": "list_deployment_records_for_environment",
+      "description": "Get all deployment records related to a given environment.\n\nArgs:\n    environment_id (str): The ID of the deployment environment.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[DeploymentRecordInfo]  # All deployment records where environment_id matches\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason for failure, e.g., environment not found\n            }\nConstraints:\n    - The specified environment_id must exist in the deployment_environments.\n    - If there are no deployment records for the environment, returns empty list in \"data\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "environment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "environment_id"
+        ]
+      }
+    },
+    {
+      "name": "list_previous_deployments_for_environment",
+      "description": "Get the history of previously deployed artifacts for a deployment environment.\nUseful for rollback validation. Only considers environments that exist.\n\nArgs:\n    environment_id (str): The ID of the deployment environment to query.\n\nReturns:\n    dict: \n        - On success: {\n            \"success\": True,\n            \"data\": List[DeploymentRecordInfo], # List can be empty.\n          }\n        - On error: {\n            \"success\": False,\n            \"error\": str, # Reason for failure, e.g., environment does not exist.\n          }\n\nConstraints:\n    - The environment must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "environment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "environment_id"
+        ]
+      }
+    },
+    {
+      "name": "get_deployment_log",
+      "description": "Get all log entries for a specific deployment action.\n\nArgs:\n    deployment_id (str): The unique identifier of the deployment to query logs for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DeploymentLogInfo],  # List of logs for the deployment; may be empty\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Explanation of error, e.g. \"Deployment record does not exist\"\n    }\n\nConstraints:\n    - The deployment_id must correspond to an existing deployment record.\n    - Returns an empty list if no logs exist for the deployment but deployment is valid.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "deployment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deployment_id"
+        ]
+      }
+    },
+    {
+      "name": "get_latest_deployment_record_for_environment",
+      "description": "Get the most recent deployment record for the specified environment.\n\nArgs:\n    environment_id (str): The unique identifier of the deployment environment.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": DeploymentRecordInfo or None  # The latest deployment record, or None if none exist.\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Error message if the environment does not exist\n        }\n\nConstraints:\n    - The environment_id must exist.\n    - If no deployment records exist for the environment, \"data\" will be None.\n    - Newly created deployment or rollback records become the latest record for their environment according to the environment's controlled benchmark timeline.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "environment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "environment_id"
+        ]
+      }
+    },
+    {
+      "name": "deploy_build_artifact",
+      "description": "Deploy a specified build artifact to a deployment environment.\n\nArgs:\n    artifact_id (str): The ID of the build artifact to deploy. Must have status \"ready\" or \"approved\".\n    environment_id (str): The ID of the deployment environment.\n    performed_by (str): Actor performing the deployment.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Artifact <artifact_id> deployed to environment <environment_id>\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Only build artifacts with status \"ready\" or \"approved\" can be deployed.\n    - Each deployment environment can have at most one active deployed version at a time (the previous is marked \"inactive\").\n    - A successful deployment creates a new active deployment record and deployment log entry using the environment's controlled benchmark timeline rather than host time.\n    - Deployments must be logged (creates a DeploymentLogInfo entry).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "artifact_id": {
+            "type": "string"
+          },
+          "environment_id": {
+            "type": "string"
+          },
+          "performed_by": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artifact_id",
+          "environment_id",
+          "performed_by"
+        ]
+      }
+    },
+    {
+      "name": "rollback_deployment",
+      "description": "Rolls back the deployment for the specified environment to a previously deployed build artifact.\nThe rollback is only permitted if the artifact has previously been deployed in the environment.\nLogs the rollback action for auditing.\n\nArgs:\n    environment_id (str): The deployment environment to roll back.\n    artifact_id (str): The artifact to roll back to.\n    performed_by (str): The user performing the rollback.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Rollback of env <id> to artifact <id> completed.\"\n    } on success;\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    } on failure.\n\nConstraints:\n    - Only previously deployed artifacts may be rolled back to.\n    - A successful rollback deactivates the previous active deployment, creates a new active deployment record for the rollback target, and timestamps it using the environment's controlled benchmark timeline.\n    - All rollback actions must be logged.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "environment_id": {
+            "type": "string"
+          },
+          "artifact_id": {
+            "type": "string"
+          },
+          "performed_by": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "environment_id",
+          "artifact_id",
+          "performed_by"
+        ]
+      }
+    },
+    {
+      "name": "update_build_artifact_status",
+      "description": "Change the status of a build artifact.\n\nArgs:\n    artifact_id (str): The identifier of the build artifact to update.\n    new_status (str): The new status value (e.g., \"ready\", \"approved\", \"deprecated\").\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"message\": \"Status of artifact <artifact_id> updated to <new_status>.\"\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": \"Build artifact not found\"\n        }\n\nConstraints:\n    - The artifact_id must exist in the build_artifacts dictionary.\n    - No restriction on new_status value based on current specification.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "artifact_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artifact_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "update_environment_status",
+      "description": "Update the status and/or configuration for a deployment environment.\n\nArgs:\n    environment_id (str): The unique identifier of the deployment environment.\n    status (str, optional): New operational status (e.g., \"enabled\", \"disabled\").\n    configuration (str, optional): Updated environment configuration.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Environment status/configuration updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str describing reason for failure\n    }\n\nConstraints:\n    - The specified environment_id must exist.\n    - At least one of status or configuration must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "environment_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "configuration": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "environment_id"
+        ]
+      }
+    },
+    {
+      "name": "log_deployment_action",
+      "description": "Add a log entry to a deployment record.\n\nArgs:\n    deployment_id (str): The deployment record to log to.\n    timestamp (str): The time of the log entry (ISO8601 or similar).\n    message (str): The log message content.\n    level (str): Log severity/type, e.g. 'INFO', 'ERROR'\n\nReturns:\n    dict:\n      On success: { \"success\": True, \"message\": \"Log entry added to deployment X.\" }\n      On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The deployment_id must refer to a valid deployment record.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "deployment_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "level": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deployment_id",
+          "timestamp",
+          "message",
+          "level"
+        ]
+      }
+    }
+  ]
+}

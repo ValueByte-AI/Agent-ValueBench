@@ -1,0 +1,476 @@
+{
+  "env_name": "HospitalBedRoomManagementSystem",
+  "description": "A hospital bed and room management system maintains up-to-date records of all rooms, beds, and patient assignments within a healthcare facility. It enables administrative staff to efficiently allocate resources, monitor current occupancy, and ensure optimal usage of available rooms and beds. The system helps balance patient needs with facility constraints, supporting operational efficiency in hospital logistics.",
+  "initial_parameter_schema": {
+    "rooms": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string"
+          },
+          "room_type": {
+            "type": "string"
+          },
+          "capacity": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_id",
+          "room_type",
+          "capacity",
+          "status"
+        ]
+      }
+    },
+    "beds": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "bed_id": {
+            "type": "string"
+          },
+          "room_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "assigned_patient_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bed_id",
+          "room_id",
+          "status",
+          "assigned_patient_id"
+        ]
+      }
+    },
+    "patients": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "admission_status": {
+            "type": "string"
+          },
+          "assigned_bed_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id",
+          "name",
+          "admission_status",
+          "assigned_bed_id"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "list_rooms": [
+      "rooms"
+    ],
+    "get_room_by_id": [
+      "rooms"
+    ],
+    "list_beds_in_room": [
+      "beds",
+      "rooms"
+    ],
+    "list_all_beds": [
+      "beds"
+    ],
+    "list_available_beds": [
+      "beds"
+    ],
+    "list_occupied_beds": [
+      "beds"
+    ],
+    "get_bed_by_id": [
+      "beds"
+    ],
+    "count_available_beds": [
+      "beds",
+      "rooms"
+    ],
+    "list_patients": [
+      "patients"
+    ],
+    "get_patient_by_name": [
+      "patients"
+    ],
+    "get_patient_by_id": [
+      "patients"
+    ],
+    "list_unassigned_patients": [
+      "patients"
+    ],
+    "get_room_occupancy": [
+      "beds",
+      "rooms"
+    ],
+    "check_room_capacity_constraint": [
+      "beds",
+      "rooms"
+    ],
+    "check_available_bed_count": [
+      "beds"
+    ],
+    "assign_bed_to_patient": [
+      "beds",
+      "patients",
+      "rooms"
+    ],
+    "unassign_patient_from_bed": [
+      "beds",
+      "patients"
+    ],
+    "admit_new_patient": [
+      "patients"
+    ],
+    "set_bed_status": [
+      "beds",
+      "patients"
+    ],
+    "set_room_status": [
+      "rooms"
+    ],
+    "move_patient_to_bed": [
+      "beds",
+      "patients"
+    ],
+    "discharge_patient": [
+      "beds",
+      "patients"
+    ]
+  },
+  "tools": [
+    {
+      "name": "list_rooms",
+      "description": "Retrieve all rooms with their types, capacities, and operational statuses.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RoomInfo],  # List of all room information; may be empty if none exist\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_room_by_id",
+      "description": "Retrieve detailed information about a specific room by its room_id.\n\nArgs:\n    room_id (str): The identifier of the room.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": RoomInfo,  # Room's metadata if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g. room not found\n    }\n\nConstraints:\n    - The room_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_id"
+        ]
+      }
+    },
+    {
+      "name": "list_beds_in_room",
+      "description": "List all beds and their statuses assigned to a given room.\n\nArgs:\n    room_id (str): The unique identifier of the room.\n\nReturns:\n    dict: \n        On success:\n        {\n            \"success\": True,\n            \"data\": List[BedInfo]   # all beds in the room (may be empty)\n        }\n        On failure (room not found):\n        {\n            \"success\": False,\n            \"error\": str  # \"Room does not exist\"\n        }\n\nConstraints:\n    - Room must exist in the system (room_id in self.rooms).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_beds",
+      "description": "Retrieve all beds in the system, with their status and assigned_patient_id.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BedInfo],  # list of all beds in the system\n    }\n\nEdge Cases:\n    - If there are no beds, returns an empty list in \"data\".",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_available_beds",
+      "description": "List all beds across the hospital whose status is \"available\".\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BedInfo],  # List of all available beds (may be empty)\n    }\n\nNotes:\n    - If there are no available beds, an empty list is returned, still with success = True.\n    - No permission, assignment, or capacity constraints are considered in this query.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_occupied_beds",
+      "description": "List all beds whose status is 'occupied'.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BedInfo]   # List may be empty if no beds are occupied.\n    }\n\nConstraints:\n    - No special constraints (read-only, info query).\n    - If there are no occupied beds, returns empty list with success.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_bed_by_id",
+      "description": "Retrieve the full details of a bed given its bed_id.\n\nArgs:\n    bed_id (str): The unique identifier for the bed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": BedInfo  # Bed information including room_id, status, assigned_patient_id\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # If no such bed exists\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bed_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bed_id"
+        ]
+      }
+    },
+    {
+      "name": "count_available_beds",
+      "description": "Count the number of available beds in the hospital, or in a specific room.\n\nArgs:\n    room_id (Optional[str]): If specified, restrict the count to beds in the given room.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": int,  # Number of available beds\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description, e.g. room not found\n    }\n\nConstraints:\n    - If room_id is provided, the room must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "list_patients",
+      "description": "Retrieve all patients and their admission/bed assignment status.\n\nReturns:\n    dict:\n      {\n        \"success\": True,\n        \"data\": List[PatientInfo]  # All PatientInfo objects in the system (may be empty if no patients)\n      }\n\nConstraints:\n    - Always succeeds; returns empty list if no patients are present.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_patient_by_name",
+      "description": "Retrieve all patient records matching the given name.\n\nArgs:\n    name (str): The patient's name to search for.\n\nReturns:\n    dict: \n        {\n          \"success\": True,\n          \"data\": List[PatientInfo], # List of patient records matching the name (may be empty list)\n        }\n      or\n        {\n          \"success\": False,\n          \"error\": str # If name is not provided\n        }\n\nConstraints:\n    - If multiple patients share the same name, returns all matches.\n    - Name search is case-sensitive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_patient_by_id",
+      "description": "Retrieve a patient's full record by patient_id.\n\nArgs:\n    patient_id (str): The unique identifier of the patient.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": PatientInfo,  # Patient record if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if patient not found\n    }\n\nConstraints:\n    - patient_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      }
+    },
+    {
+      "name": "list_unassigned_patients",
+      "description": "List all patients in the system who are not currently assigned to any bed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PatientInfo]  # List of patients with assigned_bed_id == None (possibly empty)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_room_occupancy",
+      "description": "Obtain the current occupancy (number of occupied beds) for a specific room.\n\nArgs:\n    room_id (str): The unique identifier of the room.\n\nReturns:\n    dict:\n        {\"success\": True, \"data\": occupied_count}\n        or\n        {\"success\": False, \"error\": \"<reason>\"}\nConstraints:\n    - Room must exist in the system.\n    - \"Occupied\" means bed status is \"occupied\" and assigned_patient_id is not None.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_id"
+        ]
+      }
+    },
+    {
+      "name": "check_room_capacity_constraint",
+      "description": "Verify if a room has fewer occupied beds than its defined capacity.\n\nArgs:\n    room_id (str): The room identifier to check.\n\nReturns:\n    dict:\n        success: True if operation successful; False if error.\n        data: {\n            constraint_satisfied: bool,  # True if occupied beds < capacity\n            occupied_beds: int,          # The count of occupied beds in the room\n            capacity: int                # The room's defined bed capacity\n        }\n        error: Reason for failure if not successful.\n\nConstraints:\n    - Room must exist in the system.\n    - Occupied beds (with status \"occupied\") must be strictly less than capacity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_id"
+        ]
+      }
+    },
+    {
+      "name": "check_available_bed_count",
+      "description": "Check whether the number of available beds can accommodate a given number of patients.\n\nArgs:\n    patient_count (int): The number of patients to check for available beds.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"sufficient\": bool,  # True if available bed count >= patient_count\n            \"available_bed_count\": int\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of input error, e.g., invalid patient_count\n    }\n\nConstraints:\n    - patient_count must be a non-negative integer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "patient_count"
+        ]
+      }
+    },
+    {
+      "name": "assign_bed_to_patient",
+      "description": "Assign an available bed to a patient and update relevant status fields.\n\nArgs:\n    bed_id (str): The ID of the bed to assign.\n    patient_id (str): The ID of the patient to assign.\n\nReturns:\n    dict: \n        On success:\n            {\"success\": True, \"message\": \"Patient <patient_id> assigned to bed <bed_id>.\"}\n        On failure:\n            {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - Bed must exist and be 'available'.\n    - Patient must exist and not already have a bed assigned.\n    - Bed must not be already assigned (redundant with 'available' check).\n    - The room of the bed must not be at or over capacity.\n    - Room must be 'available'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bed_id": {
+            "type": "string"
+          },
+          "patient_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bed_id",
+          "patient_id"
+        ]
+      }
+    },
+    {
+      "name": "unassign_patient_from_bed",
+      "description": "Unassign the patient currently assigned to the given bed.\nThis marks the bed as 'available' and updates the patient record (if any).\n\nArgs:\n    bed_id (str): The bed identifier from which to remove the patient assignment.\n\nReturns:\n    dict: \n      Success: { \"success\": True, \"message\": \"Patient unassigned from bed and bed marked as available.\" }\n      Failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The bed must exist.\n    - A patient must be currently assigned to the bed.\n    - Updates bed and patient state accordingly.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bed_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bed_id"
+        ]
+      }
+    },
+    {
+      "name": "admit_new_patient",
+      "description": "Add a new patient to the system.\n\nArgs:\n    patient_id (str): Unique identifier for the new patient.\n    name (str): Patient's name.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Patient <name> admitted with ID <patient_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure\"\n    }\n\nConstraints:\n    - patient_id must be unique (not already present).\n    - name must be non-empty.\n    - New patient admission_status is set to 'admitted'.\n    - assigned_bed_id is None initially.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id",
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "set_bed_status",
+      "description": "Change the status of a bed to 'available', 'occupied', or 'out-of-service'.\n\nArgs:\n    bed_id (str): The bed to modify.\n    status (str): New status. Must be one of 'available', 'occupied', or 'out-of-service'.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Bed status updated to <status> for bed <bed_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - Bed must exist.\n    - Status must be valid.\n    - If setting to 'available' or 'out-of-service', and a patient is assigned, unassign the patient from the bed and update patient assignment.\n    - If setting to 'occupied', bed must have a patient assigned, otherwise it's an error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bed_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bed_id",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "set_room_status",
+      "description": "Change the status of a specified room.\n\nArgs:\n    room_id (str): The unique identifier of the room to update.\n    new_status (str): The status to set, e.g., 'open', 'closed', 'closed to admissions'.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Room <room_id> status updated to <new_status>.\" }\n        On error:   { \"success\": False, \"error\": \"Room not found.\" }\n\nConstraints:\n    - Room must exist to change its status.\n    - No restriction on accepted status values unless enforced in business logic.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "move_patient_to_bed",
+      "description": "Re-assign a patient from their current bed to another bed, updating all relevant fields\n(beds' statuses and assigned_patient_id; patient's assigned_bed_id).\n\nArgs:\n    patient_id (str): The ID of the patient to move.\n    new_bed_id (str): The ID of the bed to assign the patient to.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Patient moved to new bed.\" }\n        - On failure: { \"success\": False, \"error\": \"Description\" }\n\nConstraints:\n    - Patient must exist and currently be assigned to a bed.\n    - New bed must exist and be 'available'.\n    - Update involved bed and patient records atomically.\n    - Cannot move to the same bed (no-op or error).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          },
+          "new_bed_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id",
+          "new_bed_id"
+        ]
+      }
+    },
+    {
+      "name": "discharge_patient",
+      "description": "Discharge a patient from the hospital: mark admission ended and release their bed.\n\nArgs:\n    patient_id (str): The unique identifier for the patient to discharge.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Patient <name> (<patient_id>) discharged and bed <bed_id> released.\",\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason string>\n    }\n\nConstraints:\n  - Patient must exist.\n  - Patient must be admitted and have a bed assigned.\n  - Bed must exist and be assigned to this patient.\n  - Bed is released (status set to \"available\", assigned_patient_id is None).\n  - Patient admission_status set to \"discharged\", assigned_bed_id set to None.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      }
+    }
+  ]
+}

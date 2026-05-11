@@ -1,0 +1,418 @@
+{
+  "env_name": "SteamWebAPIEnvironment",
+  "description": "The Steam Web API provides structured access to the Steam platform's vast repository of game metadata, user engagement statistics, and platform news. It allows developers and analysts to query information such as app details, achievement statistics, and recent news for any game listed on Steam using unique app IDs. The system maintains up-to-date records and supports a wide range of data-gathering operations for analytical and integration purposes.",
+  "initial_parameter_schema": {
+    "apps": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "developer": {
+            "type": "string"
+          },
+          "publisher": {
+            "type": "string"
+          },
+          "release_date": {
+            "type": "string"
+          },
+          "genre": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "additional_metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "app_id",
+          "name",
+          "developer",
+          "publisher",
+          "release_date",
+          "genre",
+          "description",
+          "additional_metadata"
+        ]
+      }
+    },
+    "achievements": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "achievement_id": {
+            "type": "string"
+          },
+          "app_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "global_percentage": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "achievement_id",
+          "app_id",
+          "name",
+          "description",
+          "icon",
+          "global_percentage"
+        ]
+      }
+    },
+    "news_articles": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "article_id": {
+            "type": "string"
+          },
+          "app_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "date_published": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "article_id",
+          "app_id",
+          "title",
+          "content",
+          "url",
+          "date_published"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_app_by_id": [
+      "apps"
+    ],
+    "list_achievements_by_app": [
+      "achievements",
+      "apps"
+    ],
+    "get_global_achievement_percentages": [
+      "achievements",
+      "apps"
+    ],
+    "get_latest_news_by_app": [
+      "apps",
+      "news_articles"
+    ],
+    "get_news_by_app": [
+      "apps",
+      "news_articles"
+    ],
+    "verify_app_exists": [
+      "apps"
+    ],
+    "list_all_apps": [
+      "apps"
+    ],
+    "validate_achievement_links": [
+      "achievements",
+      "apps"
+    ],
+    "validate_news_links": [
+      "apps",
+      "news_articles"
+    ],
+    "update_app_metadata": [
+      "apps"
+    ],
+    "add_or_update_achievement": [
+      "achievements",
+      "apps"
+    ],
+    "add_or_update_news_article": [
+      "apps",
+      "news_articles"
+    ],
+    "remove_achievement": [
+      "achievements"
+    ],
+    "remove_news_article": [
+      "news_articles"
+    ],
+    "bulk_refresh_all_app_metadata": [
+      "apps"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_app_by_id",
+      "description": "Retrieve complete metadata for a game/application using its app_id.\n\nArgs:\n    app_id (str): The unique identifier of the game or application.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": AppInfo  # All available metadata for the app\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason, e.g., app_id not found\n            }\n\nConstraints:\n    - The app_id must exist in the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_id"
+        ]
+      }
+    },
+    {
+      "name": "list_achievements_by_app",
+      "description": "Retrieve all achievements (including global percentages and metadata) for a specific app_id.\n\nArgs:\n    app_id (str): The unique identifier of the app whose achievements to retrieve.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AchievementInfo],  # All achievements for the app (may be empty if none)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # E.g., \"App ID does not exist\"\n    }\n\nConstraints:\n    - Only achievements linked to valid app_id are stored, but existence will be checked.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_id"
+        ]
+      }
+    },
+    {
+      "name": "get_global_achievement_percentages",
+      "description": "Retrieve a mapping of achievement_id to global_percentage for all achievements of a given app.\n\nArgs:\n    app_id (str): The App ID to query.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": {achievement_id: global_percentage, ...}\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"App ID does not exist\"\n            }\n\nConstraints:\n    - The given app_id must exist in the apps database.\n    - Only achievements where achievement.app_id == app_id are considered.\n    - The result may be an empty dictionary if no achievements for this app.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_id"
+        ]
+      }
+    },
+    {
+      "name": "get_latest_news_by_app",
+      "description": "Retrieve the most recent news article(s) for a specific app_id, sorted by date_published.\n\nArgs:\n    app_id (str): The Steam App ID for which to fetch the latest news.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[NewsArticleInfo]  # Most recent news article(s), latest first\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If the app_id does not exist\n    }\n\nConstraints:\n    - app_id must exist in self.apps.\n    - Only news articles whose app_id matches are considered.\n    - If multiple articles have the same latest date (date_published), return all of them.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_id"
+        ]
+      }
+    },
+    {
+      "name": "get_news_by_app",
+      "description": "Retrieve all news articles (not just the latest) for a given app_id.\n\nArgs:\n    app_id (str): The unique identifier of the app/game for which news is retrieved.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[NewsArticleInfo],  # List of news article dicts or empty if none\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., app_id does not exist\n    }\n\nConstraints:\n    - The app_id must exist in self.apps.\n    - All news articles returned must have NewsArticleInfo[\"app_id\"] == app_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_id"
+        ]
+      }
+    },
+    {
+      "name": "verify_app_exists",
+      "description": "Check if an app with the specified app_id exists in the Steam database.\n\nArgs:\n    app_id (str): The unique application ID to check.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"exists\": bool   # True if app_id exists, False otherwise\n    }\n\nNotes:\n    - If app_id is not present or is invalid, returns exists=False.\n    - This operation does not raise errors; always returns a success result.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_apps",
+      "description": "List all apps currently tracked by the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AppInfo],  # List of all AppInfo dictionaries (may be empty if no apps tracked)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "validate_achievement_links",
+      "description": "Ensure all Achievement objects reference valid (existing) app_ids.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AchievementInfo],  # List of AchievementInfo with invalid app_ids (may be empty)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "validate_news_links",
+      "description": "Checks all NewsArticles to ensure their app_id references a valid App in the environment.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[dict]\n            # Each dict: {\"article_id\": str, \"invalid_app_id\": str}\n            # If all are valid, list is empty.\n    }\n\nConstraints:\n    - Each NewsArticle must reference an app_id that exists in self.apps.\n    - Handles NewsArticles with missing or empty app_id as invalid.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "update_app_metadata",
+      "description": "Update the stored metadata of a given app (by app_id) to keep it up-to-date with Steam.\n\nArgs:\n    app_id (str): The unique identifier of the app to update.\n    new_metadata (dict): Dictionary of fields and values to update within the app's metadata.\n        Only the fields recognized in AppInfo will be updated. 'app_id' itself cannot be changed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"App metadata updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"App with the given app_id does not exist.\" or \"Invalid metadata fields provided.\"\n    }\n\nConstraints:\n    - app_id must exist in self.apps.\n    - Only updatable fields present in AppInfo schema will be overwritten (except app_id).\n    - Fields with invalid types will be ignored, and if no valid fields provided, will return an error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          },
+          "new_metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "app_id",
+          "new_metadata"
+        ]
+      }
+    },
+    {
+      "name": "add_or_update_achievement",
+      "description": "Add a new achievement or update an existing achievement. Ensures:\n- The provided app_id exists in the App registry.\n- 'global_percentage' is between 0 and 100 (inclusive).\n- If 'achievement_id' exists, updates all fields.\n- If it does not exist, creates a new Achievement entry.\n\nArgs:\n    achievement_id (str): The achievement's unique ID.\n    app_id (str): The Steam app this achievement is associated with; must exist.\n    name (str): Name of the achievement.\n    description (str): Description of the achievement.\n    icon (str): Icon URL or identifier.\n    global_percentage (float): Global unlock percentage (0 <= x <= 100).\n\nReturns:\n    dict: \n        { \"success\": True, \"message\": \"Achievement added.\" } or\n        { \"success\": True, \"message\": \"Achievement updated.\" }\n        or\n        { \"success\": False, \"error\": \"reason\" }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "achievement_id": {
+            "type": "string"
+          },
+          "app_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "global_percentage": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "achievement_id",
+          "app_id",
+          "name",
+          "description",
+          "icon",
+          "global_percentage"
+        ]
+      }
+    },
+    {
+      "name": "add_or_update_news_article",
+      "description": "Add a new news article or update an existing one for a given app.\n\nArgs:\n    article_id (str): Unique identifier for the news article.\n    app_id (str): The app_id the article is related to (must exist).\n    title (str): The news article title.\n    content (str): The main body/content of the news article.\n    url (str): The URL to the news article.\n    date_published (str): Publication date of the article.\n\nReturns:\n    dict: \n        If success:\n            {\n                \"success\": True,\n                \"message\": \"Added (or updated) news article for app <app_id>.\"\n            }\n        If error:\n            {\n                \"success\": False,\n                \"error\": \"<reason>\"\n            }\nConstraints:\n    - Provided app_id must exist in self.apps.\n    - article_id uniquely identifies a news article and may be updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "article_id": {
+            "type": "string"
+          },
+          "app_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "date_published": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "article_id",
+          "app_id",
+          "title",
+          "content",
+          "url",
+          "date_published"
+        ]
+      }
+    },
+    {
+      "name": "remove_achievement",
+      "description": "Remove an achievement from the system for a given achievement_id.\n\nArgs:\n    achievement_id (str): The unique identifier of the achievement to remove.\n\nReturns:\n    dict: \n        On success:\n            {\"success\": True, \"message\": \"Achievement <achievement_id> removed successfully.\"}\n        On failure:\n            {\"success\": False, \"error\": \"Achievement not found\"}\n\nConstraints:\n    - The achievement_id must exist in the system.\n    - Only the achievement is removed; related App/News are unaffected.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "achievement_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "achievement_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_news_article",
+      "description": "Remove a news article from the system by its unique article_id.\n\nArgs:\n    article_id (str): The unique identifier for the news article to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"News article <article_id> removed successfully.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"News article not found.\"\n    }\n\nConstraints:\n    - The specified article_id must exist within the news_articles collection.\n    - This operation does not check app linkage or permissions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "article_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "article_id"
+        ]
+      }
+    },
+    {
+      "name": "bulk_refresh_all_app_metadata",
+      "description": "Refresh (simulate update of) metadata for all apps to ensure information remains current.\n\nThis function simulates pulling the latest metadata from Steam for each app,\nand updates the 'additional_metadata' field, adding or updating a key 'last_refreshed'\nwith the current timestamp. This helps indicate the refresh has taken place.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"All app metadata refreshed successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    }
+  ]
+}

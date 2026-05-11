@@ -1,0 +1,436 @@
+{
+  "env_name": "SportsLiveScoreSystem",
+  "description": "A sports live score information system maintains up-to-date records of ongoing and scheduled sporting events across various leagues and teams. It tracks information such as match status, participating teams, scores, and timing, supporting search and filtering capabilities. These systems are essential for delivering real-time insights and updates to fans, broadcasters, and other stakeholders.",
+  "initial_parameter_schema": {
+    "leagues": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "league_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sport_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "league_id",
+          "name",
+          "sport_type"
+        ]
+      }
+    },
+    "teams": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "team_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "league_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "team_id",
+          "name",
+          "league_id"
+        ]
+      }
+    },
+    "matches": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          },
+          "league_id": {
+            "type": "string"
+          },
+          "team1_id": {
+            "type": "string"
+          },
+          "team2_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "live_score": {
+            "type": "string"
+          },
+          "ven": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id",
+          "league_id",
+          "team1_id",
+          "team2_id",
+          "status",
+          "start_time",
+          "live_score",
+          "ven"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_league_by_name": [
+      "leagues"
+    ],
+    "list_leagues": [
+      "leagues"
+    ],
+    "get_team_by_name": [
+      "teams"
+    ],
+    "list_teams_in_league": [
+      "leagues",
+      "teams"
+    ],
+    "list_matches_by_league_and_status": [
+      "leagues",
+      "matches"
+    ],
+    "list_matches_by_team": [
+      "matches",
+      "teams"
+    ],
+    "get_match_by_id": [
+      "matches"
+    ],
+    "get_match_live_score": [
+      "matches"
+    ],
+    "list_live_scores_for_matches": [
+      "matches"
+    ],
+    "list_matches_filtered": [
+      "matches"
+    ],
+    "update_match_status": [
+      "matches"
+    ],
+    "update_match_score": [
+      "matches"
+    ],
+    "assign_teams_to_match": [
+      "matches",
+      "teams"
+    ],
+    "create_match": [
+      "leagues",
+      "matches",
+      "teams"
+    ],
+    "update_match_time": [
+      "matches"
+    ],
+    "delete_match": [
+      "matches"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_league_by_name",
+      "description": "Retrieve league information and league_id by league name.\n\nArgs:\n    league_name (str): Name of the league to retrieve.\n\nReturns:\n    dict: \n        - If found: {\"success\": True, \"data\": LeagueInfo}\n        - If not found: {\"success\": False, \"error\": \"League not found\"}\n        - If input invalid: {\"success\": False, \"error\": \"Invalid league name\"}\n\nConstraints:\n    - League names must be compared exactly (case-sensitive).\n    - Assumes league names are unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "league_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "league_name"
+        ]
+      }
+    },
+    {
+      "name": "list_leagues",
+      "description": "List all leagues in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[LeagueInfo]\n    }\n    The list may be empty if no leagues are present.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_team_by_name",
+      "description": "Retrieve a team's info and team_id by its name.\n\nArgs:\n    team_name (str): The name of the team to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": TeamInfo  # The found team's info\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Team not found\"\n    }\n\nNotes:\n    - Case-sensitive match on the team name.\n    - Returns the first match if multiple teams share the name (assuming names are unique).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "team_name"
+        ]
+      }
+    },
+    {
+      "name": "list_teams_in_league",
+      "description": "List all teams associated with a specific league.\n\nArgs:\n    league_id (str): The identifier of the league.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TeamInfo],  # List of teams (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason: league does not exist\n    }\n\nConstraints:\n    - The league must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "league_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "league_id"
+        ]
+      }
+    },
+    {
+      "name": "list_matches_by_league_and_status",
+      "description": "List all matches for a given league and status (e.g., all live matches in NFL).\n\nArgs:\n    league_id (str): The ID of the league to filter.\n    status (str): The desired match status (\"scheduled\", \"live\", \"finished\", \"postponed\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MatchInfo],  # List of matches (may be empty if no matches)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - league_id must exist in self.leagues.\n    - status must be one of the predefined valid statuses.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "league_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "league_id",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "list_matches_by_team",
+      "description": "List all matches where the specified team participates (either as team1 or team2).\n\nArgs:\n    team_id (str): The identifier of the team.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"data\": List[MatchInfo]}\n                     (List may be empty if team has no matches)\n        - On failure: {\"success\": False, \"error\": str}\n          (error reason, e.g., if team does not exist)\n\nConstraints:\n    - The team_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "team_id"
+        ]
+      }
+    },
+    {
+      "name": "get_match_by_id",
+      "description": "Retrieve all details of a match given its match_id.\n\nArgs:\n    match_id (str): The unique identifier of the match to retrieve.\n\nReturns:\n    dict:\n        success: True and data with MatchInfo if match exists,\n                 otherwise success: False with an error message.\n    Example success:\n        {\n            \"success\": True,\n            \"data\": MatchInfo\n        }\n    Example failure:\n        {\n            \"success\": False,\n            \"error\": \"Match not found\"\n        }\nConstraints:\n    - match_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id"
+        ]
+      }
+    },
+    {
+      "name": "get_match_live_score",
+      "description": "Get the live score string for a specific match.\n\nArgs:\n    match_id (str): The ID of the match whose live score is requested.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": str  # The live score string (may be empty if not set)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If match_id not found\n    }\nConstraints:\n    - match_id must refer to an existing match.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id"
+        ]
+      }
+    },
+    {
+      "name": "list_live_scores_for_matches",
+      "description": "Bulk retrieve live scores for a list of matches.\n\nArgs:\n    match_ids (List[str]): List of match IDs for which to fetch live scores.\n\nReturns:\n    dict: \n        On success:\n        {\n            \"success\": True,\n            \"data\": List[{\"match_id\": str, \"live_score\": str}]\n        }\n        On failure (if any match_id not found):\n        {\n            \"success\": False,\n            \"error\": \"The following match_ids do not exist: <list_as_string>\"\n        }\n\nConstraints:\n    - Returns live scores for only existing match_ids.\n    - If any match_id is invalid, returns error indicating which match_ids were invalid.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_ids": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "match_ids"
+        ]
+      }
+    },
+    {
+      "name": "list_matches_filtered",
+      "description": "Flexibly filter matches by arbitrary parameters such as league, team, status, and venue.\n\nArgs:\n    filters (dict): Mapping of MatchInfo fields to values.\n        Example: {\"league_id\": \"L01\", \"status\": \"live\", \"team_id\": \"T10\"}\n\n        - 'team_id' will match if team is either team1 or team2 in the match.\n        - 'venue' is accepted as a public alias for the internal match field 'ven'.\n        - Other keys must correspond to MatchInfo fields.\n\nReturns:\n    dict:\n        If successful:\n            { \"success\": True, \"data\": List[MatchInfo] }\n        If filter key is invalid:\n            { \"success\": False, \"error\": \"Invalid filter: <key>\" }\n\nConstraints:\n    - Filter keys must be among MatchInfo attributes, 'team_id', or the public alias 'venue'.\n    - Returned matches must match all filter criteria (AND logic).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filters": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "filters"
+        ]
+      }
+    },
+    {
+      "name": "update_match_status",
+      "description": "Change the status of a match, ensuring that the new status is one of:\n'scheduled', 'live', 'finished', or 'postponed'.\n\nArgs:\n    match_id (str): The unique ID of the match to update.\n    new_status (str): The new status to set.\n\nReturns:\n    dict: {\n        'success': True,\n        'message': str\n    }\n    or\n    {\n        'success': False,\n        'error': str\n    }\n\nConstraints:\n    - The match specified by match_id must exist.\n    - The new status must be one of the allowed states.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "update_match_score",
+      "description": "Update the live score of a match.\n\nArgs:\n    match_id (str): The unique ID of the match whose score will be updated.\n    live_score (str): The new live score to set for the match.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Live score updated for match <match_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - match_id must exist in the system.\n    - live_score must be a string (non-empty).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          },
+          "live_score": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id",
+          "live_score"
+        ]
+      }
+    },
+    {
+      "name": "assign_teams_to_match",
+      "description": "Change or set the team1_id and team2_id for the specified match,\nenforcing league/team assignment integrity constraints.\n\nArgs:\n    match_id (str): The ID of the match to update.\n    team1_id (str): The ID of team 1 to assign.\n    team2_id (str): The ID of team 2 to assign.\n\nReturns:\n    dict:\n        - On success:\n            { \"success\": True, \"message\": \"Teams assigned to match <match_id>.\" }\n        - On failure:\n            { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - Both teams and match must exist.\n    - team1_id and team2_id must be different.\n    - Both teams must belong to the same league as the match.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          },
+          "team1_id": {
+            "type": "string"
+          },
+          "team2_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id",
+          "team1_id",
+          "team2_id"
+        ]
+      }
+    },
+    {
+      "name": "create_match",
+      "description": "Create a new match with provided details.\n\nArgs:\n    match_id (str): Unique identifier for the match.\n    league_id (str): League identifier to which the match belongs.\n    team1_id (str): First team's ID.\n    team2_id (str): Second team's ID.\n    status (str): Initial status, must be one of \"scheduled\", \"live\", \"finished\", \"postponed\".\n    start_time (str): Scheduled start time.\n    live_score (str): Initial score (can be empty or defaulted).\n    ven (str): Venue information.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Match <match_id> created successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - match_id must be unique.\n    - league_id must exist.\n    - Both team1_id and team2_id must exist and be distinct.\n    - Both teams must belong to the given league.\n    - status must be one of allowed states.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          },
+          "league_id": {
+            "type": "string"
+          },
+          "team1_id": {
+            "type": "string"
+          },
+          "team2_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "live_score": {
+            "type": "string"
+          },
+          "ven": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id",
+          "league_id",
+          "team1_id",
+          "team2_id",
+          "status",
+          "start_time",
+          "live_score",
+          "ven"
+        ]
+      }
+    },
+    {
+      "name": "update_match_time",
+      "description": "Change the start time of a specified match.\n\nArgs:\n    match_id (str): The unique identifier of the match to update.\n    start_time (str): The new start time. (Format not validated here.)\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Match start time updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - match_id must exist in the system.\n    - No time format enforcement and no restriction on status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id",
+          "start_time"
+        ]
+      }
+    },
+    {
+      "name": "delete_match",
+      "description": "Permanently remove a match from the system.\n\nArgs:\n    match_id (str): Unique identifier of the match to be deleted.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Match <match_id> deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Match not found.\"\n    }\n\nConstraints:\n    - The match must exist in the system in order to delete it.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id"
+        ]
+      }
+    }
+  ]
+}

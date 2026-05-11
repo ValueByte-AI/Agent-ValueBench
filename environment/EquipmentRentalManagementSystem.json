@@ -1,0 +1,508 @@
+{
+  "env_name": "EquipmentRentalManagementSystem",
+  "description": "An Equipment Rental Management System manages the inventory and transaction lifecycle for items loaned to customers, such as fitness equipment. It maintains records of available and rented equipment, tracks customer rentals and returns, and manages due dates and payment status. This environment facilitates streamlined operations for businesses that rent physical assets to customers.",
+  "initial_parameter_schema": {
+    "equipment": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "equipment_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "condition": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "equipment_id",
+          "name",
+          "type",
+          "condition",
+          "status"
+        ]
+      }
+    },
+    "customers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "name",
+          "contact_info",
+          "account_status"
+        ]
+      }
+    },
+    "rental_transactions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "equipment_id": {
+            "type": "string"
+          },
+          "rental_date": {
+            "type": "string"
+          },
+          "due_date": {
+            "type": "string"
+          },
+          "return_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "payment_status": {
+            "type": "string"
+          },
+          "transaction_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "customer_id",
+          "equipment_id",
+          "rental_date",
+          "due_date",
+          "return_date",
+          "payment_status",
+          "transaction_status"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_customer_by_name": [
+      "customers"
+    ],
+    "get_customer_by_id": [
+      "customers"
+    ],
+    "list_customer_active_rentals": [
+      "customers",
+      "rental_transactions"
+    ],
+    "get_rental_transaction_by_id": [
+      "rental_transactions"
+    ],
+    "list_equipment_by_customer": [
+      "customers",
+      "equipment",
+      "rental_transactions"
+    ],
+    "get_equipment_by_id": [
+      "equipment"
+    ],
+    "get_equipment_status": [
+      "equipment"
+    ],
+    "get_rental_transactions_by_equipment": [
+      "equipment",
+      "rental_transactions"
+    ],
+    "get_payment_status": [
+      "rental_transactions"
+    ],
+    "is_rental_overdue": [
+      "rental_transactions"
+    ],
+    "return_equipment": [
+      "equipment",
+      "rental_transactions"
+    ],
+    "update_equipment_status": [
+      "equipment"
+    ],
+    "update_rental_transaction_status": [
+      "equipment",
+      "rental_transactions"
+    ],
+    "set_rental_return_date": [
+      "rental_transactions"
+    ],
+    "update_payment_status": [
+      "rental_transactions"
+    ],
+    "charge_late_fee": [
+      "rental_transactions"
+    ],
+    "create_rental_transaction": [
+      "customers",
+      "equipment",
+      "rental_transactions"
+    ],
+    "delete_rental_transaction": [
+      "rental_transactions"
+    ],
+    "set_due_date": [
+      "rental_transactions"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_customer_by_name",
+      "description": "Retrieve all customer profiles with the given customer name.\n\nArgs:\n    name (str): The customer's name to look up.\n\nReturns:\n    dict: \n        - If successful, \n            {\"success\": True, \"data\": List[CustomerInfo]}\n        - If customer name is empty,\n            {\"success\": False, \"error\": \"<reason>\"}\n    The returned list is empty if no customers with that name are found.\n\nConstraints:\n    - Customer name must not be empty.\n    - Multiple customers with the same name may exist; all are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_customer_by_id",
+      "description": "Retrieve customer details using their unique customer_id.\n\nArgs:\n    customer_id (str): Unique identifier of the customer.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"data\": CustomerInfo }\n        - On failure: { \"success\": False, \"error\": \"Customer not found\" }\n\nConstraints:\n    - The customer_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "list_customer_active_rentals",
+      "description": "List all active rental transactions for a given customer.\n\nArgs:\n    customer_id (str): ID of the customer.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RentalTransactionInfo],  # List of active rentals\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The given customer must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "get_rental_transaction_by_id",
+      "description": "Retrieve detailed information about a rental transaction given its transaction_id.\n\nArgs:\n    transaction_id (str): Unique identifier for the rental transaction.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": RentalTransactionInfo\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"Rental transaction not found\"\n    }\n\nConstraints:\n    - transaction_id must exist in the rental transaction store.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id"
+        ]
+      }
+    },
+    {
+      "name": "list_equipment_by_customer",
+      "description": "List all equipment items currently rented by a specific customer, with associated transaction info.\n\nArgs:\n    customer_id (str): The ID of the customer to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[dict],  # Each: {\"equipment_info\": EquipmentInfo, \"transaction_info\": RentalTransactionInfo}\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Only includes rentals with transaction_status == \"active\".\n    - Only includes existing equipment.\n    - If customer_id does not exist, returns error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "get_equipment_by_id",
+      "description": "Retrieve information about a specific equipment item by its equipment_id.\n\nArgs:\n    equipment_id (str): Unique identifier of the equipment.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": EquipmentInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"Equipment not found\"\n    }\n\nConstraints:\n    - The equipment_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "equipment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "equipment_id"
+        ]
+      }
+    },
+    {
+      "name": "get_equipment_status",
+      "description": "Retrieve the current status and condition of an equipment item.\n\nArgs:\n    equipment_id (str): Unique identifier for the equipment.\n\nReturns:\n    dict:\n        success: True and data containing 'status' and 'condition' if found.\n        success: False and 'error' if equipment not found.\n\nConstraints:\n    - The equipment_id must exist in the equipment inventory.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "equipment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "equipment_id"
+        ]
+      }
+    },
+    {
+      "name": "get_rental_transactions_by_equipment",
+      "description": "Retrieve all rental transactions (history) for a specific equipment item.\n\nArgs:\n    equipment_id (str): The unique identifier of the equipment.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RentalTransactionInfo],  # May be empty if no transactions\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Explanation, e.g. equipment not found\n    }\n\nConstraints:\n    - The equipment must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "equipment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "equipment_id"
+        ]
+      }
+    },
+    {
+      "name": "get_payment_status",
+      "description": "Retrieve the current payment status for a given rental transaction.\n\nArgs:\n    transaction_id (str): The ID of the rental transaction to look up.\n\nReturns:\n    dict: \n      - On success: { \"success\": True, \"data\": <payment_status (str)> }\n      - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The transaction_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id"
+        ]
+      }
+    },
+    {
+      "name": "is_rental_overdue",
+      "description": "Check if the rental transaction is overdue based on its due date and the current date.\n\nArgs:\n    transaction_id (str): ID of the rental transaction to check.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": bool  # True if overdue, False otherwise\n    } or {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The rental transaction must exist.\n    - A returned rental (\"transaction_status\" == \"returned\") is never considered overdue.\n    - Date strings must be in ISO format (YYYY-MM-DD).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id"
+        ]
+      }
+    },
+    {
+      "name": "return_equipment",
+      "description": "Process the return of an equipment:\n- Sets equipment status to \"available\"\n- Updates corresponding rental transaction's status to \"returned\"\n- Sets the return_date to specified value or current date-time in ISO format\n\nArgs:\n    transaction_id (str): The rental transaction being returned.\n    return_date (Optional[str]): Return date as ISO string; if None, use current UTC time.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Equipment returned successfully.\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n - Equipment must be currently rented.\n - Transaction must be active and not previously returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "return_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id"
+        ]
+      }
+    },
+    {
+      "name": "update_equipment_status",
+      "description": "Change the status of a specific equipment item.\n\nArgs:\n    equipment_id (str): The unique identifier for the equipment.\n    new_status (str): Status to set (\"available\", \"rented\", or \"maintenance\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Equipment status updated to <new_status>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Equipment with the given equipment_id must exist.\n    - new_status must be one of \"available\", \"rented\", \"maintenance\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "equipment_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "equipment_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "update_rental_transaction_status",
+      "description": "Update the status of a rental transaction (e.g., to 'returned', 'active').\n\nArgs:\n    transaction_id (str): The ID of the rental transaction to update.\n    new_status (str): The new status to set ('returned', 'active', etc.).\n\nReturns:\n    dict: \n        On success:\n            { \"success\": True, \"message\": \"Rental transaction status updated to <new_status>.\" }\n        On failure:\n            { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Rental transaction must exist.\n    - If new_status is 'returned', the corresponding equipment's status must also be updated to 'available'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "set_rental_return_date",
+      "description": "Set the return_date for a rental transaction.\n\nArgs:\n    transaction_id (str): The rental transaction ID.\n    return_date (str): The date the equipment was returned (recommended ISO format).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Return date set successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Transaction must exist.\n    - return_date can only be set if not already set for this transaction.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "return_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "return_date"
+        ]
+      }
+    },
+    {
+      "name": "update_payment_status",
+      "description": "Change the payment status for a given rental transaction.\n\nArgs:\n    transaction_id (str): The ID of the rental transaction to update.\n    payment_status (str): The new payment status (e.g., 'completed', 'pending', 'late_fee_applied').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Confirmation description\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - Transaction must exist.\n    - Payment status is changed to the provided value; valid statuses include 'completed', 'pending', or values reflecting late fees.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "payment_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "payment_status"
+        ]
+      }
+    },
+    {
+      "name": "charge_late_fee",
+      "description": "Apply an additional late fee to a rental transaction if the equipment was returned after its due date.\nThis updates the payment_status to reflect the outstanding late fee.\n\nArgs:\n    transaction_id (str): ID of the rental transaction to update.\n    late_fee_description (str): Description or flag to indicate late fee in payment_status. Defaults to \"late_fee_due\".\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Late fee charged to transaction\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure\"\n    }\n\nConstraints:\n- Transaction must exist.\n- Transaction must have return_date set.\n- Only apply late fee if return_date > due_date.\n- Updates payment_status to indicate late fee due (\"late_fee_due\").",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "late_fee_description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "late_fee_description"
+        ]
+      }
+    },
+    {
+      "name": "create_rental_transaction",
+      "description": "Create a new rental transaction linking a customer with equipment.\nUpdates both equipment and transaction status accordingly.\n\nArgs:\n    transaction_id (str): Unique identifier for the transaction.\n    customer_id (str): ID of the customer.\n    equipment_id (str): ID of the equipment to rent.\n    rental_date (str): Rental start date/time.\n    due_date (str): Due date/time for the rental.\n    payment_status (str): Optional, defaults to \"pending\".\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Rental transaction created successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n- Equipment must exist and be \"available\".\n- Customer must exist.\n- Transaction ID must not already exist.\n- Upon success, equipment status set to \"rented\", transaction status set to \"active\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "equipment_id": {
+            "type": "string"
+          },
+          "rental_date": {
+            "type": "string"
+          },
+          "due_date": {
+            "type": "string"
+          },
+          "payment_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "customer_id",
+          "equipment_id",
+          "rental_date",
+          "due_date",
+          "payment_status"
+        ]
+      }
+    },
+    {
+      "name": "delete_rental_transaction",
+      "description": "Remove a rental transaction from the system (admin action).\n\nArgs:\n    transaction_id (str): The ID of the rental transaction to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Rental transaction deleted successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason (e.g., transaction not found)\n    }\n\nConstraints:\n    - Only valid transaction IDs may be deleted.\n    - This is an admin operation; business logic constraints (equipment status, payments) are not applied here.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id"
+        ]
+      }
+    },
+    {
+      "name": "set_due_date",
+      "description": "Calculate and set the due_date for a rental transaction, based on rental policy and\nthe rental_date.\n\nArgs:\n    transaction_id (str): The ID of the rental transaction.\n    rental_period_days (int, optional): The number of days for the rental period\n        (default is 7).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Due date set to <due_date>\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Transaction must exist.\n    - rental_date must be present and in YYYY-MM-DD format.\n    - Due date must be calculated as rental_date + rental_period_days.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "rental_period_days": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "rental_period_days"
+        ]
+      }
+    }
+  ]
+}

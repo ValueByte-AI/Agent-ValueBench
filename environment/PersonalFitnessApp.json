@@ -1,0 +1,574 @@
+{
+  "env_name": "PersonalFitnessApp",
+  "description": "A personal fitness/workout planning application maintains user-specified workout plans, organizing exercises by name, type, sets, repetitions, and schedule. It enables users to create, modify, and track their routines, supporting goals such as strength training, weight loss, or general fitness. These systems often provide structured data storage and intuitive interfaces for managing workout details over time.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "fitness_goal": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "fitness_goal"
+        ]
+      }
+    },
+    "workout_plans": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "schedule": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id",
+          "user_id",
+          "name",
+          "schedule"
+        ]
+      }
+    },
+    "exercises": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "exercise_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exercise_id",
+          "name",
+          "type"
+        ]
+      }
+    },
+    "workout_plan_exercises": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "plan_id": {
+              "type": "string"
+            },
+            "exercise_id": {
+              "type": "string"
+            },
+            "sets": {
+              "type": "integer"
+            },
+            "repetitions": {
+              "type": "integer"
+            },
+            "order": {
+              "type": "integer"
+            },
+            "scheduled_day": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "plan_id",
+            "exercise_id",
+            "sets",
+            "repetitions",
+            "order",
+            "scheduled_day"
+          ]
+        }
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_name": [
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "list_all_users": [
+      "users"
+    ],
+    "get_workout_plans_by_user": [
+      "users",
+      "workout_plans"
+    ],
+    "get_workout_plan_by_id": [
+      "workout_plans"
+    ],
+    "get_exercise_by_name": [
+      "exercises"
+    ],
+    "get_exercise_by_id": [
+      "exercises"
+    ],
+    "list_all_exercises": [
+      "exercises"
+    ],
+    "get_plan_exercises": [
+      "exercises",
+      "workout_plan_exercises",
+      "workout_plans"
+    ],
+    "get_plan_exercise_by_exercise_and_day": [
+      "workout_plan_exercises",
+      "workout_plans"
+    ],
+    "get_plan_schedule": [
+      "workout_plans"
+    ],
+    "add_exercise_to_plan": [
+      "exercises",
+      "workout_plan_exercises",
+      "workout_plans"
+    ],
+    "create_exercise": [
+      "exercises"
+    ],
+    "create_workout_plan": [
+      "users",
+      "workout_plan_exercises",
+      "workout_plans"
+    ],
+    "remove_exercise_from_plan": [
+      "workout_plan_exercises",
+      "workout_plans"
+    ],
+    "update_plan_exercise": [
+      "exercises",
+      "workout_plan_exercises",
+      "workout_plans"
+    ],
+    "reorder_plan_exercises": [
+      "workout_plan_exercises",
+      "workout_plans"
+    ],
+    "update_plan_schedule": [
+      "workout_plan_exercises",
+      "workout_plans"
+    ],
+    "delete_workout_plan": [
+      "workout_plan_exercises",
+      "workout_plans"
+    ],
+    "update_exercise_info": [
+      "exercises"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_name",
+      "description": "Retrieve user information by their name.\n\nArgs:\n    name (str): The name of the user to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo  # The user info if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"User not found\"\n    }\n\nConstraints:\n    - If multiple users have the same name, the first match is returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user information by user ID.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n\nReturns:\n    dict:\n        - If found: {\"success\": True, \"data\": UserInfo}\n        - If not found: {\"success\": False, \"error\": \"User not found\"}\nConstraints:\n    - user_id must exist in self.users.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_users",
+      "description": "Return a list of all users in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[UserInfo], # May be empty if no users exist\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_workout_plans_by_user",
+      "description": "Retrieve all workout plans associated with a specific user.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[WorkoutPlanInfo]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"User not found\"\n    }\n\nConstraints:\n    - The user_id must correspond to an existing User in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_workout_plan_by_id",
+      "description": "Retrieve the details of a specific workout plan given its unique plan ID.\n\nArgs:\n    plan_id (str): The unique identifier of the workout plan.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"data\": WorkoutPlanInfo }\n        On failure: { \"success\": False, \"error\": \"Workout plan not found\" }\nConstraints:\n    - The workout plan with the given ID must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id"
+        ]
+      }
+    },
+    {
+      "name": "get_exercise_by_name",
+      "description": "Locate a single exercise in the system by its exact name.\n\nArgs:\n    name (str): The name of the exercise to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ExerciseInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Exercise with name '<name>' not found\"\n    }\nConstraints:\n    - Name matching is case-sensitive.\n    - Returns the first match if multiple exercises have the same name.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_exercise_by_id",
+      "description": "Retrieve the complete information of a specific exercise by its ID.\n\nArgs:\n    exercise_id (str): The unique identifier for the exercise.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": ExerciseInfo  # Full info for the requested exercise\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Exercise not found\"\n            }\n\nConstraints:\n    - exercise_id must exist in self.exercises",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "exercise_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exercise_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_exercises",
+      "description": "Return a list of all available (predefined or custom) exercises.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ExerciseInfo]  # List of all exercises (may be empty)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_plan_exercises",
+      "description": "List all exercises (with configuration) associated with a given workout plan.\n\nArgs:\n    plan_id (str): The workout plan's unique identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[dict]  # Each item combines WorkoutPlanExerciseInfo and ExerciseInfo.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\nConstraints:\n    - The specified plan_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id"
+        ]
+      }
+    },
+    {
+      "name": "get_plan_exercise_by_exercise_and_day",
+      "description": "Check and retrieve the association of a specific exercise with a given workout plan on a particular scheduled day.\n\nArgs:\n    plan_id (str): The ID of the workout plan.\n    exercise_id (str): The exercise ID to search for.\n    scheduled_day (str): The day (e.g., 'Monday') the exercise is scheduled for.\n\nReturns:\n    dict:\n        - If the plan does not exist:\n            { \"success\": False, \"error\": \"Workout plan does not exist\" }\n        - If found:\n            { \"success\": True, \"data\": WorkoutPlanExerciseInfo }\n        - If not found:\n            { \"success\": True, \"data\": None }\nConstraints:\n    - The workout plan must exist.\n    - Will return only the first matching (plan_id, exercise_id, scheduled_day) association if it exists.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          },
+          "exercise_id": {
+            "type": "string"
+          },
+          "scheduled_day": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id",
+          "exercise_id",
+          "scheduled_day"
+        ]
+      }
+    },
+    {
+      "name": "get_plan_schedule",
+      "description": "Retrieve the schedule rules or configured schedule for a workout plan.\n\nArgs:\n    plan_id (str): The unique identifier of the workout plan.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": str  # The configured schedule/rules of the plan\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if the plan_id does not exist\n    }\n\nConstraints:\n    - plan_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id"
+        ]
+      }
+    },
+    {
+      "name": "add_exercise_to_plan",
+      "description": "Add a specified exercise to a workout plan for a given day, specifying sets, repetitions, and order.\n\nArgs:\n    plan_id (str): Workout plan identifier.\n    exercise_id (str): Exercise identifier to add.\n    sets (int): Number of sets (>0).\n    repetitions (int): Number of repetitions per set (>0).\n    order (int): The order of the exercise in the day's plan.\n    scheduled_day (str): Day for scheduling the exercise (e.g., \"Monday\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Exercise added to workout plan for the specified day.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - plan_id must exist.\n    - exercise_id must exist.\n    - sets and repetitions must both be >0.\n    - Exercise cannot be added to the same plan on the same scheduled_day more than once.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          },
+          "exercise_id": {
+            "type": "string"
+          },
+          "sets": {
+            "type": "integer"
+          },
+          "repetitions": {
+            "type": "integer"
+          },
+          "order": {
+            "type": "integer"
+          },
+          "scheduled_day": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id",
+          "exercise_id",
+          "sets",
+          "repetitions",
+          "order",
+          "scheduled_day"
+        ]
+      }
+    },
+    {
+      "name": "create_exercise",
+      "description": "Create a new exercise in the system if it doesn't already exist.\n\nArgs:\n    name (str): The name of the exercise.\n    type (str): The type/category of the exercise.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"message\": \"Exercise created successfully.\",\n            \"exercise\": ExerciseInfo  # (only if successful)\n        }\n    or \n        {\n            \"success\": False,\n            \"error\": \"Reason for failure (e.g., already exists or invalid input).\"\n        }\nConstraints:\n    - No duplicate exercise (same name and type) may be created.\n    - Input fields must be non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ]
+      }
+    },
+    {
+      "name": "create_workout_plan",
+      "description": "Create a new workout plan for a user with the specified name and schedule.\n\nArgs:\n    plan_id (str): Unique identifier for the workout plan.\n    user_id (str): ID of the user for whom the plan is created.\n    name (str): Name of the workout plan.\n    schedule (str): Schedule of the plan (e.g., \"Mon/Wed/Fri\" or similar).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Workout plan created for user <user_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <Reason>\n    }\n\nConstraints:\n    - The user_id must correspond to an existing user.\n    - The plan_id must be unique (not already in use).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "schedule": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id",
+          "user_id",
+          "name",
+          "schedule"
+        ]
+      }
+    },
+    {
+      "name": "remove_exercise_from_plan",
+      "description": "Remove a specific exercise from a workout plan for a given day.\n\nArgs:\n    plan_id (str): The identifier of the workout plan.\n    exercise_id (str): The identifier of the exercise to remove.\n    scheduled_day (str): The day for which the exercise should be removed.\n    order (int, optional): The exact order slot to remove when the same exercise appears multiple times on the same day. If omitted, only the lowest-order matching entry is removed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Exercise removed from plan for day.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The workout plan must exist.\n    - The exercise association must exist for the given day in the plan.\n    - If order is provided, the exercise association must also match that order.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          },
+          "exercise_id": {
+            "type": "string"
+          },
+          "scheduled_day": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "plan_id",
+          "exercise_id",
+          "scheduled_day"
+        ]
+      }
+    },
+    {
+      "name": "update_plan_exercise",
+      "description": "Change the sets, repetitions, order, or scheduled day for an exercise in a workout plan.\n\nArgs:\n    plan_id (str): The ID of the workout plan.\n    exercise_id (str): The ID of the exercise to modify.\n    scheduled_day (str): The current scheduled day for the exercise.\n    new_sets (int, optional): New number of sets (must be ≥1 if provided).\n    new_repetitions (int, optional): New number of repetitions (must be ≥1 if provided).\n    new_order (int, optional): New order value (must be ≥1 if provided).\n    new_scheduled_day (str, optional): The new scheduled day (must be non-blank if provided).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Exercise in plan updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - Plan and exercise must exist.\n    - The exercise must be attached to the plan on the given scheduled_day.\n    - No duplicate exercise for (plan_id, exercise_id, scheduled_day).\n    - sets/repetitions/order must be valid if provided.\n    - scheduled_day must be valid if changed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          },
+          "exercise_id": {
+            "type": "string"
+          },
+          "scheduled_day": {
+            "type": "string"
+          },
+          "new_sets": {
+            "type": "integer"
+          },
+          "new_repetitions": {
+            "type": "integer"
+          },
+          "new_order": {
+            "type": "integer"
+          },
+          "new_scheduled_day": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id",
+          "exercise_id",
+          "scheduled_day"
+        ]
+      }
+    },
+    {
+      "name": "reorder_plan_exercises",
+      "description": "Change the order of exercises in a workout plan.\n\nArgs:\n    plan_id (str): The workout plan identifier.\n    new_exercise_order (list of str): Desired exercise_id sequence. Duplicate IDs are allowed as long as they match the targeted entries exactly.\n    scheduled_day (str, optional): If provided, reorder only that day's exercises. If omitted, reorder the entire plan and recompute each day's local order values from the supplied flat sequence.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"message\": \"Exercises reordered in plan <plan_id>.\"}\n        On failure:\n            {\"success\": False, \"error\": \"reason\"}\n\nConstraints:\n    - plan_id must exist.\n    - The supplied exercise_id sequence must match the targeted entries exactly, including duplicates.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          },
+          "new_exercise_order": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scheduled_day": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id",
+          "new_exercise_order"
+        ]
+      }
+    },
+    {
+      "name": "update_plan_schedule",
+      "description": "Modify the schedule for an entire workout plan, ensuring all scheduled exercises comply.\n\nArgs:\n    plan_id (str): The workout plan to update.\n    new_schedule (str): The new schedule string (e.g., comma-separated days).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Operation result\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error\n    }\n\nConstraints:\n    - The plan must exist.\n    - All WorkoutPlanExercises scheduled_day must be within the new schedule.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          },
+          "new_schedule": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id",
+          "new_schedule"
+        ]
+      }
+    },
+    {
+      "name": "delete_workout_plan",
+      "description": "Remove a workout plan and all its associated exercises from the system.\n\nArgs:\n    plan_id (str): The unique identifier of the workout plan to be deleted.\n\nReturns:\n    dict: \n      - On success:\n          {\"success\": True, \"message\": \"Workout plan <plan_id> and its associated exercises deleted.\"}\n      - On error (plan not found):\n          {\"success\": False, \"error\": \"Workout plan does not exist.\"}\n\nConstraints:\n    - If the plan does not exist, the operation fails.\n    - Associated exercises (WorkoutPlanExercise) for that plan are also deleted (if any).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id"
+        ]
+      }
+    },
+    {
+      "name": "update_exercise_info",
+      "description": "Update the attributes (name, type) of an existing Exercise.\n\nArgs:\n    exercise_id (str): ID of the exercise to update.\n    name (str, optional): New name for the exercise.\n    type (str, optional): New type/category for the exercise.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"message\": \"Exercise info updated successfully.\"\n        }\n    or\n        {\n            \"success\": False,\n            \"error\": \"Reason for failure\"\n        }\n\nConstraints:\n    - Exercise must exist in the system.\n    - Only 'name' and 'type' may be updated.\n    - At least one attribute must be provided for update.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "exercise_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exercise_id"
+        ]
+      }
+    }
+  ]
+}

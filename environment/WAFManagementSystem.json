@@ -1,0 +1,670 @@
+{
+  "env_name": "WAFManagementSystem",
+  "description": "A web application firewall (WAF) management system monitors, logs, and controls web traffic between users and web servers. It maintains detailed records for each session, tracking client IP addresses, connection metadata, security settings (such as TLS/SSL versions), and request data. The system commonly provides API endpoints for querying session information, configuring rules, and generating security reports.",
+  "initial_parameter_schema": {
+    "sessions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "client_ip": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "connection_metadata": {
+            "type": "string"
+          },
+          "tls_ssl_version": {
+            "type": "string"
+          },
+          "request_count": {
+            "type": "integer"
+          },
+          "associated_rule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "client_ip",
+          "start_time",
+          "end_time",
+          "connection_metadata",
+          "tls_ssl_version",
+          "request_count",
+          "associated_rule_id"
+        ]
+      }
+    },
+    "waf_rules": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "rule_id": {
+            "type": "string"
+          },
+          "rule_type": {
+            "type": "string"
+          },
+          "rule_pattern": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "rule_id",
+          "rule_type",
+          "rule_pattern",
+          "action",
+          "status",
+          "priority"
+        ]
+      }
+    },
+    "security_reports": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string"
+          },
+          "generated_time": {
+            "type": "string"
+          },
+          "target_scope": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id",
+          "generated_time",
+          "target_scope",
+          "summary",
+          "detail"
+        ]
+      }
+    },
+    "api_users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "api_key": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "string"
+          },
+          "last_accessed": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "api_key",
+          "permissions",
+          "last_accessed"
+        ]
+      }
+    },
+    "log_entries": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "log_id": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "log_id",
+          "session_id",
+          "timestamp",
+          "event_type",
+          "detail"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_sessions_by_client_ip": [
+      "sessions"
+    ],
+    "get_session_by_id": [
+      "sessions"
+    ],
+    "get_tls_ssl_version_for_session": [
+      "sessions"
+    ],
+    "get_tls_ssl_versions_by_client_ip": [
+      "sessions"
+    ],
+    "list_api_users": [
+      "api_users"
+    ],
+    "get_api_user_by_id": [
+      "api_users"
+    ],
+    "get_waf_rule_by_id": [
+      "waf_rules"
+    ],
+    "list_waf_rules": [
+      "waf_rules"
+    ],
+    "get_security_report_by_id": [
+      "security_reports"
+    ],
+    "list_security_reports": [
+      "security_reports"
+    ],
+    "get_log_entries_by_session_id": [
+      "log_entries",
+      "sessions"
+    ],
+    "get_log_entry_by_id": [
+      "log_entries"
+    ],
+    "list_log_entries_by_event_type": [
+      "log_entries"
+    ],
+    "create_waf_rule": [
+      "api_users",
+      "waf_rules"
+    ],
+    "update_waf_rule": [
+      "api_users",
+      "waf_rules"
+    ],
+    "delete_waf_rule": [
+      "api_users",
+      "waf_rules"
+    ],
+    "create_security_report": [
+      "api_users",
+      "security_reports"
+    ],
+    "create_api_user": [
+      "api_users"
+    ],
+    "update_api_user_permissions": [
+      "api_users"
+    ],
+    "deactivate_api_user": [
+      "api_users"
+    ],
+    "create_session": [
+      "sessions",
+      "waf_rules"
+    ],
+    "end_session": [
+      "sessions"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_sessions_by_client_ip",
+      "description": "Retrieve all session records associated with a given client_ip.\n\nArgs:\n    client_ip (str): The client IP address to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SessionInfo],  # List of sessions for the given IP (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (invalid input)\n    }\n\nConstraints:\n    - Multiple sessions can exist per client IP.\n    - Only authorized API users may retrieve session information, but no context is provided here.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_ip": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_ip"
+        ]
+      }
+    },
+    {
+      "name": "get_session_by_id",
+      "description": "Retrieve the complete session details for a given session_id.\n\nArgs:\n    session_id (str): The unique identifier for the desired session.\n\nReturns:\n    dict: \n        - If found: { \"success\": True, \"data\": SessionInfo }\n        - If not found: { \"success\": False, \"error\": \"Session not found\" }\n\nConstraints:\n    - session_id must exist in self.sessions.\n    - No modification of state.\n    - No authorization check unless specified.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "get_tls_ssl_version_for_session",
+      "description": "Query the TLS/SSL version used in a particular session.\n\nArgs:\n    session_id (str): The unique session identifier to look up.\n\nReturns:\n    dict:\n        - On success:\n            { \"success\": True, \"data\": str }  # TLS/SSL version string (may be empty if data issue)\n        - On failure:\n            { \"success\": False, \"error\": \"Session not found\" }\n\nConstraints:\n    - Session must exist (identified by session_id).\n    - For secure sessions, TLS/SSL version should be recorded; here, the method returns what is stored.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "get_tls_ssl_versions_by_client_ip",
+      "description": "Aggregate and return the TLS/SSL versions for all sessions associated with a client IP.\n\nArgs:\n    client_ip (str): The IP address of the client whose sessions' TLS/SSL versions are to be returned.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str],  # List of tls_ssl_version strings associated with the given client_ip\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error\n    }\n\nConstraints:\n    - Each session must record a TLS/SSL version if it is secure.\n    - No permissions are checked in this method.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_ip": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_ip"
+        ]
+      }
+    },
+    {
+      "name": "list_api_users",
+      "description": "Retrieve the list of all API users registered in the WAF management system.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": List[APIUserInfo]  # List of API user info dicts (may be empty)\n        }\n    or\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - No parameters required.\n    - Returns all API users in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_api_user_by_id",
+      "description": "Retrieve full details of an API user by their user_id.\n\nArgs:\n    user_id (str): The identifier of the API user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": APIUserInfo  # User information if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If user is not found\n    }\n\nConstraints:\n    - The user_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_waf_rule_by_id",
+      "description": "Retrieve the configuration (WAFRuleInfo) for a specific WAF rule.\n\nArgs:\n    rule_id (str): The unique identifier of the WAF rule.\n\nReturns:\n    dict:\n        - On success: {\n              \"success\": True,\n              \"data\": WAFRuleInfo\n          }\n        - On failure: {\n              \"success\": False,\n              \"error\": \"WAF rule not found\"\n          }\n\nConstraints:\n    - WAF rule identified by rule_id must exist.\n    - No permission or mutation enforced in this query operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "rule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_id"
+        ]
+      }
+    },
+    {
+      "name": "list_waf_rules",
+      "description": "Return all configured WAF rules, optionally sorted by priority.\n\nArgs:\n    sort_by_priority (bool, optional): If True, return list sorted by WAFRuleInfo['priority'] ascending.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[WAFRuleInfo]  # List (possibly empty) of all WAF rules\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sort_by_priority": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "sort_by_priority"
+        ]
+      }
+    },
+    {
+      "name": "get_security_report_by_id",
+      "description": "Retrieve the full security report corresponding to the provided report_id.\n\nArgs:\n    report_id (str): The unique identifier of the security report to fetch.\n\nReturns:\n    dict: \n        - { \"success\": True, \"data\": SecurityReportInfo } if the report exists.\n        - { \"success\": False, \"error\": str } if the report_id does not exist.\n\nConstraints:\n    - The report_id must exist within the system's security_reports.\n    - No permission checks are enforced for this query.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id"
+        ]
+      }
+    },
+    {
+      "name": "list_security_reports",
+      "description": "List all generated security reports in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SecurityReportInfo],  # List may be empty if no reports exist\n    }\n\nConstraints:\n    - No input arguments.\n    - Returns all security reports (read-only; reports are immutable).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_log_entries_by_session_id",
+      "description": "Retrieve all log entries associated with a particular session.\n\nArgs:\n    session_id (str): The unique identifier for the session.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[LogEntryInfo],  # List (possibly empty) of log entries for the session\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason (e.g., session does not exist)\n    }\n\nConstraints:\n    - session_id must reference an existing session.\n    - Log entry data is immutable (query only).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "get_log_entry_by_id",
+      "description": "Retrieve details for a specific log entry given its log_id.\n\nArgs:\n    log_id (str): The unique identifier of the log entry.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": LogEntryInfo  # the dictionary for the found log entry\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g., log entry not found)\n    }\n\nConstraints:\n    - No user authorization is required to perform this lookup.\n    - Log entry with matching log_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "log_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "log_id"
+        ]
+      }
+    },
+    {
+      "name": "list_log_entries_by_event_type",
+      "description": "Retrieve all WAF log entries filtered by a specific event_type (e.g., 'alert', 'block').\n\nArgs:\n    event_type (str): The event type to filter log entries by.\n\nReturns:\n    dict: \n        - { \"success\": True, \"data\": List[LogEntryInfo] }\n          (List may be empty if no log entries match)\n        - { \"success\": False, \"error\": str }\n          (If the filter is not provided or is invalid)\n\nConstraints:\n    - event_type must be a non-empty string.\n    - Logging entries are immutable and fully accessible for querying.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_type"
+        ]
+      }
+    },
+    {
+      "name": "create_waf_rule",
+      "description": "Add a new WAF rule to the system (requires authorization).\n\nArgs:\n    user_id (str): ID of the API user making the request.\n    rule_id (str): Unique identifier for the new WAF rule.\n    rule_type (str): Type/category of the rule.\n    rule_pattern (str): Pattern to be matched (string/regex).\n    action (str): Action to be taken (e.g., 'allow', 'block').\n    status (str): Rule status ('active', 'inactive', etc.).\n    priority (int): Rule priority (lower is higher priority).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"WAF rule <rule_id> created successfully\"\n    } or {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Only authorized API users with proper permissions can create rules.\n    - `rule_id` must be unique.\n    - Rule parameters must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "rule_id": {
+            "type": "string"
+          },
+          "rule_type": {
+            "type": "string"
+          },
+          "rule_pattern": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "user_id",
+          "rule_id",
+          "rule_type",
+          "rule_pattern",
+          "action",
+          "status",
+          "priority"
+        ]
+      }
+    },
+    {
+      "name": "update_waf_rule",
+      "description": "Modify properties (action, status, pattern, priority) of an existing WAF rule.\n\nArgs:\n    api_user_id (str): The API user performing the update. Used for permission check.\n    rule_id (str): The ID of the rule to update.\n    action (Optional[str]): New action for the rule, if updating.\n    status (Optional[str]): New status for the rule, if updating.\n    rule_pattern (Optional[str]): New pattern for the rule, if updating.\n    priority (Optional[int]): New priority for the rule, if updating.\n\nReturns:\n    dict: \n        { \"success\": True, \"message\": \"WAF rule updated successfully.\" }\n        or\n        { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Only authorized API users (permissions 'admin' or including 'waf_rule_write') may modify rules.\n    - Specified rule_id must exist.\n    - Only provided properties are updated.\n    - Priority, if set, must be an integer >= 0.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_user_id": {
+            "type": "string"
+          },
+          "rule_id": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "rule_pattern": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "api_user_id",
+          "rule_id",
+          "action",
+          "status",
+          "rule_pattern",
+          "priority"
+        ]
+      }
+    },
+    {
+      "name": "delete_waf_rule",
+      "description": "Remove a WAF rule from the system.\n\nArgs:\n    rule_id (str): The unique identifier of the WAF rule to be deleted.\n    api_key (str): The API key of the user performing the deletion; must have sufficient permissions.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"WAF rule <rule_id> deleted.\" }\n        - On failure: { \"success\": False, \"error\": <error reason> }\n\nConstraints:\n    - Only authorized API users (with appropriate permissions) may delete WAF rules.\n    - The rule must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "rule_id": {
+            "type": "string"
+          },
+          "api_key": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_id",
+          "api_key"
+        ]
+      }
+    },
+    {
+      "name": "create_security_report",
+      "description": "Generate and save a new security report for auditing.\n\nArgs:\n    api_user_id (str): The ID of the API user performing the operation (must be authorized).\n    generated_time (str): Timestamp of report generation (ISO8601).\n    target_scope (str): The scope or target of the security report.\n    summary (str): High-level summary of report findings.\n    detail (str): Detailed report content.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Security report created with id <report_id>\" }\n        On failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Only authorized API users may create a report.\n    - report_id is auto-generated and unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_user_id": {
+            "type": "string"
+          },
+          "generated_time": {
+            "type": "string"
+          },
+          "target_scope": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_user_id",
+          "generated_time",
+          "target_scope",
+          "summary",
+          "detail"
+        ]
+      }
+    },
+    {
+      "name": "create_api_user",
+      "description": "Register a new API user (system or human).\n\nArgs:\n    user_id (str): Unique user identifier\n    api_key (str): Unique API key/token\n    permissions (str): Permissions string/level for this user\n    last_accessed (str, optional): Timestamp when last used (default: \"\")\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"API user created.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"user_id/api_key already exists.\"\n    }\n\nConstraints:\n    - user_id must not already exist in self.api_users\n    - api_key must be unique among all users",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "api_key": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "string"
+          },
+          "last_accessed": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "api_key",
+          "permissions",
+          "last_accessed"
+        ]
+      }
+    },
+    {
+      "name": "update_api_user_permissions",
+      "description": "Modify the permissions associated with an API user.\n\nArgs:\n    user_id (str): The unique identifier of the API user to update.\n    new_permissions (str): The new permissions string to assign.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Permissions updated for API user <user_id>.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"<reason>\"\n            }\n\nConstraints:\n    - Only existing API users can have their permissions modified.\n    - The new_permissions argument must be a non-empty string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "new_permissions": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "new_permissions"
+        ]
+      }
+    },
+    {
+      "name": "deactivate_api_user",
+      "description": "Disable (but do not delete) an API user account.\n\nArgs:\n    user_id (str): The unique ID of the API user to deactivate.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"API user <user_id> deactivated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The target user must exist in the system.\n    - API user entry must not be deleted. Only their permissions should be changed to indicate deactivation.\n    - Repeated deactivation is a no-op (but still returns success).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "create_session",
+      "description": "Manually add a session with all required fields (typically for simulation/testing/admin use).\nMust record TLS/SSL version if secure.\n\nArgs:\n    session_id (str): Unique session identifier.\n    client_ip (str): The IP address of the client.\n    start_time (str): Session start time (string, e.g., ISO 8601).\n    end_time (str): Session end time (string, e.g., ISO 8601).\n    connection_metadata (str): Metadata about the connection.\n    tls_ssl_version (str): TLS/SSL version used for the session (must not be empty for secure sessions).\n    request_count (int): Number of requests in this session.\n    associated_rule_id (str): Associated WAF rule ID (should exist in waf_rules).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Session created successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - session_id must be unique.\n    - TLS/SSL version must be recorded (not empty).\n    - associated_rule_id must exist in waf_rules (if not, return error).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "client_ip": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "connection_metadata": {
+            "type": "string"
+          },
+          "tls_ssl_version": {
+            "type": "string"
+          },
+          "request_count": {
+            "type": "integer"
+          },
+          "associated_rule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "client_ip",
+          "start_time",
+          "end_time",
+          "connection_metadata",
+          "tls_ssl_version",
+          "request_count",
+          "associated_rule_id"
+        ]
+      }
+    },
+    {
+      "name": "end_session",
+      "description": "Mark the end_time of a session as the current UTC timestamp (closing the session).\n\nArgs:\n    session_id (str): The unique identifier of the session to end.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Session <session_id> successfully ended\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The session_id must exist in the system.\n    - The operation is idempotent: multiple calls simply update end_time to latest closure.\n    - No log entries are deleted or updated by this operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    }
+  ]
+}

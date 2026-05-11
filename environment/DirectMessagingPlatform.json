@@ -1,0 +1,531 @@
+{
+  "env_name": "DirectMessagingPlatform",
+  "description": "A social media direct messaging platform allows users to exchange private messages in real time or asynchronously, storing message histories and supporting search and notification features. The state of the environment includes user accounts, message content, timestamps, and organizational features such as message threads and topic filters. Such platforms are widely used for both casual and professional communication, supporting integration with broader social networking features.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "profile_info": {
+            "type": "object"
+          },
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "profile_info",
+          "account_status"
+        ]
+      }
+    },
+    "messages": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "sender_id": {
+            "type": "string"
+          },
+          "recipient_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "content": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "thread_id": {
+            "type": "string"
+          },
+          "topic_tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "delivery_status": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "read_status": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "message_id",
+          "sender_id",
+          "recipient_ids",
+          "content",
+          "timestamp",
+          "thread_id",
+          "topic_tags",
+          "delivery_status",
+          "read_status"
+        ]
+      }
+    },
+    "message_threads": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "thread_id": {
+            "type": "string"
+          },
+          "participant_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "last_updated": {
+            "type": "number"
+          },
+          "topic_tag": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "thread_id",
+          "participant_ids",
+          "last_updated",
+          "topic_tag"
+        ]
+      }
+    },
+    "_deleted_msgs_for_user": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_username": [
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "search_messages_by_recipient_and_topic": [
+      "messages",
+      "users"
+    ],
+    "get_recent_messages_for_user": [
+      "messages",
+      "users"
+    ],
+    "get_unread_messages_for_user": [
+      "messages",
+      "users"
+    ],
+    "get_message_by_id": [
+      "messages"
+    ],
+    "get_message_thread_by_id": [
+      "message_threads"
+    ],
+    "list_threads_for_user": [
+      "message_threads",
+      "users"
+    ],
+    "search_threads_by_topic": [
+      "message_threads"
+    ],
+    "get_message_delivery_status": [
+      "messages"
+    ],
+    "get_message_read_status": [
+      "messages"
+    ],
+    "get_messages_in_thread": [
+      "message_threads",
+      "messages"
+    ],
+    "send_direct_message": [
+      "message_threads",
+      "messages",
+      "users"
+    ],
+    "update_message_read_status": [
+      "messages"
+    ],
+    "update_message_delivery_status": [
+      "messages"
+    ],
+    "assign_topic_tag_to_thread": [
+      "message_threads"
+    ],
+    "delete_message_for_user": [
+      "_deleted_msgs_for_user",
+      "messages",
+      "users"
+    ],
+    "delete_user_account": [
+      "message_threads",
+      "messages",
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_username",
+      "description": "Retrieve user details given a username.\n\nArgs:\n    username (str): The username to search for.\n\nReturns:\n    dict: \n        On success:\n            {\"success\": True, \"data\": UserInfo}\n        On failure:\n            {\"success\": False, \"error\": \"User not found\"}\nConstraints:\n    - Usernames are expected to be unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user details using a user ID.\n\nArgs:\n    user_id (str): Unique identifier of the user.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": UserInfo  # User metadata dictionary\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": \"User not found\"\n            }\nConstraints:\n    - User ID must exist in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "search_messages_by_recipient_and_topic",
+      "description": "Find all messages received by a user, optionally filtering by topic tags.\n\nArgs:\n    recipient_id (str): User ID of the recipient (must exist).\n    topic_tags (Optional[List[str]]): List of topic tags, match messages containing ANY tag.\n        If None or empty, all messages for recipient are returned.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"data\": List[MessageInfo] }\n        - On error: { \"success\": False, \"error\": error_str }\n\nConstraints:\n    - Only messages where recipient_id is present in MessageInfo.recipient_ids are considered.\n    - User (recipient) must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "recipient_id": {
+            "type": "string"
+          },
+          "topic_tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "recipient_id"
+        ]
+      }
+    },
+    {
+      "name": "get_recent_messages_for_user",
+      "description": "Retrieve the most recent direct messages for a specific user, optionally filtered by a minimum timestamp.\n\nArgs:\n    user_id (str): The ID of the user.\n    since_timestamp (float, optional): Only include messages sent at or after this timestamp. If None, include all.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MessageInfo],  # Most recent messages first\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description\n    }\n\nConstraints:\n    - Only users involved in a message as sender or recipient can access the message.\n    - User must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "since_timestamp": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_unread_messages_for_user",
+      "description": "List all unread messages for a user.\n\nArgs:\n    user_id (str): The unique identifier of the user to fetch unread messages for.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": List[MessageInfo]  # All messages for which user_id is in recipient_ids and read_status[user_id] == \"unread\"\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason for failure, e.g. user does not exist\n            }\n\nConstraints:\n    - Only users involved in a direct message can access its content (user must be a recipient).\n    - User must exist in the platform.\n    - Message content is returned as-is; read_status must be tracked per recipient.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_message_by_id",
+      "description": "Retrieve a message's full details by its message_id.\n\nArgs:\n    message_id (str): Unique identifier of the message.\n    requesting_user_id (str): The ID of the user requesting the message (must be sender or recipient).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": MessageInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message (not found / access denied)\n    }\n\nConstraints:\n    - Only sender or recipient(s) of the message may view its content.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "requesting_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id",
+          "requesting_user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_message_thread_by_id",
+      "description": "Retrieve full details of a message thread (participants, last updated, topic) by thread_id.\n\nArgs:\n    thread_id (str): The unique thread identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": MessageThreadInfo,  # Thread info dictionary\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"Thread does not exist\"\n    }\n\nConstraints:\n    - The thread_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "thread_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "thread_id"
+        ]
+      }
+    },
+    {
+      "name": "list_threads_for_user",
+      "description": "Retrieve all message threads in which a specific user participates.\n\nArgs:\n    user_id (str): The ID of the user whose threads are to be listed.\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"data\": List[MessageThreadInfo],  # List of threads (can be empty)\n        }\n    On failure (if user does not exist):\n        {\n            \"success\": False,\n            \"error\": str  # Reason for failure\n        }\n\nConstraints:\n    - Only threads where the user_id appears in the thread's participant_ids are listed.\n    - The user must exist in self.users.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "search_threads_by_topic",
+      "description": "Find all message threads whose topic_tag exactly matches the provided topic string.\n\nArgs:\n    topic_tag (str): The topic string to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MessageThreadInfo]  # list of thread infos with matching topic_tag (empty if none found)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # error description for invalid search\n    }\n\nConstraints:\n    - topic_tag must be a non-empty string.\n    - No thread access constraints are enforced (all threads are included).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "topic_tag": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic_tag"
+        ]
+      }
+    },
+    {
+      "name": "get_message_delivery_status",
+      "description": "Get the delivery status (e.g., delivered, failed, etc.) of a message for each recipient.\n\nArgs:\n    message_id (str): The unique identifier of the message to query.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": Dict[str, str],  # Mapping recipient_id -> delivery status\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason the operation failed (e.g., message not found)\n            }\n\nConstraints:\n    - If the message does not exist, return an error.\n    - (Strictly speaking, only participants can access this, but in the absence of user_id context, return the status if found.)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id"
+        ]
+      }
+    },
+    {
+      "name": "get_message_read_status",
+      "description": "Get the read/unread status of a message for each recipient.\n\nArgs:\n    message_id (str): Unique identifier of the target message.\n\nReturns:\n    dict:\n        - success: True and data key with read_status dictionary {recipient_id: \"read\"/\"unread\"} if message exists.\n        - success: False and error key if the message is not found.\n\nConstraints:\n    - Message must exist (message_id present in self.messages).\n    - No access control/user permission checks performed here.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id"
+        ]
+      }
+    },
+    {
+      "name": "get_messages_in_thread",
+      "description": "List all messages contained in a specific thread.\n\nArgs:\n    thread_id (str): Unique identifier of the message thread.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MessageInfo],  # List of messages sorted by timestamp\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g. thread does not exist\n    }\n\nConstraints:\n    - The specified thread_id must exist.\n    - If no messages are in the thread, returns empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "thread_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "thread_id"
+        ]
+      }
+    },
+    {
+      "name": "send_direct_message",
+      "description": "Send a new direct message from a sender to one or more recipients.\n\nArgs:\n    sender_id (str): User ID of sender. Must exist.\n    recipient_ids (List[str]): List of user IDs to receive the message. All must exist.\n    content (str): The message content. Must be nonempty.\n    topic_tags (List[str], optional): List of topic tags, if any.\n    thread_id (str, optional): Assign message to existing thread (must exist and include all participants), otherwise a new thread is created.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"message\": \"Direct message sent\", \"message_id\": <new_id>}\n        On failure:\n            {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - Sender and all recipient users MUST exist in self.users.\n    - If a thread_id is specified, it MUST exist and include all participants.\n    - Content must be nonempty (not blank/whitespace).\n    - Message gets unique message_id and current timestamp.\n    - Read/delivery status for each recipient is initialized to 'unread', 'undelivered'.\n    - Topic tags may be assigned by sender.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sender_id": {
+            "type": "string"
+          },
+          "recipient_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "content": {
+            "type": "string"
+          },
+          "topic_tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "thread_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sender_id",
+          "recipient_ids",
+          "content"
+        ]
+      }
+    },
+    {
+      "name": "update_message_read_status",
+      "description": "Set a message as read (or unread) for a specific recipient.\n\nArgs:\n    message_id (str): ID of the message to update\n    recipient_id (str): User ID of the recipient\n    read_status (str): New read status value (\"read\" or \"unread\")\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"message\": \"Read status updated for user on message.\"\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": \"reason\"\n        }\n\nConstraints:\n    - Message must exist.\n    - Recipient must be one of the message's recipient_ids.\n    - Only \"read\" or \"unread\" are valid read statuses.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "recipient_id": {
+            "type": "string"
+          },
+          "read_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id",
+          "recipient_id",
+          "read_status"
+        ]
+      }
+    },
+    {
+      "name": "update_message_delivery_status",
+      "description": "Update the delivery status of a given message for a specific recipient.\n\nArgs:\n    message_id (str): The unique identifier of the message.\n    recipient_id (str): The user ID of the recipient whose delivery status is to be updated.\n    status (str): The new delivery status (e.g. 'delivered', 'failed', 'pending').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Delivery status updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The message must exist.\n    - recipient_id must be one of the message's recipient_ids.\n    - Only the delivery_status for the specified recipient is updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "recipient_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id",
+          "recipient_id",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "assign_topic_tag_to_thread",
+      "description": "Assign or change a topic tag for a given message thread.\n\nArgs:\n    thread_id (str): Identifier of the message thread.\n    topic_tag (str): The topic tag to assign to the thread.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Topic tag updated for thread <thread_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of error (e.g., thread not found or invalid topic tag)\n    }\n\nConstraints:\n    - Thread must exist.\n    - Topic tag must not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "thread_id": {
+            "type": "string"
+          },
+          "topic_tag": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "thread_id",
+          "topic_tag"
+        ]
+      }
+    },
+    {
+      "name": "delete_message_for_user",
+      "description": "Remove a message from visibility for a specific user, subject to privacy constraints.\nThe message remains in the system for other participants, but after this operation\nthe specified user will not see the message in their queries.\n\nArgs:\n    message_id (str): The message to hide/remove for the user.\n    user_id (str): The user for whom the message should be deleted from view.\n\nReturns:\n    dict: Success or error structure:\n        {\n            \"success\": True,\n            \"message\": \"Message <id> has been deleted from visibility for user <id>.\"\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": \"reason\"\n        }\n\nConstraints:\n    - The message and user must exist.\n    - The user must be the sender or a recipient (a participant) of the message.\n    - Deletion only affects user's view, not global state.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_user_account",
+      "description": "Remove a user’s account from the platform.\nEffects:\n    - Removes user from all message threads' participant lists. Deletes threads with no remaining participants.\n    - Removes user from all messages (as sender and/or recipient).\n        - If user is the sender, mark sender as '<deleted>'.\n        - If user is a recipient, removes user from recipient_ids, delivery_status, and read_status for that message.\n        - Deletes messages with no sender and no recipients.\n    - Removes user from the users list.\nArgs:\n    user_id (str): The unique ID of the user to delete.\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User account deleted and related records updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\nConstraints:\n    - If user does not exist, returns an error.\n    - Implements platform privacy rules in the absence of detailed settings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    }
+  ]
+}

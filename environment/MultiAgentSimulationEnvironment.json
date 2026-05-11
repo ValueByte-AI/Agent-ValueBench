@@ -1,0 +1,414 @@
+{
+  "env_name": "MultiAgentSimulationEnvironment",
+  "description": "A multi-agent simulation environment provides a framework for creating and managing multiple autonomous entities, or agents, each with their own behaviors, knowledge, and states. The system tracks the positions and actions of these agents as they interact with each other and with shared environments or worlds. It supports operations such as relocating agents, initiating actions, and updating agent-specific knowledge, all within a dynamically changing state space.",
+  "initial_parameter_schema": {
+    "agents": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "agent_id": {
+            "type": "string"
+          },
+          "position": {
+            "type": "string"
+          },
+          "environment_id": {
+            "type": "string"
+          },
+          "current_action": {
+            "type": "string"
+          },
+          "knowledge_base": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "agent_id",
+          "position",
+          "environment_id",
+          "current_action",
+          "knowledge_base"
+        ]
+      }
+    },
+    "environments": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "environment_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "properties": {
+            "type": "object"
+          },
+          "agents_present": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "environment_id",
+          "name",
+          "properties",
+          "agents_present"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_agent_info": [
+      "agents"
+    ],
+    "get_agents_in_environment": [
+      "environments"
+    ],
+    "get_environment_info": [
+      "environments"
+    ],
+    "get_agent_position": [
+      "agents"
+    ],
+    "get_agent_knowledge_base": [
+      "agents"
+    ],
+    "list_all_agents": [
+      "agents"
+    ],
+    "list_all_environments": [
+      "environments"
+    ],
+    "move_agent": [
+      "agents",
+      "environments"
+    ],
+    "move_agents_batch": [
+      "agents",
+      "environments"
+    ],
+    "set_agent_action": [
+      "agents",
+      "environments"
+    ],
+    "update_agent_knowledge_base": [
+      "agents",
+      "environments"
+    ],
+    "batch_update_agent_knowledge": [
+      "agents"
+    ],
+    "create_agent": [
+      "agents",
+      "environments"
+    ],
+    "remove_agent": [
+      "agents",
+      "environments"
+    ],
+    "add_agent_to_environment": [
+      "agents",
+      "environments"
+    ],
+    "remove_agent_from_environment": [
+      "agents",
+      "environments"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_agent_info",
+      "description": "Retrieve detailed information (position, environment, action, knowledge base)\nfor a specified agent.\n\nArgs:\n    agent_id (str): The unique identifier of the agent.\n\nReturns:\n    dict:\n        {\"success\": True, \"data\": AgentInfo}\n        or\n        {\"success\": False, \"error\": \"Agent does not exist\"}\n\nConstraints:\n    - The specified agent must exist in the simulation environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agent_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id"
+        ]
+      }
+    },
+    {
+      "name": "get_agents_in_environment",
+      "description": "List all agent IDs currently present in the specified environment.\n\nArgs:\n    environment_id (str): The identifier of the environment to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str],  # List of agent IDs in the environment (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (environment does not exist)\n    }\n\nConstraints:\n    - The provided environment_id must exist in the simulation environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "environment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "environment_id"
+        ]
+      }
+    },
+    {
+      "name": "get_environment_info",
+      "description": "Retrieve full details (name, properties, agents) about a specified environment.\n\nArgs:\n    environment_id (str): Unique identifier of the environment to retrieve.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True,\n            \"data\": EnvironmentInfo  # Complete environment info\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": \"Environment does not exist\"\n        }\nConstraints:\n    - The environment must exist. If not, returns error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "environment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "environment_id"
+        ]
+      }
+    },
+    {
+      "name": "get_agent_position",
+      "description": "Query the current position and environment of a specified agent.\n\nArgs:\n    agent_id (str): The unique identifier of the agent.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"position\": str,\n            \"environment_id\": str\n        }\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # If agent_id does not exist.\n    }\n\nConstraints:\n    - agent_id must exist in the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agent_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id"
+        ]
+      }
+    },
+    {
+      "name": "get_agent_knowledge_base",
+      "description": "Retrieve the knowledge base of an agent.\n\nArgs:\n    agent_id (str): The unique identifier of the agent.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": Dict[str, Any]  # The agent's knowledge base\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description if agent does not exist\n    }\n\nConstraints:\n    - The agent with agent_id must exist in the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agent_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_agents",
+      "description": "Return IDs and summary information for all agents in the simulation.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AgentInfo],  # List of agent summaries, or empty if none\n    }\n\nNotes:\n    - This method does not filter or exclude any agents.\n    - All agent attributes as defined in AgentInfo are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_all_environments",
+      "description": "List all simulation environments with their associated properties.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[EnvironmentInfo]\n    }\n    - If no environments exist, \"data\" is an empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "move_agent",
+      "description": "Relocate a single agent to a new position in a specified environment.\n\nArgs:\n    agent_id (str): The unique id of the agent to move.\n    new_environment_id (str): The id of the target environment.\n    new_position (str): The new position of the agent within the environment.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Agent <agent_id> moved to <new_position> in environment <new_environment_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\nConstraints:\n    - Agent must exist.\n    - Environment must exist.\n    - An agent can only occupy one position in one environment at a time.\n    - The agent will only be present in the new environment after completion.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agent_id": {
+            "type": "string"
+          },
+          "new_environment_id": {
+            "type": "string"
+          },
+          "new_position": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id",
+          "new_environment_id",
+          "new_position"
+        ]
+      }
+    },
+    {
+      "name": "move_agents_batch",
+      "description": "Relocate multiple agents to new positions in the specified environment in one batch operation.\n\nArgs:\n    environment_id (str): The ID of the environment to move agents to.\n    agents_positions (List[Dict[str, str]]): Each dict contains:\n        - 'agent_id': str, the ID of the agent to move,\n        - 'position': str, the new position in the environment.\n\nReturns:\n    dict: \n        Success: { \"success\": True, \"message\": \"Moved N agents to environment <environment_id>.\" }\n        Failure: { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - The environment_id must exist.\n    - Each agent_id must exist.\n    - Each agent can only be referenced once in the batch.\n    - Agents are updated atomically (all or none).\n    - Updates agents' position and environment_id and updates agents_present in environments.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "environment_id": {
+            "type": "string"
+          },
+          "agents_positions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "environment_id",
+          "agents_positions"
+        ]
+      }
+    },
+    {
+      "name": "set_agent_action",
+      "description": "Set or update the current_action for the specified agent.\n\nArgs:\n    agent_id (str): Unique identifier of the agent.\n    action (str): Action string to set (e.g., 'Inspect').\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Agent <agent_id> action set to <action>\"\n            }\n        On error:\n            {\n                \"success\": False,\n                \"error\": <reason>\n            }\nConstraints:\n    - Agent must exist.\n    - Agent must be assigned to a valid environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agent_id": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id",
+          "action"
+        ]
+      }
+    },
+    {
+      "name": "update_agent_knowledge_base",
+      "description": "Add or modify entries in the specified agent's knowledge base.\nSupports references to other agents' actions/events (keys/values are flexible).\n\nArgs:\n    agent_id (str): The ID of the agent whose knowledge base is being updated.\n    knowledge_updates (Dict[str, Any]): Key-value pairs to update/add in the knowledge base.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Agent knowledge base updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - Agent must exist.\n    - Agent must exist within a valid environment (its environment_id in self.environments).\n    - Updates are persistent (merged into current knowledge_base).\n    - No exception raised on missing/extra keys: all are allowed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agent_id": {
+            "type": "string"
+          },
+          "knowledge_updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "agent_id",
+          "knowledge_updates"
+        ]
+      }
+    },
+    {
+      "name": "batch_update_agent_knowledge",
+      "description": "Apply multiple knowledge updates to one or more agents atomically.\n\nArgs:\n    updates (list): List of dicts, each with:\n        - 'agent_id' (str): Target agent's ID.\n        - 'knowledge_update' (dict): Key-value pairs to merge into agent's knowledge_base.\n\nReturns:\n    dict:\n        - On success:\n            { \"success\": True, \"message\": \"Successfully updated knowledge base for N agent(s)\" }\n        - On failure:\n            { \"success\": False, \"error\": str }\n\nConstraints:\n    - All specified agent_ids must exist; operation fails if any invalid.\n    - Each 'knowledge_update' must be a dict.\n    - Updates are persistent (write-through).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "updates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "agent_id": {
+                  "type": "string"
+                },
+                "knowledge_update": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "agent_id",
+                "knowledge_update"
+              ]
+            }
+          }
+        },
+        "required": [
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "create_agent",
+      "description": "Add a new agent to the simulation in a given environment and position.\n\nArgs:\n    agent_id (str): Unique identifier for the new agent.\n    environment_id (str): The environment where the agent should be placed.\n    position (str): The initial position for the agent in the environment.\n    current_action (str, optional): Initial action of the agent. Defaults to \"\".\n    knowledge_base (dict, optional): Initial knowledge base for the agent. Defaults to {}.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - agent_id must be unique in the system.\n    - environment_id must refer to a valid existing environment.\n    - Agent added to agents dict and to the environment's agents_present list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agent_id": {
+            "type": "string"
+          },
+          "environment_id": {
+            "type": "string"
+          },
+          "position": {
+            "type": "string"
+          },
+          "current_action": {
+            "type": "string"
+          },
+          "knowledge_base": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "agent_id",
+          "environment_id",
+          "position",
+          "current_action",
+          "knowledge_base"
+        ]
+      }
+    },
+    {
+      "name": "remove_agent",
+      "description": "Remove an agent from the simulation, including state and knowledge cleanup.\n\nArgs:\n    agent_id (str): The unique identifier of the agent to be removed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Agent <agent_id> removed from simulation.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - Agent must exist in the simulation.\n    - Agent is removed from self.agents and from its environment's agents_present list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agent_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id"
+        ]
+      }
+    },
+    {
+      "name": "add_agent_to_environment",
+      "description": "Adds an existing agent to the specified environment's presence list, enabling multi-environment\nplacement (agent can be 'present' in several environments simultaneously, but only one is its primary\nstate environment at any time).\n\nArgs:\n    agent_id (str): The identifier of the agent to add.\n    environment_id (str): The identifier of the environment to which to add the agent.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Agent <agent_id> added to environment <environment_id>\"\n    }\n    or (on error):\n    dict: {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - Agent and environment must both exist.\n    - Agent may already be in the environment; operation is idempotent.\n    - Does NOT change the agent's own environment_id or position.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agent_id": {
+            "type": "string"
+          },
+          "environment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id",
+          "environment_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_agent_from_environment",
+      "description": "Remove an agent from their current environment (for agent deactivation).\n\nArgs:\n    agent_id (str): The ID of the agent to remove from its environment.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Agent <agent_id> removed from environment <environment_id>.\"\n    } on success,\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    } on error.\n\nConstraints:\n    - The agent must exist.\n    - The agent must currently be in a valid environment to be removed from it.\n    - After removal, the agent's `environment_id` will be set to an empty string to indicate it is not in any environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agent_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id"
+        ]
+      }
+    }
+  ]
+}

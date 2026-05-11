@@ -1,0 +1,713 @@
+{
+  "env_name": "PersonalFinanceBudgetingApplication",
+  "description": "A personal finance budgeting application allows individuals to organize their finances by creating budgets, defining spending categories, and tracking planned and actual amounts over time. It maintains structured data about various budgets, category allocations, and transactions. The system supports operations such as querying, updating, and reporting financial details, providing users with clear insight into their financial health.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "email",
+          "account_status"
+        ]
+      }
+    },
+    "budgets": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "budget_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "period_type": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "budget_id",
+          "user_id",
+          "name",
+          "period_type",
+          "start_date",
+          "end_date"
+        ]
+      }
+    },
+    "categories": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id",
+          "name",
+          "description"
+        ]
+      }
+    },
+    "budget_category_allocations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "allocation_id": {
+            "type": "string"
+          },
+          "budget_id": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          },
+          "budgeted_amount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "allocation_id",
+          "budget_id",
+          "category_id",
+          "budgeted_amount"
+        ]
+      }
+    },
+    "transactions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "date": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "user_id",
+          "amount",
+          "date",
+          "category_id",
+          "description"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_name": [
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "list_budgets_for_user": [
+      "budgets",
+      "users"
+    ],
+    "get_budget_by_name_for_user": [
+      "budgets",
+      "users"
+    ],
+    "list_categories": [
+      "categories"
+    ],
+    "get_category_by_name": [
+      "categories"
+    ],
+    "list_budget_category_allocations": [
+      "budget_category_allocations",
+      "budgets"
+    ],
+    "get_budget_category_allocation": [
+      "budget_category_allocations"
+    ],
+    "get_allocated_amounts_for_budget_categories": [
+      "budget_category_allocations",
+      "budgets"
+    ],
+    "list_transactions_for_user": [
+      "transactions",
+      "users"
+    ],
+    "get_transactions_by_category": [
+      "categories",
+      "transactions",
+      "users"
+    ],
+    "get_total_spent_in_category_in_budget": [
+      "budgets",
+      "categories",
+      "transactions"
+    ],
+    "summarize_budget_vs_spend_for_user": [
+      "budget_category_allocations",
+      "budgets",
+      "categories",
+      "transactions",
+      "users"
+    ],
+    "create_budget": [
+      "budgets",
+      "users"
+    ],
+    "update_budget": [
+      "budgets"
+    ],
+    "delete_budget": [
+      "budget_category_allocations",
+      "budgets"
+    ],
+    "create_category": [
+      "categories"
+    ],
+    "update_category": [
+      "categories"
+    ],
+    "create_budget_category_allocation": [
+      "budget_category_allocations",
+      "budgets",
+      "categories"
+    ],
+    "update_budget_category_allocation": [
+      "budget_category_allocations"
+    ],
+    "delete_budget_category_allocation": [
+      "budget_category_allocations"
+    ],
+    "create_transaction": [
+      "categories",
+      "transactions",
+      "users"
+    ],
+    "update_transaction": [
+      "categories",
+      "transactions"
+    ],
+    "delete_transaction": [
+      "transactions"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_name",
+      "description": "Retrieve user information by exact user name.\n\nArgs:\n    name (str): The user's name (case-sensitive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo  # User details if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g., user not found\n    }\n\nNotes:\n    - Search is case-sensitive and returns the first user match if duplicates exist.\n    - Does not reveal users to unauthorized parties as privacy control is assumed handled externally.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user information by user id.\n\nArgs:\n    user_id (str): The unique identifier of a user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo  # User info dictionary\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g., \"User not found\"\n    }\n\nConstraints:\n    - Returns info for a single user by id.\n    - Fails if no user is found with the given id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_budgets_for_user",
+      "description": "List all budgets owned by the specified user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BudgetInfo]  # List of the user's budgets (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., user does not exist\n    }\n\nConstraints:\n    - Only budgets belonging to the user are returned (privacy).\n    - User must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_budget_by_name_for_user",
+      "description": "Retrieve the budget with a specific name for the given user.\n\nArgs:\n    user_id (str): The unique ID of the user.\n    budget_name (str): The name of the budget to retrieve.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"data\": BudgetInfo}\n        On failure:\n            {\"success\": False, \"error\": str}\n\nConstraints:\n    - Query is filtered per-user (privacy).\n    - The user must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "budget_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "budget_name"
+        ]
+      }
+    },
+    {
+      "name": "list_categories",
+      "description": "Retrieve all defined spending categories.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CategoryInfo],  # List of all categories, possibly empty\n    }\n\nConstraints:\n    - No user restriction; returns all categories in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_category_by_name",
+      "description": "Retrieve a category's info by its name.\n\nArgs:\n    name (str): The name of the category to retrieve.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": CategoryInfo  # the matching category's info\n            }\n        On failure (not found):\n            {\n                \"success\": False,\n                \"error\": \"Category not found\"\n            }\nConstraints:\n    - No specific constraints; matches the first category with the given name.\n    - Category names are assumed to be unique, or first found is returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "list_budget_category_allocations",
+      "description": "Retrieve all budget allocations (BudgetCategoryAllocationInfo) for the specified budget.\n\nArgs:\n    budget_id (str): The unique identifier for the budget.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BudgetCategoryAllocationInfo]  # possibly empty,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # error message if budget not found\n    }\n\nConstraints:\n    - The given budget_id must exist in the system.\n    - Returns all allocations that reference this budget_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "budget_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "budget_id"
+        ]
+      }
+    },
+    {
+      "name": "get_budget_category_allocation",
+      "description": "Retrieve a specific BudgetCategoryAllocation for a given budget and category.\n\nArgs:\n    budget_id (str): The ID of the budget.\n    category_id (str): The ID of the category.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": BudgetCategoryAllocationInfo  # The allocation details if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g. no allocation found\n    }\n\nConstraints:\n    - The allocation must exist for the given budget_id and category_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "budget_id": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "budget_id",
+          "category_id"
+        ]
+      }
+    },
+    {
+      "name": "get_allocated_amounts_for_budget_categories",
+      "description": "Get budgeted (allocated) amounts for the specified categories within the given budget.\n\nArgs:\n    budget_id (str): The ID of the budget to query.\n    category_ids (List[str]): List of category IDs to fetch allocations for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[dict]  # Each dict: {\"category_id\": str, \"budgeted_amount\": float}\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - budget_id must exist.\n    - Only allocations matching both budget_id and a category_id in category_ids are returned.\n    - Missing category_ids in allocations are silently omitted from results.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "budget_id": {
+            "type": "string"
+          },
+          "category_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "budget_id",
+          "category_ids"
+        ]
+      }
+    },
+    {
+      "name": "list_transactions_for_user",
+      "description": "List all transactions for a specified user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": List[TransactionInfo]\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"User does not exist\"\n            }\n\nConstraints:\n    - Only transactions corresponding to the given user ID are returned.\n    - Returns an empty list if user exists but has no transactions.\n    - Returns error if user ID is invalid (user does not exist).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_transactions_by_category",
+      "description": "Retrieve all transactions for a specific user associated with a specific category.\n\nArgs:\n    user_id (str): The user's unique identifier.\n    category_id (str): The category's unique identifier.\n\nReturns:\n    dict:\n        On success: {\n            \"success\": True,\n            \"data\": List[TransactionInfo]  # all transactions belonging to that user and category\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": str  # reason for failure\n        }\n\nConstraints:\n    - The user_id must exist in the users.\n    - The category_id must exist in the categories.\n    - Only transactions for that user and category are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "category_id"
+        ]
+      }
+    },
+    {
+      "name": "get_total_spent_in_category_in_budget",
+      "description": "Compute the total amount spent for a category within a specific budget's period.\n\nArgs:\n    budget_id (str): The ID of the budget in question.\n    category_id (str): The spending category to sum for.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"data\": {\"total_spent\": float}}\n        If budget or category not found:\n            {\"success\": False, \"error\": str}\n\nConstraints:\n    - Only consider transactions for the user owning the budget, during the period [start_date, end_date], and for the given category.\n    - Transactions outside this period, or belonging to a different user or category, must be excluded.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "budget_id": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "budget_id",
+          "category_id"
+        ]
+      }
+    },
+    {
+      "name": "summarize_budget_vs_spend_for_user",
+      "description": "Generate a report for a user's budgets showing planned (budgeted) vs. actual spending per category.\n\nArgs:\n    user_id (str): The user's unique identifier.\n\nReturns:\n    dict: {\n        'success': True,\n        'data': List[\n            {\n                'budget_id': str,\n                'budget_name': str,\n                'period_type': str,\n                'start_date': str,\n                'end_date': str,\n                'categories': List[\n                    {\n                        'category_id': str,\n                        'category_name': str,\n                        'category_description': str,\n                        'planned_amount': float,\n                        'actual_spent': float\n                    }\n                ]\n            }\n        ]\n    }\n    or\n    {\n        'success': False,\n        'error': str\n    }\nConstraints:\n    - Only considers budgets belonging to the given user.\n    - For each allocation, reports both planned and actual (transactions by the same user, category, and within the budget's dates).\n    - Ignores (skips) allocations with invalid category references.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "create_budget",
+      "description": "Create a new budget for the given user.\n\nArgs:\n    user_id (str): The owner's user ID.\n    name (str): Descriptive name of the budget.\n    period_type (str): Period type (e.g., \"monthly\").\n    start_date (str): Start date for the budget (format not validated here).\n    end_date (str): End date for the budget.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Budget created\",\n        \"budget_id\": <str>  # Unique id for the new budget\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <str>\n    }\n\nConstraints:\n    - The user must exist.\n    - Budget id is automatically generated to ensure uniqueness.\n    - Name, period_type, start_date, end_date must not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "period_type": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "period_type",
+          "start_date",
+          "end_date"
+        ]
+      }
+    },
+    {
+      "name": "update_budget",
+      "description": "Modify details (e.g., period, name) of an existing budget.\n\nArgs:\n    budget_id (str): The ID of the budget to modify.\n    name (str, optional): New name for the budget.\n    period_type (str, optional): New period type (e.g. 'monthly').\n    start_date (str, optional): New start date for the budget.\n    end_date (str, optional): New end date for the budget.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Budget updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\nConstraints:\n    - Only existing budgets can be updated.\n    - Only provided fields are updated.\n    - No update on 'budget_id' or 'user_id'.\n    - At least one updatable field must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "budget_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "period_type": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "budget_id",
+          "name",
+          "period_type",
+          "start_date",
+          "end_date"
+        ]
+      }
+    },
+    {
+      "name": "delete_budget",
+      "description": "Delete a budget and all associated BudgetCategoryAllocations.\n\nArgs:\n    budget_id (str): The ID of the budget to delete.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Budget and its allocations deleted.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Budget not found.\"\n            }\n\nConstraints:\n    - The budget must exist.\n    - All BudgetCategoryAllocations associated with this budget are removed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "budget_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "budget_id"
+        ]
+      }
+    },
+    {
+      "name": "create_category",
+      "description": "Create a new spending category.\n\nArgs:\n    category_id (str): Unique identifier for the category.\n    name (str): Name of the new category.\n    description (str): Description of the category.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Category created successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - category_id must be unique.\n    - name must be unique across all categories.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id",
+          "name",
+          "description"
+        ]
+      }
+    },
+    {
+      "name": "update_category",
+      "description": "Modify the details of an existing category.\n\nArgs:\n    category_id (str): The ID of the category to update.\n    name (str, optional): New name for the category.\n    description (str, optional): New description for the category.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Category updated successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure\"\n    }\n\nConstraints:\n    - category_id must exist in the categories dictionary.\n    - At least one of name or description should be provided to update.\n    - Silent on empty string handling; will allow (empty name/desc are permitted).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id",
+          "name",
+          "description"
+        ]
+      }
+    },
+    {
+      "name": "create_budget_category_allocation",
+      "description": "Create a new BudgetCategoryAllocation record.\n\nArgs:\n    allocation_id (str): Unique identifier for this budget allocation.\n    budget_id (str): Identifier of the Budget to allocate for (must exist).\n    category_id (str): Identifier of the Category (must exist).\n    budgeted_amount (float): Amount to allocate; must be non-negative.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Budget category allocation created successfully.\" }\n        - On failure: { \"success\": False, \"error\": \"Reason for failure\" }\n\nConstraints:\n    - allocation_id must be unique.\n    - budget_id must exist.\n    - category_id must exist.\n    - budgeted_amount cannot be negative.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "allocation_id": {
+            "type": "string"
+          },
+          "budget_id": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          },
+          "budgeted_amount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "allocation_id",
+          "budget_id",
+          "category_id",
+          "budgeted_amount"
+        ]
+      }
+    },
+    {
+      "name": "update_budget_category_allocation",
+      "description": "Update the budgeted amount for a category allocation.\n\nArgs:\n    allocation_id (str): The ID of the allocation to update.\n    budgeted_amount (float): The new budgeted amount. Must be non-negative.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Budgeted amount updated successfully.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": <reason>\n            }\n\nConstraints:\n    - budgeted_amount must not be negative.\n    - allocation_id must refer to a valid allocation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "allocation_id": {
+            "type": "string"
+          },
+          "budgeted_amount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "allocation_id",
+          "budgeted_amount"
+        ]
+      }
+    },
+    {
+      "name": "delete_budget_category_allocation",
+      "description": "Remove a category allocation from a budget.\n\nArgs:\n    allocation_id (str): The unique ID of the allocation to be deleted.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Budget category allocation deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The allocation_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "allocation_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "allocation_id"
+        ]
+      }
+    },
+    {
+      "name": "create_transaction",
+      "description": "Add a new income or expense transaction, assigning it to a user and category.\n\nArgs:\n    user_id (str): ID of the user who made the transaction (must exist).\n    amount (float): Amount of the transaction (negative for expense, positive for income).\n    date (str): Date of transaction (ISO format string preferred).\n    category_id (str): Category of the transaction (must exist).\n    description (str): Optional text describing the transaction.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Transaction created (id: ...)\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - user_id must reference an existing user\n    - category_id must reference an existing category\n    - amount must be a float\n    - transaction_id must be unique",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "date": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "amount",
+          "date",
+          "category_id",
+          "description"
+        ]
+      }
+    },
+    {
+      "name": "update_transaction",
+      "description": "Modify details of a transaction: amount, description, and/or category.\n\nArgs:\n    transaction_id (str): The ID of the transaction to update.\n    amount (float, optional): The new transaction amount.\n    description (str, optional): The new description.\n    category_id (str, optional): The new category ID (must reference a valid category).\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Transaction updated successfully\" }\n        - On failure: { \"success\": False, \"error\": \"Reason for failure\" }\n\nConstraints:\n    - transaction_id must reference an existing transaction.\n    - If provided, category_id must reference an existing category.\n    - Only updates provided fields.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "description": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "amount",
+          "description",
+          "category_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_transaction",
+      "description": "Remove a transaction from the system.\n\nArgs:\n    transaction_id (str): The unique identifier of the transaction to be deleted.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Transaction deleted successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Transaction not found.\"\n    }\n\nConstraints:\n    - Transaction must exist in the system to be deleted.\n    - No references need updating and no cascade effect.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id"
+        ]
+      }
+    }
+  ]
+}

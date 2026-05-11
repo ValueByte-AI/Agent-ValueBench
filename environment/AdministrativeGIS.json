@@ -1,0 +1,546 @@
+{
+  "env_name": "AdministrativeGIS",
+  "description": "An administrative GIS with API access is a system that stores, organizes, and serves structured geographic and administrative division data—such as provinces and districts—over networked interfaces. It maintains up-to-date records with unique identifiers, supports hierarchical queries, and is often used for analytics, service delivery, or geolocated business operations. Users may programmatically retrieve, update, or analyze regional data to support organizational or governmental needs.",
+  "initial_parameter_schema": {
+    "countries": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "country_id": {
+            "type": "string"
+          },
+          "country_code": {
+            "type": "string"
+          },
+          "country_nam": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "country_id",
+          "country_code",
+          "country_nam"
+        ]
+      }
+    },
+    "provinces": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "province_id": {
+            "type": "string"
+          },
+          "province_code": {
+            "type": "string"
+          },
+          "province_name": {
+            "type": "string"
+          },
+          "country_id": {
+            "type": "string"
+          },
+          "last_updated": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "province_id",
+          "province_code",
+          "province_name",
+          "country_id",
+          "last_updated"
+        ]
+      }
+    },
+    "districts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "district_id": {
+            "type": "string"
+          },
+          "district_code": {
+            "type": "string"
+          },
+          "district_name": {
+            "type": "string"
+          },
+          "province_id": {
+            "type": "string"
+          },
+          "last_updated": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "district_id",
+          "district_code",
+          "district_name",
+          "province_id",
+          "last_updated"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_country_by_name": [
+      "countries"
+    ],
+    "get_country_by_code": [
+      "countries"
+    ],
+    "get_provinces_by_country_id": [
+      "countries",
+      "provinces"
+    ],
+    "get_province_by_id": [
+      "provinces"
+    ],
+    "get_province_by_code": [
+      "provinces"
+    ],
+    "get_districts_by_province_id": [
+      "districts",
+      "provinces"
+    ],
+    "get_district_by_id": [
+      "districts"
+    ],
+    "get_district_by_code": [
+      "districts"
+    ],
+    "list_all_countries": [
+      "countries"
+    ],
+    "list_provinces": [
+      "provinces"
+    ],
+    "list_districts": [
+      "districts"
+    ],
+    "add_country": [
+      "countries"
+    ],
+    "update_country": [
+      "countries"
+    ],
+    "delete_country": [
+      "countries",
+      "districts",
+      "provinces"
+    ],
+    "add_province": [
+      "countries",
+      "provinces"
+    ],
+    "update_province": [
+      "countries",
+      "provinces"
+    ],
+    "delete_province": [
+      "districts",
+      "provinces"
+    ],
+    "add_district": [
+      "districts",
+      "provinces"
+    ],
+    "update_district": [
+      "districts",
+      "provinces"
+    ],
+    "delete_district": [
+      "districts"
+    ],
+    "synchronize_last_updated": [
+      "districts",
+      "provinces"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_country_by_name",
+      "description": "Retrieve information about a country using its country_nam.\n\nArgs:\n    country_nam (str): The exact name of the country to look up (case-sensitive match).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": CountryInfo  # The complete country information record\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason why the country could not be found\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "country_nam": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "country_nam"
+        ]
+      }
+    },
+    {
+      "name": "get_country_by_code",
+      "description": "Retrieve information about a country using its country_code.\n\nArgs:\n    country_code (str): The unique country code to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": CountryInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # reason (\"Country code not found\")\n    }\n\nConstraints:\n    - country_code must uniquely identify a country.\n    - If country code does not exist, return an error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "country_code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "country_code"
+        ]
+      }
+    },
+    {
+      "name": "get_provinces_by_country_id",
+      "description": "List all provinces associated with a given country_id.\n\nArgs:\n    country_id (str): The unique identifier for the country.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": List[ProvinceInfo]  # List may be empty if no provinces\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Error reason, e.g. \"Country does not exist\"\n            }\n\nConstraints:\n    - Province.country_id must match the argument.\n    - country_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "country_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "country_id"
+        ]
+      }
+    },
+    {
+      "name": "get_province_by_id",
+      "description": "Retrieve province details by province_id.\n\nArgs:\n    province_id (str): Unique identifier for the province.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ProvinceInfo  # Province metadata if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If not found, returns descriptive error message\n    }\n\nConstraints:\n    - province_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "province_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "province_id"
+        ]
+      }
+    },
+    {
+      "name": "get_province_by_code",
+      "description": "Retrieve province details using the specified province_code.\n\nArgs:\n    province_code (str): The code of the province to retrieve.\n\nReturns:\n    dict:\n      - If found: {\"success\": True, \"data\": ProvinceInfo}\n      - If not found: {\"success\": False, \"error\": \"Province with the given code does not exist\"}\n\nConstraints:\n    - province_code is assumed to be unique among all provinces.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "province_code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "province_code"
+        ]
+      }
+    },
+    {
+      "name": "get_districts_by_province_id",
+      "description": "Retrieve all districts belonging to the specified province_id.\n\nArgs:\n    province_id (str): The province's unique identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DistrictInfo]  # List of DistrictInfo dicts (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n- The provided province_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "province_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "province_id"
+        ]
+      }
+    },
+    {
+      "name": "get_district_by_id",
+      "description": "Retrieve details for a district specified by its unique district_id.\n\nArgs:\n    district_id (str): The unique identifier of the district.\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"data\": DistrictInfo  # The dictionary of district details\n        }\n    On failure:\n        {\n            \"success\": False,\n            \"error\": str  # Reason, e.g. 'District not found'\n        }\n\nConstraints:\n    - The district_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "district_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "district_id"
+        ]
+      }
+    },
+    {
+      "name": "get_district_by_code",
+      "description": "Retrieve district details by district_code.\n\nArgs:\n    district_code (str): The unique code of the district.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": DistrictInfo,  # All info for the found district\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"District code not found\"\n    }\n\nConstraints:\n    - Assumes district_code is unique within the dataset.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "district_code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "district_code"
+        ]
+      }
+    },
+    {
+      "name": "list_all_countries",
+      "description": "Retrieve the list of all countries in the GIS system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CountryInfo]  # List of all countries (may be empty)\n    }\n\nConstraints:\n    - None (read-only operation).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_provinces",
+      "description": "Retrieve the list of all provinces in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ProvinceInfo],  # List of all ProvinceInfo dicts, or empty list if none\n    }\n\nConstraints:\n    - None specific for listing; all provinces should be returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_districts",
+      "description": "Retrieve the list of all districts present in the system.\n\nArgs:\n    None.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DistrictInfo]  # All district records (possibly empty)\n    }\n\nConstraints:\n    - No constraints/validation needed; all present districts are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "add_country",
+      "description": "Add a new country to the system.\n\nArgs:\n    country_id (str): Unique identifier for the new country.\n    country_code (str): Unique code for the new country.\n    country_nam (str): Name for the new country (spelling as per spec).\n\nReturns:\n    dict: On success,\n        {\n            \"success\": True,\n            \"message\": \"Country <country_nam> added with ID <country_id>.\"\n        }\n          On failure,\n        {\n            \"success\": False,\n            \"error\": str  # Description of the error (e.g. duplicate id or code)\n        }\nConstraints:\n    - country_id must be globally unique.\n    - country_code must be globally unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "country_id": {
+            "type": "string"
+          },
+          "country_code": {
+            "type": "string"
+          },
+          "country_nam": {
+            "type": "string"
+          }
+        },
+        "allOf": [
+          {
+            "required": [
+              "country_id"
+            ]
+          },
+          {
+            "anyOf": [
+              {
+                "required": [
+                  "country_code"
+                ]
+              },
+              {
+                "required": [
+                  "country_nam"
+                ]
+              }
+            ]
+          }
+        ],
+        "required": [
+          "country_id"
+        ]
+      }
+    },
+    {
+      "name": "update_country",
+      "description": "Update details of an existing country.\n\nArgs:\n    country_id (str): The unique ID of the country to update (required).\n    country_code (str, optional): New country code, must be unique if provided.\n    country_nam (str, optional): New country name if provided.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Country updated successfully.\" }\n        On failure: { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - country_id must exist in self.countries.\n    - If country_code is provided, it must be unique among all countries.\n    - At least one field (country_code or country_nam) must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "country_id": {
+            "type": "string"
+          },
+          "country_code": {
+            "type": "string"
+          },
+          "country_nam": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "country_id",
+          "country_code",
+          "country_nam"
+        ]
+      }
+    },
+    {
+      "name": "delete_country",
+      "description": "Remove a country by its country_id, ensuring all associated provinces and districts\nare also removed for referential integrity.\n\nArgs:\n    country_id (str): The unique identifier of the country to delete.\n\nReturns:\n    dict: Success or failure information.\n        On success:\n        {\n            \"success\": True,\n            \"message\": \"Country (<country_id>) and all associated provinces and districts deleted.\"\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": \"Country not found.\"\n        }\n\nConstraints:\n    - All provinces with this country_id and all their districts are removed.\n    - No references are left dangling.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "country_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "country_id"
+        ]
+      }
+    },
+    {
+      "name": "add_province",
+      "description": "Add a new province under a specific country.\n\nArgs:\n    province_id (str): Unique identifier for the new province.\n    province_code (str): Province code (unique under the country).\n    province_name (str): Name of the province.\n    country_id (str): ID of the country this province belongs to.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Province added successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - country_id must refer to an existing country.\n    - province_id and province_code must be unique within the specified country.\n    - last_updated set to the next controlled benchmark timestamp.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "province_id": {
+            "type": "string"
+          },
+          "province_code": {
+            "type": "string"
+          },
+          "province_name": {
+            "type": "string"
+          },
+          "country_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "province_id",
+          "province_code",
+          "province_name",
+          "country_id"
+        ]
+      }
+    },
+    {
+      "name": "update_province",
+      "description": "Update details of a province: name, code, and/or country association.\nEnforces uniqueness of province_code, existence of province and referenced country,\nand ensures last_updated is set to the next controlled benchmark timestamp.\n\nArgs:\n    province_id (str): The unique identifier for the province to update.\n    province_name (str, optional): The new name for the province.\n    province_code (str, optional): The new code for the province (must be unique).\n    country_id (str, optional): The new country association (must reference existing country).\n\nReturns:\n    dict: \n        On success:\n            { \"success\": True, \"message\": \"Province updated successfully.\" }\n        On failure:\n            { \"success\": False, \"error\": <str describing reason> }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "province_id": {
+            "type": "string"
+          },
+          "province_name": {
+            "type": "string"
+          },
+          "province_code": {
+            "type": "string"
+          },
+          "country_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "province_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_province",
+      "description": "Delete a province and all its districts, maintaining a valid administrative hierarchy.\n\nArgs:\n    province_id (str): The unique identifier of the province to be deleted.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Province <province_id> and all its districts deleted\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - If the province does not exist, no action is taken and failure is returned.\n    - Deleting a province removes all districts whose province_id matches.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "province_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "province_id"
+        ]
+      }
+    },
+    {
+      "name": "add_district",
+      "description": "Add a new district under the given province.\n\nArgs:\n    district_id (str): Unique identifier for the district.\n    district_code (str): Unique district code (must be unique within its province).\n    district_name (str): Name of the district.\n    province_id (str): ID of the province to associate with.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"District added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Province must exist.\n    - district_id must be unique among all districts.\n    - district_code must be unique within the given province (among districts in that province).\n    - Sets last_updated to the next controlled benchmark timestamp.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "district_id": {
+            "type": "string"
+          },
+          "district_code": {
+            "type": "string"
+          },
+          "district_name": {
+            "type": "string"
+          },
+          "province_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "district_id",
+          "district_code",
+          "district_name",
+          "province_id"
+        ]
+      }
+    },
+    {
+      "name": "update_district",
+      "description": "Update details of a district (name, code, association to province), enforcing code/ID uniqueness within the \nnew parent province and integrity of associations; also updates 'last_updated' synchronization timestamp.\n\nArgs:\n    district_id (str): The unique identifier of the district to update.\n    district_name (Optional[str]): New name for the district (optional).\n    district_code (Optional[str]): New code for the district (optional; must be unique within new province).\n    province_id (Optional[str]): New province association for the district (optional; must exist).\n\nReturns:\n    dict: \n      - On success: { \"success\": True, \"message\": \"District updated successfully.\" }\n      - On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - The district must exist.\n    - If province_id changes, the new province_id must exist.\n    - district_code must be unique within the target province.\n    - On any update, 'last_updated' is updated to the next controlled benchmark timestamp.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "district_id": {
+            "type": "string"
+          },
+          "district_name": {
+            "type": "string"
+          },
+          "district_code": {
+            "type": "string"
+          },
+          "province_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "district_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_district",
+      "description": "Removes a district from the system.\n\nArgs:\n    district_id (str): The unique identifier of the district to be deleted.\n\nReturns:\n    dict:\n        Success: { \"success\": True, \"message\": \"District {district_id} deleted successfully\" }\n        Failure: { \"success\": False, \"error\": \"District not found\" }\n\nConstraints:\n    - The district_id must exist in the system for deletion.\n    - Deletion is immediate and permanent.\n    - This operation does not affect provinces or countries.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "district_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "district_id"
+        ]
+      }
+    },
+    {
+      "name": "synchronize_last_updated",
+      "description": "Manually refresh the 'last_updated' field for provinces or districts using the controlled benchmark clock.\n\nArgs:\n    entity_type (str): Type of the entity to update, either 'province' or 'district'.\n    ids (List[str]): List of province_ids or district_ids to synchronize.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"message\": \"last_updated successfully synchronized for N {entity_type}s.\"\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": \"reason\"\n        }\n\nConstraints:\n    - entity_type must be 'province' or 'district'.\n    - IDs must exist in the corresponding collection.\n    - If an ID is not found, it will be ignored and the count will be for actually-updated rows.\n    - On empty ID input list, returns success with count 0.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entity_type": {
+            "type": "string"
+          },
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "entity_type",
+          "ids"
+        ]
+      }
+    }
+  ]
+}

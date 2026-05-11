@@ -1,0 +1,283 @@
+{
+  "env_name": "CommunityMembershipManagementSystem",
+  "description": "A community membership management system is designed to store and organize information about individual members of a specific group or organization. It maintains records such as member profiles, join dates, unique identifiers, and other relevant metadata, while supporting typical operations like searching, sorting, and updating member data. This environment enables efficient administration, communication, and decision-making for community leaders and members alike.",
+  "initial_parameter_schema": {
+    "members": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "member_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "join_date": {
+            "type": "string"
+          },
+          "profile_metadata": {
+            "type": "object"
+          },
+          "membership_sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "member_id",
+          "name",
+          "contact_info",
+          "join_date",
+          "profile_metadata",
+          "membership_sta"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_member_by_id": [
+      "members"
+    ],
+    "list_members": [
+      "members"
+    ],
+    "search_members": [
+      "members"
+    ],
+    "count_members": [
+      "members"
+    ],
+    "add_member": [
+      "members"
+    ],
+    "update_member_profile": [
+      "members"
+    ],
+    "remove_member": [
+      "members"
+    ],
+    "update_membership_status": [
+      "members"
+    ],
+    "update_profile_metadata": [
+      "members"
+    ],
+    "bulk_remove_members": [
+      "members"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_member_by_id",
+      "description": "Retrieve the full profile information for a specific member using their unique member_id.\n\nArgs:\n    member_id (str): The unique identifier for the member.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": MemberInfo    # full profile of the member\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str         # Error description if not found\n    }\n\nConstraints:\n    - member_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "member_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "member_id"
+        ]
+      }
+    },
+    {
+      "name": "list_members",
+      "description": "Retrieve all member records with optional filtering, sorting, and result limiting.\n\nArgs:\n    filter_by (Dict[str, Any], optional): Filter dict where key is an attribute name and value is the value to match. Supports top-level MemberInfo keys and nested profile metadata keys via dot notation such as 'profile_metadata.account_type'.\n    sort_by (list of str, optional): List of top-level attribute names to sort by (priority order).\n    sort_order (str, optional): 'asc' or 'desc', defaults to 'asc'.\n    limit (int, optional): Maximum number of results to return. If None, returns all.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MemberInfo],  # Possibly empty if no match.\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Can filter by any top-level attribute in MemberInfo and nested profile_metadata keys via dot notation.\n    - Can sort by top-level MemberInfo attributes.\n    - Non-existent filter/sort attribute will return an error.\n    - Limit must be a positive integer if provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filter_by": {
+            "type": "object"
+          },
+          "sort_by": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sort_order": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "integer"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "search_members",
+      "description": "Retrieve members matching the given search criteria (partial name, contact_info, membership status),\nwith optional sorting and result limiting.\n\nArgs:\n    name_contains (str): Case-insensitive substring for name (partial match).\n    contact_info (str): Exact match for contact_info (empty to ignore).\n    membership_sta (str): Exact match for membership_sta (empty to ignore).\n    sort_by (str): Attribute name to sort by ('member_id', 'name', 'contact_info', 'join_date', 'membership_sta').\n    ascending (bool): Sort order; True for ascending, False for descending.\n    limit (int): Maximum number of results to return (0 or less means no limit).\n\nReturns:\n    dict: \n    {\n        \"success\": True,\n        \"data\": List[MemberInfo],  # possibly empty\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\nConstraints:\n    - Members can be filtered and sorted by any attribute.\n    - Partial matching supported only on 'name'.\n    - Limit is optional; <= 0 means no limit.\n    - Sorting by unsupported field returns failure.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name_contains": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "membership_sta": {
+            "type": "string"
+          },
+          "sort_by": {
+            "type": "string"
+          },
+          "ascending": {
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "integer"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "count_members",
+      "description": "Return the total number of members in the community, or matching specific criteria.\n\nArgs:\n    criteria (dict, optional): A dictionary of attribute-value pairs to filter members.\n        Example: {\"membership_sta\": \"active\", \"profile_metadata.role\": \"admin\"}\n        Supports matching on top-level keys and nested 'profile_metadata' keys as dot notation.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"count\": int  # Number of matching members\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - If criteria includes attribute names not in MemberInfo or its subfields, returns error.\n    - If no criteria is provided, count all members.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "criteria": {
+            "type": "object"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "add_member",
+      "description": "Create a new member profile with a unique member_id.\n\nArgs:\n    member_id (str): Unique identifier for the member.\n    name (str): Member's name.\n    contact_info (str): Member's contact information.\n    profile_metadata (dict, optional): Additional profile metadata.\n    membership_sta (str, optional): Membership status string. Defaults to 'active'.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Member <member_id> added.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - member_id must be unique.\n    - join_date is assigned as the current time at creation (ISO string).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "member_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "profile_metadata": {
+            "type": "object"
+          },
+          "membership_sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "member_id",
+          "name",
+          "contact_info"
+        ]
+      }
+    },
+    {
+      "name": "update_member_profile",
+      "description": "Update editable attributes of an existing member. Only the following fields are mutable:\n- name\n- contact_info\n- profile_metadata (merged: updates/overwrites provided keys)\n- membership_sta (membership_status)\n\nArgs:\n    member_id (str): Unique identifier for the member (required, immutable).\n    name (str, optional): New name.\n    contact_info (str, optional): New contact info.\n    profile_metadata (dict, optional): Dict of metadata to update/merge.\n    membership_sta (str, optional): New membership status value.\n\nReturns:\n    dict:\n        On success: {\"success\": True, \"message\": \"...\"}\n        On failure: {\"success\": False, \"error\": \"...\"}\nConstraints:\n    - member_id and join_date cannot be modified (immutable).\n    - Nonexistent member_id is an error.\n    - If no editable attribute provided, operation is a no-op and still succeeds.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "member_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "profile_metadata": {
+            "type": "object"
+          },
+          "membership_sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "member_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_member",
+      "description": "Remove a member from the system by their member_id.\n\nArgs:\n    member_id (str): The unique identifier of the member to remove.\n\nReturns:\n    dict: \n        - If the member exists:\n            {\"success\": True, \"message\": \"Member <member_id> removed successfully.\"}\n        - If the member does not exist:\n            {\"success\": False, \"error\": \"Member not found.\"}\n\nConstraints:\n    - The member_id must exist in the system for removal.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "member_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "member_id"
+        ]
+      }
+    },
+    {
+      "name": "update_membership_status",
+      "description": "Change the membership_sta (membership status) field of a member.\n\nArgs:\n    member_id (str): The unique identifier of the member.\n    new_status (str): The new status to assign (e.g., 'active', 'suspended', 'expired').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Membership status updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<error message>\"\n    }\n\nConstraints:\n    - Only updates the 'membership_sta' field for the member.\n    - Fails if member_id does not exist.\n    - join_date and other fields are not modified.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "member_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "member_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "update_profile_metadata",
+      "description": "Update only the profile_metadata attribute for the specified member.\n\nArgs:\n    member_id (str): The unique identifier of the member to update.\n    profile_metadata (Dict[str, Any]): The new metadata dictionary to assign.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Profile metadata updated for member <member_id>.\" }\n        On failure: { \"success\": False, \"error\": \"Member not found.\" }\n\nConstraints:\n    - Only the profile_metadata attribute is modified.\n    - No other member attributes (including join_date) are altered.\n    - Member must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "member_id": {
+            "type": "string"
+          },
+          "profile_metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "member_id",
+          "profile_metadata"
+        ]
+      }
+    },
+    {
+      "name": "bulk_remove_members",
+      "description": "Remove multiple members from the system based on a list of member_ids and/or filter criteria.\n\nArgs:\n    member_ids (list[str], optional): List of member IDs to remove.\n    filter_criteria (dict, optional): Dictionary of attribute-value pairs to filter members for removal.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"X members removed\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error\n    }\n\nConstraints:\n    - At least one of member_ids or filter_criteria must be provided.\n    - Does nothing (but succeeds) if there are no matches.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "member_ids": {
+            "type": "object"
+          },
+          "filter_criteria": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "member_ids",
+          "filter_criteria"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,430 @@
+{
+  "env_name": "HospitalDoctorDirectorySystem",
+  "description": "A hospital doctor directory system maintains an up-to-date structured list of all medical professionals affiliated with a hospital. It stores details such as names, specialties, contact information, and departmental associations. The system supports searching, filtering, and retrieving doctor profiles based on specialty, location, or other criteria, enabling efficient resource location and referral management.",
+  "initial_parameter_schema": {
+    "doctors": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "doctor_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "specialty": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "contact_information": {
+            "type": "object",
+            "properties": {
+              "phone": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "phone",
+              "email"
+            ]
+          },
+          "department_id": {
+            "type": "string"
+          },
+          "office_location": {
+            "type": "string"
+          },
+          "sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "doctor_id",
+          "name",
+          "specialty",
+          "contact_information",
+          "department_id",
+          "office_location",
+          "sta"
+        ]
+      }
+    },
+    "departments": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "department_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "department_id",
+          "name",
+          "description"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_doctor_by_id": [
+      "doctors"
+    ],
+    "list_all_doctors": [
+      "doctors"
+    ],
+    "filter_doctors_by_specialty": [
+      "doctors"
+    ],
+    "filter_doctors_by_department": [
+      "departments",
+      "doctors"
+    ],
+    "filter_doctors_by_office_location": [
+      "doctors"
+    ],
+    "get_department_by_id": [
+      "departments"
+    ],
+    "list_all_departments": [
+      "departments"
+    ],
+    "add_doctor": [
+      "departments",
+      "doctors"
+    ],
+    "update_doctor_profile": [
+      "departments",
+      "doctors"
+    ],
+    "remove_doctor": [
+      "doctors"
+    ],
+    "add_department": [
+      "departments"
+    ],
+    "update_department": [
+      "departments"
+    ],
+    "remove_department": [
+      "departments",
+      "doctors"
+    ],
+    "assign_doctor_to_department": [
+      "departments",
+      "doctors"
+    ],
+    "update_doctor_specialties": [
+      "doctors"
+    ],
+    "update_doctor_contact_information": [
+      "doctors"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_doctor_by_id",
+      "description": "Retrieve the complete profile (DoctorInfo) of a doctor given their doctor_id.\n\nArgs:\n    doctor_id (str): Unique identifier of the doctor.\n\nReturns:\n    dict:\n        - If found: { \"success\": True, \"data\": DoctorInfo }\n        - If not found: { \"success\": False, \"error\": \"Doctor not found\" }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "doctor_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "doctor_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_doctors",
+      "description": "Retrieve a list of all doctors (with their complete profiles) in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DoctorInfo]  # May be empty if no doctors exist\n    }\n\nConstraints:\n    - None for this operation; lists all doctors regardless of their profile content.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "filter_doctors_by_specialty",
+      "description": "Return a list of doctors (DoctorInfo) matching a given specialty.\n\nArgs:\n    specialty (str): The specialty to filter doctors by.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DoctorInfo],  # Possibly empty if no matches\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If input is invalid\n    }\n\nConstraints:\n    - specialty must be a non-empty string.\n    - Each doctor entry is checked case-insensitively against their specialties list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "specialty": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "specialty"
+        ]
+      }
+    },
+    {
+      "name": "filter_doctors_by_department",
+      "description": "Returns all doctors belonging to the specified department.\n\nArgs:\n    department_id (str): The identifier of the department.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DoctorInfo],  # May be empty if no doctors found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., \"Department does not exist\"\n    }\n\nConstraints:\n    - department_id must correspond to an existing department.\n    - Only doctors whose department_id equals the specified value are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "department_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "department_id"
+        ]
+      }
+    },
+    {
+      "name": "filter_doctors_by_office_location",
+      "description": "Return a list of doctors (DoctorInfo) whose office_location matches the specified office_location.\n\nArgs:\n    office_location (str): The office location value to filter the doctors by.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DoctorInfo],  # All matching doctors (empty if none)\n    }\n\nNotes:\n    - Exact match is used for office_location.\n    - No error if the office_location is not present for any doctor; result will be an empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "office_location": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "office_location"
+        ]
+      }
+    },
+    {
+      "name": "get_department_by_id",
+      "description": "Retrieve details about a department, given its department_id.\n\nArgs:\n    department_id (str): The unique identifier of the department.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": DepartmentInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Department not found\"\n    }\n\nConstraints:\n    - The provided department_id must exist in the hospital directory system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "department_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "department_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_departments",
+      "description": "Retrieve a list of all departments in the hospital.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DepartmentInfo],  # All department profiles, may be empty\n    }\n\nConstraints:\n    - Returns all existing departments with their information.\n    - No parameters or filtering.\n    - Safe if there are zero departments (returns empty list).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "add_doctor",
+      "description": "Add a new doctor to the directory. All fields required except department_id, which may be None.\n\nArgs:\n    doctor_id (str): Unique doctor identifier.\n    name (str): Full name.\n    specialty (list of str): At least one specialty required.\n    contact_information (dict): Must contain at least 'phone' and 'email'.\n    office_location (str): Office location string.\n    sta (str): Status/attribute string.\n    department_id (str or None): Optional department; must exist if provided.\n\nReturns:\n    dict: { \"success\": True, \"message\": \"Doctor added successfully\" }\n          or { \"success\": False, \"error\": <str> }\n\nConstraints:\n    - doctor_id must be unique.\n    - specialty must be a nonempty list of strings.\n    - contact_information must have 'phone' and 'email'.\n    - department_id (if provided) must exist in departments.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "doctor_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "specialty": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "contact_information": {
+            "type": "object"
+          },
+          "office_location": {
+            "type": "string"
+          },
+          "sta": {
+            "type": "string"
+          },
+          "department_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "doctor_id",
+          "name",
+          "specialty",
+          "contact_information",
+          "office_location",
+          "sta"
+        ]
+      }
+    },
+    {
+      "name": "update_doctor_profile",
+      "description": "Edit an existing doctor's details (name, specialties, contact info, department, office location, etc.),\nenforcing constraints.\n\nArgs:\n    doctor_id (str): Unique identifier of the doctor to update.\n    updates (dict): Fields and their new values (can include: name, specialty, contact_information,\n                    department_id, office_location, sta).\n\nReturns:\n    dict:\n        On success: {\"success\": True, \"message\": \"Doctor profile updated.\"}\n        On failure: {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - Doctor must exist (doctor_id present).\n    - If 'specialty' is updated, must be a non-empty list.\n    - If 'department_id' is updated, must be None or valid department_id.\n    - contact_information, if provided, should include required fields (\"phone\", \"email\").",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "doctor_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "doctor_id",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "remove_doctor",
+      "description": "Remove a doctor's entry from the directory.\n\nArgs:\n    doctor_id (str): The unique identifier of the doctor to remove.\n\nReturns:\n    dict:\n        { \"success\": True, \"message\": \"Doctor <doctor_id> removed from directory.\" }\n        or\n        { \"success\": False, \"error\": \"Doctor not found.\" }\n\nConstraints:\n    - doctor_id must exist in self.doctors to be removed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "doctor_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "doctor_id"
+        ]
+      }
+    },
+    {
+      "name": "add_department",
+      "description": "Add a new department to the system.\n\nArgs:\n    department_id (str): Unique identifier for the department.\n    name (str): Name of the department.\n    description (str): Description of the department.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Department added successfully\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - department_id must be unique (not already present in self.departments)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "department_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "department_id",
+          "name",
+          "description"
+        ]
+      }
+    },
+    {
+      "name": "update_department",
+      "description": "Edit the attributes (name and/or description) of an existing department.\n\nArgs:\n    department_id (str): Unique identifier for the department to update (must exist).\n    name (str, optional): New name for the department.\n    description (str, optional): New description for the department.\n\nReturns:\n    dict:\n        {\"success\": True, \"message\": \"Department updated successfully\"}\n        or\n        {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - department_id must exist in the system.\n    - At least one updatable field (name or description) must be provided.\n    - department_id itself cannot be changed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "department_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "department_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_department",
+      "description": "Remove a department from the system by its ID.\nAny doctors associated with this department will have their department reference cleared (set to None).\n\nArgs:\n    department_id (str): The unique identifier for the department to remove.\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"message\": f\"Department {department_id} removed.\"}\n        - On failure: {\"success\": False, \"error\": \"Department not found.\"}\n\nConstraints:\n    - Doctors can have zero or one department; on removal, any doctor's department_id matching the removed one is set to None.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "department_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "department_id"
+        ]
+      }
+    },
+    {
+      "name": "assign_doctor_to_department",
+      "description": "Assign a doctor to a department (or unassign if department_id is None), ensuring only zero or one department is assigned.\n\nArgs:\n    doctor_id (str): The unique identifier of the doctor to update.\n    department_id (Optional[str]): The department's unique identifier to assign, or None to unassign.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Description of successful assignment/unassignment.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (not found, etc.)\n    }\n\nConstraints:\n    - doctor_id must exist in the system.\n    - department_id must exist in the system if not None.\n    - Each doctor may only be assigned zero or one department.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "doctor_id": {
+            "type": "string"
+          },
+          "department_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "doctor_id"
+        ]
+      }
+    },
+    {
+      "name": "update_doctor_specialties",
+      "description": "Update the list of a doctor's specialties, ensuring at least one specialty remains.\n\nArgs:\n    doctor_id (str): The unique identifier for the doctor.\n    new_specialties (list[str]): The new list of specialties to assign (must not be empty).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Doctor specialties updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<error message>\"\n    }\n\nConstraints:\n    - The specified doctor must exist.\n    - The new list must contain at least one specialty (non-empty strings).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "doctor_id": {
+            "type": "string"
+          },
+          "new_specialties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "doctor_id",
+          "new_specialties"
+        ]
+      }
+    },
+    {
+      "name": "update_doctor_contact_information",
+      "description": "Update a doctor's contact information, ensuring data is complete and accurate.\n\nArgs:\n    doctor_id (str): Unique identifier for the doctor.\n    contact_information (dict): Dictionary with keys 'phone', 'email' (and possibly more).\n\nReturns:\n    dict:\n      - Success: { \"success\": True, \"message\": \"Contact information updated for doctor <doctor_id>\" }\n      - Failure: { \"success\": False, \"error\": str (reason for failure) }\n\nConstraints:\n    - Doctor must exist.\n    - contact_information must contain non-empty 'phone' and 'email' fields.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "doctor_id": {
+            "type": "string"
+          },
+          "contact_information": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "doctor_id",
+          "contact_information"
+        ]
+      }
+    }
+  ]
+}

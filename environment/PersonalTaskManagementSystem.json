@@ -1,0 +1,770 @@
+{
+  "env_name": "PersonalTaskManagementSystem",
+  "description": "A personal task management application like Todoist maintains an organized list of tasks, which are often grouped into projects and can include additional metadata, such as due dates, priorities, and labels. The environment supports adding, editing, completing, deleting, and searching for tasks, allowing users to manage their personal or professional responsibilities efficiently. State is preserved per user account, enabling persistent tracking and organization of ongoing and completed work.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "preference": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "email",
+          "preference"
+        ]
+      }
+    },
+    "tasks": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "due_date": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "integer"
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "completed_at": {
+            "type": "string"
+          },
+          "ord": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "task_id",
+          "user_id",
+          "project_id",
+          "content",
+          "due_date",
+          "priority",
+          "labels",
+          "status",
+          "created_at",
+          "completed_at",
+          "ord"
+        ]
+      }
+    },
+    "projects": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "ord": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "project_id",
+          "user_id",
+          "name",
+          "description",
+          "archived",
+          "ord"
+        ]
+      }
+    },
+    "labels": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "label_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "label_id",
+          "user_id",
+          "name"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_email": [
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "list_user_tasks": [
+      "tasks",
+      "users"
+    ],
+    "list_user_projects": [
+      "projects",
+      "users"
+    ],
+    "list_user_labels": [
+      "labels",
+      "users"
+    ],
+    "get_task_by_id": [
+      "tasks"
+    ],
+    "list_tasks_by_status": [
+      "tasks",
+      "users"
+    ],
+    "list_tasks_by_project": [
+      "projects",
+      "tasks",
+      "users"
+    ],
+    "list_tasks_by_label": [
+      "labels",
+      "tasks",
+      "users"
+    ],
+    "get_project_by_id": [
+      "projects"
+    ],
+    "get_label_by_id": [
+      "labels"
+    ],
+    "list_tasks_sorted_by_order": [
+      "projects",
+      "tasks"
+    ],
+    "list_active_tasks": [
+      "projects",
+      "tasks",
+      "users"
+    ],
+    "add_task": [
+      "labels",
+      "projects",
+      "tasks",
+      "users"
+    ],
+    "edit_task": [
+      "labels",
+      "projects",
+      "tasks"
+    ],
+    "complete_task": [
+      "tasks"
+    ],
+    "delete_task": [
+      "tasks"
+    ],
+    "restore_task": [
+      "projects",
+      "tasks"
+    ],
+    "reorder_tasks_within_project": [
+      "projects",
+      "tasks"
+    ],
+    "add_project": [
+      "projects",
+      "users"
+    ],
+    "archive_project": [
+      "projects"
+    ],
+    "delete_project": [
+      "projects",
+      "tasks"
+    ],
+    "edit_project": [
+      "projects"
+    ],
+    "add_label": [
+      "labels",
+      "users"
+    ],
+    "edit_label": [
+      "labels"
+    ],
+    "delete_label": [
+      "labels",
+      "tasks"
+    ],
+    "purge_completed_or_deleted_tasks": [
+      "tasks",
+      "users"
+    ],
+    "batch_update_task_status": [
+      "tasks"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_email",
+      "description": "Retrieve user information by email address.\n\nArgs:\n    email (str): The email address of the user to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo  # User info if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - Returns the first user matched by email.\n    - Email must be provided (non-empty).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user information for a given user ID.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo,  # User info dictionary\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message (e.g., 'User not found')\n    }\n\nConstraints:\n    - Returns user info if the user_id exists, otherwise returns error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_user_tasks",
+      "description": "Retrieve all tasks (with full metadata) that belong to the given user.\n\nArgs:\n    user_id (str): The unique ID of the user.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": List[TaskInfo] }\n            (all tasks for the user, may be empty)\n        - On failure: { \"success\": False, \"error\": str }\n            (e.g., if user is not found)\n\nConstraints:\n    - user_id must exist in the system.\n    - Returns all kinds of tasks (regardless of status).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_user_projects",
+      "description": "Retrieve all projects for a given user.\n\nArgs:\n    user_id (str): The user's unique identifier.\n\nReturns:\n    dict: \n        - If user exists: { \"success\": True, \"data\": List[ProjectInfo] }\n        - If user does not exist: { \"success\": False, \"error\": \"User does not exist\" }\nConstraints:\n    - The user_id must exist in the system.\n    - Returned projects are those where project['user_id'] == user_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_user_labels",
+      "description": "Retrieve all labels for a given user.\n\nArgs:\n    user_id (str): The user's unique ID.\n\nReturns:\n    dict: \n        { \"success\": True, \"data\": List[LabelInfo] }\n        if user exists,\n        or\n        { \"success\": False, \"error\": \"User does not exist\" }\n        if user_id is invalid.\n\nConstraints:\n    - Only labels belonging to the given user_id are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_task_by_id",
+      "description": "Fetch details of a specific task by its ID.\n\nArgs:\n    task_id (str): The unique identifier for the task.\n\nReturns:\n    dict: \n        Success: { \"success\": True, \"data\": TaskInfo }\n        Failure: { \"success\": False, \"error\": \"Task not found\" }\n\nConstraints:\n    - The task with the specified task_id must exist in self.tasks.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id"
+        ]
+      }
+    },
+    {
+      "name": "list_tasks_by_status",
+      "description": "Retrieve all tasks for a specific user filtered by given status ('active', 'completed', 'deleted').\n\nArgs:\n    user_id (str): The ID of the user whose tasks are to be queried.\n    status (str): The status to filter by ('active', 'completed', 'deleted').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TaskInfo]  # May be empty if no tasks with the given status\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message specifying the problem\n    }\n\nConstraints:\n    - The user must exist.\n    - Status must be one of the allowed statuses: 'active', 'completed', 'deleted'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "list_tasks_by_project",
+      "description": "Retrieve all tasks (with metadata) under a particular project for a user.\n\nArgs:\n    user_id (str): The user's ID.\n    project_id (str): The project's ID.\n\nReturns:\n    dict: \n        success (bool), \n        data (List[TaskInfo]) if successful (may be empty if no tasks), \n        or error (str) if user/project ID is invalid or permissions violated.\n\nConstraints:\n    - The project must exist and belong to the given user.\n    - Only tasks that match the given user ID and project ID are returned.\n    - Tasks of any status are included.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "project_id"
+        ]
+      }
+    },
+    {
+      "name": "list_tasks_by_label",
+      "description": "Retrieve all tasks for the specified user associated with the specified label.\n\nArgs:\n    user_id (str): The ID of the user.\n    label_id (str): The ID of the label.\n\nReturns:\n    dict:\n        - On success: {\n              \"success\": True,\n              \"data\": List[TaskInfo]  # May be empty if no tasks found\n          }\n        - On failure: {\n              \"success\": False,\n              \"error\": \"<reason>\"\n          }\n\nConstraints:\n    - The user must exist.\n    - The label must exist and must belong to the user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "label_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "label_id"
+        ]
+      }
+    },
+    {
+      "name": "get_project_by_id",
+      "description": "Fetch details of a specific project by its ID.\n\nArgs:\n    project_id (str): Unique identifier of the project.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": ProjectInfo  # Project details\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Project not found\"\n            }\n\nConstraints:\n    - The given project_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id"
+        ]
+      }
+    },
+    {
+      "name": "get_label_by_id",
+      "description": "Fetch details of a specific label by its ID.\n\nArgs:\n    label_id (str): The unique identifier of the label.\n\nReturns:\n    dict: \n        - If found: { \"success\": True, \"data\": LabelInfo }\n        - If not found: { \"success\": False, \"error\": \"Label not found\" }\n\nConstraints:\n    - label_id must exist in self.labels.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "label_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "label_id"
+        ]
+      }
+    },
+    {
+      "name": "list_tasks_sorted_by_order",
+      "description": "Retrieve all tasks belonging to the specified project, sorted by their 'ord' field.\n\nArgs:\n    project_id (str): The ID of the project for which to list the tasks.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TaskInfo]  # Tasks in the project sorted by 'ord' (ascending)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason (e.g., project does not exist)\n    }\n\nConstraints:\n    - The provided project_id must exist.\n    - All tasks with this project_id are included, regardless of status.\n    - Returned list is sorted by 'ord' ascending.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id"
+        ]
+      }
+    },
+    {
+      "name": "list_active_tasks",
+      "description": "Fetch all active tasks for a given user that are not in archived projects.\n\nArgs:\n    user_id (str): The user's unique identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TaskInfo]  # Active tasks in non-archived projects\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The user must exist.\n    - Only tasks with 'status' == 'active' and NOT in archived projects are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "add_task",
+      "description": "Create a new task in a specified project for a specific user.\n\nArgs:\n    user_id (str): The ID of the user.\n    project_id (str): The ID of the project under which to create the task.\n    content (str): The task content/description (required, non-empty).\n    due_date (str): (Optional) Due date (string).\n    priority (int): (Optional) Task priority (default 1).\n    labels (List[str]): (Optional) List of label_ids (must belong to user).\n    ord (int): (Optional) The intended order in project (0-based), or append at end if None.\n\nReturns:\n    dict:\n        - On success: {\n            \"success\": True,\n            \"message\": \"Task created\",\n            \"task_id\": ...,\n            \"task\": <TaskInfo>\n          }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - User must exist.\n    - Project must exist and be owned by user.\n    - All label_ids (if any) must exist and be owned by user.\n    - Content cannot be empty.\n    - Task ord will be handled so project task order is preserved.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "due_date": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "integer"
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "ord": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "user_id",
+          "project_id",
+          "content"
+        ]
+      }
+    },
+    {
+      "name": "edit_task",
+      "description": "Update content, due date, priority, labels, or project of an existing task.\n\nArgs:\n    task_id (str): The ID of the task to update.\n    content (str, optional): New content for the task.\n    due_date (str, optional): New due date.\n    priority (int, optional): New priority (integer).\n    labels (list, optional): List of new label_ids (strings).\n    project_id (str, optional): New project_id to move the task to.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Task updated successfully\"\n      }\n      or\n      {\n        \"success\": False,\n        \"error\": <reason>\n      }\n\nConstraints:\n    - Task must exist and not be deleted.\n    - If project_id is changed, new project must exist and belong to the same user.\n    - If labels are updated, all labels must exist and be owned by the task's user.\n    - Only properties supplied (not None) are updated.\n    - Task ordering ('ord') will be assigned appropriately if project changes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "due_date": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "integer"
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "project_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id"
+        ]
+      }
+    },
+    {
+      "name": "complete_task",
+      "description": "Marks the specified task as completed by:\n    - Setting its status to 'completed'\n    - Updating the completed_at timestamp to current time (UTC)\n\nArgs:\n    task_id (str): The unique identifier for the task to complete.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Task marked as completed\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Task must exist.\n    - Task must not be already completed or deleted.\n    - Only updates status and completed_at.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_task",
+      "description": "Mark the specified task as 'deleted' and remove it from all active lists.\n\nArgs:\n    task_id (str): The ID of the task to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Task marked as deleted and removed from active lists.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (not found, already deleted, etc.)\n    }\n\nConstraints:\n    - Task must exist.\n    - Cannot delete a task that is already deleted.\n    - Task status must be set to 'deleted'.\n    - Only tasks with status other than 'deleted' can be deleted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id"
+        ]
+      }
+    },
+    {
+      "name": "restore_task",
+      "description": "Change the status of a “deleted” task back to “active”.\n\nArgs:\n    task_id (str): Unique identifier of the task to restore.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Task restored to active status\" }\n        On failure:\n            { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Task must exist.\n    - Task must have status \"deleted\".\n    - Should not restore to \"active\" if the parent project is archived.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id"
+        ]
+      }
+    },
+    {
+      "name": "reorder_tasks_within_project",
+      "description": "Adjust the relative ordering (\"ord\") of all tasks within a given project.\n\nArgs:\n    project_id (str): The project whose tasks are to be reordered.\n    task_id_order (list of str): List of task IDs (within project) in desired order. All active, non-deleted tasks must be present and appear once.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Tasks within project reordered successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Project must exist.\n    - All specified task_ids must belong to the project and exist, status not 'deleted'.\n    - Duplicate task IDs in input are not allowed.\n    - All active (status != 'deleted') tasks for the project must be included in task_id_order (no missing/extra).\n    - The ord field for each task is updated to their position (starting from 1).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string"
+          },
+          "task_id_order": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "project_id",
+          "task_id_order"
+        ]
+      }
+    },
+    {
+      "name": "add_project",
+      "description": "Create a new project for a user.\n\nArgs:\n    user_id (str): ID of the user who will own the project.\n    name (str): Project name (should not be empty).\n    description (str, optional): Text description (default: '').\n    archived (bool, optional): If the project is initially archived (default: False).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Project <name> created.\",\n        \"project\": ProjectInfo\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - User must exist.\n    - Each project is scoped to a single user.\n    - Project ordering ('ord') must be preserved; new project should be last (max ord + 1 for this user).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "archived": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "user_id",
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "archive_project",
+      "description": "Archives a project by setting its 'archived' property to True.\nOptionally handles contained tasks as per user settings (not implemented; tasks remain unchanged).\n\nArgs:\n    project_id (str): The ID of the project to archive.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Project archived successfully.\" }\n        On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - The project must exist.\n    - If already archived, inform of no action.\n    - Contained tasks are unaffected unless user settings specify otherwise (not implemented).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_project",
+      "description": "Remove a project from the system.\nOptionally applies an action to all tasks within the project:\n    - 'delete' (default): mark all contained tasks as deleted.\n    - 'archive': mark all contained tasks as completed.\n    - 'leave': leave tasks status unchanged.\n\nArgs:\n    project_id (str): The ID of the project to delete.\n    policy_on_tasks (str, optional): What to do with contained tasks.\n        Must be one of {'delete', 'archive', 'leave'}.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": str }\n        - On failure: { \"success\": False, \"error\": str }\n\nConstraints:\n    - Project must exist.\n    - Project and its tasks must be correctly updated.\n    - Only valid policy_on_tasks values are accepted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string"
+          },
+          "policy_on_tasks": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id"
+        ]
+      }
+    },
+    {
+      "name": "edit_project",
+      "description": "Modify the name and/or description of an existing project.\n\nArgs:\n    project_id (str): The unique ID of the project to edit.\n    name (str, optional): New name for the project. If None, name is not changed.\n    description (str, optional): New description for the project. If None, description is not changed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Project edited successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description, e.g., project not found or no fields provided\n    }\n\nConstraints:\n    - The project must exist.\n    - At least one of name or description must be provided to update.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id"
+        ]
+      }
+    },
+    {
+      "name": "add_label",
+      "description": "Create a new label for the user.\n\nArgs:\n    user_id (str): The ID of the user for whom the label is created.\n    name (str): The desired label name (must be unique for this user).\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Label '<name>' created for user <user_id>.\" }\n        On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - user_id must exist in self.users.\n    - label names must be unique per user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "edit_label",
+      "description": "Change the name of an existing label.\n\nArgs:\n    label_id (str): The ID of the label to edit.\n    new_name (str): The new name to set for the label.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Label name updated\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - label_id must exist.\n    - new_name must not be empty.\n    - (Optional) Uniqueness of label name per user is not enforced here.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "label_id": {
+            "type": "string"
+          },
+          "new_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "label_id",
+          "new_name"
+        ]
+      }
+    },
+    {
+      "name": "delete_label",
+      "description": "Remove a label from the user's workspace and from all associated tasks.\n\nArgs:\n    label_id (str): The ID of the label to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Label deleted and removed from all tasks.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Label does not exist.\"\n    }\n\nConstraints:\n    - Label must exist.\n    - Removes label from all tasks of the associated user.\n    - Only modifies tasks belonging to the label's user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "label_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "label_id"
+        ]
+      }
+    },
+    {
+      "name": "purge_completed_or_deleted_tasks",
+      "description": "Permanently remove all tasks for the given user that are marked as 'completed' or 'deleted'.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"message\": \"Purged N completed or deleted tasks for user <user_id>\"\n            }\n        - On failure (e.g., user does not exist):\n            {\n                \"success\": False,\n                \"error\": \"User does not exist\"\n            }\n\nConstraints:\n    - Only tasks belonging to the specified user are affected.\n    - Only tasks with status 'completed' or 'deleted' are purged.\n    - Other users' tasks are not affected.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "batch_update_task_status",
+      "description": "Set the status for multiple tasks in a batch (e.g., mark multiple tasks as deleted or completed).\n\nArgs:\n    task_ids (list of str): List of task IDs to update.\n    new_status (str): The status to set. Must be one of 'active', 'completed', 'deleted'.\n\nReturns:\n    dict:\n      On success:\n        {\n          \"success\": True,\n          \"message\": \"N tasks updated to status '<new_status>'\"\n        }\n      On failure:\n        {\n          \"success\": False,\n          \"error\": \"Error message\"\n        }\nConstraints:\n    - Each task_id must exist in the system.\n    - The new_status must be a valid status: 'active', 'completed', 'deleted'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_ids",
+          "new_status"
+        ]
+      }
+    }
+  ]
+}

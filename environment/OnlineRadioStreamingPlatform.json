@@ -1,0 +1,490 @@
+{
+  "env_name": "OnlineRadioStreamingPlatform",
+  "description": "An online radio streaming platform maintains a catalog of radio stations, including metadata like streaming URLs, genres, and popularity indices. It supports operations such as searching, ranking, and curating stations for display on user-facing pages, keeping track of current featured and trending content. The platform typically enables listeners to discover, select, and play streamed audio directly from an accessible web or app interface.",
+  "initial_parameter_schema": {
+    "stations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "station_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "genre": {
+            "type": "string"
+          },
+          "streaming_url": {
+            "type": "string"
+          },
+          "popularity_index": {
+            "type": "number"
+          },
+          "is_featured": {
+            "type": "boolean"
+          },
+          "is_trending": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "station_id",
+          "name",
+          "genre",
+          "streaming_url",
+          "popularity_index",
+          "is_featured",
+          "is_trending",
+          "description"
+        ]
+      }
+    },
+    "featured_stations": {
+      "type": "object",
+      "properties": {
+        "station_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "display_position": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "update_time": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "station_ids",
+        "display_position",
+        "update_time"
+      ]
+    },
+    "trending_stations": {
+      "type": "object",
+      "properties": {
+        "station_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "update_time": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "station_ids",
+        "update_time"
+      ]
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "listening_history": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "genre_preference": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_featured_stations": [
+      "featured_stations"
+    ],
+    "get_trending_stations": [
+      "trending_stations"
+    ],
+    "get_station_by_id": [
+      "stations"
+    ],
+    "list_all_stations": [
+      "stations"
+    ],
+    "list_stations_by_genre": [
+      "stations"
+    ],
+    "get_station_genres": [
+      "stations"
+    ],
+    "get_station_popularity_ranking": [
+      "stations"
+    ],
+    "get_user_info": [
+      "users"
+    ],
+    "get_valid_stations": [
+      "stations"
+    ],
+    "get_station_status": [
+      "stations"
+    ],
+    "get_user_personalized_recommendations": [
+      "stations",
+      "trending_stations",
+      "users"
+    ],
+    "update_featured_stations": [
+      "featured_stations",
+      "stations"
+    ],
+    "update_trending_stations": [
+      "stations",
+      "trending_stations"
+    ],
+    "add_radio_station": [
+      "stations"
+    ],
+    "update_radio_station": [
+      "stations"
+    ],
+    "remove_radio_station": [
+      "featured_stations",
+      "stations",
+      "trending_stations"
+    ],
+    "update_station_popularity": [
+      "stations"
+    ],
+    "update_user_listening_history": [
+      "stations",
+      "users"
+    ],
+    "update_user_genre_preference": [
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_featured_stations",
+      "description": "Retrieve the current list of featured stations, including station IDs, display order, and update time.\n\nArgs:\n    None\n\nReturns:\n    dict:\n      On success:\n         {\n             \"success\": True,\n             \"data\": FeaturedStationsInfo\n         }\n      On failure:\n         {\n             \"success\": False,\n             \"error\": str\n         }\n\nNotes:\n    - Resulting FeaturedStationsInfo will always include keys: station_ids (list), display_position (list), update_time (str).\n    - No permissions or station validation are performed in this query operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_trending_stations",
+      "description": "Retrieve the current list of trending station IDs and their update time.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": TrendingStationsInfo  # station_ids (List[str]), update_time (str)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\nNotes:\n    - The trending stations list may be empty if no stations are currently trending.\n    - Does not check station validity (assumed to be handled during trending list update).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_station_by_id",
+      "description": "Retrieve the full metadata of a radio station given its station_id.\n\nArgs:\n    station_id (str): The unique identifier of the station.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": RadioStationInfo    # If found, full station metadata\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str                # If not found, reason string\n    }\n\nConstraints:\n    - Station must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "station_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "station_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_stations",
+      "description": "Retrieve metadata for all radio stations registered on the platform.\n\nArgs:\n    None\n\nReturns:\n    dict:\n    {\n        \"success\": True,\n        \"data\": List[RadioStationInfo]\n    }\n    If there are no radio stations, the data list will be empty.\n\nConstraints:\n    - Includes all registered stations, regardless of validity or status flags.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_stations_by_genre",
+      "description": "Retrieve all radio stations with a given genre.\n\nArgs:\n    genre (str): The station genre to filter by.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[RadioStationInfo],  # List of matching stations (may be empty)\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Error description if genre argument is missing/invalid\n        }\n\nConstraints:\n    - The genre string must be provided (non-empty).\n    - Result does not check for genre validity against the platform's set, just matches.\n    - Returns all stations with genre equal to input.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "genre": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "genre"
+        ]
+      }
+    },
+    {
+      "name": "get_station_genres",
+      "description": "Retrieve the full set of unique, valid genres supported by the platform.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str],  # Sorted list of unique genres in platform,\n    }\n\nConstraints:\n    - Genres are drawn from station records on the platform.\n    - May return empty list if there are no stations.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_station_popularity_ranking",
+      "description": "Retrieve a ranking of stations by their popularity_index, descending (most popular first).\n\nArgs:\n    None.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[RadioStationInfo]  # List of stations sorted by popularity_index descending.\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Only if no stations present (unlikely).\n        }\n\nConstraints:\n    - Only stations with a valid (non-empty) streaming_url are included.\n    - No duplicate stations in the result.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_user_info",
+      "description": "Retrieve a user's information, including listening history and genre preferences.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": UserInfo\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"User not found\"\n            }\n\nConstraints:\n    - User must exist in the system for this operation to succeed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_valid_stations",
+      "description": "Retrieve all 'valid' (active and streamable) stations eligible for curation.\nA station is considered valid if its 'streaming_url' is a non-empty string.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RadioStationInfo]  # List of valid station infos (possibly empty)\n    }\n\nConstraints:\n    - Only stations with a non-empty streaming_url are included.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_station_status",
+      "description": "Check if a given station is currently active/valid (has a non-empty streaming URL).\n\nArgs:\n    station_id (str): The unique identifier of the radio station.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": { \"station_id\": ..., \"is_valid\": bool }\n            }\n        If station does not exist:\n            {\n                \"success\": False,\n                \"error\": \"Station not found\"\n            }\n\nConstraints:\n    - Station is valid only if it exists and has a non-empty streaming_url.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "station_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "station_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_personalized_recommendations",
+      "description": "Retrieve a personalized list of recommended radio stations for a user,\nbased on their listening history and genre preferences.\n\nArgs:\n    user_id (str): The user's unique identifier.\n    max_results (int): Maximum number of recommendations (default: 10).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RadioStationInfo],  # List of recommended stations (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason why recommendations could not be generated\n    }\n\nConstraints:\n    - User must exist.\n    - Only valid (active, has non-empty streaming_url) stations are recommended.\n    - No duplicates in recommendations.\n    - Recommendations should prioritize genre preferences and novelty.\n    - Recommendations should be at most 'max_results' long.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "max_results": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "update_featured_stations",
+      "description": "Update the platform’s featured stations list and their display order.\n\nArgs:\n    station_ids (List[str]):\n        Ordered list of station IDs to be featured (no duplicates allowed).\n    display_position (Optional[List[int]]):\n        Display order for each station (must match length of station_ids). If None, will use default sequential ordering.\n    update_time (Optional[str]):\n        ISO update timestamp. If None, set to current UTC time.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Featured stations updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Only valid (active) stations with a non-empty streaming URL may be featured.\n    - Station IDs must exist.\n    - No duplicate stations in the list.\n    - station_ids and display_position (if given) must be same length.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "station_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "display_position": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "update_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "station_ids"
+        ]
+      }
+    },
+    {
+      "name": "update_trending_stations",
+      "description": "Update the trending stations list using popularity_index (e.g., top N).\nOnly valid (active) stations with streaming URLs are eligible.\nSets 'is_trending' in each RadioStationInfo accordingly.\nTrendingStationsInfo is updated, including update_time.\n\nArgs:\n    top_n (int): Number of trending stations to select (default 10).\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"message\": \"Trending stations updated successfully\"}\n        - On failure: {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - Only valid stations with streaming URLs may be trending.\n    - Trending list has finite size (top_n).\n    - No station repeats in trending.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "top_n": {
+            "type": "integer"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "add_radio_station",
+      "description": "Add a new radio station with specified metadata to the station catalog.\n\nArgs:\n    station_id (str): Unique ID for the station (must not already exist).\n    name (str): Human-readable station name.\n    genre (str): Station genre (should be a valid genre if enforced).\n    streaming_url (str): The stream URL for this station (must be non-empty).\n    popularity_index (float, optional): Defaults to 0.0.\n    is_featured (bool, optional): Whether the station is currently featured. Defaults to False.\n    is_trending (bool, optional): Whether the station is currently trending. Defaults to False.\n    description (str, optional): Short station description.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Radio station added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - station_id must be unique.\n    - streaming_url must be non-empty.\n    - Only valid (active) stations with streaming URLs allowed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "station_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "genre": {
+            "type": "string"
+          },
+          "streaming_url": {
+            "type": "string"
+          },
+          "popularity_index": {
+            "type": "number"
+          },
+          "is_featured": {
+            "type": "boolean"
+          },
+          "is_trending": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "station_id",
+          "name",
+          "genre",
+          "streaming_url"
+        ]
+      }
+    },
+    {
+      "name": "update_radio_station",
+      "description": "Modify metadata (such as name, genre, url, etc.) or status (is_featured, is_trending) of an existing radio station.\n\nArgs:\n    station_id (str): Unique station identifier (must already exist).\n    update_data (dict): Fields and new values to update. Allowed keys:\n        'name', 'genre', 'streaming_url', 'popularity_index',\n        'is_featured', 'is_trending', 'description'\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Station updated successfully\" }\n        On error: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Cannot update station_id.\n    - Genre (if provided) must be valid (if genre set known, else accept any).\n    - Streaming URL (if provided) must be non-empty string.\n    - Only defined fields may be updated; must provide at least one updatable field.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "station_id": {
+            "type": "string"
+          },
+          "update_data": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "station_id",
+          "update_data"
+        ]
+      }
+    },
+    {
+      "name": "remove_radio_station",
+      "description": "Remove a radio station from the catalog (fully deletes station entry), and cleans up its presence from\nfeatured and trending lists.\n\nArgs:\n    station_id (str): The unique identifier of the radio station to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Station <station_id> removed from catalog.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<error_reason>\"\n    }\n\nConstraints:\n    - Can only remove stations that exist in the catalog.\n    - Station must also be removed from featured and trending station lists.\n    - No lingering references in curated lists.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "station_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "station_id"
+        ]
+      }
+    },
+    {
+      "name": "update_station_popularity",
+      "description": "Adjust a station's popularity index based on new listening activity.\n\nArgs:\n    station_id (str): Unique identifier of the station.\n    delta_popularity (float): Amount to increment (or decrement) the popularity index.\n\nReturns:\n    dict: {\n        \"success\": True, \n        \"message\": \"Popularity index updated successfully.\"\n    }\n    or\n    dict: {\n        \"success\": False,\n        \"error\": str  # Reason for failure (station not found, invalid, etc.)\n    }\n\nConstraints:\n    - Station must exist in the platform catalog.\n    - Station must be valid (active; streaming_url is present and non-empty).\n    - The updated popularity_index must remain >= 0.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "station_id": {
+            "type": "string"
+          },
+          "delta_popularity": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "station_id",
+          "delta_popularity"
+        ]
+      }
+    },
+    {
+      "name": "update_user_listening_history",
+      "description": "Append station_ids to a user's listening history for personalization and statistics.\n\nArgs:\n    user_id (str): ID of the user whose history to update.\n    station_ids (List[str]): List of station IDs to append to the user's listening history.\n\nReturns:\n    dict: \n        Success: {\n            \"success\": True,\n            \"message\": \"Appended N stations to user's listening history.\"\n        }\n        Failure: {\n            \"success\": False,\n            \"error\": \"<reason>\"\n        }\n\nConstraints:\n    - User must exist.\n    - All station_ids must correspond to existing stations.\n    - If user's listening_history is missing, initialize it as an empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "station_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "user_id",
+          "station_ids"
+        ]
+      }
+    },
+    {
+      "name": "update_user_genre_preference",
+      "description": "Add or modify the genre preferences for a user profile.\n\nArgs:\n    user_id (str): Unique user identifier.\n    genres (list of str): List of genre strings to record as user preferences.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"User genre preference updated.\" }\n        On error: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - User must exist.\n    - Genres (if an allowed genres set exists on self) must be drawn from the fixed genre set.\n    - Genres list must be a list of non-empty strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "genres": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "user_id",
+          "genres"
+        ]
+      }
+    }
+  ]
+}

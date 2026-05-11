@@ -1,0 +1,453 @@
+{
+  "env_name": "TrafficManagementSystem",
+  "description": "A Traffic Management System tracks road networks, ongoing incidents, and traffic alerts, maintaining up-to-date information about road conditions and potential hazards. It supports querying for affected routes, alert details, and severity levels, assisting both travelers and city planners in route optimization and incident response. Its state includes road identities, alert records, timestamps, and severity classifications.",
+  "initial_parameter_schema": {
+    "roads": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "road_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "road_id",
+          "name",
+          "type",
+          "status"
+        ]
+      }
+    },
+    "alerts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "alert_id": {
+            "type": "string"
+          },
+          "road_id": {
+            "type": "string"
+          },
+          "severity_level": {
+            "type": "string"
+          },
+          "alert_type": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "description": {
+            "type": "string"
+          },
+          "active_status": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "alert_id",
+          "road_id",
+          "severity_level",
+          "alert_type",
+          "timestamp",
+          "description",
+          "active_status"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "list_all_roads": [
+      "roads"
+    ],
+    "get_road_by_id": [
+      "roads"
+    ],
+    "list_all_alerts": [
+      "alerts"
+    ],
+    "list_active_alerts": [
+      "alerts"
+    ],
+    "get_alert_by_id": [
+      "alerts"
+    ],
+    "get_alerts_for_road": [
+      "alerts",
+      "roads"
+    ],
+    "get_active_alerts_for_road": [
+      "alerts",
+      "roads"
+    ],
+    "get_roads_with_active_alerts": [
+      "alerts",
+      "roads"
+    ],
+    "get_max_severity_for_road": [
+      "alerts",
+      "roads"
+    ],
+    "get_severity_ordering": [],
+    "get_ordered_roads_by_alert_severity": [
+      "alerts",
+      "roads"
+    ],
+    "get_alerts_by_severity": [
+      "alerts",
+      "roads"
+    ],
+    "create_road": [
+      "roads"
+    ],
+    "update_road_status": [
+      "roads"
+    ],
+    "create_traffic_alert": [
+      "alerts",
+      "roads"
+    ],
+    "update_traffic_alert": [
+      "alerts",
+      "roads"
+    ],
+    "deactivate_alert": [
+      "alerts"
+    ],
+    "activate_alert": [
+      "alerts"
+    ],
+    "delete_alert": [
+      "alerts"
+    ]
+  },
+  "tools": [
+    {
+      "name": "list_all_roads",
+      "description": "Retrieve all roads in the road network, including their identifiers and statuses.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RoadInfo]  # List of road info dicts (may be empty if no roads in the network)\n    }\n\nConstraints:\n    - No input parameters.\n    - No error cases, returns an empty list if there are no roads.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_road_by_id",
+      "description": "Retrieve detailed information about a specific road by road_id.\n\nArgs:\n    road_id (str): Unique identifier for the road.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": RoadInfo  # The road's information\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"Road not found\"\n    }\n\nConstraints:\n    - road_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "road_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "road_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_alerts",
+      "description": "Retrieve the complete list of all traffic alerts in the system, regardless of active_status.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TrafficAlertInfo]   # List of all traffic alerts (may be empty if no alerts exist)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_active_alerts",
+      "description": "Retrieve a list of all currently active (active_status=True) traffic alerts.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TrafficAlertInfo],  # All traffic alert infos where active_status == True\n    }\n    If none found, data will be an empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_alert_by_id",
+      "description": "Retrieve full information for a specific traffic alert given its alert_id.\n\nArgs:\n    alert_id (str): The unique identifier of the traffic alert.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": TrafficAlertInfo\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": \"Alert not found\"\n        }\n\nConstraints:\n    - The alert must exist in the system (self.alerts).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alert_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "alert_id"
+        ]
+      }
+    },
+    {
+      "name": "get_alerts_for_road",
+      "description": "Retrieve a list of all alerts associated with a specific road.\n\nArgs:\n    road_id (str): The identifier of the road.\n    active_only (bool, optional): If True, only include alerts which are currently active.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[TrafficAlertInfo],  # All matching alerts (may be empty)\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str,  # e.g. \"Road ID not found\"\n            }\n\nConstraints:\n    - road_id must exist in the system.\n    - If active_only, only include alerts where active_status==True.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "road_id": {
+            "type": "string"
+          },
+          "active_only": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "road_id"
+        ]
+      }
+    },
+    {
+      "name": "get_active_alerts_for_road",
+      "description": "Retrieve all currently active alerts (TrafficAlertInfo) for a given road_id.\n\nArgs:\n    road_id (str): The unique identifier of the road whose alerts are requested.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TrafficAlertInfo]  # Zero or more active alerts for this road\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str                     # Reason: e.g. road_id does not exist\n    }\n\nConstraints:\n    - The specified road_id must exist in the system.\n    - Only active alerts (active_status == True) are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "road_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "road_id"
+        ]
+      }
+    },
+    {
+      "name": "get_roads_with_active_alerts",
+      "description": "Returns all roads (as RoadInfo) that have one or more active alerts associated with them.\nEach road appears only once, even if it has multiple active alerts.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RoadInfo],  # Roads with at least one active alert (may be empty)\n    }\n\nConstraints:\n    - Only alerts with active_status=True are considered.\n    - Each TrafficAlert must be linked to a valid Road; skip alerts referencing missing roads.\n    - Each road is listed at most once.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_max_severity_for_road",
+      "description": "For a given road, return the highest severity level present among its current active alerts.\n\nArgs:\n    road_id (str): Identifier of the target road.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"data\": str or None }\n            - \"data\" is the highest severity level as a string, or None if no active alerts.\n        On failure: { \"success\": False, \"error\": str }\n\nConstraints:\n    - Only alerts with active_status == True are considered.\n    - Road must exist in the network.\n    - Severity ordering: \"low\" < \"moderate\" < \"high\" < \"critical\"",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "road_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "road_id"
+        ]
+      }
+    },
+    {
+      "name": "get_severity_ordering",
+      "description": "Return the allowed set of severity levels with their prioritization ordering.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str]  # Ordered from lowest to highest priority\n    }\nConstraints:\n    - Severity levels and their order: [\"low\", \"moderate\", \"high\", \"critical\"]",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_ordered_roads_by_alert_severity",
+      "description": "Returns a list of all roads that currently have at least one active alert,\nordered by the highest alert severity assigned to that road (from critical to low).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[{\n            \"road_info\": RoadInfo,\n            \"max_severity_level\": str,  # One of: \"critical\", \"high\", \"moderate\", \"low\"\n        }]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Only current (active_status=True) alerts are considered.\n    - Severity levels are ordered: low < moderate < high < critical.\n    - Each returned road must exist in self.roads and have at least one active alert.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_alerts_by_severity",
+      "description": "Retrieve all alerts with the specified severity level.\nOptionally filter by road and/or alert activity status.\n\nArgs:\n    severity_level (str): One of \"low\", \"moderate\", \"high\", \"critical\"\n    road_id (str, optional): Road ID to restrict results to.\n    active_status (bool, optional): If specified, True to filter for active alerts, False for inactive.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TrafficAlertInfo]  # list of matching alerts\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - severity_level must be valid.\n    - If road_id is given, must be in self.roads.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "severity_level": {
+            "type": "string"
+          },
+          "road_id": {
+            "type": "string"
+          },
+          "active_status": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "severity_level"
+        ]
+      }
+    },
+    {
+      "name": "create_road",
+      "description": "Add a new road to the road network.\n\nArgs:\n    road_id (str): Unique identifier for the road.\n    name (str): Name of the road.\n    type (str): Type of road (e.g., highway, street).\n    status (str): Operational status of the road.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Road <road_id> created successfully.\" }\n        - On error: { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - road_id must be unique (must not exist in self.roads).\n    - All parameters must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "road_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "road_id",
+          "name",
+          "type",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "update_road_status",
+      "description": "Update the operational status or attributes of a given road.\n\nArgs:\n    road_id (str): The identifier of the road to be updated.\n    updates (dict): Key-value pairs of fields to update. Allowed keys: \"status\", \"name\", \"type\".\n\nReturns:\n    dict:\n        Success: { \"success\": True, \"message\": \"Road <road_id> updated successfully.\" }\n        Failure:\n            - { \"success\": False, \"error\": \"Road not found.\" }\n            - { \"success\": False, \"error\": \"Invalid attribute(s): ...\" }\n            - { \"success\": False, \"error\": \"No valid update field provided.\" }\n\nConstraints:\n    - Road (road_id) must already exist.\n    - Only 'status', 'name', and 'type' fields can be updated.\n    - 'road_id' cannot be changed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "road_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "road_id",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "create_traffic_alert",
+      "description": "Add a new traffic alert associated with a given road.\n\nArgs:\n    alert_id (str): Unique identifier for the alert.\n    road_id (str): Identifier for the road this alert is associated with. Must exist.\n    severity_level (str): One of {\"low\", \"moderate\", \"high\", \"critical\"}.\n    alert_type (str): The type/category of alert (e.g., \"accident\", \"closure\").\n    timestamp (float): Unix epoch time indicating when the alert was created.\n    description (str): Description of the alert.\n    active_status (bool): Whether the alert is currently active.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Traffic alert created.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - alert_id must be unique.\n    - road_id must exist in the road network.\n    - severity_level must be among allowed set.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alert_id": {
+            "type": "string"
+          },
+          "road_id": {
+            "type": "string"
+          },
+          "severity_level": {
+            "type": "string"
+          },
+          "alert_type": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "description": {
+            "type": "string"
+          },
+          "active_status": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "alert_id",
+          "road_id",
+          "severity_level",
+          "alert_type",
+          "timestamp",
+          "description",
+          "active_status"
+        ]
+      }
+    },
+    {
+      "name": "update_traffic_alert",
+      "description": "Modify attributes of an existing traffic alert.\n\nArgs:\n    alert_id (str): Identifier for the alert to update.\n    severity_level (str, optional): New severity (\"low\", \"moderate\", \"high\", \"critical\").\n    alert_type (str, optional): New alert type.\n    timestamp (float, optional): New timestamp (Unix epoch).\n    description (str, optional): New description.\n    active_status (bool, optional): New active status.\n    road_id (str, optional): New road_id; must refer to an existing road.\n\nReturns:\n    dict: { \"success\": True, \"message\": \"...\"} or { \"success\": False, \"error\": \"...\" }\n\nConstraints:\n    - alert_id must exist.\n    - If severity_level provided, must be valid value.\n    - If road_id provided, must exist as a road.\n    - If nothing is provided to update, returns an error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alert_id": {
+            "type": "string"
+          },
+          "severity_level": {
+            "type": "string"
+          },
+          "alert_type": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "description": {
+            "type": "string"
+          },
+          "active_status": {
+            "type": "boolean"
+          },
+          "road_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "alert_id"
+        ]
+      }
+    },
+    {
+      "name": "deactivate_alert",
+      "description": "Deactivate (resolve/close) a traffic alert by setting its active_status to False.\n\nArgs:\n    alert_id (str): The unique identifier of the alert to deactivate.\n\nReturns:\n    dict:\n        Success: { \"success\": True, \"message\": \"Alert <alert_id> deactivated.\" }\n        Failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The alert must exist.\n    - The alert must be currently active (active_status == True).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alert_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "alert_id"
+        ]
+      }
+    },
+    {
+      "name": "activate_alert",
+      "description": "Set the active_status of a TrafficAlert to True (activate it).\n\nArgs:\n    alert_id (str): The unique identifier of the alert to activate.\n\nReturns:\n    dict: \n        - On success: \n            {\n                \"success\": True,\n                \"message\": \"Alert <alert_id> activated\"\n            }\n        - On failure: \n            {\n                \"success\": False,\n                \"error\": \"Alert does not exist\"\n            }\n\nConstraints:\n    - The specified alert_id must exist in the alert records.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alert_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "alert_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_alert",
+      "description": "Remove a traffic alert from the system completely.\n\nArgs:\n    alert_id (str): The unique identifier for the alert to be deleted.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Alert <alert_id> deleted successfully.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Alert not found.\"\n            }\n\nConstraints:\n    - The alert identified by alert_id must exist in the system to be deleted.\n    - The alert is removed entirely from the self.alerts dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alert_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "alert_id"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,545 @@
+{
+  "env_name": "CloudServiceProviderManagementConsole",
+  "description": "A cloud service provider management console serves as an interface to manage and configure cloud computing resources across multiple geographic regions. It maintains stateful information about regions, such as their identifiers, names, statuses, and resource availability, enabling users to provision, monitor, and administer infrastructure flexibly. The environment streamlines tasks like viewing enabled regions, managing deployments, and handling geographic redundancy.",
+  "initial_parameter_schema": {
+    "regions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "region_id": {
+            "type": "string"
+          },
+          "region_name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "supported_services": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "resource_quota": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "region_id",
+          "region_name",
+          "status",
+          "supported_services",
+          "resource_quota"
+        ]
+      }
+    },
+    "services": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          },
+          "service_name": {
+            "type": "string"
+          },
+          "regions_available": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "service_id",
+          "service_name",
+          "regions_available"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "list_all_regions": [
+      "regions"
+    ],
+    "get_region_by_id": [
+      "regions"
+    ],
+    "get_region_by_name": [
+      "regions"
+    ],
+    "list_regions_by_status": [
+      "regions"
+    ],
+    "list_available_regions": [
+      "regions"
+    ],
+    "get_region_supported_services": [
+      "regions",
+      "services"
+    ],
+    "list_all_services": [
+      "services"
+    ],
+    "get_service_by_id": [
+      "services"
+    ],
+    "get_service_by_name": [
+      "services"
+    ],
+    "get_service_supported_regions": [
+      "regions",
+      "services"
+    ],
+    "get_region_resource_quota": [
+      "regions"
+    ],
+    "check_region_id_uniqueness": [
+      "regions"
+    ],
+    "check_region_name_uniqueness": [
+      "regions"
+    ],
+    "enable_region": [
+      "regions"
+    ],
+    "disable_region": [
+      "regions"
+    ],
+    "set_region_status": [
+      "regions"
+    ],
+    "add_region": [
+      "regions"
+    ],
+    "remove_region": [
+      "regions",
+      "services"
+    ],
+    "set_region_resource_quota": [
+      "regions"
+    ],
+    "add_service": [
+      "regions",
+      "services"
+    ],
+    "remove_service": [
+      "regions",
+      "services"
+    ],
+    "update_region_supported_services": [
+      "regions",
+      "services"
+    ],
+    "update_service_available_regions": [
+      "regions",
+      "services"
+    ],
+    "rename_region": [
+      "regions"
+    ]
+  },
+  "tools": [
+    {
+      "name": "list_all_regions",
+      "description": "Return complete information about all defined regions.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RegionInfo],  # All regions (empty list if none defined)\n    }\n\nConstraints:\n    - No constraints enforced—this is a pure query.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_region_by_id",
+      "description": "Retrieve metadata for a region by unique region_id.\n\nArgs:\n    region_id (str): The unique identifier for the region to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": RegionInfo,   # Region details for the given region_id\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description if region not found\n    }\n\nConstraints:\n    - region_id must exist in the regions dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "region_id"
+        ]
+      }
+    },
+    {
+      "name": "get_region_by_name",
+      "description": "Retrieve region metadata by region_name.\n\nArgs:\n    region_name (str): The human-friendly name of the region.\n\nReturns:\n    dict: \n      - On success: { \"success\": True, \"data\": RegionInfo }\n      - On failure: { \"success\": False, \"error\": \"Region not found\" }\n\nConstraints:\n    - region_name must be unique among all regions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "region_name"
+        ]
+      }
+    },
+    {
+      "name": "list_regions_by_status",
+      "description": "Retrieve all regions filtered by their status ('enabled', 'available', or 'disabled').\n\nArgs:\n    status (str): The region status to filter by. Valid values: 'enabled', 'available', 'disabled'.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RegionInfo],  # List of regions with the specified status\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, such as invalid status value\n    }\n\nConstraints:\n    - Only status values 'enabled', 'available', or 'disabled' are valid.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "list_available_regions",
+      "description": "List all regions with status \"enabled\" or \"available\" (deployable).\nReturns region_id and region_name for each such region.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[dict],  # Each dict: {\"region_id\": str, \"region_name\": str}\n    }\n\nConstraints:\n    - Only regions with status \"enabled\" or \"available\" are included.\n    - Returns empty list if no matching regions.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_region_supported_services",
+      "description": "For a given region, list all the supported service_ids and service_names.\n\nArgs:\n    region_id (str): The unique identifier of the region.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": [  # List of supported services\n            {\n                \"service_id\": str,\n                \"service_name\": Optional[str]  # None or missing if not defined\n            },\n            ...\n        ]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Explanation, e.g., \"Region not found\"\n    }\n\nConstraints:\n    - The region must exist.\n    - If a supported service is missing from the global list, it is included with service_name as None.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "region_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_services",
+      "description": "Return metadata for all defined services.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ServiceInfo],  # List of all service metadata (may be empty)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_service_by_id",
+      "description": "Retrieve detailed information about a service given its unique service_id.\n\nArgs:\n    service_id (str): Unique identifier for the service.\n\nReturns:\n    dict:\n        - On success:\n            {\n              \"success\": True,\n              \"data\": ServiceInfo  # Service metadata dictionary\n            }\n        - On failure:\n            {\n              \"success\": False,\n              \"error\": str  # Error message, e.g., \"Service not found\"\n            }\n\nConstraints:\n    - service_id must be present in self.services.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_id"
+        ]
+      }
+    },
+    {
+      "name": "get_service_by_name",
+      "description": "Retrieve cloud service info by its human-friendly service_name.\n\nArgs:\n    service_name (str): The name of the service to look up.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ServiceInfo  # Service information structure\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason why retrieval failed (e.g. not found)\n    }\n\nConstraints:\n    - Service names are unique in the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_name"
+        ]
+      }
+    },
+    {
+      "name": "get_service_supported_regions",
+      "description": "For a given service, list all regions (region_ids and region_names) in which it is available.\n\nArgs:\n    service_id (str): The unique identifier of the service.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": [ { \"region_id\": str, \"region_name\": str }, ... ]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Service not found\"\n    }\n\nConstraints:\n    - If the service_id does not exist, returns an error.\n    - Only returns regions that actually exist in the system (skips missing regions if any).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_id"
+        ]
+      }
+    },
+    {
+      "name": "get_region_resource_quota",
+      "description": "Retrieve the current resource quota for the specified region.\n\nArgs:\n    region_id (str): Unique identifier of the region.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": int  # resource_quota value for the region,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g., region does not exist)\n    }\n\nConstraints:\n    - The region_id must exist in the regions dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "region_id"
+        ]
+      }
+    },
+    {
+      "name": "check_region_id_uniqueness",
+      "description": "Verify if the provided region_id is unique (i.e., not already present in the environment).\n\nArgs:\n    region_id (str): The region ID to check.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": bool  # True if region_id is unique (does not exist in current regions), False otherwise.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If input is invalid (e.g., empty)\n    }\nConstraints:\n    - region_id must not be empty\n    - Each region must have a unique region_id",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "region_id"
+        ]
+      }
+    },
+    {
+      "name": "check_region_name_uniqueness",
+      "description": "Verify if a given region_name is unique among all regions.\n\nArgs:\n    region_name (str): The region name to be checked.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": bool  # True if region_name is unique (not in use), False otherwise\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - region_name must be non-empty string.\n    - Uniqueness is case-sensitive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "region_name"
+        ]
+      }
+    },
+    {
+      "name": "enable_region",
+      "description": "Change the status of a region to \"enabled\".\n\nArgs:\n    region_id (str): Unique region identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # The region status has been set to enabled (or already enabled)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., region not found\n    }\n\nConstraints:\n    - The region with the specified region_id must exist.\n    - Status changed only if region is not already enabled.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "region_id"
+        ]
+      }
+    },
+    {
+      "name": "disable_region",
+      "description": "Sets the status of the specified region to 'disabled'.\n\nArgs:\n    region_id (str): The unique identifier of the region to disable.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Region {region_id} status set to disabled.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Region not found.\"\n    }\n\nConstraints:\n    - Region must exist.\n    - Idempotent: If region is already disabled, still return success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "region_id"
+        ]
+      }
+    },
+    {
+      "name": "set_region_status",
+      "description": "Set the status of a region to one of the valid values (\"enabled\", \"available\", \"disabled\").\n\nArgs:\n    region_id (str): The unique identifier for the region whose status is to be changed.\n    status (str): The target status. Must be \"enabled\", \"available\", or \"disabled\".\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Region status set to <status> for region <region_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The region must exist (region_id must be present).\n    - The status must be one of: \"enabled\", \"available\", \"disabled\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "region_id",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "add_region",
+      "description": "Add a new region to the cloud environment.\n\nArgs:\n    region_id (str): Unique region identifier.\n    region_name (str): Unique, human-friendly region name.\n    status (str): Must be one of \"enabled\", \"disabled\", or \"available\".\n    supported_services (List[str]): List of service_ids for initial support.\n    resource_quota (int): Initial resource quota (non-negative integer).\n\nReturns:\n    dict: \n        { \"success\": True, \"message\": \"Region '<region_id>' added successfully.\" }\n        or\n        { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - region_id and region_name must be unique.\n    - status must be \"enabled\", \"disabled\", or \"available\".\n    - resource_quota must be >= 0.\n    - No restrictions enforced here for supported_services.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region_id": {
+            "type": "string"
+          },
+          "region_name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "supported_services": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "resource_quota": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "region_id",
+          "region_name",
+          "status",
+          "supported_services",
+          "resource_quota"
+        ]
+      }
+    },
+    {
+      "name": "remove_region",
+      "description": "Remove a region and all associated resource info from the system.\n\nArgs:\n    region_id (str): The unique identifier of the region to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Region <region_id> removed successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Region does not exist.\"\n    }\n\nConstraints:\n    - Only an existing region can be removed.\n    - All references to the region in services (regions_available) must be purged.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "region_id"
+        ]
+      }
+    },
+    {
+      "name": "set_region_resource_quota",
+      "description": "Update the resource quota for the given region.\n\nArgs:\n    region_id (str): The unique identifier of the region to update.\n    new_quota (int): The new resource quota value (must be a non-negative integer).\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Resource quota updated for region <region_id>.\" }\n        - On failure: { \"success\": False, \"error\": str }\n\nConstraints:\n    - The region must exist (region_id present in self.regions).\n    - The new quota must be a non-negative integer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region_id": {
+            "type": "string"
+          },
+          "new_quota": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "region_id",
+          "new_quota"
+        ]
+      }
+    },
+    {
+      "name": "add_service",
+      "description": "Add a new service definition and specify its supported regions.\n\nArgs:\n    service_id (str): Unique identifier for the new service.\n    service_name (str): Human-friendly service name.\n    regions_available (List[str]): List of region_ids where this service is available.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"message\": \"Service <service_id> added.\"}\n        On failure:\n            {\"success\": False, \"error\": str}\n\nConstraints:\n    - service_id must be unique (no existing Service with that id).\n    - regions_available must only contain region_ids that exist in self.regions.\n    - (Optional) service_name uniqueness not enforced unless specified by constraints.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          },
+          "service_name": {
+            "type": "string"
+          },
+          "regions_available": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "service_id",
+          "service_name",
+          "regions_available"
+        ]
+      }
+    },
+    {
+      "name": "remove_service",
+      "description": "Remove a service from the management console system.\n\nArgs:\n    service_id (str): The ID of the service to remove.\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"message\": \"Service <service_id> removed successfully.\"}\n        - On failure: {\"success\": False, \"error\": \"Service <service_id> does not exist.\"}\n\nConstraints:\n    - service_id must exist in the system.\n    - After removal, service_id must be removed from all regions' supported_services lists for consistency.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_id"
+        ]
+      }
+    },
+    {
+      "name": "update_region_supported_services",
+      "description": "Edit the list of services supported in a region.\n\nArgs:\n    region_id (str): The unique identifier of the region.\n    new_supported_services (list of str): List of service_id to set as supported in this region.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Supported services updated for region <region_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - region_id must exist.\n    - All service_id in new_supported_services must exist.\n    - Duplicate service_ids in the list will be reduced to unique set.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region_id": {
+            "type": "string"
+          },
+          "new_supported_services": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "region_id",
+          "new_supported_services"
+        ]
+      }
+    },
+    {
+      "name": "update_service_available_regions",
+      "description": "Edit the regions where a given service is available.\n\nArgs:\n    service_id (str): The identifier for the service to update availability.\n    new_region_ids (List[str]): New list of region_ids where this service should be available.\n\nReturns:\n    dict:\n        - On success:\n            { \"success\": True, \"message\": \"Regions for service updated.\" }\n        - On failure:\n            { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - service_id must exist in self.services.\n    - Each region_id in new_region_ids must exist in self.regions.\n    - No exceptions raised; errors are reported via result dict.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          },
+          "new_region_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "service_id",
+          "new_region_ids"
+        ]
+      }
+    },
+    {
+      "name": "rename_region",
+      "description": "Change the region_name for a given region_id, ensuring uniqueness.\n\nArgs:\n    region_id (str): ID of the region to rename.\n    new_region_name (str): The desired new, unique human-friendly name for the region.\n\nReturns:\n    dict: \n        On success:\n            { \"success\": True, \"message\": \"<old_name> renamed to <new_region_name>\" }\n        On failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - region_id must exist.\n    - new_region_name must be unique among all regions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region_id": {
+            "type": "string"
+          },
+          "new_region_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "region_id",
+          "new_region_name"
+        ]
+      }
+    }
+  ]
+}

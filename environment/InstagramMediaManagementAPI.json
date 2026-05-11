@@ -1,0 +1,399 @@
+{
+  "env_name": "InstagramMediaManagementAPI",
+  "description": "The Instagram media management API provides programmatic access to metadata for media items such as photos and videos hosted on the platform. It maintains structured information about each media entry, including IDs, authorship, timestamps, captions, and engagement metrics. Typical operations include retrieving, querying, and updating media records for use in analytics, moderation, or social content management.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "profile_pic": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "display_name",
+          "profile_pic"
+        ]
+      }
+    },
+    "media": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string"
+          },
+          "author_id": {
+            "type": "string"
+          },
+          "media_type": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "caption": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "engagement_metric": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_id",
+          "author_id",
+          "media_type",
+          "created_at",
+          "caption",
+          "url",
+          "engagement_metric"
+        ]
+      }
+    },
+    "engagement_metrics": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string"
+          },
+          "like_count": {
+            "type": "integer"
+          },
+          "comment_count": {
+            "type": "integer"
+          },
+          "view_count": {
+            "type": "integer"
+          },
+          "share_count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "media_id",
+          "like_count",
+          "comment_count",
+          "view_count",
+          "share_count"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_media_by_id": [
+      "media"
+    ],
+    "get_media_list_by_author": [
+      "media",
+      "users"
+    ],
+    "get_engagement_metrics_by_media_id": [
+      "engagement_metrics"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_user_by_username": [
+      "users"
+    ],
+    "media_exists": [
+      "media"
+    ],
+    "list_all_media": [
+      "media"
+    ],
+    "list_recent_media_for_user": [
+      "media",
+      "users"
+    ],
+    "update_media_caption": [
+      "media"
+    ],
+    "update_engagement_metrics": [
+      "engagement_metrics"
+    ],
+    "create_media": [
+      "engagement_metrics",
+      "media",
+      "users"
+    ],
+    "delete_media": [
+      "engagement_metrics",
+      "media"
+    ],
+    "increment_engagement_metric": [
+      "engagement_metrics"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_media_by_id",
+      "description": "Retrieve detailed metadata (MediaInfo) for a media item given its media_id.\n\nArgs:\n    media_id (str): The unique media identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": MediaInfo\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"Media not found\"\n    }\n\nConstraints:\n    - media_id must exist in self.media (each is unique).\n    - No authorization logic enforced in this environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_id"
+        ]
+      }
+    },
+    {
+      "name": "get_media_list_by_author",
+      "description": "Retrieve all media items posted by the specified author (user ID).\n\nArgs:\n    author_id (str): The user ID of the author.\n\nReturns:\n    dict: \n        - {\n              \"success\": True,\n              \"data\": List[MediaInfo],  # All media posted by the author (may be empty list)\n          }\n        - {\n              \"success\": False,\n              \"error\": str  # If author does not exist\n          }\n\nConstraints:\n    - The author_id must reference an existing user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "author_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "author_id"
+        ]
+      }
+    },
+    {
+      "name": "get_engagement_metrics_by_media_id",
+      "description": "Retrieve the engagement metrics (like, comment, view, share counts)\nfor a given media_id.\n\nArgs:\n    media_id (str): The media item's unique identifier.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": EngagementMetricsInfo\n            }\n        - On failure (media_id not found):\n            {\n                \"success\": False,\n                \"error\": \"Engagement metrics for media_id not found\"\n            }\n\nConstraints:\n    - media_id must exist in self.engagement_metrics.\n    - Engagement statistics must be non-negative integers (guaranteed elsewhere).\n    - No modification of state; pure query.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user (author) information by user_id.\n\nArgs:\n    user_id (str): Unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo  # user profile information\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # reason for failure, e.g., user_id not found\n    }\n\nConstraints:\n    - user_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_username",
+      "description": "Fetch a user's details using their Instagram username.\n\nArgs:\n    username (str): The Instagram username to look up.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo,   # The user's info dictionary\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"User not found\",\n    }\n\nConstraints:\n    - The username must exist in the system.\n    - Matching is case-insensitive and accepts usernames with or without a leading '@'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "media_exists",
+      "description": "Check whether a specific media_id exists in the system.\n\nArgs:\n    media_id (str): The media ID to look up.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": bool  # True if media_id exists, else False\n    }\n\nConstraints:\n    - Returns False if input is None or empty string.\n    - Each media_id must be unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_media",
+      "description": "Retrieve a list of all media items on the platform.\n\nArgs:\n    None.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MediaInfo],  # List of all media metadata (may be empty).\n    }\n\nConstraints:\n    - No inputs.\n    - Returns all media info currently present in the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_recent_media_for_user",
+      "description": "Retrieve a list of media posted by a specific user, ordered by created_at descending (most recent first).\n\nArgs:\n    user_id (str): The _id of the user whose media to retrieve.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[MediaInfo]  # may be empty\n            }\n        On failure (user not found):\n            {\n                \"success\": False,\n                \"error\": \"User not found\"\n            }\n\nConstraints:\n    - The user (user_id) must exist in the system.\n    - Items are ordered by created_at (descending).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "update_media_caption",
+      "description": "Update the caption text for a specific media item.\n\nArgs:\n    media_id (str): The unique identifier of the media to update.\n    new_caption (str): The new caption text to set.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Caption updated for media <media_id>\" }\n        On failure: { \"success\": False, \"error\": \"Media not found\" }\n\nConstraints:\n    - media_id must reference an existing entry in self.media.\n    - No restrictions on caption content/format.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string"
+          },
+          "new_caption": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_id",
+          "new_caption"
+        ]
+      }
+    },
+    {
+      "name": "update_engagement_metrics",
+      "description": "Update one or more engagement metrics for a specific media item.\n\nArgs:\n    media_id (str): The media ID whose engagement metrics are to be updated.\n    like_count (int, optional): New like count (must be non-negative integer).\n    comment_count (int, optional): New comment count (must be non-negative integer).\n    view_count (int, optional): New view count (must be non-negative integer).\n    share_count (int, optional): New share count (must be non-negative integer).\n\nReturns:\n    dict:\n        \"success\": True, \"message\": \"Engagement metrics updated for media_id <media_id>\"\n        OR\n        \"success\": False, \"error\": <reason>\n\nConstraints:\n    - media_id must exist in self.engagement_metrics.\n    - Supplied new values must be non-negative integers.\n    - At least one value must be supplied to update.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string"
+          },
+          "like_count": {
+            "type": "integer"
+          },
+          "comment_count": {
+            "type": "integer"
+          },
+          "view_count": {
+            "type": "integer"
+          },
+          "share_count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "media_id"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "like_count"
+            ]
+          },
+          {
+            "required": [
+              "comment_count"
+            ]
+          },
+          {
+            "required": [
+              "view_count"
+            ]
+          },
+          {
+            "required": [
+              "share_count"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "create_media",
+      "description": "Add a new media entry to the system.\n\nArgs:\n    media_id (str): Unique identifier for the media.\n    author_id (str): ID of the author (must exist in users).\n    media_type (str): Type of media ('photo', 'video', etc).\n    created_at (str): Creation timestamp.\n    caption (str): Media caption.\n    url (str): URL to the media file.\n\nReturns:\n    dict: \n        {\"success\": True, \"message\": \"Media created successfully.\"}\n        or\n        {\"success\": False, \"error\": str}\nConstraints:\n    - media_id must be unique.\n    - author_id must reference an existing user.\n    - Engagement metrics initialized to zero.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string"
+          },
+          "author_id": {
+            "type": "string"
+          },
+          "media_type": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "caption": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_id",
+          "author_id",
+          "media_type",
+          "created_at",
+          "caption",
+          "url"
+        ]
+      }
+    },
+    {
+      "name": "delete_media",
+      "description": "Remove a media item and its associated engagement metrics from the platform.\n\nArgs:\n    media_id (str): The unique identifier of the media item to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Media <media_id> deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Media not found.\"\n    }\n\nConstraints:\n    - media_id must exist in the media dictionary.\n    - All related engagement metrics should also be removed if present.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_id"
+        ]
+      }
+    },
+    {
+      "name": "increment_engagement_metric",
+      "description": "Atomically increment a specific type of engagement metric (like, comment, view, share)\nfor a given media item.\n\nArgs:\n    media_id (str): The ID of the media whose engagement to increment.\n    metric_type (str): The engagement metric type (\"like\", \"comment\", \"view\", \"share\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": f\"Engagement metric {metric_type} incremented for media {media_id}\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - media_id must exist.\n    - metric_type must be one of: \"like\", \"comment\", \"view\", \"share\".\n    - Engagement counts remain non-negative.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string"
+          },
+          "metric_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_id",
+          "metric_type"
+        ]
+      }
+    }
+  ]
+}

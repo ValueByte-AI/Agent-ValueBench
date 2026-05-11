@@ -1,0 +1,472 @@
+{
+  "env_name": "RestaurantReviewManagementSystem",
+  "description": "A restaurant review management system stores information about restaurants and user-submitted reviews, typically linking each restaurant to multiple reviews with ratings, comments, and timestamps. It supports operations such as adding, retrieving, and searching reviews for specific restaurants using unique identifiers. This environment facilitates informed dining decisions and feedback for restaurant owners, forming the backbone of popular food review platforms.",
+  "initial_parameter_schema": {
+    "restaurants": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "restaurant_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "cuisine_type": {
+            "type": "string"
+          },
+          "average_rating": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "restaurant_id",
+          "name",
+          "address",
+          "cuisine_type",
+          "average_rating",
+          "status"
+        ]
+      }
+    },
+    "reviews": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "type": "string"
+          },
+          "restaurant_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "integer"
+          },
+          "comment": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id",
+          "restaurant_id",
+          "user_id",
+          "rating",
+          "comment",
+          "timestamp"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "user_name": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "user_name",
+          "account_status"
+        ]
+      }
+    },
+    "update_restaurant_average_rating": {
+      "type": "string"
+    }
+  },
+  "tool_state_dependencies": {
+    "get_restaurant_by_id": [
+      "restaurants"
+    ],
+    "list_all_restaurants": [
+      "restaurants"
+    ],
+    "search_restaurants_by_name": [
+      "restaurants"
+    ],
+    "get_reviews_by_restaurant_id": [
+      "restaurants",
+      "reviews"
+    ],
+    "get_recent_reviews_by_restaurant_id": [
+      "restaurants",
+      "reviews"
+    ],
+    "get_review_by_id": [
+      "reviews"
+    ],
+    "list_reviews_by_user_id": [
+      "reviews",
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_user_by_name": [
+      "users"
+    ],
+    "check_user_account_status": [
+      "users"
+    ],
+    "add_review": [
+      "restaurants",
+      "reviews",
+      "users"
+    ],
+    "edit_review": [
+      "reviews",
+      "update_restaurant_average_rating",
+      "users"
+    ],
+    "delete_review": [
+      "reviews",
+      "users"
+    ],
+    "update_restaurant_average_rating": [
+      "restaurants",
+      "reviews"
+    ],
+    "update_restaurant_info": [
+      "restaurants"
+    ],
+    "update_user_account_status": [
+      "users"
+    ],
+    "bulk_delete_reviews_by_user": [
+      "reviews",
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_restaurant_by_id",
+      "description": "Retrieve all information about a restaurant by its unique restaurant_id.\n\nArgs:\n    restaurant_id (str): The unique identifier for the restaurant.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": RestaurantInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Restaurant not found\"\n    }\n\nConstraints:\n    - The provided restaurant_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "restaurant_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "restaurant_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_restaurants",
+      "description": "List all restaurants registered in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RestaurantInfo],  # List of all registered restaurants (may be empty)\n    }\nConstraints:\n    - None.\n    - Returns empty list if no restaurants exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "search_restaurants_by_name",
+      "description": "Search for restaurants by partial or full name match (case-insensitive).\n\nArgs:\n    query (str): The substring (or full string) to match against restaurant names.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": list of RestaurantInfo dicts matching the query (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str, // Input error\n    }\n\nConstraints:\n    - Query must be a non-empty string.\n    - Match is case-insensitive substring.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "get_reviews_by_restaurant_id",
+      "description": "Retrieve all reviews for a restaurant with a given restaurant_id.\n\nArgs:\n    restaurant_id (str): The unique identifier of the target restaurant.\n\nReturns:\n    dict:\n        - If the restaurant exists:\n            {\n                \"success\": True,\n                \"data\": List[ReviewInfo]  # All reviews for this restaurant (empty list if none)\n            }\n        - If the restaurant_id does not exist:\n            {\n                \"success\": False,\n                \"error\": \"Restaurant not found\"\n            }\n\nConstraints:\n    - The given restaurant_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "restaurant_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "restaurant_id"
+        ]
+      }
+    },
+    {
+      "name": "get_recent_reviews_by_restaurant_id",
+      "description": "Retrieve the most recent reviews for a given restaurant.\n\nArgs:\n    restaurant_id (str): The ID of the restaurant whose reviews to fetch.\n    limit (int, optional): Maximum number of recent reviews to return (most recent first). If None, return all.\n    since (str, optional): Only include reviews AFTER this timestamp. Format should match ReviewInfo[\"timestamp\"].\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ReviewInfo]  # Most recent reviews (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\nConstraints:\n    - Only reviews associated with a valid restaurant_id are considered.\n    - Reviews returned are sorted with most recent first.\n    - Optional filter by \"since\" timestamp.\n    - Optional limit on number of reviews returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "restaurant_id": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "since": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "restaurant_id"
+        ]
+      }
+    },
+    {
+      "name": "get_review_by_id",
+      "description": "Retrieve a review's information by its unique review_id.\n\nArgs:\n    review_id (str): Unique identifier of the review.\n\nReturns:\n    dict: \n      - If found: {\"success\": True, \"data\": ReviewInfo}\n      - If not found: {\"success\": False, \"error\": \"Review not found\"}",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id"
+        ]
+      }
+    },
+    {
+      "name": "list_reviews_by_user_id",
+      "description": "Show all reviews submitted by a specific user.\n\nArgs:\n    user_id (str): The identifier of the user whose reviews should be retrieved.\n\nReturns:\n    dict:\n      - success: True and data: list of ReviewInfo submitted by this user (may be an empty list)\n      - success: False and error: error message if user does not exist\n\nConstraints:\n    - The specified user_id must exist in the Users table.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user information by user_id.\n\nArgs:\n    user_id (str): Unique identifier for the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo  # if user found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # error message if user not found\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_name",
+      "description": "Retrieve user information (UserInfo) by user_name.\n\nArgs:\n    user_name (str): The user name to look up.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": UserInfo }\n        - On error (not found): { \"success\": False, \"error\": \"User not found\" }\n\nConstraints:\n    - Assumes user_name is unique in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_name"
+        ]
+      }
+    },
+    {
+      "name": "check_user_account_status",
+      "description": "Retrieve the account_status of the specified user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict:\n        On success:\n            {\n              \"success\": True,\n              \"data\": str,  # The user's account status\n            }\n        On failure:\n            {\n              \"success\": False,\n              \"error\": str  # Description of the error (e.g., user does not exist)\n            }\n\nConstraints:\n    - The specified user_id must exist in the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "add_review",
+      "description": "Submit a new review for a restaurant.\n\nArgs:\n    review_id (str): Unique identifier for the review (must be new).\n    restaurant_id (str): Restaurant being reviewed (must exist).\n    user_id (str): Authoring user (must exist and account_status valid).\n    rating (int): Review rating (must be 1–5 inclusive).\n    comment (str): Review text/comment.\n    timestamp (str): Timestamp of submission (must be provided).\n\nReturns:\n    dict:\n        - { \"success\": True, \"message\": \"Review added successfully.\" }\n        - { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Each review must have a unique review_id.\n    - restaurant_id must be valid.\n    - user_id must be valid and have an account_status of \"active\".\n    - rating must be in [1, 5].\n    - timestamp must be provided (not empty).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "type": "string"
+          },
+          "restaurant_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "integer"
+          },
+          "comment": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id",
+          "restaurant_id",
+          "user_id",
+          "rating",
+          "comment",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "edit_review",
+      "description": "Modify the content and/or rating of an existing review.\nOnly the review's owner or an admin can perform the modification.\n\nArgs:\n    review_id (str): ID of the review to edit.\n    user_id (str): ID of the user attempting the edit.\n    rating (int, optional): New rating value (must be in allowed range, if provided).\n    comment (str, optional): New comment text (if provided).\n    timestamp (str, optional): Updated timestamp (must be provided to ensure review freshness).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Review updated successfully.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Only the review owner or users with account_status \"admin\" can edit the review.\n    - If rating is provided, must be between 1 and 5 inclusive.\n    - At least one of rating or comment must be provided.\n    - Review and user must exist.\n    - Review must have an updated timestamp.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "integer"
+          },
+          "comment": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_review",
+      "description": "Remove a review from the system. Only the review's owner or an admin can delete a review.\n\nArgs:\n    review_id (str): The ID of the review to delete.\n    requesting_user_id (str): The ID of the user attempting the deletion.\n\nReturns:\n    dict: \n    - { \"success\": True, \"message\": \"Review deleted.\" }\n    - { \"success\": False, \"error\": str }\n\nConstraints:\n    - The review must exist.\n    - The requesting user must exist.\n    - Only the owner or an admin can perform the deletion.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "type": "string"
+          },
+          "requesting_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id",
+          "requesting_user_id"
+        ]
+      }
+    },
+    {
+      "name": "update_restaurant_average_rating",
+      "description": "Recompute and update a restaurant's average_rating based on current reviews.\n\nArgs:\n    restaurant_id (str): The unique identifier of the restaurant.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Description of operation on success\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if restaurant not found\n    }\n\nConstraints:\n    - Restaurant must exist.\n    - Only uses reviews that currently exist for the specified restaurant.\n    - If no reviews exist for the restaurant, average_rating is set to 0.0.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "restaurant_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "restaurant_id"
+        ]
+      }
+    },
+    {
+      "name": "update_restaurant_info",
+      "description": "Modify a restaurant's descriptive information.\n\nArgs:\n    restaurant_id (str): The unique identifier of the restaurant to update.\n    name (str, optional): New name for the restaurant.\n    address (str, optional): New address for the restaurant.\n    cuisine_type (str, optional): New cuisine type.\n    status (str, optional): New status for the restaurant.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Restaurant info updated\" }\n        On failure: { \"success\": False, \"error\": str }\n\nConstraints:\n    - restaurant_id must refer to an existing restaurant.\n    - Only name, address, cuisine_type, and status are updatable.\n    - If no valid fields are provided, no update is performed and an error is returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "restaurant_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "cuisine_type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "restaurant_id"
+        ]
+      }
+    },
+    {
+      "name": "update_user_account_status",
+      "description": "Change a user's account status (e.g., activate or suspend account).\n\nArgs:\n    user_id (str): The unique identifier of the user.\n    new_status (str): The new account status to set (e.g., \"active\", \"suspended\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User account status updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - User must exist in the system.\n    - new_status must be among allowed status values.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "bulk_delete_reviews_by_user",
+      "description": "Remove all reviews submitted by a specific user.\n\nArgs:\n    user_id (str): The ID of the user whose reviews will be deleted.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Success message with number of reviews deleted\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g., user not found)\n    }\n\nConstraints:\n    - User must exist.\n    - All reviews authored by the user are deleted.\n    - Does not update restaurant average ratings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,705 @@
+{
+  "env_name": "PublicTransitInfoSystem",
+  "description": "A public transit information management system stores and manages data about transit routes, schedules, service changes, stops, and stations for a metropolitan region. It maintains information about routes (such as numbers, directions, geospatial paths), and links them to real-time alerts, detours, and service updates. The system also provides search functions to locate stops or stations within specific geographic parameters or to retrieve up-to-date travel information for transit users.",
+  "initial_parameter_schema": {
+    "current_datetime": {
+      "type": "string"
+    },
+    "routes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "route_id": {
+            "type": "string"
+          },
+          "route_number": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "directions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "path_geometry": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "route_id",
+          "route_number",
+          "mode",
+          "name",
+          "directions",
+          "path_geometry"
+        ]
+      }
+    },
+    "detours": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "detour_id": {
+            "type": "string"
+          },
+          "route_id": {
+            "type": "string"
+          },
+          "direction": {
+            "type": "string"
+          },
+          "start_location": {
+            "type": "string"
+          },
+          "end_location": {
+            "type": "string"
+          },
+          "start_datetime": {
+            "type": "string"
+          },
+          "end_datetime": {
+            "type": "string"
+          },
+          "current_message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "detour_id",
+          "route_id",
+          "direction",
+          "start_location",
+          "end_location",
+          "start_datetime",
+          "end_datetime",
+          "current_message"
+        ]
+      }
+    },
+    "stops": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "stop_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "served_routes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "stop_id"
+        ]
+      }
+    },
+    "stations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "station_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "served_routes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "station_id",
+          "name",
+          "latitude",
+          "longitude",
+          "served_routes"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_route_by_number": [
+      "routes"
+    ],
+    "get_route_by_id": [
+      "routes"
+    ],
+    "list_routes_by_mode": [
+      "routes"
+    ],
+    "get_detours_by_route_id": [
+      "detours",
+      "routes"
+    ],
+    "get_active_detours_by_route_id": [
+      "detours",
+      "routes"
+    ],
+    "get_detour_details": [
+      "detours"
+    ],
+    "get_detours_by_route_number_and_mode": [
+      "detours",
+      "routes"
+    ],
+    "list_stops_within_radius": [
+      "stops"
+    ],
+    "list_stations_within_radius": [
+      "stations"
+    ],
+    "get_stop_by_id": [
+      "stops"
+    ],
+    "get_station_by_id": [
+      "stations"
+    ],
+    "get_stops_served_by_route": [
+      "routes",
+      "stops"
+    ],
+    "get_stations_served_by_route": [
+      "routes",
+      "stations"
+    ],
+    "get_routes_by_stop_or_station": [
+      "routes",
+      "stations",
+      "stops"
+    ],
+    "add_detour": [
+      "detours",
+      "routes"
+    ],
+    "update_detour": [
+      "detours",
+      "routes"
+    ],
+    "remove_detour": [
+      "detours"
+    ],
+    "add_stop": [
+      "routes",
+      "stops"
+    ],
+    "update_stop": [
+      "routes",
+      "stops"
+    ],
+    "remove_stop": [
+      "stops"
+    ],
+    "add_station": [
+      "routes",
+      "stations"
+    ],
+    "update_station": [
+      "routes",
+      "stations"
+    ],
+    "remove_station": [
+      "stations"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_route_by_number",
+      "description": "Retrieve route metadata (route_id, mode, name, directions, path_geometry) by route_number.\n\nArgs:\n    route_number (str): The public-facing route number to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": RouteInfo\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"Route with given number not found\"\n    }\n\nConstraint:\n    - Returns the first route with the exact route_number match; if none exist, returns error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "route_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "route_number"
+        ]
+      }
+    },
+    {
+      "name": "get_route_by_id",
+      "description": "Retrieve full route information using the unique route_id.\n\nArgs:\n    route_id (str): The unique identifier for the route.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": RouteInfo  # RouteInfo dictionary for the requested route.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If the route_id is not found.\n    }\n\nConstraints:\n    - route_id must exist in the system.\n\nEdge Cases:\n    - If route_id is missing from the routes, returns error message.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "route_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "route_id"
+        ]
+      }
+    },
+    {
+      "name": "list_routes_by_mode",
+      "description": "List all transit routes filtered by transit mode.\n\nArgs:\n    mode (str): Transit mode to filter (\"bus\" or \"rail\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RouteInfo],  # All RouteInfo for matching routes (may be empty if none)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., unsupported mode\n    }\n\nConstraints:\n    - Only 'bus' or 'rail' are valid modes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      }
+    },
+    {
+      "name": "get_detours_by_route_id",
+      "description": "Retrieve all detour records (active or inactive) associated with a given route_id.\n\nArgs:\n    route_id (str): Unique identifier for the route.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[DetourInfo],  # may be empty if no detours for this route\n            }\n        On error:\n            {\n                \"success\": False,\n                \"error\": str  # \"Route does not exist\"\n            }\n\nConstraints:\n    - The provided route_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "route_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "route_id"
+        ]
+      }
+    },
+    {
+      "name": "get_active_detours_by_route_id",
+      "description": "Retrieve all currently active detours for the specified route_id, where 'active' means the\nenvironment's virtual current_datetime is within the detour's start_datetime and end_datetime (inclusive).\n\nArgs:\n    route_id (str): The unique identifier for a transit route.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"data\": List[DetourInfo]} (possibly empty list)\n        - On error:   {\"success\": False, \"error\": str}\nConstraints:\n    - Route must exist.\n    - Detour datetime strings may be ISO 8601, ISO 8601 with 'Z', or HH:MM/HH:MM:SS interpreted on the virtual service day. Detours with invalid datetime formats are skipped.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "route_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "route_id"
+        ]
+      }
+    },
+    {
+      "name": "get_detour_details",
+      "description": "Retrieve full details for a specific detour by detour_id.\n\nArgs:\n    detour_id (str): Unique ID of the detour to query.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": DetourInfo }\n        - If not found: { \"success\": False, \"error\": \"Detour not found\" }\n\nConstraints:\n    - detour_id must exist in self.detours.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "detour_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "detour_id"
+        ]
+      }
+    },
+    {
+      "name": "get_detours_by_route_number_and_mode",
+      "description": "Retrieve all detours for a transit route, identified by route_number and mode.\n\nArgs:\n    route_number (str): The designated route number (e.g., \"4\").\n    mode (str): The transit mode (e.g., \"bus\" or \"rail\").\n\nReturns:\n    dict:\n      On success:\n        {\n            \"success\": True,\n            \"data\": List[DetourInfo],  # All detours linked to the route (may be empty)\n        }\n      On failure:\n        {\n            \"success\": False,\n            \"error\": str,  # Reason, e.g. \"Route not found\"\n        }\n\nConstraints:\n    - Only detours for matched route (by route_number and mode) are returned.\n    - Does not check for time activity; all detours are returned.\n    - Returns an empty list if route exists but has no detours.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "route_number": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "route_number",
+          "mode"
+        ]
+      }
+    },
+    {
+      "name": "list_stops_within_radius",
+      "description": "List all bus stops within a specified radius (meters) of a geographic point.\n\nArgs:\n    latitude (float): Central latitude in decimal degrees (-90 to 90).\n    longitude (float): Central longitude in decimal degrees (-180 to 180).\n    radius_meters (float): Search radius in meters (must be > 0).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[StopInfo],  # List (possibly empty) of matching stops\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., invalid input parameters\n    }\n\nConstraints:\n    - All stop coordinates must be valid geocoordinates.\n    - Stops with invalid/missing coordinates are ignored.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "radius_meters": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude",
+          "radius_meters"
+        ]
+      }
+    },
+    {
+      "name": "list_stations_within_radius",
+      "description": "List all rail stations within a specified radius (in kilometers) of a provided geographic point.\n\nArgs:\n    latitude (float): Latitude of center point (-90 to 90).\n    longitude (float): Longitude of center point (-180 to 180).\n    radius (float): Search radius in kilometers (must be > 0).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[StationInfo],  # List of station infos within radius (may be empty)\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # reason for error (invalid input)\n    }\n\nConstraints:\n    - Latitude must be in [-90, 90], longitude in [-180, 180].\n    - Radius must be > 0.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "radius": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude",
+          "radius"
+        ]
+      }
+    },
+    {
+      "name": "get_stop_by_id",
+      "description": "Retrieve full stop information given a stop_id.\n\nArgs:\n    stop_id (str): The unique identifier for the desired stop.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": StopInfo  # Dictionary of all stop attributes\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Stop not found\"\n            }\n\nConstraints:\n    - The provided stop_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stop_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "stop_id"
+        ]
+      }
+    },
+    {
+      "name": "get_station_by_id",
+      "description": "Retrieve full station information by station_id.\n\nArgs:\n    station_id (str): The unique identifier for the station.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": StationInfo\n    } if found,\n    {\n        \"success\": False,\n        \"error\": \"Station not found\"\n    } otherwise.\n\nConstraints:\n    - station_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "station_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "station_id"
+        ]
+      }
+    },
+    {
+      "name": "get_stops_served_by_route",
+      "description": "Retrieve the list of all stops (with metadata) served by the specified route.\n\nArgs:\n    route_id (str): The unique identifier of the route.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[StopInfo]  # List of matching stop metadata (may be empty if route serves no stops)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g. \"Route does not exist\"\n    }\n\nConstraints:\n    - Fails if the given route_id does not exist.\n    - Returns an empty list if a valid route serves no stops.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "route_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "route_id"
+        ]
+      }
+    },
+    {
+      "name": "get_stations_served_by_route",
+      "description": "Retrieve the list of all stations served by a specific route (by route_id).\n\nArgs:\n    route_id (str): The unique identifier for the route.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[StationInfo],  # List of stations served by the route (may be empty)\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # If route_id is invalid\n    }\n\nConstraints:\n    - The route_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "route_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "route_id"
+        ]
+      }
+    },
+    {
+      "name": "get_routes_by_stop_or_station",
+      "description": "Retrieve all routes that serve a given stop or station by their id.\n\nArgs:\n    entity_id (str): The unique id of the stop or station.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RouteInfo],  # List of routes that serve the given stop or station\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If no stop or station matches the given id\n    }\n\nConstraints:\n    - If entity_id is not found in stops or stations, operation fails.\n    - Only route_ids that exist in the system are returned (skip missing).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entity_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity_id"
+        ]
+      }
+    },
+    {
+      "name": "add_detour",
+      "description": "Create and add a new detour linked to a specified route and direction.\n\nArgs:\n    detour_id (str): Unique identifier for the detour. Must not already exist.\n    route_id (str): Route affected by the detour. Must already exist.\n    direction (str): Direction of the detour (must be listed in route's `directions`).\n    start_location (str): Start location description of detour.\n    end_location (str): End location description of detour.\n    start_datetime (str): Start datetime of detour (ISO 8601, ISO 8601 with 'Z', or HH:MM/HH:MM:SS on the virtual service day).\n    end_datetime (str): End datetime of detour using the same accepted formats.\n    current_message (str): Active status/message of the detour.\n\nReturns:\n    dict: \n      On success:\n        {\"success\": True, \"message\": \"Detour added for route <route_id> (<direction>)\"}\n      On failure:\n        {\"success\": False, \"error\": <description>}\n\nConstraints:\n  - Detour ID must be unique.\n  - Route ID must exist.\n  - Direction must be valid for the route.\n  - start_datetime must not be after end_datetime once both are interpreted on the environment's virtual clock.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "detour_id": {
+            "type": "string"
+          },
+          "route_id": {
+            "type": "string"
+          },
+          "direction": {
+            "type": "string"
+          },
+          "start_location": {
+            "type": "string"
+          },
+          "end_location": {
+            "type": "string"
+          },
+          "start_datetime": {
+            "type": "string"
+          },
+          "end_datetime": {
+            "type": "string"
+          },
+          "current_message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "detour_id",
+          "route_id",
+          "direction",
+          "start_location",
+          "end_location",
+          "start_datetime",
+          "end_datetime",
+          "current_message"
+        ]
+      }
+    },
+    {
+      "name": "update_detour",
+      "description": "Update details of an existing detour.\n\nArgs:\n    detour_id (str): The unique ID of the detour to update.\n    updates (dict): Dictionary of fields to update (any DetourInfo field).\n\nReturns:\n    dict: \n        On success: {\"success\": True, \"message\": \"Detour updated successfully.\"}\n        On failure: {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - detour_id must exist.\n    - If updating route_id, the new route_id must exist.\n    - If updating direction, the direction must exist in the directions for the associated route.\n    - If updating start_datetime/end_datetime, they must be valid ISO 8601 strings, ISO 8601 with 'Z', or HH:MM/HH:MM:SS interpreted on the virtual service day, and start <= end.\n    - Only DetourInfo fields may be updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "detour_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "detour_id",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "remove_detour",
+      "description": "Remove an existing detour from the system.\n\nArgs:\n    detour_id (str): The identifier of the detour to remove.\n\nReturns:\n    dict: {\n        'success': True,\n        'message': 'Detour <detour_id> removed'\n    }\n    or\n    {\n        'success': False,\n        'error': '<reason>'\n    }\n\nConstraints:\n    - The detour_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "detour_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "detour_id"
+        ]
+      }
+    },
+    {
+      "name": "add_stop",
+      "description": "Add a new transit stop to the system.\n\nArgs:\n    stop_id (str): Unique identifier for the stop.\n    name (str): Name of the stop. Should be non-empty.\n    latitude (float): Latitude in degrees (-90 to 90).\n    longitude (float): Longitude in degrees (-180 to 180).\n    served_routes (List[str]): List of route_id that serve this stop.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Stop <stop_id> added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - stop_id must be unique (not already present).\n    - latitude and longitude must be valid coordinates.\n    - All served_routes must reference valid route IDs.\n    - Name should be non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stop_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "served_routes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "stop_id",
+          "name",
+          "latitude",
+          "longitude",
+          "served_routes"
+        ]
+      }
+    },
+    {
+      "name": "update_stop",
+      "description": "Update stop information, location, or served routes.\n\nArgs:\n    stop_id (str): The id of the stop to update.\n    name (str, optional): New stop name.\n    latitude (float, optional): New latitude (must be -90 <= latitude <= 90).\n    longitude (float, optional): New longitude (must be -180 <= longitude <= 180).\n    served_routes (list of str, optional): New list of route_id's the stop serves (each must exist).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Stop updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\nConstraints:\n    - stop_id must exist.\n    - If latitude/longitude provided, they must be within valid ranges.\n    - If served_routes provided, all routes must exist in self.routes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stop_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "served_routes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "stop_id",
+          "name",
+          "latitude",
+          "longitude",
+          "served_routes"
+        ]
+      }
+    },
+    {
+      "name": "remove_stop",
+      "description": "Remove a stop from the transit information system.\n\nArgs:\n    stop_id (str): The ID of the stop to remove.\n\nReturns:\n    dict: \n        On success:\n            {\"success\": True, \"message\": \"Stop <stop_id> removed successfully\"}\n        On failure:\n            {\"success\": False, \"error\": \"Stop not found\"}\n\nConstraints:\n    - The stop must exist in the system.\n    - No referential updates are needed elsewhere according to current model.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stop_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "stop_id"
+        ]
+      }
+    },
+    {
+      "name": "add_station",
+      "description": "Add a new station to the system with valid coordinates and served routes.\n\nArgs:\n    station_id (str): Unique identifier for the station.\n    name (str): Name of the station.\n    latitude (float): Latitude (-90 to 90).\n    longitude (float): Longitude (-180 to 180).\n    served_routes (List[str]): List of route_ids the station serves.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Station <station_id> added.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - station_id must not already exist.\n    - latitude in [-90, 90], longitude in [-180, 180].\n    - Each route_id in served_routes must exist in self.routes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "station_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "served_routes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "station_id",
+          "name",
+          "latitude",
+          "longitude",
+          "served_routes"
+        ]
+      }
+    },
+    {
+      "name": "update_station",
+      "description": "Update station information such as name, location (latitude/longitude), and served routes.\n\nArgs:\n    station_id (str): Identifier of the station to update.\n    name (str, optional): New station name.\n    latitude (float, optional): New latitude value (must be between -90 and 90).\n    longitude (float, optional): New longitude value (must be between -180 and 180).\n    served_routes (list, optional): New list of route IDs the station serves (all routes must exist).\n\nReturns:\n    dict: \n        Success - { \"success\": True, \"message\": \"Station updated successfully\" }\n        Failure - { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - station_id must exist.\n    - Latitude and longitude, if provided, must be within valid geographic ranges.\n    - If served_routes is provided, every route_id must exist in self.routes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "station_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "served_routes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "station_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_station",
+      "description": "Remove a station from the system by its station_id.\n\nArgs:\n    station_id (str): Unique identifier for the station.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Station <station_id> removed.\" }\n        - On failure: { \"success\": False, \"error\": \"Station not found.\" }\n\nConstraints:\n    - The specified station must exist in self.stations.\n    - Removal only affects the stations dict; associations on routes or other entities are not updated unless specified elsewhere.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "station_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "station_id"
+        ]
+      }
+    }
+  ]
+}

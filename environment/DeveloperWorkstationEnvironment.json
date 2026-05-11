@@ -1,0 +1,469 @@
+{
+  "env_name": "DeveloperWorkstationEnvironment",
+  "description": "A developer workstation environment is a stateful system encompassing coding tools, compilers, and performance monitoring utilities. It is designed to facilitate software development tasks—from code authoring and compilation to system resource tracking—by maintaining toolchain configurations and exposing APIs for system diagnostics. Common operations include querying available compilers, compiling source files, and monitoring key performance metrics during development or testing cycles.",
+  "initial_parameter_schema": {
+    "compilers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "compiler_id": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "is_default": {
+            "type": "boolean"
+          },
+          "install_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "compiler_id",
+          "language",
+          "version",
+          "path",
+          "is_default",
+          "install_status"
+        ]
+      }
+    },
+    "toolchain_configurations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "toolchain_id": {
+            "type": "string"
+          },
+          "list_of_compilers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "default_compiler_per_language": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "environment_variables": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "toolchain_id",
+          "list_of_compilers",
+          "default_compiler_per_language",
+          "environment_variables"
+        ]
+      }
+    },
+    "performance_metrics": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "metric_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "value": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "metric_id",
+          "type",
+          "timestamp",
+          "value"
+        ]
+      }
+    },
+    "perf_monitor_api": {
+      "type": "object",
+      "properties": {
+        "api_status": {
+          "type": "string"
+        },
+        "supported_metrics": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "access_level": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "api_status",
+        "supported_metrics",
+        "access_level"
+      ]
+    },
+    "workstation": {
+      "type": "object",
+      "properties": {
+        "os_version": {
+          "type": "string"
+        },
+        "hardware_specs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "network_configuration": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "installed_tools": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "os_version",
+        "hardware_specs",
+        "network_configuration",
+        "installed_tools"
+      ]
+    }
+  },
+  "tool_state_dependencies": {
+    "list_installed_compilers": [
+      "compilers"
+    ],
+    "list_installed_compilers_by_language": [
+      "compilers"
+    ],
+    "get_compiler_versions_by_language": [
+      "compilers"
+    ],
+    "get_default_compiler_for_language": [
+      "compilers",
+      "toolchain_configurations"
+    ],
+    "get_toolchain_configuration": [
+      "toolchain_configurations"
+    ],
+    "get_perf_monitor_api_status": [
+      "perf_monitor_api"
+    ],
+    "list_supported_performance_metrics": [
+      "perf_monitor_api"
+    ],
+    "get_recent_performance_metric": [
+      "perf_monitor_api",
+      "performance_metrics"
+    ],
+    "get_performance_metric_history": [
+      "perf_monitor_api",
+      "performance_metrics"
+    ],
+    "get_workstation_info": [
+      "workstation"
+    ],
+    "set_default_compiler_for_language": [
+      "compilers",
+      "toolchain_configurations"
+    ],
+    "install_compiler": [
+      "compilers"
+    ],
+    "uninstall_compiler": [
+      "compilers"
+    ],
+    "modify_toolchain_environment_variable": [
+      "toolchain_configurations"
+    ],
+    "refresh_perf_monitor_api": [
+      "perf_monitor_api"
+    ],
+    "trigger_performance_metric_collection": [
+      "perf_monitor_api",
+      "performance_metrics"
+    ],
+    "update_workstation_info": [
+      "workstation"
+    ]
+  },
+  "tools": [
+    {
+      "name": "list_installed_compilers",
+      "description": "Get all compilers whose install_status is 'installed' across all languages.\n\nReturns:\n    dict:\n    - success (bool): True if the query was performed.\n    - data (List[CompilerInfo]): List of installed compiler info dicts (can be empty if none installed).\nConstraints:\n    - Only compilers with install_status == 'installed' are included in the result.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_installed_compilers_by_language",
+      "description": "Retrieve all compilers for the specified programming language that are currently installed.\n\nArgs:\n    language (str): The programming language to filter compilers by.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CompilerInfo]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\nConstraints:\n    - Only compilers where install_status == \"installed\" are returned.\n    - Filters by exact match of the language attribute.\n    - If language is empty or not a string, returns an error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "language": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "language"
+        ]
+      }
+    },
+    {
+      "name": "get_compiler_versions_by_language",
+      "description": "Retrieve all available versions of installed compilers for a specified programming language.\n\nArgs:\n    language (str): The programming language to query (e.g., 'C++', 'Python', 'Go').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str]  # List of compiler versions for the language (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error\n    }\n\nConstraints:\n    - Only compilers with install_status == \"installed\" are considered.\n    - 'language' must be provided as a non-empty string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "language": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "language"
+        ]
+      }
+    },
+    {
+      "name": "get_default_compiler_for_language",
+      "description": "Retrieve detailed info of the default compiler for a given language as set in the toolchain configuration.\n\nArgs:\n    language (str): Programming language name.\n\nReturns:\n    dict:\n        If found:\n            { \"success\": True, \"data\": CompilerInfo }\n        If not found or any error (no config, language, or compiler not installed):\n            { \"success\": False, \"error\": str }\nConstraints:\n    - Only compilers with install_status == \"installed\" are valid.\n    - Each language can only have one default in toolchain config.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "language": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "language"
+        ]
+      }
+    },
+    {
+      "name": "get_toolchain_configuration",
+      "description": "Get the details of the current toolchain configuration(s), including environment variables and default compilers.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ToolchainConfigInfo],  # All toolchain configurations (may be one or many)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"No toolchain configuration available\"\n    }\n\nConstraints:\n    - There must be at least one toolchain configuration present.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_perf_monitor_api_status",
+      "description": "Return the operational status and settings of the PerfMonitorAPI, including supported metrics.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": PerfMonitorAPIInfo  # Full status/settings dict\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason (e.g., PerfMonitorAPI status unavailable)\n    }\n\nConstraints:\n    - Returns status information only if PerfMonitorAPI is initialized.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_supported_performance_metrics",
+      "description": "List metric types currently supported by PerfMonitorAPI.\n\nReturns:\n    dict:\n        - On success: {\n            \"success\": True,\n            \"data\": List[str],  # Supported metric types (e.g., ['cpu', 'memory', ...])\n        }\n        - On failure: {\n            \"success\": False,\n            \"error\": str  # Description, e.g. PerfMonitorAPI is unavailable\n        }\n\nConstraints:\n    - PerfMonitorAPI must be initialized (not None).\n    - Only returns the supported_metrics claimed by the API.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_recent_performance_metric",
+      "description": "Retrieve the most recent performance metric of a given type (e.g., 'cpu', 'memory', 'network', 'bottleneck').\n\nArgs:\n    metric_type (str): The type of performance metric to retrieve.\n\nReturns:\n    dict:\n        success: True, with 'data' as the most recent PerformanceMetricInfo of the given type, or None if none exist.\n        success: False, with 'error' message if API is not available, not operational, or metric type is unsupported.\n\nConstraints:\n    - Only supported metric types (according to self.perf_monitor_api) can be queried.\n    - PerfMonitorAPI must be present and operational.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "metric_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "metric_type"
+        ]
+      }
+    },
+    {
+      "name": "get_performance_metric_history",
+      "description": "Retrieve the historical performance metric values for a given metric type (e.g., 'cpu', 'memory').\n\nArgs:\n    metric_type (str): The type of performance metric to query. Must be among supported metrics\n        in the PerfMonitorAPI (e.g., 'cpu', 'memory', 'network', 'bottleneck').\n\nReturns:\n    dict: \n        - On success:\n            {\n              \"success\": True,\n              \"data\": List[PerformanceMetricInfo],  # Sorted chronologically (by timestamp, asc)\n            }\n        - On failure:\n            {\n              \"success\": False,\n              \"error\": str  # Reason for failure.\n            }\n\nConstraints:\n    - PerfMonitorAPI must be present and operational.\n    - Only metric types listed in PerfMonitorAPI['supported_metrics'] can be queried.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "metric_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "metric_type"
+        ]
+      }
+    },
+    {
+      "name": "get_workstation_info",
+      "description": "Retrieve the current workstation's properties (OS version, hardware specs, network configuration, installed tools).\n\nArgs:\n    None\n\nReturns:\n    dict:\n      - success: True and data is a WorkstationInfo dict if available.\n      - success: False and error message if workstation info is not available.\n\nConstraints:\n    - No permission enforcement or constraints on this query.\n    - Returns failure if workstation info is uninitialized.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "set_default_compiler_for_language",
+      "description": "Update the default compiler for a specific language in a toolchain configuration.\n\nArgs:\n    toolchain_id (str): The identifier for the toolchain configuration to update.\n    language (str): The programming language (e.g. 'C++', 'Python', etc).\n    compiler_id (str): The compiler to set as default for this language.\n\nReturns:\n    dict:\n        - On success: {\n            \"success\": True,\n            \"message\": \"Default compiler for language <language> set to <compiler_id> in toolchain <toolchain_id>\"\n          }\n        - On failure: {\n            \"success\": False,\n            \"error\": <reason>\n          }\n\nConstraints:\n    - Compiler must exist and have install_status == \"installed\".\n    - Compiler must support the requested language.\n    - Enforces one-default-per-language (just overwrite).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "toolchain_id": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "compiler_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "toolchain_id",
+          "language",
+          "compiler_id"
+        ]
+      }
+    },
+    {
+      "name": "install_compiler",
+      "description": "Add a new compiler to the system and mark it as 'installed'.\n\nArgs:\n    compiler_id (str): Unique identifier for the compiler.\n    language (str): Programming language this compiler supports.\n    version (str): Version string of the compiler.\n    path (str): Filesystem path to the compiler binary.\n    is_default (bool, optional): Whether this compiler should be the default for its language. Defaults to False.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Compiler <compiler_id> installed successfully\" }\n        On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - compiler_id must be unique (cannot already exist).\n    - install_status will be forcibly set to \"installed\".\n    - All required fields must be present.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "compiler_id": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "is_default": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "compiler_id",
+          "language",
+          "version",
+          "path",
+          "is_default"
+        ]
+      }
+    },
+    {
+      "name": "uninstall_compiler",
+      "description": "Uninstall (deactivate) a compiler by marking its install_status as not 'installed'.\n\nArgs:\n    compiler_id (str): The ID of the compiler to uninstall.\n\nReturns:\n    dict:\n        - success (bool): Whether the operation succeeded.\n        - message (str): On success, the operation message.\n        - error (str): On failure, the error message.\n\nConstraints:\n    - Only compilers with install_status = \"installed\" are available for use.\n    - If the compiler does not exist, returns error.\n    - If the compiler is already uninstalled (install_status != \"installed\"), returns error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "compiler_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "compiler_id"
+        ]
+      }
+    },
+    {
+      "name": "modify_toolchain_environment_variable",
+      "description": "Add, update, or remove an environment variable in a toolchain configuration.\n\nArgs:\n    toolchain_id (str): ID of the toolchain configuration to modify.\n    variable_name (str): The environment variable key to add/update/remove.\n    variable_value (str|None): The new value for the variable. If None (or empty string), remove the variable.\n\nReturns:\n    dict:\n        - On success: {\n            \"success\": True,\n            \"message\": str  # description of the operation performed\n        }\n        - On failure: {\n            \"success\": False,\n            \"error\": str  # error description\n        }\n\nConstraints:\n    - toolchain_id must exist in toolchain_configurations.\n    - variable_name must be a non-empty string.\n    - If variable_value is None or \"\", interpret as removal.\n    - If removal requested and variable does not exist, operation succeeds (no-op).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "toolchain_id": {
+            "type": "string"
+          },
+          "variable_name": {
+            "type": "string"
+          },
+          "variable_value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "toolchain_id",
+          "variable_name",
+          "variable_value"
+        ]
+      }
+    },
+    {
+      "name": "refresh_perf_monitor_api",
+      "description": "Force the PerfMonitorAPI to re-initialize and update its status and supported metric types.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"PerfMonitorAPI successfully refreshed and updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Only supported metric types (cpu, memory, network, bottleneck) may be included in supported_metrics.\n    - Re-initialization sets API status to 'active' and resets supported metrics to default supported types.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "trigger_performance_metric_collection",
+      "description": "Instantly collect a new data point for one or more specified metric types using the PerfMonitorAPI.\n\nArgs:\n    metric_types (List[str]): List of metric type strings to collect (e.g., ['cpu', 'memory']).\n\nReturns:\n    dict: On success:\n          {\n              \"success\": True,\n              \"message\": \"Collected new performance metrics: ...\",\n              \"collected_metrics\": List[PerformanceMetricInfo]\n          }\n          On error:\n          {\n              \"success\": False,\n              \"error\": \"<reason>\"\n          }\nConstraints:\n    - PerfMonitorAPI must be initialized and operational.\n    - Only supported metric types can be collected.\n    - At least one valid (supported) metric type must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "metric_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "metric_types"
+        ]
+      }
+    },
+    {
+      "name": "update_workstation_info",
+      "description": "Update workstation information fields.\nOnly updates fields present in WorkstationInfo; ignores non-existent fields.\n\nArgs:\n    info_updates (dict): Dictionary of workstation attributes to be updated\n        (os_version, hardware_specs, network_configuration, installed_tools).\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Workstation info updated\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Only recognized WorkstationInfo fields are updated.\n    - Types must match: hardware_specs/network_configuration (dict), installed_tools (list), os_version (str).\n    - If workstation info does not yet exist, initialize first.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "info_updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "info_updates"
+        ]
+      }
+    }
+  ]
+}

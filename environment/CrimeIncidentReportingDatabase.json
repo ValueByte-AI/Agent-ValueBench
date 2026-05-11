@@ -1,0 +1,337 @@
+{
+  "env_name": "CrimeIncidentReportingDatabase",
+  "description": "A Crime Incident Reporting Database is a centralized system for recording and managing information about criminal events. It maintains details such as incident type, time and date, exact geographic location, and descriptive metadata for each reported crime. The environment supports querying and analysis features, enabling users to retrieve incident data filtered by parameters such as location and date range.",
+  "initial_parameter_schema": {
+    "incidents": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "incident_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "time": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "location_description": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "reported_by": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "narrative_description": {
+                "type": "string"
+              },
+              "case_num": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "reported_by",
+              "status",
+              "narrative_description",
+              "case_num"
+            ]
+          }
+        },
+        "required": [
+          "incident_id",
+          "type",
+          "date",
+          "time",
+          "latitude",
+          "longitude",
+          "location_description",
+          "metadata"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_incident_by_id": [
+      "incidents"
+    ],
+    "list_all_incidents": [
+      "incidents"
+    ],
+    "list_incidents_by_type": [
+      "incidents"
+    ],
+    "list_incidents_by_date_range": [
+      "incidents"
+    ],
+    "list_incidents_by_location": [
+      "incidents"
+    ],
+    "list_incidents_by_location_and_date": [
+      "incidents"
+    ],
+    "get_incident_metadata": [
+      "incidents"
+    ],
+    "search_incidents": [
+      "incidents"
+    ],
+    "add_incident": [
+      "incidents"
+    ],
+    "update_incident": [
+      "incidents"
+    ],
+    "delete_incident": [
+      "incidents"
+    ],
+    "update_incident_metadata": [
+      "incidents"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_incident_by_id",
+      "description": "Retrieve full details of a crime incident by its unique incident_id.\n\nArgs:\n    incident_id (str): Unique identifier for the crime incident.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": CrimeIncidentInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The incident_id must exist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "incident_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "incident_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_incidents",
+      "description": "Return the complete list of recorded crime incidents (as CrimeIncidentInfo dicts).\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CrimeIncidentInfo]\n    }\n    The list may be empty if there are no incidents.\n\nConstraints:\n    - No filtering; return all incidents.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_incidents_by_type",
+      "description": "Filter and return all crime incidents of the specified type/category.\n\nArgs:\n    incident_type (str): The category (e.g., 'theft', 'assault') to filter by.\n        The comparison is case-insensitive.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CrimeIncidentInfo],  # List of matching incident records (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description (e.g., invalid type argument)\n    }\n\nConstraints:\n    - Type must not be empty.\n    - Comparison is case-insensitive for usability.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "incident_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "incident_type"
+        ]
+      }
+    },
+    {
+      "name": "list_incidents_by_date_range",
+      "description": "Retrieve all crime incidents that occurred within the specified date range (inclusive).\n\nArgs:\n    start_date (str): The starting date (YYYY-MM-DD format, inclusive).\n    end_date (str): The ending date (YYYY-MM-DD format, inclusive).\n\nReturns:\n    dict:\n        - success (True), data (List[CrimeIncidentInfo]) on success.\n        - success (False), error (str) on parsing/validation error.\n\nConstraints:\n    - start_date and end_date must be in YYYY-MM-DD format.\n    - start_date must be <= end_date.\n    - Only incidents whose 'date' is within [start_date, end_date] (inclusive) are returned.\n    - No error for no match: simply return an empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "start_date",
+          "end_date"
+        ]
+      }
+    },
+    {
+      "name": "list_incidents_by_location",
+      "description": "Retrieve all incidents that match specific latitude and longitude coordinates,\noptionally within a given radius (in kilometers).\n\nArgs:\n    latitude (float): Reference latitude in decimal degrees (-90 <= lat <= 90).\n    longitude (float): Reference longitude in decimal degrees (-180 <= lon <= 180).\n    radius (Optional[float]): Search radius in kilometers. If None or <= 0, uses exact match.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CrimeIncidentInfo],  # All matching incidents (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,  # Description of the error\n    }\n\nConstraints:\n    - Latitude must be between -90 and 90.\n    - Longitude must be between -180 and 180.\n    - If radius is provided and > 0, matches any incident within that distance from the reference coordinate.\n    - Otherwise, matches only incidents with exact coordinates.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "radius": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude"
+        ]
+      }
+    },
+    {
+      "name": "list_incidents_by_location_and_date",
+      "description": "Retrieve all incidents that match BOTH the specified location (latitude, longitude)\nAND the date or date range.\n\nArgs:\n    latitude (float): The latitude to match.\n    longitude (float): The longitude to match.\n    start_date (str): The start date (inclusive), format 'YYYY-MM-DD'.\n    end_date (str, optional): The end date (inclusive), format 'YYYY-MM-DD'. If None, will match only start_date.\n\nReturns:\n    dict:\n        If success:\n            {\"success\": True, \"data\": List[CrimeIncidentInfo]}\n        If failure (bad input):\n            {\"success\": False, \"error\": \"...\"}\nConstraints:\n    - Date format must be 'YYYY-MM-DD'.\n    - Latitude and longitude must be floats.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude",
+          "start_date"
+        ]
+      }
+    },
+    {
+      "name": "get_incident_metadata",
+      "description": "Retrieve the metadata for the specified incident.\n\nArgs:\n    incident_id (str): The unique identifier of the incident.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": MetadataInfo\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": str  # Error message if not found.\n        }\n\nConstraints:\n    - incident_id must correspond to an existing crime incident.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "incident_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "incident_id"
+        ]
+      }
+    },
+    {
+      "name": "search_incidents",
+      "description": "General search function allowing filtering by any combination of:\n  - type (str)\n  - date (str, {'from': str, 'to': str}, or date_range={'from': str, 'to': str})\n  - location (latitude/longitude or bounding box {'lat_min': float, 'lat_max': float, 'lon_min': float, 'lon_max': float})\n  - location_description (substring string, or {'contains': str}, or {'exact': str})\n  - metadata fields: reported_by, status, narrative_description, case_num\n\nArgs:\n    filters (dict): Dictionary with any above fields as keys or a nested dict for range/bounding queries.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CrimeIncidentInfo],  # Matching incidents (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # On invalid filter key or malformed filter\n    }\n\nConstraints:\n    - All filter keys must be valid field names.\n    - All matching incidents are returned.\n    - Date range queries are supported through either date or date_range dict filters.\n    - location_description string filters are matched case-insensitively by substring unless exact is requested explicitly.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filters": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "filters"
+        ]
+      }
+    },
+    {
+      "name": "add_incident",
+      "description": "Add a new crime incident to the database, enforcing unique id and data validation constraints.\n\nArgs:\n    incident_info (dict): Should match CrimeIncidentInfo TypedDict, e.g.\n        {\n            'incident_id': str,\n            'type': str,\n            'date': str,\n            'time': str,\n            'latitude': float,\n            'longitude': float,\n            'location_description': str,\n            'metadata': {\n                'reported_by': str,\n                'status': str,\n                'narrative_description': str,\n                'case_num': str\n            }\n        }\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Incident <incident_id> added successfully.\"\n    } or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - incident_id must be unique.\n    - latitude and longitude must be within valid range.\n    - type must be provided and non-empty.\n    - date and time must be provided and non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "incident_info": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "incident_info"
+        ]
+      }
+    },
+    {
+      "name": "update_incident",
+      "description": "Modify the details of an existing incident given its incident_id.\nAll fields are optional except incident_id; only those provided will be updated.\n\nArgs:\n    incident_id (str): Unique id for the incident to be modified.\n    type (str, optional): Updated crime type. Must not be empty if provided.\n    date (str, optional): Updated date (\"YYYY-MM-DD\" recommended).\n    time (str, optional): Updated time (\"HH:MM\" etc.).\n    latitude (float, optional): Updated latitude (-90 <= latitude <= 90).\n    longitude (float, optional): Updated longitude (-180 <= longitude <= 180).\n    location_description (str, optional): Updated location description.\n    metadata (dict, optional): Dict with any of (\"reported_by\", \"status\", \"narrative_description\", \"case_num\") and any existing metadata keys already present on the incident.\n\nReturns:\n    dict: { \"success\": True, \"message\": \"Incident updated successfully\" }\n          or\n          { \"success\": False, \"error\": \"<reason>\" }\nConstraints:\n    - incident_id must exist.\n    - If type is provided, must be non-empty string.\n    - If latitude/longitude are provided, must be valid floats in range.\n    - If metadata is provided, unknown keys are rejected unless they already exist on the incident.\n    - Updates are atomic: validation failures do not partially modify the incident.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "incident_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "time": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "location_description": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "incident_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_incident",
+      "description": "Remove a crime incident from the database by incident_id.\n\nArgs:\n    incident_id (str): Unique identifier of the crime incident to remove.\n\nReturns:\n    dict:\n        Success: { \"success\": True, \"message\": \"Incident <incident_id> deleted.\" }\n        Failure: { \"success\": False, \"error\": \"Incident not found.\" }\n\nConstraints:\n    - The given incident_id must exist in the database.\n    - Removes the incident from the incident list entirely.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "incident_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "incident_id"
+        ]
+      }
+    },
+    {
+      "name": "update_incident_metadata",
+      "description": "Edit only the metadata section (status, narrative, reporter info, case number) for an existing incident.\n\nArgs:\n    incident_id (str): The ID of the incident to update.\n    status (str, optional): New status value.\n    narrative_description (str, optional): New narrative description.\n    reported_by (str, optional): New reporter info.\n    case_num (str, optional): New case number.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Incident metadata updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Only metadata fields are updated, and only for an existing incident.\n    - No operation if no field is supplied, but counted as success (no-op).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "incident_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "narrative_description": {
+            "type": "string"
+          },
+          "reported_by": {
+            "type": "string"
+          },
+          "case_num": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "incident_id"
+        ]
+      }
+    }
+  ]
+}

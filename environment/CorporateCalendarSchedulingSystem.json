@@ -1,0 +1,673 @@
+{
+  "env_name": "CorporateCalendarSchedulingSystem",
+  "description": "A corporate calendar scheduling system manages events, appointments, and meetings for individuals or teams within an organization. It maintains information about participants, times, dates, and event types, and supports operations like event creation, modification, conflict detection, and reminders. These systems are essential for efficient time management and coordination within professional settings.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "notification_preference": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "role",
+          "contact_info",
+          "notification_preference"
+        ]
+      }
+    },
+    "events": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "start_datetime": {
+            "type": "string"
+          },
+          "end_datetime": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "organizer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "title",
+          "description",
+          "start_datetime",
+          "end_datetime",
+          "location",
+          "event_type",
+          "organizer_id"
+        ]
+      }
+    },
+    "participants": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "event_id": {
+              "type": "string"
+            },
+            "user_id": {
+              "type": "string"
+            },
+            "participation_status": {
+              "type": "string"
+            },
+            "is_external": {
+              "type": "boolean"
+            },
+            "external_org_name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "event_id",
+            "user_id",
+            "participation_status",
+            "is_external",
+            "external_org_name"
+          ]
+        }
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_name": [
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "list_users": [
+      "users"
+    ],
+    "get_events_for_user": [
+      "events",
+      "participants",
+      "users"
+    ],
+    "get_events_in_time_range_for_user": [
+      "events",
+      "participants",
+      "users"
+    ],
+    "get_event_by_id": [
+      "events"
+    ],
+    "get_event_participants": [
+      "events",
+      "participants"
+    ],
+    "detect_conflicts_for_user": [
+      "events",
+      "participants",
+      "users"
+    ],
+    "get_external_participants_for_event": [
+      "events",
+      "participants"
+    ],
+    "create_event": [
+      "events",
+      "users"
+    ],
+    "add_participant_to_event": [
+      "events",
+      "participants",
+      "users"
+    ],
+    "create_event_with_participants": [
+      "events",
+      "participants",
+      "users"
+    ],
+    "update_event_time": [
+      "events",
+      "participants",
+      "users"
+    ],
+    "update_participation_status": [
+      "participants"
+    ],
+    "cancel_event": [
+      "events",
+      "participants"
+    ],
+    "remove_participant_from_event": [
+      "events",
+      "participants"
+    ],
+    "update_event_details": [
+      "events"
+    ],
+    "add_external_participant": [
+      "events",
+      "participants"
+    ],
+    "bulk_create_events": [
+      "events",
+      "participants"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_name",
+      "description": "Retrieve a user's information by their name.\n\nArgs:\n    name (str): The name of the user to lookup.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo      # Info of the first user with the given name\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str         # Description, e.g. user not found\n    }\n\nNotes:\n    - If multiple users share the same name, returns the first match found.\n    - Matching is case-sensitive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user information given a unique user ID.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo,   # User's information - if user is found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,       # Error message if not found\n    }\n\nConstraints:\n    - user_id must exist in the system.\n    - No authorization checks are enforced here.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_users",
+      "description": "Retrieve a list of all users in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[UserInfo],  # All user records (possibly empty)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_events_for_user",
+      "description": "List all events (with details and time) that a particular user is participating in.\n\nArgs:\n    user_id (str): The user ID whose events are to be retrieved.\n\nReturns:\n    dict:\n      - On success: { \"success\": True, \"data\": List[EventInfo] }\n          (List may be empty if user is not in any events)\n      - On failure: { \"success\": False, \"error\": str }\n          (E.g., if user ID does not exist)\n\nConstraints:\n    - The user must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_events_in_time_range_for_user",
+      "description": "List events for a user within a specified time range.\n\nArgs:\n    user_id (str): The ID of the user to query for.\n    start_datetime (str): Start of the interval, ISO format (inclusive).\n    end_datetime (str): End of the interval, ISO format (exclusive).\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[EventInfo],  # Events overlapping the interval for the user\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason for failure\n            }\n\nConstraints:\n    - Only events for which the user is a participant are included.\n    - Time intervals are compared as [event_start, event_end) and [start_datetime, end_datetime).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "start_datetime": {
+            "type": "string"
+          },
+          "end_datetime": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "start_datetime",
+          "end_datetime"
+        ]
+      }
+    },
+    {
+      "name": "get_event_by_id",
+      "description": "Retrieve the details of a specific event given its event_id.\n\nArgs:\n    event_id (str): The unique identifier for the event.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"data\": EventInfo}\n        - On failure: {\"success\": False, \"error\": \"Event not found\"}\n\nConstraints:\n    - The event must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "get_event_participants",
+      "description": "Retrieve all participants (internal and external) for a specified event.\n\nArgs:\n    event_id (str): The unique identifier for the event.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ParticipantInfo]  # May be empty if no participants.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g., event does not exist.\n    }\n\nConstraints:\n    - The event must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "detect_conflicts_for_user",
+      "description": "Check if a proposed event time range conflicts with any existing events for the specified user.\n\nArgs:\n    user_id (str): The user to check for scheduling conflicts.\n    proposed_start_datetime (str): Proposed event start as ISO-formatted datetime string.\n    proposed_end_datetime (str): Proposed event end as ISO-formatted datetime string.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"conflict\": bool,\n        \"conflicting_events\": List[EventInfo],  # All conflicting events for that user (possibly empty).\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,\n    }\n\nConstraints:\n    - user_id must exist.\n    - proposed_start_datetime must be strictly before proposed_end_datetime.\n    - Uses time overlap: (event.start < proposed_end and event.end > proposed_start).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "proposed_start_datetime": {
+            "type": "string"
+          },
+          "proposed_end_datetime": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "proposed_start_datetime",
+          "proposed_end_datetime"
+        ]
+      }
+    },
+    {
+      "name": "get_external_participants_for_event",
+      "description": "List external participants and their organizations for a given event.\n\nArgs:\n    event_id (str): The ID of the event.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[dict]  # Each with at least user_id, external_org_name, and participation_status\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for error (e.g., event not found)\n    }\nConstraints:\n    - Event ID must refer to an existing event.\n    - Only participants with is_external == True are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "create_event",
+      "description": "Create a new event/meeting. Checks for organizer existence, valid times, and conflict with existing events.\n\nArgs:\n    title (str): Title of the event.\n    description (str): Description of the event.\n    start_datetime (str): ISO-formatted start datetime (e.g., '2023-05-01T14:00').\n    end_datetime (str): ISO-formatted end datetime (e.g., '2023-05-01T15:00').\n    location (str): Where the event will be held.\n    event_type (str): Type/category of the event.\n    organizer_id (str): User ID of the organizer.\n\nReturns:\n    dict: On success -\n            { \"success\": True, \"message\": \"...\", \"event_id\": str }\n          On failure -\n            { \"success\": False, \"error\": str }\nConstraints:\n    - Organizer user must exist.\n    - Event time (start < end).\n    - No time conflict with existing events for the organizer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "start_datetime": {
+            "type": "string"
+          },
+          "end_datetime": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "organizer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "description",
+          "start_datetime",
+          "end_datetime",
+          "location",
+          "event_type",
+          "organizer_id"
+        ]
+      }
+    },
+    {
+      "name": "add_participant_to_event",
+      "description": "Adds a user (internal or external) as a participant to an existing event.\n\nArgs:\n    event_id (str): ID of the event.\n    user_id (str): ID of the participant (for external, may be synthetic/unique).\n    participation_status (str): Participant's status in event ('invited', 'confirmed', 'declined').\n    is_external (bool): Whether the participant is external to the organization.\n    external_org_name (str): Name of the external organization (must be provided if is_external).\n\nReturns:\n    dict:\n        {\"success\": True, \"message\": \"Participant added to event\"}\n        OR\n        {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - Event must exist.\n    - For internal: user_id must exist in users.\n    - participation_status must be 'invited', 'confirmed', or 'declined'\n    - For external: external_org_name must be non-empty\n    - A participant (by user_id) cannot be added to the same event more than once.\n    - Events must have at least one participant after addition (always true for add).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "participation_status": {
+            "type": "string"
+          },
+          "is_external": {
+            "type": "boolean"
+          },
+          "external_org_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "user_id",
+          "participation_status",
+          "is_external",
+          "external_org_name"
+        ]
+      }
+    },
+    {
+      "name": "create_event_with_participants",
+      "description": "Create an event and assign internal and/or external participants.\nEnforces:\n  - Each event has at least one participant.\n  - Internal participants cannot have time conflicts.\n  - Organizer must exist.\n\nArgs:\n    title (str): Event title.\n    description (str): Event description.\n    start_datetime (str): Event start time (ISO format).\n    end_datetime (str): Event end time (ISO format).\n    location (str): Event location.\n    event_type (str): Type of event.\n    organizer_id (str): User ID of organizer (must exist).\n    participants (list): List of dict, each with keys:\n        - For internal: {'user_id':..., 'participation_status':..., 'is_external': False}\n        - For external: {'participation_status':..., 'is_external': True, 'external_org_name':...}\n\nReturns:\n    dict: { \"success\": True, \"message\": ..., \"event_id\": ... }\n          or\n          { \"success\": False, \"error\": ... }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "start_datetime": {
+            "type": "string"
+          },
+          "end_datetime": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "organizer_id": {
+            "type": "string"
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "user_id": {
+                  "type": "string"
+                },
+                "participation_status": {
+                  "type": "string"
+                },
+                "is_external": {
+                  "type": "boolean"
+                },
+                "external_org_name": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "title",
+          "description",
+          "start_datetime",
+          "end_datetime",
+          "location",
+          "event_type",
+          "organizer_id",
+          "participants"
+        ]
+      }
+    },
+    {
+      "name": "update_event_time",
+      "description": "Change the start and/or end time of an existing event with conflict detection.\n\nArgs:\n    event_id (str): The unique ID of the event to change.\n    new_start_datetime (str, optional): New start time as ISO format string.\n    new_end_datetime (str, optional): New end time as ISO format string.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Event time updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - No two active internal participants for the event can overlap in time.\n    - Event must already exist.\n    - At least one new time must be provided and valid.\n    - new_end > new_start",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "new_start_datetime": {
+            "type": "string"
+          },
+          "new_end_datetime": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "update_participation_status",
+      "description": "Change a participant’s status (invited/confirmed/declined) for a particular event.\n\nArgs:\n    event_id (str): ID of the event the participant is part of.\n    user_id (str): ID of the user (participant).\n    new_status (str): New status to set (\"invited\", \"confirmed\", or \"declined\").\n\nReturns:\n    dict:\n        On success:\n        {\n            \"success\": True,\n            \"message\": \"Participation status updated\"\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": str (reason for failure)\n        }\n\nConstraints:\n    - event_id and user_id combination must exist in participants.\n    - new_status must be one of \"invited\", \"confirmed\", \"declined\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "user_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "cancel_event",
+      "description": "Remove (cancel) a scheduled event from the system.\n\nArgs:\n    event_id (str): The unique identifier for the event to be canceled.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Event cancelled successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Event does not exist.\"\n    }\n\nConstraints:\n    - If the event exists, it and all its participant links are deleted.\n    - If the event does not exist, returns an error and does nothing.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_participant_from_event",
+      "description": "Remove a user from a particular event’s participant list.\n\nArgs:\n    event_id (str): The ID of the event.\n    user_id (str): The ID of the user to be removed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Participant removed from event\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - The event must exist.\n    - The user must currently be a participant of the event.\n    - The event must still have at least one participant after removal.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "update_event_details",
+      "description": "Modify event properties (title, description, location, event_type, organizer_id) for a specified event,\nwithout allowing changes to start_datetime or end_datetime.\n\nArgs:\n    event_id (str): The ID of the event to update.\n    updates (dict): Dictionary of event attributes to update. \n                    Allowed fields: title, description, location, event_type, organizer_id.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Event details updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"An error message describing the failure.\"\n    }\n\nConstraints:\n    - The event with event_id must exist.\n    - Must NOT allow updating start_datetime or end_datetime.\n    - Only allowed fields may be updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "event_id",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "add_external_participant",
+      "description": "Add a new external participant (with organization info) to an event for notifications and tracking.\n\nArgs:\n    event_id (str): The event to which the participant is to be added.\n    external_participant_name (str): The name of the external participant.\n    external_org_name (str): The organization name of the external participant.\n    participation_status (str, optional): invited/confirmed/declined (default: invited).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"External participant added to event.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure.\"\n    }\n\nConstraints:\n    - Event must exist.\n    - No duplicate external participant (same name and org) per event.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "external_participant_name": {
+            "type": "string"
+          },
+          "external_org_name": {
+            "type": "string"
+          },
+          "participation_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "external_participant_name",
+          "external_org_name"
+        ]
+      }
+    },
+    {
+      "name": "bulk_create_events",
+      "description": "Create multiple events at once.\n\nArgs:\n    events_to_create (list): A list of dicts with each containing:\n        - 'event_info': EventInfo or dict with event fields\n        - 'participants': list of ParticipantInfo or dicts (must have at least one per event)\n\nReturns:\n    dict: \n        On success (all events):\n            {\n                \"success\": True,\n                \"message\": \"<N> events created successfully\",\n                \"event_ids\": [event_id, ...]\n            }\n        On partial/all failure:\n            {\n                \"success\": False,\n                \"error\": \"Reason for failure\",  # For granular errors, includes per-event messages\n                \"results\": [\n                    { \"event_id\": ..., \"success\": True/False, \"error\": ...},\n                    ...\n                ]\n            }\n\nConstraints:\n    - No participant can be scheduled for overlapping events.\n    - Events must have at least one participant.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "events_to_create": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "event_info": {
+                  "type": "object",
+                  "properties": {
+                    "event_id": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "start_datetime": {
+                      "type": "string"
+                    },
+                    "end_datetime": {
+                      "type": "string"
+                    },
+                    "location": {
+                      "type": "string"
+                    },
+                    "event_type": {
+                      "type": "string"
+                    },
+                    "organizer_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "event_id",
+                    "title",
+                    "description",
+                    "start_datetime",
+                    "end_datetime",
+                    "location",
+                    "event_type",
+                    "organizer_id"
+                  ]
+                },
+                "participants": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "user_id": {
+                        "type": "string"
+                      },
+                      "participation_status": {
+                        "type": "string"
+                      },
+                      "is_external": {
+                        "type": "boolean"
+                      },
+                      "external_org_name": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              "required": [
+                "event_info",
+                "participants"
+              ]
+            }
+          }
+        },
+        "required": [
+          "events_to_create"
+        ]
+      }
+    }
+  ]
+}

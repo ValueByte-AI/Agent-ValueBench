@@ -1,0 +1,344 @@
+{
+  "env_name": "OnlineQandAPlatform",
+  "description": "An online Q&A platform maintains structured records of user-generated questions and answers, each associated with unique IDs, timestamps, tags, and users. It supports operations such as posting, editing, retrieving, and sorting content to facilitate information discovery and sharing within a community. These systems routinely process queries that involve fetching questions and organizing related answers according to various criteria.",
+  "initial_parameter_schema": {
+    "questions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "question_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "author_user_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "view_count": {
+            "type": "integer"
+          },
+          "sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "title",
+          "body",
+          "author_user_id",
+          "created_at",
+          "updated_at",
+          "tags",
+          "view_count",
+          "sta"
+        ]
+      }
+    },
+    "answers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "answer_id": {
+            "type": "string"
+          },
+          "question_id": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "author_user_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "score": {
+            "type": "integer"
+          },
+          "is_accepted": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "answer_id",
+          "question_id",
+          "body",
+          "author_user_id",
+          "created_at",
+          "updated_at",
+          "score",
+          "is_accepted"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "reputation": {
+            "type": "integer"
+          },
+          "registration_date": {
+            "type": "string"
+          },
+          "profile_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "reputation",
+          "registration_date",
+          "profile_info"
+        ]
+      }
+    },
+    "tags": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "ag_id": {
+            "type": "string"
+          },
+          "tag_name": {
+            "type": "string"
+          },
+          "tag_description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ag_id",
+          "tag_name",
+          "tag_description"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_question_by_id": [
+      "questions"
+    ],
+    "get_answers_for_question": [
+      "answers",
+      "questions"
+    ],
+    "get_answers_for_question_sorted": [
+      "answers",
+      "questions"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_tag_by_id": [
+      "tags"
+    ],
+    "list_tags_for_question": [
+      "questions",
+      "tags"
+    ],
+    "list_questions_by_tag": [
+      "questions",
+      "tags"
+    ],
+    "get_question_list_by_user": [
+      "questions",
+      "users"
+    ],
+    "get_answer_list_by_user": [
+      "answers",
+      "users"
+    ],
+    "none_required_for_the_example_task": []
+  },
+  "tools": [
+    {
+      "name": "get_question_by_id",
+      "description": "Retrieve the full information of a question specified by its question_id.\n\nArgs:\n    question_id (str): Unique ID of the question to fetch.\n\nReturns:\n    dict:\n        success: True, data: QuestionInfo (if found)\n        success: False, error: str (if not found)\nConstraints:\n    - question_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "question_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id"
+        ]
+      }
+    },
+    {
+      "name": "get_answers_for_question",
+      "description": "Retrieve all answer records associated with a specified question.\n\nArgs:\n    question_id (str): The unique identifier of the question whose answers should be retrieved.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[AnswerInfo]  # may be empty if no answers for this question\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # reason for failure, e.g. \"Question does not exist\"\n            }\nConstraints:\n    - The question_id must exist in the platform (question must be present).\n    - All answers returned have their question_id equal to the given question_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "question_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id"
+        ]
+      }
+    },
+    {
+      "name": "get_answers_for_question_sorted",
+      "description": "Fetch all answers for a given question, sorted by a specified attribute.\n\nArgs:\n    question_id (str): The ID of the question to fetch answers for.\n    sort_by (str, optional): Attribute to sort answers by (must be an AnswerInfo key, default 'created_at').\n    descending (bool, optional): If True, sort descending (most recent/biggest first). Default is True.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AnswerInfo],  # Sorted list of answers (empty if none)\n    }\n    Or\n    {\n        \"success\": False,\n        \"error\": str  # Error message\n    }\n\nConstraints:\n    - question_id must refer to an existing question.\n    - sort_by attribute must be a valid key of AnswerInfo.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "question_id": {
+            "type": "string"
+          },
+          "sort_by": {
+            "type": "string"
+          },
+          "descending": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "question_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user profile information by the user's unique _id.\n\nArgs:\n    _id (str): The unique user ID.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"data\": UserInfo }\n        On failure: { \"success\": False, \"error\": \"User not found\" }\n\nConstraints:\n    - The _id must correspond to a registered user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id"
+        ]
+      }
+    },
+    {
+      "name": "get_tag_by_id",
+      "description": "Retrieve the metadata for a tag given its unique ag_id.\n\nArgs:\n    ag_id (str): The unique identifier for the tag.\n\nReturns:\n    dict: \n        - If found: { \"success\": True, \"data\": TagInfo }\n        - If not found: { \"success\": False, \"error\": \"Tag not found\" }\n\nConstraints:\n    - ag_id must correspond to an existing tag in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ag_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ag_id"
+        ]
+      }
+    },
+    {
+      "name": "list_tags_for_question",
+      "description": "Retrieve all tags (tag info dicts) associated with a specified question.\n\nArgs:\n    question_id (str): The unique identifier of the question.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TagInfo],  # list of tag info dictionaries, may be empty if no tags\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # error message, e.g., question not found\n    }\n\nConstraints:\n    - The question_id must exist in the questions collection.\n    - Tags that do not exist in the system are skipped.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "question_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id"
+        ]
+      }
+    },
+    {
+      "name": "list_questions_by_tag",
+      "description": "Retrieve all questions associated with a specific tag.\n\nArgs:\n    tag_id (str): The unique tag identifier (ag_id).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[QuestionInfo],  # List of all questions tagged with tag_id,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,  # Error reason, e.g. tag does not exist\n    }\n\nConstraints:\n    - The tag must exist in the system (ag_id in self.tags).\n    - It's valid to return an empty list if no questions use the tag.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tag_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tag_id"
+        ]
+      }
+    },
+    {
+      "name": "get_question_list_by_user",
+      "description": "List all questions posted by a particular user.\n\nArgs:\n    user_id (str): The unique user _id for the user whose questions are requested.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[QuestionInfo],  # List of questions authored by the given user (can be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g. \"User does not exist\"\n    }\n\nConstraints:\n    - user_id must correspond to a registered user (exists in self.users).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_answer_list_by_user",
+      "description": "Lists all answers posted by a particular user.\n\nArgs:\n    user_id (str): The user ID whose answers are to be retrieved.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AnswerInfo],   # List may be empty if user has posted no answers.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if user does not exist.\n    }\n\nConstraints:\n    - The user must exist in the system (registered user).\n    - Returned answers are all authored by the specified user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "none_required_for_the_example_task",
+      "description": "No state change operation is required or implemented for this use case.\nThis placeholder exists to satisfy API stubs or erroneous calls.\nArgs:\n    *args, **kwargs: Ignored.\n\nReturns:\n    dict: {\n        \"success\": False,\n        \"error\": \"No state-changing operation required or implemented for this example task.\"\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "args": {
+            "type": "object"
+          },
+          "kwargs": {
+            "type": "object"
+          }
+        },
+        "required": []
+      }
+    }
+  ]
+}

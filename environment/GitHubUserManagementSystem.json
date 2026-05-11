@@ -1,0 +1,491 @@
+{
+  "env_name": "GitHubUserManagementSystem",
+  "description": "A GitHub user management system encompasses the structures and processes responsible for maintaining user account information, including unique identifiers, bios, and activity statistics. The system supports operations such as querying user profiles, updating account details, and tracking relationships like followers and contributions. As part of a code hosting platform, it is integral to managing developer identities and social interactions.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "bio": {
+            "type": "string"
+          },
+          "avatar_url": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "account_created_at": {
+            "type": "string"
+          },
+          "account_updated_at": {
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "display_name",
+          "email",
+          "bio",
+          "avatar_url",
+          "location",
+          "account_created_at",
+          "account_updated_at",
+          "is_active"
+        ]
+      }
+    },
+    "user_statistics": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "followers_count": {
+            "type": "integer"
+          },
+          "following_count": {
+            "type": "integer"
+          },
+          "public_repos_count": {
+            "type": "integer"
+          },
+          "contributions_count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "_id",
+          "followers_count",
+          "following_count",
+          "public_repos_count",
+          "contributions_count"
+        ]
+      }
+    },
+    "follower_relationships": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "follower_user_id": {
+            "type": "string"
+          },
+          "followed_user_id": {
+            "type": "string"
+          },
+          "followed_since": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "follower_user_id",
+          "followed_user_id",
+          "followed_since"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_username": [
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "list_active_users": [
+      "users"
+    ],
+    "list_all_users": [
+      "users"
+    ],
+    "check_username_exists": [
+      "users"
+    ],
+    "get_user_statistics": [
+      "user_statistics",
+      "users"
+    ],
+    "get_followers": [
+      "follower_relationships",
+      "users"
+    ],
+    "get_following": [
+      "follower_relationships",
+      "users"
+    ],
+    "get_follower_relationship": [
+      "follower_relationships",
+      "users"
+    ],
+    "update_user_profile": [
+      "users"
+    ],
+    "set_user_active_status": [
+      "users"
+    ],
+    "change_username": [
+      "users"
+    ],
+    "follow_user": [
+      "follower_relationships",
+      "user_statistics",
+      "users"
+    ],
+    "unfollow_user": [
+      "follower_relationships",
+      "user_statistics",
+      "users"
+    ],
+    "increment_user_statistics": [
+      "user_statistics"
+    ],
+    "decrement_user_statistics": [
+      "user_statistics"
+    ],
+    "create_user": [
+      "user_statistics",
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_username",
+      "description": "Retrieve a user's complete profile by their unique username.\nOnly returns user profile if user is active.\n\nArgs:\n    username (str): The user's unique username.\n\nReturns:\n    dict: \n      - On success: { \"success\": True, \"data\": UserInfo }\n      - On failure: { \"success\": False, \"error\": \"User not found or inactive\" }\n\nConstraints:\n    - Only active users (is_active=True) are returned.\n    - Username must be matched exactly (case-sensitive, as typical in GitHub).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve a user's complete profile by their unique user ID.\nOnly active users are returned by default.\n\nArgs:\n    user_id (str): The globally unique user ID.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": UserInfo  # Full user profile dictionary\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason for failure (not found or not active)\n            }\n\nConstraints:\n    - Returns only if the user exists and is active.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_active_users",
+      "description": "List all active user profiles on the platform.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[UserInfo]\n            # List of UserInfo dicts representing all active users.\n            # An empty list is returned if no active users exist.\n        }\n\nConstraints:\n    - Only users with is_active == True are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_all_users",
+      "description": "List all user profiles in the system, regardless of active/inactive status.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[UserInfo],  # List of all user info dictionaries (may be empty if no users)\n    }\n\nConstraints:\n    - All users are returned, regardless of the `is_active` field.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "check_username_exists",
+      "description": "Determine if a given username is already taken by any user (active or inactive).\n\nArgs:\n    username (str): The username to check.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": bool  # True if username exists, False otherwise\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # error message if input is invalid\n        }\n\nConstraints:\n    - Username must be unique for each user.\n    - Returns True if any user (active or not) has the provided username.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "get_user_statistics",
+      "description": "Retrieve the statistics (followers, following, public repos, contributions) for a specific user by user_id.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserStatisticsInfo  # If successful\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - User (user_id) must exist.\n    - User must be active (is_active == True).\n    - Statistics must exist for user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_followers",
+      "description": "Retrieve a list of user profiles of users who actively follow the specified user.\n\nArgs:\n    user_id (str): The ID of the user whose followers should be listed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[UserInfo],  # List of active followers' full profiles (may be empty)\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Why the query could not complete.\n    }\n\nConstraints:\n    - Only active users are returned in queries by default (both the target and their followers).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_following",
+      "description": "Retrieve a list of user profiles (UserInfo) of users whom the specified user is following.\nOnly active users are returned in the results.\n\nArgs:\n    user_id (str): The ID of the user whose following list to query.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": List[UserInfo],  # List of profiles followed by user_id (and active)\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Error message, e.g., user not found\n        }\n\nConstraints:\n    - user_id must exist in self.users.\n    - Only active users are returned in results.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_follower_relationship",
+      "description": "Check if a follower relationship exists between two users and retrieve its details.\n\nArgs:\n    follower_user_id (str): User ID of the follower.\n    followed_user_id (str): User ID of the followed.\n\nReturns:\n    dict: {\n        \"success\": True, \n        \"data\": FollowerRelationshipInfo  # If the relationship exists.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If one/both users do not exist or no such relationship.\n    }\n\nConstraints:\n    - Both user IDs must exist in the user database.\n    - Returns only the first matching relationship if any (should be unique by system design).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "follower_user_id": {
+            "type": "string"
+          },
+          "followed_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "follower_user_id",
+          "followed_user_id"
+        ]
+      }
+    },
+    {
+      "name": "update_user_profile",
+      "description": "Update a user's profile information.\n\nArgs:\n    user_id (str): Globally unique user ID.\n    display_name (Optional[str]): New display name.\n    bio (Optional[str]): New bio.\n    avatar_url (Optional[str]): New avatar URL.\n    location (Optional[str]): New location.\n    email (Optional[str]): New email address.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User profile updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure\"\n    }\n\nConstraints:\n    - Only updatable fields: display_name, bio, avatar_url, location, email.\n    - Updates account_updated_at timestamp to now.\n    - User must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "bio": {
+            "type": "string"
+          },
+          "avatar_url": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "set_user_active_status",
+      "description": "Activate or deactivate a user account (toggle is_active).\n\nArgs:\n    user_id (str): The unique ID of the user to update.\n    is_active (bool): The desired activity status (True=activate, False=deactivate).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User active status updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"User not found.\"\n    }\n\nConstraints:\n    - Only existing users' statuses can be changed.\n    - Returns success even if updating to the same value.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "user_id",
+          "is_active"
+        ]
+      }
+    },
+    {
+      "name": "change_username",
+      "description": "Change a user's username to a new, unique value.\n\nArgs:\n    user_id (str): Unique ID of the user to rename.\n    new_username (str): Desired new username. Must be unique.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"message\": \"Username changed successfully\"}\n        - On failure: {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - The user must exist.\n    - The new username must not already be taken by another user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "new_username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "new_username"
+        ]
+      }
+    },
+    {
+      "name": "follow_user",
+      "description": "Create a new follower relationship: user with follower_user_id follows user with followed_user_id.\n\nArgs:\n    follower_user_id (str): User ID of the follower.\n    followed_user_id (str): User ID of the followed.\n\nReturns:\n    dict:\n        Success: { \"success\": True, \"message\": \"User <follower_user_id> now follows user <followed_user_id>.\" }\n        Failure: { \"success\": False, \"error\": <error_message> }\nConstraints:\n    - Both users must exist and be active.\n    - A user cannot follow themselves.\n    - The follower relationship must not already exist.\n    - On success, statistics are updated accordingly.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "follower_user_id": {
+            "type": "string"
+          },
+          "followed_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "follower_user_id",
+          "followed_user_id"
+        ]
+      }
+    },
+    {
+      "name": "unfollow_user",
+      "description": "Remove an existing follower relationship: user A ('follower_user_id') unfollows user B ('followed_user_id').\n\nArgs:\n    follower_user_id (str): ID of the user performing the unfollow.\n    followed_user_id (str): ID of the user to be unfollowed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User <follower_user_id> has unfollowed user <followed_user_id>\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": <error reason>\n    }\n\nConstraints:\n    - Both users must exist and be active.\n    - A follower relationship must exist.\n    - Updates follower/following counts consistently.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "follower_user_id": {
+            "type": "string"
+          },
+          "followed_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "follower_user_id",
+          "followed_user_id"
+        ]
+      }
+    },
+    {
+      "name": "increment_user_statistics",
+      "description": "Increment a specific statistics field (followers_count, following_count, \npublic_repos_count, or contributions_count) for a given user.\n\nArgs:\n    user_id (str): The target user's unique ID.\n    stat_field (str): The stats field to increment. Must be one of:\n        'followers_count', 'following_count', 'public_repos_count', 'contributions_count'.\n    amount (int, optional): Amount to increment by. Must be positive. Default is 1.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"message\": \"Statistic '<stat_field>' for user <user_id> incremented by <amount>.\"\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": \"<reason>\"\n        }\n\nConstraints:\n    - user_id must be present in user_statistics.\n    - stat_field must be a valid statistics field.\n    - amount must be a positive integer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "stat_field": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "user_id",
+          "stat_field"
+        ]
+      }
+    },
+    {
+      "name": "decrement_user_statistics",
+      "description": "Decrement a specific statistic counter for a user.\n\nArgs:\n    user_id (str): User's unique ID whose statistic is to be decremented.\n    stat_field (str): The statistic field to decrement \n                      ('followers_count', 'following_count', 'public_repos_count', 'contributions_count').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Decremented <stat_field> for user <user_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - stat_field must be a valid statistics counter.\n    - Counter must not be decremented below zero.\n    - user_id must exist in user_statistics.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "stat_field": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "stat_field"
+        ]
+      }
+    },
+    {
+      "name": "create_user",
+      "description": "Add a new user with unique username and user_id, and initializes user statistics.\n\nArgs:\n    _id (str): Globally unique user ID.\n    username (str): Unique username.\n    display_name (str): Display name for the user.\n    email (str): User's email.\n    bio (str, optional): User bio.\n    avatar_url (str, optional): URL to user's avatar.\n    location (str, optional): User location.\n    is_active (bool, optional): If user is active. Defaults to True.\n    account_created_at (str, optional): Creation time (ISO8601). If None, uses current time.\n    account_updated_at (str, optional): Last updated time (ISO8601). If None, uses current time.\n\nReturns:\n    dict: {\n        \"success\": True, \"message\": \"User created successfully.\"\n    }\n    or\n    {\n        \"success\": False, \"error\": \"reason\"\n    }\n\nConstraints:\n    - Username must be unique.\n    - _id (user ID) must be unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "bio": {
+            "type": "string"
+          },
+          "avatar_url": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean"
+          },
+          "account_created_at": {
+            "type": "string"
+          },
+          "account_updated_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "display_name",
+          "email"
+        ]
+      }
+    }
+  ]
+}

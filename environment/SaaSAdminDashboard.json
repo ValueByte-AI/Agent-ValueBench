@@ -1,0 +1,820 @@
+{
+  "env_name": "SaaSAdminDashboard",
+  "description": "A SaaS platform administrator dashboard is an environment that centralizes control and monitoring of resources, clients, and integrations. It maintains stateful records of organizations, user allocations, API registrations, and their associated metadata, enabling authorized users to query and configure these components efficiently. The system supports real-time operations such as user management, API access provisioning, and organizational status tracking.",
+  "initial_parameter_schema": {
+    "organizations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "number_of_seats": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          },
+          "admin_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id",
+          "name",
+          "number_of_seats",
+          "status",
+          "admin_user_id"
+        ]
+      }
+    },
+    "apis": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "api_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "owner_organization_id": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "api_id",
+          "name",
+          "category",
+          "status",
+          "owner_organization_id",
+          "metadata"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "email",
+          "organization_id",
+          "role",
+          "status"
+        ]
+      }
+    },
+    "integrations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "integration_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "configuration": {
+            "type": "object"
+          },
+          "linked_api_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "integration_id",
+          "type",
+          "configuration",
+          "linked_api_ids",
+          "organization_id"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_api_by_id": [
+      "apis"
+    ],
+    "get_organization_by_id": [
+      "organizations"
+    ],
+    "list_apis_by_organization": [
+      "apis",
+      "organizations"
+    ],
+    "get_api_metadata": [
+      "apis"
+    ],
+    "get_organization_admin": [
+      "organizations",
+      "users"
+    ],
+    "list_all_organizations": [
+      "organizations"
+    ],
+    "list_all_apis": [
+      "apis"
+    ],
+    "list_organization_users": [
+      "organizations",
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "list_integration_by_organization": [
+      "integrations",
+      "organizations"
+    ],
+    "get_integration_by_id": [
+      "integrations"
+    ],
+    "list_apis_by_status": [
+      "apis"
+    ],
+    "list_organizations_by_status": [
+      "organizations"
+    ],
+    "add_api": [
+      "apis",
+      "organizations"
+    ],
+    "update_api_info": [
+      "apis"
+    ],
+    "change_api_status": [
+      "apis"
+    ],
+    "delete_api": [
+      "apis",
+      "integrations"
+    ],
+    "add_organization": [
+      "organizations",
+      "users"
+    ],
+    "update_organization_info": [
+      "organizations",
+      "users"
+    ],
+    "change_organization_status": [
+      "organizations"
+    ],
+    "adjust_organization_seats": [
+      "organizations"
+    ],
+    "add_user": [
+      "organizations",
+      "users"
+    ],
+    "update_user_info": [
+      "organizations",
+      "users"
+    ],
+    "delete_user": [
+      "users"
+    ],
+    "add_integration": [
+      "apis",
+      "integrations",
+      "organizations",
+      "users"
+    ],
+    "update_integration_info": [
+      "apis",
+      "integrations"
+    ],
+    "delete_integration": [
+      "integrations"
+    ],
+    "set_user_role": [
+      "users"
+    ],
+    "assign_api_to_organization": [
+      "apis",
+      "organizations"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_api_by_id",
+      "description": "Retrieve the full information dictionary of an API given its api_id.\n\nArgs:\n    api_id (str): Unique identifier for the API.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": APIInfo\n            }\n        On failure (not found):\n            {\n                \"success\": False,\n                \"error\": \"API not found\"\n            }\n\nConstraints:\n    - The api_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_id"
+        ]
+      }
+    },
+    {
+      "name": "get_organization_by_id",
+      "description": "Retrieve full information about an organization given its organization_id.\n\nArgs:\n    organization_id (str): The unique ID of the organization.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": OrganizationInfo  # Full info for the organization\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Reason (e.g. \"Organization not found\")\n    }\nConstraints:\n    - organization_id must exist in the system.\n    - Returns fields: name, number_of_seats, status, admin_user_id (+ organization_id).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id"
+        ]
+      }
+    },
+    {
+      "name": "list_apis_by_organization",
+      "description": "List all APIs owned by a specific organization.\n\nArgs:\n    organization_id (str): The unique identifier of the target organization.\n\nReturns:\n    dict:\n        - On success:\n            { \"success\": True, \"data\": List[APIInfo] }\n            # List may be empty if the organization owns no APIs.\n        - On failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Organization must exist.\n    - Only APIs with owner_organization_id == organization_id are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id"
+        ]
+      }
+    },
+    {
+      "name": "get_api_metadata",
+      "description": "Retrieve the metadata dictionary for the specified API.\n\nArgs:\n    api_id (str): The unique identifier of the API.\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"data\": metadata dict for the API}\n        - On failure: {\"success\": False, \"error\": \"API not found\"}\n\nConstraints:\n    - The api_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_id"
+        ]
+      }
+    },
+    {
+      "name": "get_organization_admin",
+      "description": "Retrieve the admin user's details for a given organization.\n\nArgs:\n    organization_id (str): The identifier of the organization.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": <UserInfo dict> }\n        - On failure: { \"success\": False, \"error\": <reason str> }\n\nConstraints:\n    - The organization with given ID must exist.\n    - The organization's admin_user_id must refer to an actual user.\n    - The user must have role=\"admin\" and belong to the organization.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_organizations",
+      "description": "Lists all organizations registered in the platform.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[OrganizationInfo]  # All organization info objects (may be empty)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_all_apis",
+      "description": "List all API records currently registered in the platform.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[APIInfo],  # List of all APIs' information (could be empty)\n    }\n\nConstraints:\n    - No input parameters are needed.\n    - Returns all APIs present. No filtering or access control applied.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_organization_users",
+      "description": "List all users belonging to a specific organization.\n\nArgs:\n    organization_id (str): The ID of the organization whose users to list.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True,\n            \"data\": List[UserInfo]  # List of users in the organization (may be empty).\n        }\n        On error: {\n            \"success\": False,\n            \"error\": str  # Description of the error, e.g. organization does not exist.\n        }\n\nConstraints:\n    - The organization_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve information for a user given their user_id.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"User not found\"\n    }\n\nConstraints:\n    - user_id must exist within the system's user records.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_integration_by_organization",
+      "description": "List all integrations associated with the given organization.\n\nArgs:\n    organization_id (str): Unique identifier of the organization.\n\nReturns:\n    dict: \n        If organization exists:\n            { \"success\": True, \"data\": List[IntegrationInfo] }\n        If organization does not exist:\n            { \"success\": False, \"error\": \"Organization does not exist\" }\n\nConstraints:\n    - The given organization_id must be present in self.organizations.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id"
+        ]
+      }
+    },
+    {
+      "name": "get_integration_by_id",
+      "description": "Retrieve the detailed information for a specific integration by its integration_id.\n\nArgs:\n    integration_id (str): The unique identifier of the integration to retrieve.\n\nReturns:\n    dict:\n        - If found:\n            {\n                \"success\": True,\n                \"data\": IntegrationInfo\n            }\n        - If not found:\n            {\n                \"success\": False,\n                \"error\": \"Integration not found\"\n            }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "integration_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "integration_id"
+        ]
+      }
+    },
+    {
+      "name": "list_apis_by_status",
+      "description": "List all APIs matching a specific status.\n\nArgs:\n    status (str): The status to filter APIs by. Must be one of:\n                  \"active\", \"inactive\", \"suspended\".\n\nReturns:\n    dict: On success, {\n              \"success\": True,\n              \"data\": List[APIInfo]  # List of API dicts with matching status\n          }\n          On error (invalid status), {\n              \"success\": False,\n              \"error\": \"Invalid status value\"\n          }\n\nConstraints:\n    - Only APIs with status in the allowed set will be listed.\n    - Allowed status values: \"active\", \"inactive\", \"suspended\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "list_organizations_by_status",
+      "description": "List all organizations with the specified status.\n\nArgs:\n    status (str): The status to filter organizations by (\"active\", \"inactive\", \"suspended\" etc.)\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[OrganizationInfo]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If the status is invalid\n    }\n\nConstraints:\n    - Status must be one of the allowed values: \"active\", \"inactive\", \"suspended\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "add_api",
+      "description": "Register a new API, ensuring unique api_id and associating it with an organization.\n\nArgs:\n    api_id (str): Unique identifier for the API.\n    name (str): Name of the API.\n    category (str): Category of the API.\n    status (str): Status (\"active\", \"inactive\", \"suspended\").\n    owner_organization_id (str): Must be an existing organization.\n    metadata (dict): Metadata for the API.\n\nReturns:\n    dict:\n        success (bool): True if operation succeeded.\n        message (str): Success message (if succeeded).\n        error (str): Error message (if failed).\n\nConstraints:\n    - api_id must be unique.\n    - owner_organization_id must exist in organizations.\n    - status must be one of defined values: \"active\", \"inactive\", \"suspended\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "owner_organization_id": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "api_id",
+          "name",
+          "category",
+          "status",
+          "owner_organization_id",
+          "metadata"
+        ]
+      }
+    },
+    {
+      "name": "update_api_info",
+      "description": "Modify selected fields (name, category, metadata, status) of an existing API.\n\nArgs:\n    api_id (str): The unique identifier of the API to update.\n    name (str, optional): New name for the API.\n    category (str, optional): New category for the API.\n    metadata (dict, optional): New metadata dictionary for the API.\n    status (str, optional): New status for the API (\"active\", \"inactive\", \"suspended\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"API information updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - api_id must exist.\n    - status must be one of \"active\", \"inactive\", \"suspended\" if provided.\n    - At least one field to update must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_id"
+        ]
+      }
+    },
+    {
+      "name": "change_api_status",
+      "description": "Change the status of an API, enforcing allowed status values.\n\nArgs:\n    api_id (str): The identifier of the API to change.\n    new_status (str): The desired new status (\"active\", \"inactive\", \"suspended\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"API status updated to <new_status>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - api_id must correspond to an existing API.\n    - new_status must be one of the allowed values: \"active\", \"inactive\", \"suspended\".\n    - (Role/permission enforcement not handled here.)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "delete_api",
+      "description": "Remove an API from the platform. If associated, this will also\nremove references to the API from any integrations' linked_api_ids.\n\nArgs:\n    api_id (str): The unique identifier for the API to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"API <api_id> deleted from platform\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\nConstraints:\n    - The API must exist on the platform.\n    - API is removed from the self.apis dictionary.\n    - Remove this API's id from all integration 'linked_api_ids' lists.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_id"
+        ]
+      }
+    },
+    {
+      "name": "add_organization",
+      "description": "Register a new organization.\n\nArgs:\n    organization_id (str): Unique identifier for the organization.\n    name (str): Name of the organization.\n    number_of_seats (int): Number of seats (must be >= 0).\n    status (str): Organizational status (\"active\", \"inactive\", or \"suspended\").\n    admin_user_id (str): User ID of the admin user for this organization.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Organization registered successfully.\"\n    } on success,\n    or {\n        \"success\": False,\n        \"error\": <error description>\n    } on failure (duplicate ID, invalid parameters, missing admin user).\n\nConstraints:\n    - organization_id must be unique.\n    - number_of_seats must not be negative.\n    - status must be one of: \"active\", \"inactive\", \"suspended\".\n    - admin_user_id must exist in users.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "number_of_seats": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          },
+          "admin_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id",
+          "name",
+          "number_of_seats",
+          "status",
+          "admin_user_id"
+        ]
+      }
+    },
+    {
+      "name": "update_organization_info",
+      "description": "Modify attributes of an organization (name, number_of_seats, admin_user_id, status).\n\nArgs:\n    organization_id (str): ID of the organization to modify.\n    requester_user_id (str): ID of the user requesting the change (must be admin).\n    name (str, optional): New name.\n    number_of_seats (int, optional): New seat count (must be non-negative).\n    admin_user_id (str, optional): New admin user's user_id; must exist in this org.\n    status (str, optional): New status (\"active\", \"inactive\", \"suspended\").\n\nReturns:\n    dict: { \"success\": True, \"message\": ... }\n          or { \"success\": False, \"error\": ... }\n\nConstraints:\n    - Only admins may change organization info.\n    - number_of_seats cannot be negative.\n    - status must be valid.\n    - admin_user_id (if set) must exist in users and belong to the organization.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          },
+          "requester_user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "number_of_seats": {
+            "type": "integer"
+          },
+          "admin_user_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id",
+          "requester_user_id"
+        ]
+      }
+    },
+    {
+      "name": "change_organization_status",
+      "description": "Change the status of an organization, enforcing allowed status values.\n\nArgs:\n    organization_id (str): ID of the organization to update.\n    new_status (str): New status string. Must be one of \"active\", \"inactive\", or \"suspended\".\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Organization status updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason for failure\"\n    }\n\nConstraints:\n    - Organization must exist.\n    - new_status must be one of allowed values: \"active\", \"inactive\", \"suspended\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "adjust_organization_seats",
+      "description": "Update the number_of_seats for an organization.\n\nArgs:\n    organization_id (str): The ID of the organization to adjust.\n    new_number_of_seats (int): The desired number of seats (must be 0 or greater).\n\nReturns:\n    dict: On success:\n            { \"success\": True, \"message\": \"Organization <id> seat count updated to <n>.\" }\n          On failure:\n            { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The organization must exist.\n    - The number of seats must be non-negative.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organization_id": {
+            "type": "string"
+          },
+          "new_number_of_seats": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "organization_id",
+          "new_number_of_seats"
+        ]
+      }
+    },
+    {
+      "name": "add_user",
+      "description": "Register a new user and associate them with an organization.\n\nArgs:\n    name (str): Name of the new user.\n    email (str): Email address of the user.\n    organization_id (str): The organization to associate the user with.\n    role (str): Role of the user (\"admin\", \"member\", etc.).\n    status (str): Status of the user (\"active\", \"inactive\", etc.).\n    user_id (Optional[str]): Optionally provide a specific user_id; otherwise generated.\n\nReturns:\n    dict:\n        Success:\n            {\n                \"success\": True,\n                \"message\": \"User successfully added with user_id <id>\"\n            }\n        Failure:\n            {\n                \"success\": False,\n                \"error\": \"<reason>\"\n            }\n\nConstraints:\n    - organization_id must exist.\n    - user_id must be unique.\n    - No hard enforcement on role/status strings beyond presence.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "email",
+          "organization_id",
+          "role",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "update_user_info",
+      "description": "Update an existing user's attributes.\n\nArgs:\n    user_id (str): The unique identifier of the user to update.\n    name (str, optional): New name for the user.\n    email (str, optional): New email address.\n    organization_id (str, optional): New organization assignment (must exist).\n    role (str, optional): New role designation.\n    status (str, optional): New status (must be valid, e.g., 'active', 'inactive', 'suspended').\n\nReturns:\n    dict: Result of the operation.\n        {\"success\": True, \"message\": \"User info updated.\"}\n        or\n        {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - user_id must exist.\n    - If organization_id is given, it must exist.\n    - If status, must be a valid value.\n    - At least one update field (besides user_id) must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_user",
+      "description": "Remove a user from the system.\n\nArgs:\n    user_id (str): The unique identifier of the user to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User deleted\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - User must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "add_integration",
+      "description": "Register (add) a new integration for an organization.\n\nArgs:\n    user_id (str): The user performing the operation (must be admin of organization).\n    integration_id (str): Unique identifier for the integration.\n    type (str): Type/category of the integration.\n    configuration (Dict[str, Any]): Configuration/settings for the integration.\n    linked_api_ids (List[str]): List of API IDs to link to this integration.\n    organization_id (str): The organization to which this integration is attached.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Integration <integration_id> added to organization <organization_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <error message>\n    }\n\nConstraints:\n    - integration_id must be unique.\n    - organization_id must exist.\n    - Each linked_api_id must exist and be associated with this organization.\n    - Only 'admin' users for the organization can perform this operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "integration_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "configuration": {
+            "type": "object"
+          },
+          "linked_api_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "integration_id",
+          "type",
+          "configuration",
+          "linked_api_ids",
+          "organization_id"
+        ]
+      }
+    },
+    {
+      "name": "update_integration_info",
+      "description": "Update integration configuration and/or linked API IDs for a given integration.\n\nArgs:\n    integration_id (str): The ID of the integration to update.\n    configuration (dict, optional): New configuration dictionary. If None, retains existing.\n    linked_api_ids (List[str], optional): List of API IDs to associate with this integration.\n                                         If None, retains existing.\n\nReturns:\n    dict:\n        - { \"success\": True, \"message\": \"Integration info updated.\" }\n        - { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - integration_id must exist in self.integrations.\n    - Any new linked_api_ids must all exist in self.apis.\n    - At least one of configuration or linked_api_ids must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "integration_id": {
+            "type": "string"
+          },
+          "configuration": {
+            "type": "object"
+          },
+          "linked_api_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "integration_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_integration",
+      "description": "Removes an integration from the system.\n\nArgs:\n    integration_id (str): The unique identifier for the integration to delete.\n\nReturns:\n    dict: \n        On success: \n            {\n                \"success\": True,\n                \"message\": \"Integration <integration_id> deleted successfully.\"\n            }\n        On failure (e.g., not found): \n            {\n                \"success\": False,\n                \"error\": \"Integration not found.\"\n            }\n\nConstraints:\n    - The specified integration_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "integration_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "integration_id"
+        ]
+      }
+    },
+    {
+      "name": "set_user_role",
+      "description": "Assign or update a user's role within their organization.\n\nArgs:\n    requesting_user_id (str): The user making the request (must be an admin in the same org).\n    target_user_id (str): The user whose role will be updated.\n    new_role (str): The role to assign to the user (e.g., \"admin\", \"member\").\n\nReturns:\n    dict: {\n        \"success\": True, \"message\": \"User role updated to <new_role>\"\n    }\n    or\n    {\n        \"success\": False, \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Only users with the \"admin\" role can set user roles.\n    - Both users must exist and belong to the same organization.\n    - The new_role should be valid (here, any role string is allowed as rule not specified).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "requesting_user_id": {
+            "type": "string"
+          },
+          "target_user_id": {
+            "type": "string"
+          },
+          "new_role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requesting_user_id",
+          "target_user_id",
+          "new_role"
+        ]
+      }
+    },
+    {
+      "name": "assign_api_to_organization",
+      "description": "Change or set the owner_organization_id for the specified API.\n\nArgs:\n    api_id (str): The identifier of the API to reassign.\n    organization_id (str): The target organization's ID.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"API <api_id> assigned to organization <organization_id>.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # description of the failure reason\n            }\n\nConstraints:\n    - api_id must exist in the system.\n    - organization_id must exist in the system.\n    - Each API must always be associated with one owner organization.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_id": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_id",
+          "organization_id"
+        ]
+      }
+    }
+  ]
+}

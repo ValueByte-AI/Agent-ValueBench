@@ -1,0 +1,448 @@
+{
+  "env_name": "StudioLightingControlSystem",
+  "description": "A studio lighting control system manages multiple lighting fixtures within a production environment, providing centralized access to status, settings, and configuration options. It maintains state information for each fixture (like type, intensity, color, and assignment) and enables operators to query and modify these properties seamlessly. This environment supports typical operations such as preset selection, manual adjustment, and logging of lighting states for photography, film, or broadcast production.",
+  "initial_parameter_schema": {
+    "fixtures": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "fixture_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "assigned_role": {
+            "type": "string"
+          },
+          "intensity": {
+            "type": "number"
+          },
+          "color": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fixture_id",
+          "name",
+          "type",
+          "assigned_role",
+          "intensity",
+          "color",
+          "status"
+        ]
+      }
+    },
+    "presets": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "preset_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "configuration": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "preset_id",
+          "name",
+          "configuration"
+        ]
+      }
+    },
+    "lighting_logs": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "log_id": {
+            "type": "string"
+          },
+          "fixture_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "action": {
+            "type": "string"
+          },
+          "old_value": {},
+          "new_value": {}
+        },
+        "required": [
+          "log_id",
+          "fixture_id",
+          "timestamp",
+          "action",
+          "old_value",
+          "new_value"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_fixture_by_name": [
+      "fixtures"
+    ],
+    "get_fixture_by_id": [
+      "fixtures"
+    ],
+    "list_fixtures": [
+      "fixtures"
+    ],
+    "list_fixtures_by_status": [
+      "fixtures"
+    ],
+    "get_fixture_intensity": [
+      "fixtures"
+    ],
+    "get_fixture_color": [
+      "fixtures"
+    ],
+    "get_fixture_status": [
+      "fixtures"
+    ],
+    "list_presets": [
+      "presets"
+    ],
+    "get_preset_by_name": [
+      "presets"
+    ],
+    "get_preset_by_id": [
+      "presets"
+    ],
+    "get_lighting_log_by_fixture": [
+      "fixtures",
+      "lighting_logs"
+    ],
+    "get_last_fixture_log": [
+      "fixtures",
+      "lighting_logs"
+    ],
+    "set_fixture_intensity": [
+      "fixtures"
+    ],
+    "set_fixture_color": [
+      "fixtures"
+    ],
+    "set_fixture_status": [
+      "fixtures"
+    ],
+    "recall_preset": [
+      "fixtures",
+      "lighting_logs",
+      "presets"
+    ],
+    "log_fixture_change": [
+      "fixtures",
+      "lighting_logs"
+    ],
+    "batch_update_fixtures": [
+      "fixtures"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_fixture_by_name",
+      "description": "Retrieve a lighting fixture's details by its human-readable name.\n\nArgs:\n    name (str): The fixture's human-readable label (e.g., \"Key Light\").\n\nReturns:\n    dict:\n        - success: True and data: LightingFixtureInfo if found.\n        - success: False and error message if not found.\n\nConstraints:\n    - Returns the first matching fixture if multiple exist with same name.\n    - Name comparison is case-sensitive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_fixture_by_id",
+      "description": "Retrieve a lighting fixture's full details by its unique fixture_id.\n\nArgs:\n    fixture_id (str): The ID of the fixture to retrieve.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": LightingFixtureInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - fixture_id must exist within self.fixtures.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fixture_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fixture_id"
+        ]
+      }
+    },
+    {
+      "name": "list_fixtures",
+      "description": "Fetch all registered fixtures in the studio lighting system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[LightingFixtureInfo]  # List of all fixture info dicts (may be empty)\n    }\n\nConstraints:\n    - No constraints: all fixtures are listed regardless of status or other properties.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_fixtures_by_status",
+      "description": "Get all fixtures (with metadata) filtered by their status.\n\nArgs:\n    status (str): The status to filter fixtures by (e.g., \"active\", \"inactive\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[LightingFixtureInfo]  # All fixtures with matching status (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description (e.g., invalid argument type)\n    }\n\nConstraints:\n    - Status is compared as a string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "get_fixture_intensity",
+      "description": "Query the current intensity setting of a given lighting fixture.\n\nArgs:\n    fixture_id (str): Unique identifier for the lighting fixture.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"fixture_id\": str,\n                    \"intensity\": float\n                }\n            }\n        - On failure (fixture not found):\n            {\n                \"success\": False,\n                \"error\": \"Fixture not found\"\n            }\n\nConstraints:\n    - fixture_id must exist in the system.\n    - No status check for querying (even inactive fixtures can be queried).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fixture_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fixture_id"
+        ]
+      }
+    },
+    {
+      "name": "get_fixture_color",
+      "description": "Query the current color setting of a given lighting fixture.\n\nArgs:\n    fixture_id (str): Unique identifier of the fixture.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": str  # Color value (e.g., \"3200K\", \"#FFFFFF\", etc.)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., fixture not found\n    }\n\nConstraints:\n    - Fixture must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fixture_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fixture_id"
+        ]
+      }
+    },
+    {
+      "name": "get_fixture_status",
+      "description": "Retrieve the current status (e.g., \"active\", \"inactive\") of a given lighting fixture.\n\nArgs:\n    fixture_id (str): The unique identifier of the fixture to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": str  # The status value of the fixture (\"active\", \"inactive\", etc.)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g., \"Fixture not found\"\n    }\n\nConstraints:\n    - The fixture must exist in the system (looked up by fixture_id).\n    - No restrictions on status for querying; always allowed if fixture is present.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fixture_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fixture_id"
+        ]
+      }
+    },
+    {
+      "name": "list_presets",
+      "description": "Retrieve all available lighting presets.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PresetInfo],  # List of all preset info (may be empty if none)\n    }\nConstraints:\n    - None; all presets are listed regardless of other system state.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_preset_by_name",
+      "description": "Retrieve a preset's configuration by its name.\n\nArgs:\n    name (str): The preset name (case-sensitive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": PresetInfo,  # Matching preset info\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Reason (e.g., \"Preset not found\")\n    }\n\nConstraints:\n    - Preset name must match exactly (case-sensitive).\n    - Returns only the first found if multiple presets by the same name.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_preset_by_id",
+      "description": "Retrieve a preset's complete configuration and info by its preset_id.\n\nArgs:\n    preset_id (str): Identifier of the preset to be retrieved.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": PresetInfo  # The matching preset's dictionary\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g., not found)\n    }\n\nConstraints:\n    - The preset must exist (preset_id must be in self.presets).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "preset_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "preset_id"
+        ]
+      }
+    },
+    {
+      "name": "get_lighting_log_by_fixture",
+      "description": "Fetch all lighting log entries associated with the specified fixture.\n\nArgs:\n    fixture_id (str): Unique identifier of the lighting fixture.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[LightingLogInfo]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The fixture with fixture_id must exist.\n    - Returns all log entries where log.fixture_id == fixture_id (empty list if none).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fixture_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fixture_id"
+        ]
+      }
+    },
+    {
+      "name": "get_last_fixture_log",
+      "description": "Retrieve the most recent log entry for a specific fixture.\n\nArgs:\n    fixture_id (str): The unique identifier of the lighting fixture.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"data\": LightingLogInfo }\n        If no logs: { \"success\": False, \"error\": \"No logs found for this fixture\" }\n        If fixture does not exist: { \"success\": False, \"error\": \"Fixture not found\" }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fixture_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fixture_id"
+        ]
+      }
+    },
+    {
+      "name": "set_fixture_intensity",
+      "description": "Adjust the intensity of a specified fixture, enforcing allowed range (0-100) and only if status is 'active'.\n\nArgs:\n    fixture_id (str): The unique identifier of the lighting fixture.\n    intensity (float): Desired intensity value (should be between 0 and 100 inclusive).\n\nReturns:\n    dict: \n        - On success:\n            {\"success\": True, \"message\": \"Intensity updated for fixture <id> to <intensity>\"}\n        - On failure:\n            {\"success\": False, \"error\": \"...\"}\n\nConstraints:\n    - Intensity must be in [0, 100].\n    - Fixture must exist and have status == 'active'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fixture_id": {
+            "type": "string"
+          },
+          "intensity": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "fixture_id",
+          "intensity"
+        ]
+      }
+    },
+    {
+      "name": "set_fixture_color",
+      "description": "Change the color value of a specified fixture, validating for fixture type and only if the fixture is 'active'.\n\nArgs:\n    fixture_id (str): The unique identifier of the lighting fixture to adjust.\n    color (str): The new color value to set.\n\nReturns:\n    dict: Success or error information.\n        On success: {\n            \"success\": True,\n            \"message\": \"Color set to <color> for fixture <fixture_id>\"\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": \"<reason>\"\n        }\n\nConstraints:\n    - The fixture must exist.\n    - The fixture must be 'active'.\n    - The color value must be valid for the fixture type.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fixture_id": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fixture_id",
+          "color"
+        ]
+      }
+    },
+    {
+      "name": "set_fixture_status",
+      "description": "Change the operational status of a lighting fixture (e.g., activate or deactivate it).\n\nArgs:\n    fixture_id (str): The unique identifier of the fixture.\n    new_status (str): The new status to assign (e.g., \"active\", \"inactive\").\n\nReturns:\n    dict: \n        Success: { \"success\": True, \"message\": \"Status of fixture <id> set to <status>\" }\n        Failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - The fixture must exist.\n    - Allowed statuses are assumed to be \"active\" and \"inactive\".\n    - No effect if status is already set to new_status (idempotent).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fixture_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fixture_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "recall_preset",
+      "description": "Apply all settings from a preset, overriding current individual fixture states as specified.\n\nArgs:\n    preset_id (str): The ID of the preset to recall.\n\nReturns:\n    dict: \n      - On full or partial success: {\"success\": True, \"message\": \"Preset applied (with details)\", \"skipped\": [...], \"updated\": [...]}\n      - On error: {\"success\": False, \"error\": str}\n\nConstraints:\n    - Only fixtures with status == \"active\" can be updated.\n    - Intensity must be within 0-100.\n    - Color must be valid for that fixture type (if validation implemented).\n    - Nonexistent fixtures or invalid setting fixtures are skipped (not treated as hard failure).\n    - Each update is logged.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "preset_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "preset_id"
+        ]
+      }
+    },
+    {
+      "name": "log_fixture_change",
+      "description": "Record a manual change to a fixture's setting in the lighting log for audit/reproducibility.\n\nArgs:\n    fixture_id (str): Unique identifier of the lighting fixture being changed.\n    action (str): Description of the change/action (e.g., \"set_intensity\").\n    old_value (Any): Value before change.\n    new_value (Any): Value after change.\n    timestamp (float): Unix timestamp of the change.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Logged fixture change for fixture fixture_id.\" }\n        On failure: { \"success\": False, \"error\": \"Fixture not found.\" }\n\nConstraints:\n    - The fixture_id must correspond to an existing fixture.\n    - Logging changes is allowed regardless of fixture status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fixture_id": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "old_value": {},
+          "new_value": {},
+          "timestamp": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "fixture_id",
+          "action",
+          "old_value",
+          "new_value",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "batch_update_fixtures",
+      "description": "Apply updates (e.g., intensity, color) to multiple fixtures at once, enforcing all relevant constraints.\n\nArgs:\n    fixture_ids (List[str]): List of fixture IDs to update.\n    updates (Dict[str, Any]): Dict of properties to update (e.g., {\"intensity\": 80, \"color\": \"blue\"}).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Batch update applied to fixtures: [...]\"\n    } on success,\n    or\n    {\n        \"success\": False,\n        \"error\": str  # explanation of failures\n    } on error.\n\nConstraints enforced:\n    - Only fixtures with status == \"active\" are updated.\n    - Intensity must be in [0, 100].\n    - Color must be valid for fixture type (here, checks nonempty/non-None).\n    - If any fixture fails constraints or is not found, abort batch (atomic).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fixture_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "fixture_ids",
+          "updates"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,563 @@
+{
+  "env_name": "DigitalBookManagementPlatform",
+  "description": "A digital book management platform enables users to upload, store, and organize electronic books alongside their metadata. The platform maintains records for each book—such as title, author, genre, and file format—and supports operations like upload, search, download, and categorization. Such systems provide infrastructure for digital libraries, retailers, and educational repositories to manage collections of ebooks.",
+  "initial_parameter_schema": {
+    "books": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "genre": {
+            "type": "string"
+          },
+          "file_format": {
+            "type": "string"
+          },
+          "file_location": {
+            "type": "string"
+          },
+          "uploaded_by": {
+            "type": "string"
+          },
+          "upload_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id",
+          "title",
+          "author",
+          "genre",
+          "file_format",
+          "file_location",
+          "uploaded_by",
+          "upload_date"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "email",
+          "account_status"
+        ]
+      }
+    },
+    "categories": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          },
+          "category_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id",
+          "category_name",
+          "description"
+        ]
+      }
+    },
+    "book_category_associations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id",
+          "category_id"
+        ]
+      }
+    },
+    "supported_file_formats": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_id": [
+      "users"
+    ],
+    "list_all_users": [
+      "users"
+    ],
+    "get_books_by_user": [
+      "books",
+      "users"
+    ],
+    "get_book_by_id": [
+      "books"
+    ],
+    "search_books_by_metadata": [
+      "books"
+    ],
+    "list_all_books": [
+      "books"
+    ],
+    "is_book_id_unique": [
+      "books"
+    ],
+    "get_supported_file_formats": [
+      "supported_file_formats"
+    ],
+    "list_categories": [
+      "categories"
+    ],
+    "get_category_by_id": [
+      "categories"
+    ],
+    "get_categories_for_book": [
+      "book_category_associations",
+      "books",
+      "categories"
+    ],
+    "list_books_in_category": [
+      "book_category_associations",
+      "books",
+      "categories"
+    ],
+    "get_book_category_associations": [
+      "book_category_associations"
+    ],
+    "upload_new_book": [
+      "books",
+      "supported_file_formats",
+      "users"
+    ],
+    "edit_book_metadata": [
+      "books",
+      "users"
+    ],
+    "delete_book": [
+      "book_category_associations",
+      "books",
+      "users"
+    ],
+    "assign_book_to_category": [
+      "book_category_associations",
+      "books",
+      "categories"
+    ],
+    "remove_book_from_category": [
+      "book_category_associations",
+      "books",
+      "categories"
+    ],
+    "create_category": [
+      "categories"
+    ],
+    "update_file_location": [
+      "books"
+    ],
+    "set_supported_file_formats": [
+      "supported_file_formats"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user information by user_id.\n\nArgs:\n    user_id (str): The unique identifier for the user to look up.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": UserInfo }\n        - On failure: { \"success\": False, \"error\": str }\nConstraints:\n    - user_id must exist in the platform's user records.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_users",
+      "description": "Retrieve all registered users on the platform.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[UserInfo],  # List of UserInfo dicts for all users (may be empty if no users)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_books_by_user",
+      "description": "Retrieve all books uploaded by a particular user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: \n        On success:\n            { \"success\": True, \"data\": List[BookInfo] }\n            (List may be empty if the user exists but has uploaded no books.)\n        On failure:\n            { \"success\": False, \"error\": str }\n\nConstraints:\n    - The specified user must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_book_by_id",
+      "description": "Retrieve full information (BookInfo) for the book with the specified unique book_id.\n\nArgs:\n    book_id (str): The unique identifier of the book.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": BookInfo,   # BookInfo dict for the found book\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,  # Description of error (e.g., \"Book not found\")\n    }\n\nConstraints:\n    - The book_id must exist in the books dictionary for success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id"
+        ]
+      }
+    },
+    {
+      "name": "search_books_by_metadata",
+      "description": "Search for books by matching (case-insensitive substring for title, author, genre; \ncase-insensitive exact for file_format) on provided non-None parameters.\n\nArgs:\n    title (Optional[str]): Substring of title to search for (case-insensitive).\n    author (Optional[str]): Substring of author name to search for (case-insensitive).\n    genre (Optional[str]): Substring of genre to search for (case-insensitive).\n    file_format (Optional[str]): File format to search for (case-insensitive, exact).\n\nReturns:\n    dict: \n        - If successful, {\n            \"success\": True,\n            \"data\": List[BookInfo]  # Matching books (may be empty)\n          }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "genre": {
+            "type": "string"
+          },
+          "file_format": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "list_all_books",
+      "description": "Retrieve all books stored on the platform.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BookInfo], # List of all BookInfo records (empty if no books)\n    }\n\nConstraints:\n    - None (just returns all books present).\n    - If no books available, returns an empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "is_book_id_unique",
+      "description": "Check whether the given book_id is not already used in the system.\n\nArgs:\n    book_id (str): The candidate book identifier to check.\n\nReturns:\n    dict: \n        - { \"success\": True, \"data\": True } if book_id is unique (not used)\n        - { \"success\": True, \"data\": False } if book_id is already used\n        - { \"success\": False, \"error\": \"Invalid book_id\" } if input is invalid\n\nConstraints:\n    - Book_id must not be empty or None.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id"
+        ]
+      }
+    },
+    {
+      "name": "get_supported_file_formats",
+      "description": "Retrieve the list of supported file formats for book uploads.\n\nReturns:\n    dict:\n        success (bool): True if successful, False if key missing.\n        data (List[str]): List of allowed file format strings (e.g. [\"PDF\", \"EPUB\"]).\n        error (str, optional): Description of the error if unsuccessful.\n\nConstraints:\n    - No input parameters.\n    - Returns current state of allowed formats, normalizing either an actual list value or a configured string form such as a JSON list string or a comma-separated string.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_categories",
+      "description": "Retrieve the list of all categories available on the platform.\n\nReturns:\n    dict: \n        {\n            \"success\": True, \n            \"data\": List[CategoryInfo]  # List of category info dictionaries. May be empty.\n        }\nConstraints:\n    - No input arguments required.\n    - Operation always succeeds (returns empty list if no categories present).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_category_by_id",
+      "description": "Retrieve information about a category given its category_id.\n\nArgs:\n    category_id (str): The unique identifier of the category.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": CategoryInfo  # Category information\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if category is not found\n    }\n\nConstraints:\n    - The category_id must exist in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id"
+        ]
+      }
+    },
+    {
+      "name": "get_categories_for_book",
+      "description": "List all categories (with full metadata) to which a specific book is assigned.\n\nArgs:\n    book_id (str): Unique identifier of the book to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CategoryInfo],  # List of CategoryInfo dicts (empty if book in no categories)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., book does not exist\n    }\n\nConstraints:\n    - The book must exist in the platform records.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id"
+        ]
+      }
+    },
+    {
+      "name": "list_books_in_category",
+      "description": "List all books (with metadata) under a specific category.\n\nArgs:\n    category_id (str): The unique identifier of the category to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BookInfo],  # List of BookInfo dicts for all books in this category (empty if none)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., \"Category does not exist\"\n    }\n\nConstraints:\n    - The specified category_id must exist in the platform.\n    - No user/ownership filtering is applied.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id"
+        ]
+      }
+    },
+    {
+      "name": "get_book_category_associations",
+      "description": "Retrieve all book-category association entries in the system.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": List[BookCategoryAssociationInfo]  # possibly empty if no associations\n        }\n\nConstraints:\n    - None. Returns all associations present in the environment.\n    - Always succeeds (returns empty list if none exist).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "upload_new_book",
+      "description": "Upload a new electronic book to the platform.\n\nValidates:\n    - book_id uniqueness\n    - Complete book metadata (title, author, genre, file_format, file_location, uploaded_by)\n    - File format in supported formats\n    - uploaded_by is a valid user\n\nArgs:\n    book_info (BookInfo): Dictionary with keys:\n        - book_id, title, author, genre, file_format, file_location, uploaded_by, upload_date (optional)\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Book uploaded successfully.\" }\n        - On error: { \"success\": False, \"error\": \"<reason>\" }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_info": {
+            "type": "object",
+            "properties": {
+              "book_id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "author": {
+                "type": "string"
+              },
+              "genre": {
+                "type": "string"
+              },
+              "file_format": {
+                "type": "string"
+              },
+              "file_location": {
+                "type": "string"
+              },
+              "uploaded_by": {
+                "type": "string"
+              },
+              "upload_date": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "book_id",
+              "title",
+              "author",
+              "genre",
+              "file_format",
+              "file_location",
+              "uploaded_by"
+            ]
+          }
+        },
+        "required": [
+          "book_info"
+        ]
+      }
+    },
+    {
+      "name": "edit_book_metadata",
+      "description": "Update book metadata fields (title, author, genre, file_format, etc.) for a book the user is permitted to manage.\n\nArgs:\n    user_id (str): The ID of the user requesting the update.\n    book_id (str): The ID of the book to update.\n    updated_fields (dict): Metadata fields to update; keys can be title, author, genre, file_format.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Book metadata updated successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Description of the failure reason\"\n    }\n\nConstraints:\n    - Only the user who uploaded the book can edit its metadata.\n    - Book must exist.\n    - User must exist.\n    - file_format (if changed) must be in supported formats.\n    - Required fields (title, author, genre, file_format) must be present and non-empty after update.\n    - book_id and uploaded_by cannot be changed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "book_id": {
+            "type": "string"
+          },
+          "updated_fields": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "user_id",
+          "book_id",
+          "updated_fields"
+        ]
+      }
+    },
+    {
+      "name": "delete_book",
+      "description": "Remove a book from the platform, if and only if the requesting user is allowed to do so.\n\nArgs:\n    book_id (str): The identifier for the book to delete.\n    requesting_user_id (str): The user ID requesting deletion.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Book deleted successfully.\" }\n        On failure:\n            { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Only the uploader (uploaded_by == requesting_user_id) may delete the book.\n    - Book and user must exist.\n    - All category associations for this book are also removed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          },
+          "requesting_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id",
+          "requesting_user_id"
+        ]
+      }
+    },
+    {
+      "name": "assign_book_to_category",
+      "description": "Assign a book to a specific category.\n\nArgs:\n    book_id (str): The ID of the book to assign.\n    category_id (str): The ID of the category to assign the book to.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Book assigned to category successfully.\" }\n        On failure (e.g., invalid book, category, or duplicate assignment):\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Both book_id and category_id must exist in the platform.\n    - The association must not already exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id",
+          "category_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_book_from_category",
+      "description": "Removes the association between a book and a category.\n\nArgs:\n    book_id (str): The unique identifier of the book.\n    category_id (str): The unique identifier of the category.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Book removed from category.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Both book_id and category_id must exist.\n    - The specified book must be currently associated with the given category_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id",
+          "category_id"
+        ]
+      }
+    },
+    {
+      "name": "create_category",
+      "description": "Add a new category to the platform.\n\nArgs:\n    category_id (str): Unique identifier for the new category.\n    category_name (str): Name for the category.\n    description (str): Description of the category.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Category '<category_name>' created.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"Category ID already exists.\"\n    }\n\nConstraints:\n    - category_id must be unique in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          },
+          "category_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id",
+          "category_name",
+          "description"
+        ]
+      }
+    },
+    {
+      "name": "update_file_location",
+      "description": "Change the file location or storage reference for an uploaded book.\n\nArgs:\n    book_id (str): The unique identifier of the book whose file location should be updated.\n    new_file_location (str): The new storage path or reference.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"File location updated for book <book_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Book not found.\"\n    }\n\nConstraints:\n    - Book with given book_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          },
+          "new_file_location": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id",
+          "new_file_location"
+        ]
+      }
+    },
+    {
+      "name": "set_supported_file_formats",
+      "description": "Update the platform's list of supported file formats (admin action).\n\nArgs:\n    formats (list): List of string file formats to support (e.g. [\"PDF\", \"EPUB\"]).\n\nReturns:\n    dict:\n        - On success: {'success': True, 'message': 'Supported file formats updated.'}\n        - On failure: {'success': False, 'error': <reason>}\n\nConstraints:\n    - All items in formats must be non-empty strings.\n    - The list must not be empty, and must not contain duplicates.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "formats": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "formats"
+        ]
+      }
+    }
+  ]
+}

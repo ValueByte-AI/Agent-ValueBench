@@ -1,0 +1,710 @@
+{
+  "env_name": "DigitalGameCatalogManagementSystem",
+  "description": "A digital game catalog management system maintains a comprehensive database of video games, where each entry includes metadata such as tags, supported platforms, release information, and descriptions. It supports operations like searching, filtering, and browsing based on a variety of attributes to help users discover games that match their preferences. This environment is used by publishers, distributors, and discovery platforms to organize and present games effectively to end users.",
+  "initial_parameter_schema": {
+    "games": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "game_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "release_date": {
+            "type": "string"
+          },
+          "developer": {
+            "type": "string"
+          },
+          "publisher": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "platform": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "game_id"
+        ]
+      }
+    },
+    "tags": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "tag_id": {
+            "type": "string"
+          },
+          "tag_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tag_id"
+        ]
+      }
+    },
+    "platforms": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "platform_id": {
+            "type": "string"
+          },
+          "platform_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform_id",
+          "platform_name"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "list_all_games": [
+      "games"
+    ],
+    "get_game_by_id": [
+      "games"
+    ],
+    "search_games_by_title": [
+      "games"
+    ],
+    "filter_games_by_tags": [
+      "games",
+      "tags"
+    ],
+    "filter_games_by_platforms": [
+      "games"
+    ],
+    "filter_games_by_tags_and_platforms": [
+      "games",
+      "platforms",
+      "tags"
+    ],
+    "list_all_tags": [
+      "tags"
+    ],
+    "get_tag_by_id": [
+      "tags"
+    ],
+    "get_tag_id_by_name": [
+      "tags"
+    ],
+    "list_all_platforms": [
+      "platforms"
+    ],
+    "get_platform_by_id": [
+      "platforms"
+    ],
+    "get_platform_id_by_name": [
+      "platforms"
+    ],
+    "list_games_by_developer": [
+      "games"
+    ],
+    "list_games_by_publisher": [
+      "games"
+    ],
+    "list_games_by_release_date_range": [
+      "games"
+    ],
+    "add_game": [
+      "games",
+      "platforms",
+      "tags"
+    ],
+    "update_game_metadata": [
+      "games",
+      "platforms",
+      "tags"
+    ],
+    "remove_game": [
+      "games"
+    ],
+    "add_tag": [
+      "tags"
+    ],
+    "update_tag": [
+      "tags"
+    ],
+    "remove_tag": [
+      "games",
+      "tags"
+    ],
+    "add_platform": [
+      "platforms"
+    ],
+    "update_platform": [
+      "platforms"
+    ],
+    "remove_platform": [
+      "games",
+      "platforms"
+    ],
+    "assign_tags_to_game": [
+      "games",
+      "tags"
+    ],
+    "assign_platforms_to_game": [
+      "games",
+      "platforms"
+    ],
+    "remove_tag_from_game": [
+      "games",
+      "tags"
+    ],
+    "remove_platform_from_game": [
+      "games",
+      "platforms"
+    ]
+  },
+  "tools": [
+    {
+      "name": "list_all_games",
+      "description": "Retrieve all games in the catalog.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[GameInfo],  # List of all game entries (could be empty if no games exist)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_game_by_id",
+      "description": "Retrieve full metadata for a specific game given its game_id.\n\nArgs:\n    game_id (str): The unique identifier for the game.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": GameInfo }\n        - On failure: { \"success\": False, \"error\": \"Game not found\" }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "game_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "game_id"
+        ]
+      }
+    },
+    {
+      "name": "search_games_by_title",
+      "description": "Find all games whose titles match or contain a given search string (case-insensitive).\n\nArgs:\n    search_string (str): The search phrase to look for in game titles.\n        - If empty, returns all games.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[GameInfo]  # All matching games (possibly empty if no matches)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "search_string": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "search_string"
+        ]
+      }
+    },
+    {
+      "name": "filter_games_by_tags",
+      "description": "Find all games containing all of the specified tags (AND logic).\n\nArgs:\n    tag_ids (List[str]): List of tag_ids to require for matched games.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[GameInfo],   # All games whose tag set includes all specified tag_ids\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str,             # If any tag_id is invalid/missing from catalog\n    }\n\nConstraints:\n    - All tag_ids must exist in the catalog (in self.tags).\n    - Every returned game will contain *all* of tag_ids in its tags.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tag_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "tag_ids"
+        ]
+      }
+    },
+    {
+      "name": "filter_games_by_platforms",
+      "description": "Find all games available on any of the specified platforms (OR logic).\n\nArgs:\n    platform_ids (List[str]): List of platform IDs to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[GameInfo],  # All games with at least one matching platform_id (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # On input error (unlikely)\n    }\n\nConstraints:\n    - Games must have at least one supported platform (enforced elsewhere).\n    - Query logic: game matches if any platform_id from input is in its platform list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "platform_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "platform_ids"
+        ]
+      }
+    },
+    {
+      "name": "filter_games_by_tags_and_platforms",
+      "description": "Return all games that match all specified tags and are available on at least one specified platform.\n\nArgs:\n    tags (list of str): List of tag IDs. If empty, no tag filtering.\n    platforms (list of str): List of platform IDs. If empty, no platform filtering.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": List[GameInfo],  # Games matching all tags and at least one platform\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason for failure (invalid tag_id/platform_id/etc)\n            }\n\nConstraints:\n    - Every specified tag_id must exist in self.tags.\n    - Every specified platform_id must exist in self.platforms.\n    - Games must contain all specified tag_ids and at least one specified platform_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "platforms": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "tags",
+          "platforms"
+        ]
+      }
+    },
+    {
+      "name": "list_all_tags",
+      "description": "Retrieve all defined tags in the catalog.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TagInfo]  # List of tag objects (tag_id and tag_name), possibly empty\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_tag_by_id",
+      "description": "Retrieve the name and details for the specified tag_id.\n\nArgs:\n    tag_id (str): The unique identifier for the tag.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": TagInfo  # tag_id and tag_name\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # error message if tag_id not found\n        }\nConstraints:\n    - tag_id must match an existing tag in the catalog.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tag_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tag_id"
+        ]
+      }
+    },
+    {
+      "name": "get_tag_id_by_name",
+      "description": "Find the tag_id corresponding to a tag name.\n\nArgs:\n    tag_name (str): The name of the tag to search for.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"data\": tag_id}\n        - On failure: {\"success\": False, \"error\": \"Tag name not found\"}\n\nConstraints:\n    - Tag names are case-sensitive.\n    - Only tags in the catalog are considered.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tag_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tag_name"
+        ]
+      }
+    },
+    {
+      "name": "list_all_platforms",
+      "description": "Retrieve all video game platforms in the catalog.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[PlatformInfo]  # Each has at least platform_id and platform_name\n        }\nNotes:\n    - Returns an empty list if no platforms are registered.\n    - No input parameters or constraints apply.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_platform_by_id",
+      "description": "Retrieve the detailed info for the specified platform_id.\n\nArgs:\n    platform_id (str): The unique identifier of the platform.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": PlatformInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - platform_id must exist in the catalog.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "platform_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform_id"
+        ]
+      }
+    },
+    {
+      "name": "get_platform_id_by_name",
+      "description": "Retrieve the platform_id for a given platform name.\n\nArgs:\n    platform_name (str): The name of the platform to search for (exact match).\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": str  # platform_id\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": \"Platform not found\"\n        }\n\nConstraints:\n    - Only platforms already defined in the catalog will be considered.\n    - Name match is case-sensitive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "platform_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform_name"
+        ]
+      }
+    },
+    {
+      "name": "list_games_by_developer",
+      "description": "Return all games developed by a specified developer.\n\nArgs:\n    developer (str): The developer name to filter games by (case-insensitive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[GameInfo],    # All matching games (could be empty if none found)\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str               # Description of the error\n    }\n\nConstraints:\n    - If developer is not given or is empty, return an error.\n    - Matching is case-insensitive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "developer": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "developer"
+        ]
+      }
+    },
+    {
+      "name": "list_games_by_publisher",
+      "description": "Return all games published by the specified publisher.\n\nArgs:\n    publisher (str): The publisher name to filter games by.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[GameInfo],  # List of games' info (may be empty if no games found)\n    }\n\nConstraints:\n    - This operation does not fail if there are no matches; returns empty list instead.\n    - Matching is case-sensitive on the 'publisher' string attribute.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "publisher": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "publisher"
+        ]
+      }
+    },
+    {
+      "name": "list_games_by_release_date_range",
+      "description": "List all games (GameInfo) released within the given date range [start_date, end_date], inclusive.\n\nArgs:\n    start_date (str): Start of the release date range (format: 'YYYY-MM-DD')\n    end_date (str): End of the release date range (format: 'YYYY-MM-DD')\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[GameInfo]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Dates are compared in 'YYYY-MM-DD' string format (lexicographically).\n    - Returns empty list if no games match the criteria.\n    - Returns error if date format is invalid.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "start_date",
+          "end_date"
+        ]
+      }
+    },
+    {
+      "name": "add_game",
+      "description": "Add a new game to the catalog with validated metadata.\n\nArgs:\n    game_id (str): Unique identifier for the game.\n    title (str): Title of the game (must not be empty).\n    description (str): Game description.\n    release_date (str): Release date (format not enforced here).\n    developer (str): Developer name.\n    publisher (str): Publisher name.\n    tags (list of str): List of tag_ids (must exist in catalog).\n    platform (list of str): List of platform_ids (must exist in catalog, at least one required).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Game <game_id> added.\"\n    }\n    OR\n    dict: {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The game_id must be unique (not already in catalog).\n    - Title must be provided (non-empty).\n    - At least one platform must be provided.\n    - All tag IDs and platform IDs must exist in catalog definitions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "game_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "release_date": {
+            "type": "string"
+          },
+          "developer": {
+            "type": "string"
+          },
+          "publisher": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "platform": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "game_id",
+          "title",
+          "description",
+          "release_date",
+          "developer",
+          "publisher",
+          "tags",
+          "platform"
+        ]
+      }
+    },
+    {
+      "name": "update_game_metadata",
+      "description": "Edit (update) metadata fields for an existing game entry.\n\nArgs:\n    game_id (str): The unique identifier of the game to update.\n    title (str, optional): New title for the game.\n    description (str, optional): New description.\n    release_date (str, optional): New release date (format not enforced here).\n    developer (str, optional): New developer.\n    publisher (str, optional): New publisher.\n    tags (list of str, optional): List of tag_ids to assign to the game.\n    platform (list of str, optional): List of platform_ids the game supports.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Game metadata updated successfully\"\n    } on success,\n    or {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    } on failure.\n\nConstraints:\n    - The specified game must exist.\n    - At least one metadata field must be provided to update.\n    - If tags/platform are provided, all IDs must be in the catalog.\n    - After update, game must have at least one title and one supported platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "game_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "release_date": {
+            "type": "string"
+          },
+          "developer": {
+            "type": "string"
+          },
+          "publisher": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "platform": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "game_id",
+          "title",
+          "description",
+          "release_date",
+          "developer",
+          "publisher",
+          "tags",
+          "platform"
+        ]
+      }
+    },
+    {
+      "name": "remove_game",
+      "description": "Remove a game from the catalog by its unique game_id.\n\nArgs:\n    game_id (str): The unique identifier of the game to remove.\n\nReturns:\n    dict:\n    - On success: { \"success\": True, \"message\": \"Game <game_id> removed from catalog.\" }\n    - On failure: { \"success\": False, \"error\": \"Game with id <game_id> does not exist.\" }\n\nConstraints:\n    - Only removes the game entry; does not affect tags or platforms.\n    - If the game does not exist, operation fails gracefully.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "game_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "game_id"
+        ]
+      }
+    },
+    {
+      "name": "add_tag",
+      "description": "Add a new tag definition to the tag catalog.\n\nArgs:\n    tag_id (str): Unique identifier for the tag.\n    tag_name (str): Display name of the tag.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Tag added successfully.\" }\n        - On failure: { \"success\": False, \"error\": error_message }\n\nConstraints:\n    - tag_id must be unique (not already present in self.tags).\n    - tag_name may be repeated (not constrained).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tag_id": {
+            "type": "string"
+          },
+          "tag_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tag_id",
+          "tag_name"
+        ]
+      }
+    },
+    {
+      "name": "update_tag",
+      "description": "Edit the properties (currently only name) of an existing tag.\n\nArgs:\n    tag_id (str): The unique identifier of the tag to update.\n    tag_name (str, optional): The new name for the tag. Must not be empty or already in use by another tag.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Tag updated successfully\" }\n        On failure: { \"success\": False, \"error\": <reason> }\nConstraints:\n    - tag_id must exist in the tag catalog.\n    - tag_name (if provided) must not be empty and must not duplicate another tag's name.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tag_id": {
+            "type": "string"
+          },
+          "tag_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tag_id",
+          "tag_name"
+        ]
+      }
+    },
+    {
+      "name": "remove_tag",
+      "description": "Delete a tag from the catalog and remove all its references from each game's 'tags' field.\n\nArgs:\n    tag_id (str): The identifier of the tag to remove.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Tag removed from catalog and all games\" }\n        On error:\n            { \"success\": False, \"error\": \"Tag not found\" }\n\nConstraints:\n    - Tag must exist in the catalog.\n    - Must remove the tag from every game's 'tags' list if present.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tag_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tag_id"
+        ]
+      }
+    },
+    {
+      "name": "add_platform",
+      "description": "Add a new platform definition to the platform catalog.\n\nArgs:\n    platform_id (str): Unique identifier for the new platform.\n    platform_name (str): Human-readable name for the platform.\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"message\": \"Platform added successfully\"\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": <Reason - e.g., duplicate platform ID>\n        }\n\nConstraints:\n    - The platform_id must not already exist in the system.\n    - (Optional) platform_name uniqueness is not enforced.\n    - platform_id and platform_name must not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "platform_id": {
+            "type": "string"
+          },
+          "platform_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform_id"
+        ]
+      }
+    },
+    {
+      "name": "update_platform",
+      "description": "Edit the properties (e.g., name) of an existing platform.\n\nArgs:\n    platform_id (str): The unique identifier for the platform to update.\n    platform_name (str, optional): The new display name for the platform.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Platform updated successfully.\" }\n        - On failure: { \"success\": False, \"error\": <error message> }\n\nConstraints:\n    - The platform with the given platform_id must exist in the catalog.\n    - At least one property must be provided to update.\n    - Only edits platform_name (as that's the only modifiable attribute).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "platform_id": {
+            "type": "string"
+          },
+          "platform_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform_id",
+          "platform_name"
+        ]
+      }
+    },
+    {
+      "name": "remove_platform",
+      "description": "Delete a platform from the catalog and remove its references from all games.\nIf removing the platform would leave any game with zero platforms, the operation fails,\nand no changes are made.\n\nArgs:\n    platform_id (str): The unique identifier for the platform to remove.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Platform <platform_id> removed and references deleted from games\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # e.g. \"Platform not found\", \"Cannot remove: would leave some games without any supported platform\"\n            }\n\nConstraints:\n    - Cannot remove a platform if doing so would leave any game with zero platforms.\n    - All references in games must be removed as part of the operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "platform_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform_id"
+        ]
+      }
+    },
+    {
+      "name": "assign_tags_to_game",
+      "description": "Add one or more tags (by ID) to a game's metadata.\n\nArgs:\n    game_id (str): Unique identifier of the game.\n    tag_ids (List[str]): List of tag IDs to assign.\n\nReturns:\n    dict: {\n        \"success\": True, \"message\": \"Tags assigned to game <game_id>.\"\n    }\n    or\n    {\n        \"success\": False, \"error\": str\n    }\n\nConstraints:\n    - The specified game must exist in the catalog.\n    - All tags must be present in the tag catalog (`self.tags`).\n    - The resulting tag list for the game is deduplicated.\n    - Tag addition is idempotent (no error on existing assignments).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "game_id": {
+            "type": "string"
+          },
+          "tag_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "game_id",
+          "tag_ids"
+        ]
+      }
+    },
+    {
+      "name": "assign_platforms_to_game",
+      "description": "Add one or more platforms to the supported platforms of a specified game.\nValidation:\n  - The game must exist in the catalog.\n  - Each platform_id must exist in the platform catalog.\n  - Platforms are only added if not already in the game's supported list.\n  - The game will always have at least one platform after this operation.\n\nArgs:\n    game_id (str): The ID of the game to update.\n    platform_ids (List[str]): List of platform IDs to add.\n\nReturns:\n    dict: {\n      \"success\": True,\n      \"message\": \"Platforms assigned to game <game_id>\"\n    }\n    or\n    {\n      \"success\": False,\n      \"error\": <reason>\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "game_id": {
+            "type": "string"
+          },
+          "platform_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "game_id",
+          "platform_ids"
+        ]
+      }
+    },
+    {
+      "name": "remove_tag_from_game",
+      "description": "Remove a tag (tag_id) from a particular game (game_id).\n\nArgs:\n    game_id (str): The unique ID of the game.\n    tag_id (str): The unique ID of the tag to be removed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Tag <tag_id> removed from game <game_id>.\"\n    }\n    or\n    dict: {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Game must exist.\n    - Tag must exist in the catalog.\n    - Tag must be currently assigned to the game.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "game_id": {
+            "type": "string"
+          },
+          "tag_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "game_id",
+          "tag_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_platform_from_game",
+      "description": "Removes a platform from a particular game, ensuring the game still has at least one platform.\n\nArgs:\n    game_id (str): The identifier of the game to update.\n    platform_id (str): The identifier of the platform to remove.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Platform <platform_id> removed from game <game_id>.\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Game must exist.\n    - Platform must exist in platform catalog.\n    - Platform must be associated with the game.\n    - Game must have at least one platform after the operation; otherwise, the operation is not allowed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "game_id": {
+            "type": "string"
+          },
+          "platform_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "game_id",
+          "platform_id"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,387 @@
+{
+  "env_name": "UniswapV2Exchange",
+  "description": "Uniswap V2 is a decentralized exchange protocol deployed on the Ethereum blockchain, facilitating automated trading of ERC-20 token pairs through liquidity pools. The system maintains a registry of all trading pairs, their smart contract addresses, reserves, and associated metadata. Operations typically involve querying, adding, or removing pairs and pools, enabling permissionless exchange and liquidity provision with transparent, on-chain state.",
+  "initial_parameter_schema": {
+    "tokens": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "token_address": {
+            "type": "string"
+          },
+          "symbol": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "decimal": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "token_address",
+          "symbol",
+          "name",
+          "decimal"
+        ]
+      }
+    },
+    "pairs": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "pair_id": {
+            "type": "string"
+          },
+          "token0_address": {
+            "type": "string"
+          },
+          "token1_address": {
+            "type": "string"
+          },
+          "pair_contract_address": {
+            "type": "string"
+          },
+          "reserve0": {
+            "type": "number"
+          },
+          "reserve1": {
+            "type": "number"
+          },
+          "creation_block": {
+            "type": "integer"
+          },
+          "metadata": {}
+        },
+        "required": [
+          "pair_id",
+          "token0_address",
+          "token1_address",
+          "pair_contract_address",
+          "reserve0",
+          "reserve1",
+          "creation_block",
+          "metadata"
+        ]
+      }
+    },
+    "pair_registry": {
+      "type": "object",
+      "properties": {
+        "total_pairs": {
+          "type": "integer"
+        },
+        "pairs_list": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "last_indexed_block": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "total_pairs",
+        "pairs_list",
+        "last_indexed_block"
+      ]
+    }
+  },
+  "tool_state_dependencies": {
+    "get_total_pairs": [
+      "pair_registry"
+    ],
+    "list_all_pairs": [
+      "pair_registry",
+      "pairs"
+    ],
+    "get_pair_by_contract_address": [
+      "pairs"
+    ],
+    "get_pair_by_tokens": [
+      "pairs"
+    ],
+    "get_token_info": [
+      "tokens"
+    ],
+    "list_all_tokens": [
+      "tokens"
+    ],
+    "get_pair_reserves": [
+      "pairs"
+    ],
+    "get_pairs_by_token": [
+      "pairs"
+    ],
+    "get_pair_registry_info": [
+      "pair_registry"
+    ],
+    "add_pair": [
+      "pair_registry",
+      "pairs",
+      "tokens"
+    ],
+    "remove_pair": [
+      "pair_registry",
+      "pairs"
+    ],
+    "update_pair_reserves": [
+      "pairs"
+    ],
+    "add_token": [
+      "tokens"
+    ],
+    "update_pair_metadata": [
+      "pairs"
+    ],
+    "set_last_indexed_block": [
+      "pair_registry"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_total_pairs",
+      "description": "Retrieve the current total number of token pairs tracked in PairRegistry.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": int  # The total number of pairs.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (if PairRegistry is malformed)\n    }\n\nConstraints:\n    - Must reflect the current count in self.pair_registry['total_pairs'].",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_all_pairs",
+      "description": "Return all pair metadata (PairInfo) for every pair on the exchange.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PairInfo]  # List of PairInfo dicts for every pair (possibly empty)\n    }\n\nEdge cases:\n    - If no pairs exist, returns an empty list with success.\n    - If a pair_contract_address in registry is missing in self.pairs, it is skipped.\n\nConstraints:\n    - Only pairs listed in the pair_registry are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_pair_by_contract_address",
+      "description": "Retrieve full details of a pair given its pair_contract_address.\n\nArgs:\n    pair_contract_address (str): The smart contract address of the pair.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": PairInfo  # Complete pair information if found\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # \"Pair contract address not found\"\n    }\n\nConstraints:\n    - Address must exist in current pair registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pair_contract_address": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pair_contract_address"
+        ]
+      }
+    },
+    {
+      "name": "get_pair_by_tokens",
+      "description": "Retrieve a token pair's info given token0_address and token1_address.\n\nArgs:\n    token0_address (str): The first token's ERC-20 address.\n    token1_address (str): The second token's ERC-20 address.\n\nReturns:\n    dict:\n        - success: True, data: PairInfo (if found)\n        - success: False, error: str (if not found)\n\nConstraints:\n    - Only one pair can exist with the given token0-token1 combination (uniqueness).\n    - Pair will not exist if token0_address == token1_address, per environmental constraint.\n\nNote:\n    - The match is strict (token0_address, token1_address), not token1-token0 reversed.\n    - If no such pair is found, returns error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "token0_address": {
+            "type": "string"
+          },
+          "token1_address": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token0_address",
+          "token1_address"
+        ]
+      }
+    },
+    {
+      "name": "get_token_info",
+      "description": "Retrieve information for an ERC-20 token by its address.\n\nArgs:\n    token_address (str): The ERC-20 token address to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": TokenInfo  # Token metadata (symbol, name, decimal, etc.)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason if not found\n    }\n\nConstraints:\n    - Token address must exist in tokens registry (self.tokens).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "token_address": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token_address"
+        ]
+      }
+    },
+    {
+      "name": "list_all_tokens",
+      "description": "List all ERC-20 tokens known to the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TokenInfo],  # All known tokens (can be empty)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_pair_reserves",
+      "description": "Query the current reserves for a given pair.\n\nArgs:\n    pair_contract_address (str): The contract address of the target pair.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": { \"reserve0\": float, \"reserve1\": float }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason why the operation failed (e.g., pair not found)\n    }\n\nConstraints:\n    - The pair_contract_address must exist in the pairs dictionary.\n    - The reserve values will be non-negative and reflect the current pool balances.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pair_contract_address": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pair_contract_address"
+        ]
+      }
+    },
+    {
+      "name": "get_pairs_by_token",
+      "description": "Retrieve all pairs where the specified token address is one of the pair's tokens.\n\nArgs:\n    token_address (str): ERC-20 token address to filter by.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PairInfo],  # List of pairs including this token (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If input is invalid (e.g. blank, not a string)\n    }\n\nConstraints:\n    - The token address should be a valid (non-blank) string.\n    - Pairs must include the token as token0 or token1 address.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "token_address": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token_address"
+        ]
+      }
+    },
+    {
+      "name": "get_pair_registry_info",
+      "description": "Retrieve the global PairRegistryInfo, which includes:\n  - total_pairs: number of pairs currently registered\n  - pairs_list: list of pair_contract_address\n  - last_indexed_block: the last block number where the registry was updated\n\nArgs:\n    None\n\nReturns:\n    dict:\n      - success: True\n      - data: PairRegistryInfo (dictionary with total_pairs, pairs_list, last_indexed_block)\n    If an unexpected error occurs:\n      - success: False\n      - error: str",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "add_pair",
+      "description": "Create a new pair (pool) for two ERC-20 tokens, updating PairRegistry atomically,\nand ensuring uniqueness.\n\nArgs:\n    token0_address (str): ERC-20 address for token0.\n    token1_address (str): ERC-20 address for token1.\n    pair_contract_address (str): Unique contract address for the new pair.\n    creation_block (int): Ethereum block number the pair is created at.\n    metadata (Any, optional): Additional metadata for the pair.\n\nReturns:\n    dict: \n        { \"success\": True, \"message\": \"Pair created successfully\" }\n        or\n        { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - Both token addresses must exist in self.tokens.\n    - Token addresses must be unique (not the same).\n    - No pair with the same token0-token1 combination (regardless of order) may exist.\n    - pair_contract_address must not already be used.\n    - PairRegistry is updated atomically.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "token0_address": {
+            "type": "string"
+          },
+          "token1_address": {
+            "type": "string"
+          },
+          "pair_contract_address": {
+            "type": "string"
+          },
+          "creation_block": {
+            "type": "integer"
+          },
+          "metadata": {}
+        },
+        "required": [
+          "token0_address",
+          "token1_address",
+          "pair_contract_address",
+          "creation_block"
+        ]
+      }
+    },
+    {
+      "name": "remove_pair",
+      "description": "Remove (deregister) a pair by its contract address, and update PairRegistry atomically.\n\nArgs:\n    pair_contract_address (str): The unique smart contract address identifying the pair to be removed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Pair <address> removed and registry updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - Pair must exist in self.pairs.\n    - Registry update (removal from pairs_list, decrement total_pairs) is atomic.\n    - It is not an error if pair_contract_address is missing from pairs_list (fix inconsistency).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pair_contract_address": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pair_contract_address"
+        ]
+      }
+    },
+    {
+      "name": "update_pair_reserves",
+      "description": "Modify the reserves (reserve0/reserve1) of a given pair.\n\nArgs:\n    pair_contract_address (str): The smart contract address identifier of the pair.\n    reserve0 (float): New reserve amount for token0 (must be non-negative).\n    reserve1 (float): New reserve amount for token1 (must be non-negative).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Reserves updated successfully.\"\n    } on success, or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    } on error.\n\nConstraints:\n    - The pair must exist (by contract address).\n    - Both reserves must be non-negative.\n    - State is updated atomically.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pair_contract_address": {
+            "type": "string"
+          },
+          "reserve0": {
+            "type": "number"
+          },
+          "reserve1": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "pair_contract_address",
+          "reserve0",
+          "reserve1"
+        ]
+      }
+    },
+    {
+      "name": "add_token",
+      "description": "Register a new ERC-20 token in the token list.\n\nArgs:\n    token_address (str): The unique address of the ERC-20 token.\n    symbol (str): The token's symbol.\n    name (str): The token's name.\n    decimal (int): Number of decimals for the token. Must be positive.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Token <symbol> registered successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure.\"\n    }\n\nConstraints:\n    - token_address must be unique (not already present in self.tokens).\n    - symbol, name, token_address must be non-empty strings.\n    - decimal must be a positive integer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "token_address": {
+            "type": "string"
+          },
+          "symbol": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "decimal": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "token_address",
+          "symbol",
+          "name",
+          "decimal"
+        ]
+      }
+    },
+    {
+      "name": "update_pair_metadata",
+      "description": "Update the metadata field for the given pair.\n\nArgs:\n    pair_contract_address (str): The contract address (unique identifier) for the pair.\n    metadata (Any): The new metadata object/value to assign.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Pair metadata updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - The specified pair must exist.\n    - Metadata can have any valid value.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pair_contract_address": {
+            "type": "string"
+          },
+          "metadata": {}
+        },
+        "required": [
+          "pair_contract_address",
+          "metadata"
+        ]
+      }
+    },
+    {
+      "name": "set_last_indexed_block",
+      "description": "Update the last_indexed_block of the PairRegistry.\n\nArgs:\n    block_number (int): The new block number to be set.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"last_indexed_block updated to <block_number>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - block_number must be an integer and non-negative.\n    - block_number should not decrease (must be >= current last_indexed_block).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "block_number": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "block_number"
+        ]
+      }
+    }
+  ]
+}

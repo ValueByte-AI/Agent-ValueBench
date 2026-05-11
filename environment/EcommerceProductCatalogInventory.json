@@ -1,0 +1,498 @@
+{
+  "env_name": "EcommerceProductCatalogInventory",
+  "description": "An e-commerce product catalog and inventory system manages the listing, description, pricing, ratings, and stock status of items available for sale in an online store. It supports search and filter operations, allows sorting by popularity or customer reviews, and provides detailed product information to facilitate shopping decisions. This environment is widely used across retail businesses to enable seamless browsing and purchasing experiences for customers.",
+  "initial_parameter_schema": {
+    "products": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "description": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "stock_quantity": {
+            "type": "integer"
+          },
+          "image": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "product_id",
+          "name",
+          "category",
+          "tags",
+          "description",
+          "price",
+          "stock_quantity",
+          "image"
+        ]
+      }
+    },
+    "product_ratings": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "average_rating": {
+            "type": "number"
+          },
+          "num_reviews": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "product_id",
+          "average_rating",
+          "num_reviews"
+        ]
+      }
+    },
+    "product_reviews": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "review_id": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "number"
+          },
+          "review_text": {
+            "type": "string"
+          },
+          "review_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "review_id",
+          "customer_id",
+          "rating",
+          "review_text",
+          "review_date"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "search_products_by_keyword": [
+      "products"
+    ],
+    "filter_products_by_category": [
+      "products"
+    ],
+    "filter_products_by_tags": [
+      "products"
+    ],
+    "filter_products_by_price_range": [
+      "products"
+    ],
+    "filter_products_by_availability": [
+      "products"
+    ],
+    "get_product_rating": [
+      "product_ratings"
+    ],
+    "sort_products_by_rating": [
+      "product_ratings",
+      "products"
+    ],
+    "get_product_details": [
+      "products"
+    ],
+    "get_multiple_products_details": [
+      "products"
+    ],
+    "get_product_reviews": [
+      "product_reviews",
+      "products"
+    ],
+    "get_top_n_products": [
+      "product_ratings",
+      "products"
+    ],
+    "update_product_stock": [
+      "products"
+    ],
+    "add_new_product": [
+      "products"
+    ],
+    "update_product_info": [
+      "products"
+    ],
+    "add_product_review": [
+      "product_ratings",
+      "product_reviews",
+      "products"
+    ],
+    "recalculate_product_rating": [
+      "product_ratings",
+      "product_reviews",
+      "products"
+    ],
+    "remove_product": [
+      "product_ratings",
+      "product_reviews",
+      "products"
+    ]
+  },
+  "tools": [
+    {
+      "name": "search_products_by_keyword",
+      "description": "Search for available products whose name, description, category, or tags contain the given keyword (case-insensitive).\n\nArgs:\n    keyword (str): The keyword to search for (must not be empty or whitespace).\n\nReturns:\n    dict:\n        success (bool): True on success, False if invalid keyword.\n        data (List[str]): List of matching product_ids (may be empty if no matches).\n        error (str, optional): If failed, the error reason.\n\nConstraints:\n    - Only available products (stock_quantity > 0) are considered.\n    - Keyword is matched case-insensitively in name, description, category, or tags.\n    - If keyword is empty or only whitespace, returns error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "keyword": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "keyword"
+        ]
+      }
+    },
+    {
+      "name": "filter_products_by_category",
+      "description": "Filter and return all available (stock_quantity > 0) products belonging to the specified category.\n\nArgs:\n    category (str): The category to filter products by.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ProductInfo]  # May be empty if no products match\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., missing or invalid category\n    }\n\nConstraints:\n    - Only available products (stock_quantity > 0) are included in the result.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category"
+        ]
+      }
+    },
+    {
+      "name": "filter_products_by_tags",
+      "description": "Filter products by one or more tags.\n\nArgs:\n    tags (list of str): The list of tags to filter products by.\n        If empty, all products are returned.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[ProductInfo]  # possibly empty if no matches\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # If tags input is not a list\n        }\n\nConstraints:\n    - Products included if they have at least one tag in common with the input tags.\n    - If tags is empty, all products are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "tags"
+        ]
+      }
+    },
+    {
+      "name": "filter_products_by_price_range",
+      "description": "Filter and retrieve all products whose price falls within a given inclusive range.\n\nArgs:\n    min_price (float): Minimum price (inclusive).\n    max_price (float): Maximum price (inclusive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ProductInfo]  # List of ProductInfo for products in price range\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if invalid input\n    }\n\nConstraints:\n    - min_price and max_price must be non-negative.\n    - min_price must be less than or equal to max_price.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "min_price": {
+            "type": "number"
+          },
+          "max_price": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "min_price",
+          "max_price"
+        ]
+      }
+    },
+    {
+      "name": "filter_products_by_availability",
+      "description": "Retrieve all products that are currently available (stock_quantity > 0).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ProductInfo]  # List of available products\n    }\n\nConstraints:\n    - Only products with stock_quantity > 0 are listed as available.\n    - Returns empty list if no products available or catalog is empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_product_rating",
+      "description": "Retrieve the aggregate customer rating (average_rating, num_reviews) for a given product.\n\nArgs:\n    product_id (str): The product's unique identifier.\n\nReturns:\n    dict: \n        {\"success\": True, \"data\": ProductRatingInfo} if found,\n        {\"success\": False, \"error\": \"Product rating not found\"} if not found.\n\nConstraints:\n    - product_id must refer to a product that has rating information.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "sort_products_by_rating",
+      "description": "Sort a list of product_ids by their average customer rating in descending order.\n\nArgs:\n    product_ids (list[str]): List of product IDs to sort.\n        - Invalid product IDs (not in self.products) are ignored.\n        - Products without a rating are treated as rating=0.\n\nReturns:\n    dict:\n        - \"success\": True\n        - \"data\": List[str] -- Sorted (desc) product_ids by rating, only those found in self.products.\n    or\n        - \"success\": False\n        - \"error\": str (for unexpected input)\n\nConstraints:\n    - Only existing products are included.\n    - Empty input list returns success with empty result.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "product_ids"
+        ]
+      }
+    },
+    {
+      "name": "get_product_details",
+      "description": "Retrieve detailed product information for a given product_id.\n\nArgs:\n    product_id (str): The ID of the product to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"product_id\": str,\n            \"name\": str,\n            \"description\": str,\n            \"tags\": List[str],\n            \"price\": float,\n            \"stock_status\": str,   # \"available\" or \"unavailable\"\n            \"stock_quantity\": int, # remaining number\n            \"images\": List[str]\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Product not found\"\n    }\n\nConstraints:\n    - Product must exist in the catalog.\n    - Stock status: \"available\" if stock_quantity > 0, else \"unavailable\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "get_multiple_products_details",
+      "description": "Retrieve detailed information for multiple products (batch variant).\nFor each specified product_id, returns:\n    - name\n    - description\n    - price\n    - availability (\"available\" if stock_quantity > 0 else \"not available\")\n    - image (list of image urls/paths)\n\nArgs:\n    product_ids (List[str]): List of product IDs to retrieve details for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[Dict]  # Each dict: {\"product_id\", \"name\", \"description\", \"price\", \"availability\", \"images\"}\n    }\n\nConstraints:\n    - If a product_id does not exist, it is skipped (not included in results).\n    - If no valid products are found, returns empty list with success=True.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "product_ids"
+        ]
+      }
+    },
+    {
+      "name": "get_product_reviews",
+      "description": "Retrieve all customer reviews for the specified product.\n\nArgs:\n    product_id (str): The unique identifier of the product.\n\nReturns:\n    dict:\n        - On success: {\n            \"success\": True,\n            \"data\": List[ProductReviewInfo]  # List of review dicts (empty if no reviews)\n          }\n        - On failure: {\n            \"success\": False,\n            \"error\": str   # e.g., \"Product does not exist.\"\n          }\n\nConstraints:\n    - The given product_id must exist in the product catalog.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "get_top_n_products",
+      "description": "Retrieve the top N available products, sorted by average customer rating (descending).\nOnly products with stock_quantity > 0 are considered \"available\".\nProducts without ratings are included but sorted lower (average_rating=0).\n\nArgs:\n    n (int): Number of top products to return (must be positive integer).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ProductInfo], # Up to n entries (may be fewer)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str # Description of the error (e.g. invalid n)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "n": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "n"
+        ]
+      }
+    },
+    {
+      "name": "update_product_stock",
+      "description": "Modify the stock_quantity of a specified product.\n\nArgs:\n    product_id (str): The identifier of the product to update.\n    new_stock_quantity (int): The new stock level to be set (must be >= 0).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Stock for product <product_id> updated to <new_stock_quantity>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason for failure>\"\n    }\n\nConstraints:\n    - product_id must exist in the system.\n    - new_stock_quantity must be non-negative (>= 0).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "new_stock_quantity": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "product_id",
+          "new_stock_quantity"
+        ]
+      }
+    },
+    {
+      "name": "add_new_product",
+      "description": "Add a new product to the catalog.\n\nArgs:\n    product_id (str): Unique identifier for the product\n    name (str): Name of the product\n    category (str): Product category\n    tags (List[str]): List of product tags\n    description (str): Product description\n    price (float): Product price (must be >= 0)\n    stock_quantity (int): Product stock quantity (must be >= 0)\n    image (List[str]): List of image URLs or paths\n\nReturns:\n    dict:\n        - success (bool): True if added, False if not\n        - message (str): Success message (if success)\n        - error (str): Error message (if failure)\n\nConstraints:\n    - product_id must be unique\n    - price and stock_quantity cannot be negative",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "description": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "stock_quantity": {
+            "type": "integer"
+          },
+          "image": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "product_id",
+          "name",
+          "category",
+          "tags",
+          "description",
+          "price",
+          "stock_quantity",
+          "image"
+        ]
+      }
+    },
+    {
+      "name": "update_product_info",
+      "description": "Update one or more mutable attributes of an existing product.\n\nArgs:\n    product_id (str): The unique product identifier.\n    updates (dict): Keys/values for fields to update. Allowed fields:\n        name (str), category (str), tags (List[str]), description (str),\n        price (float, >=0), stock_quantity (int, >=0), image (List[str])\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Product info updated for <product_id>\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - product_id must exist.\n    - Only valid fields allowed; product_id cannot be updated.\n    - price and stock_quantity must be non-negative.\n    - Data types of fields must match schema.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "product_id",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "add_product_review",
+      "description": "Add a new review for a product.\n\nArgs:\n    product_id (str): Product being reviewed (must exist).\n    review_id (str): Unique review identifier (must not exist).\n    customer_id (str): Customer writing the review.\n    rating (float): The rating score (expected: 0 <= rating <= 5).\n    review_text (str): The content of the review.\n    review_date (str): Date of the review (format not strictly checked).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Review added to product <product_id>.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - product_id must exist.\n    - review_id must be unique.\n    - 0 <= rating <= 5.\n    - Updates ProductRatingInfo for the product accordingly.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "review_id": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "number"
+          },
+          "review_text": {
+            "type": "string"
+          },
+          "review_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "review_id",
+          "customer_id",
+          "rating",
+          "review_text",
+          "review_date"
+        ]
+      }
+    },
+    {
+      "name": "recalculate_product_rating",
+      "description": "Recompute a product's aggregate (average) rating and number of reviews\nbased on all its customer reviews. Updates the product_ratings entry.\n\nArgs:\n    product_id (str): The product whose rating should be recalculated.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": f\"Aggregate rating updated to {average_rating} with {num_reviews} reviews.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Product must exist in the catalog.\n    - If no reviews are present, average_rating is set to 0.0 and num_reviews to 0.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_product",
+      "description": "Remove a product and associated information from the catalog.\n\nArgs:\n    product_id (str): The ID of the product to remove.\n\nReturns:\n    dict:\n      - success: True and message describing operation when product is removed,\n      - or, success: False and error describing why failed.\n\nConstraints:\n    - If the product does not exist, operation fails.\n    - Removes product, its rating info, and all its reviews.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    }
+  ]
+}

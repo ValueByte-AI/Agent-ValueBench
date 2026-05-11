@@ -1,0 +1,534 @@
+{
+  "env_name": "OnlineMultiplayerGameStatsSystem",
+  "description": "An online multiplayer game player statistics system is responsible for tracking, storing, and managing detailed records of player activity and performance across gameplay sessions. This system maintains entities such as user profiles, match histories, statistics per session, and aggregate achievements. It allows querying of recent activities, match outcomes, durations, and other performance metrics, enabling both players and game administrators to review and analyze gameplay data.",
+  "initial_parameter_schema": {
+    "players": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "profile_data": {
+            "type": "object"
+          },
+          "achievements": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "player_id",
+          "username",
+          "profile_data",
+          "achievements"
+        ]
+      }
+    },
+    "matches": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          },
+          "game_title": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "number"
+          },
+          "duration": {
+            "type": "number"
+          },
+          "outcome": {
+            "type": "string"
+          },
+          "match_data": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "match_id",
+          "game_title",
+          "start_time",
+          "end_time",
+          "duration",
+          "outcome",
+          "match_data"
+        ]
+      }
+    },
+    "participations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "player_id": {
+              "type": "string"
+            },
+            "match_id": {
+              "type": "string"
+            },
+            "stats_in_match": {
+              "type": "object"
+            },
+            "role": {
+              "type": "string"
+            },
+            "team": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "player_id",
+            "match_id",
+            "stats_in_match",
+            "role",
+            "team"
+          ]
+        }
+      }
+    },
+    "achievements": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "achievement_id": {
+            "type": "string"
+          },
+          "player_id": {
+            "type": "string"
+          },
+          "achievement_type": {
+            "type": "string"
+          },
+          "date_earned": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "achievement_id",
+          "player_id",
+          "achievement_type",
+          "date_earned"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_player_by_username": [
+      "players"
+    ],
+    "get_player_by_id": [
+      "players"
+    ],
+    "list_player_match_participations": [
+      "participations",
+      "players"
+    ],
+    "filter_participations_by_game_title": [
+      "matches",
+      "participations",
+      "players"
+    ],
+    "get_match_info": [
+      "matches"
+    ],
+    "get_match_duration": [
+      "matches"
+    ],
+    "get_latest_completed_match": [
+      "matches",
+      "participations",
+      "players"
+    ],
+    "list_player_achievements": [
+      "achievements",
+      "players"
+    ],
+    "get_achievement_info": [
+      "achievements"
+    ],
+    "add_player": [
+      "players"
+    ],
+    "update_player_profile": [
+      "players"
+    ],
+    "add_match": [
+      "matches",
+      "participations"
+    ],
+    "update_match_info": [
+      "matches"
+    ],
+    "add_player_match_participation": [
+      "matches",
+      "participations",
+      "players"
+    ],
+    "update_player_match_stats": [
+      "matches",
+      "participations",
+      "players"
+    ],
+    "add_achievement": [
+      "achievements",
+      "players"
+    ],
+    "remove_achievement": [
+      "achievements",
+      "players"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_player_by_username",
+      "description": "Retrieve the player profile by username.\n\nArgs:\n    username (str): The username to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": PlayerInfo,  # The matched player's info\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason why player could not be retrieved\n    }\n\nConstraints:\n    - Usernames are assumed unique in the player base.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "get_player_by_id",
+      "description": "Retrieve the player profile for a specified player_id.\n\nArgs:\n    player_id (str): The unique identifier of the player.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"data\": PlayerInfo}\n        - On failure: {\"success\": False, \"error\": \"Player not found\"}\n\nConstraints:\n    - The given player_id must exist in the player mapping.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id"
+        ]
+      }
+    },
+    {
+      "name": "list_player_match_participations",
+      "description": "List all matches in which the given player has participated,\nreturning participation details (roles, stats, etc.).\n\nArgs:\n    player_id (str): The ID of the player.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[PlayerMatchParticipationInfo]  # (List may be empty)\n        }\n    or\n        {\n            \"success\": False,\n            \"error\": str  # Reason: e.g. \"Player not found\"\n        }\n\nConstraints:\n    - Player must exist.\n    - Only participations linked to player_id are included.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id"
+        ]
+      }
+    },
+    {
+      "name": "filter_participations_by_game_title",
+      "description": "Retrieve a list of PlayerMatchParticipationInfo for the given player,\nfiltered to only include matches with the specified game_title.\n\nArgs:\n    player_id (str): The player's unique ID to filter participations for.\n    game_title (str): The game title to filter matches by.\n\nReturns:\n    dict:\n        success: True/False\n        data: list of PlayerMatchParticipationInfo for this player and game_title (may be empty)\n        error: present only on failure\nConstraints:\n    - player_id must exist in the system.\n    - If no participations or no matches for the game_title, result list is empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "game_title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id"
+        ]
+      }
+    },
+    {
+      "name": "get_match_info",
+      "description": "Retrieve the full details of a match given its match_id.\n\nArgs:\n    match_id (str): The unique identifier of the match.\n\nReturns:\n    dict:\n        On Success:\n            {\n                \"success\": True,\n                \"data\": MatchInfo  # Dictionary with all details about the match\n            }\n        On Failure:\n            {\n                \"success\": False,\n                \"error\": \"Match not found\"\n            }\n\nConstraints:\n    - The match_id must exist in the matches dictionary.\n    - No validation of participations, duration, or completion status is required for this query.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id"
+        ]
+      }
+    },
+    {
+      "name": "get_match_duration",
+      "description": "Return the duration (in seconds) of a match if it is completed (i.e., has valid start and end times,\nand duration >= 0).\n\nArgs:\n    match_id (str): The ID of the match to query.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": float,  # Duration in seconds\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str,  # Reason why duration could not be returned.\n            }\n\nConstraints:\n    - Match must exist.\n    - Match must have valid, non-None numeric start_time and end_time.\n    - Duration must be non-negative.\n    - Only completed matches are eligible.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id"
+        ]
+      }
+    },
+    {
+      "name": "get_latest_completed_match",
+      "description": "Find the most recent completed match for the specified player. Optionally filter by game_title.\n\nArgs:\n    player_id (str): The ID of the player.\n    game_title (str, optional): Specific game title to filter matches by. If None, all games are considered.\n\nReturns:\n    dict: \n        If success:\n            {\n                \"success\": True,\n                \"data\": MatchInfo | None  # Info of most recent completed match, or None if not found\n            }\n        If failure:\n            {\n                \"success\": False,\n                \"error\": str\n            }\n\nConstraints:\n    - player_id must exist in self.players.\n    - Only matches where the player participated, that are completed (start and end time valid, duration >= 0), are considered.\n    - If game_title is given, only matches for that title are considered.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "game_title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id",
+          "game_title"
+        ]
+      }
+    },
+    {
+      "name": "list_player_achievements",
+      "description": "Retrieve all achievements earned by a player.\n\nArgs:\n    player_id (str): The unique identifier of the player.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AchievementInfo],  # A list of achievements (may be empty if none)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., player not found\n    }\n\nConstraints:\n    - player_id must exist in the system.\n    - Only achievements earned by the specified player are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id"
+        ]
+      }
+    },
+    {
+      "name": "get_achievement_info",
+      "description": "Retrieve the details of an achievement using its achievement_id.\n\nArgs:\n    achievement_id (str): The unique ID of the achievement.\n\nReturns:\n    dict: {\n      \"success\": True,\n      \"data\": AchievementInfo  # if found\n    } or {\n      \"success\": False,\n      \"error\": str  # If achievement_id does not exist\n    }\n\nConstraints:\n    - The achievement_id must exist in the 'achievements' dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "achievement_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "achievement_id"
+        ]
+      }
+    },
+    {
+      "name": "add_player",
+      "description": "Add a new player profile to the system.\n\nArgs:\n    player_id (str): Unique player identifier.\n    username (str): Desired unique username.\n    profile_data (dict): Arbitrary player profile metadata.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Player <username> added.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - player_id must be unique in the system.\n    - username must be unique in the system.\n    - Achievements is initialized as an empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "profile_data": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "player_id",
+          "username",
+          "profile_data"
+        ]
+      }
+    },
+    {
+      "name": "update_player_profile",
+      "description": "Update the profile data for a player.\n\nArgs:\n    player_id (str): The unique ID of the player whose profile is to be updated.\n    profile_data (dict): The profile data to update. Should be a dictionary.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Player profile updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason for failure\"\n    }\n\nConstraints:\n    - The player must exist.\n    - profile_data must be a dictionary.\n    - Provided keys are merged into the existing profile_data.\n    - Any key explicitly set to null/None is removed from the stored profile_data instead of being retained with a null value.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "profile_data": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "player_id",
+          "profile_data"
+        ]
+      }
+    },
+    {
+      "name": "add_match",
+      "description": "Insert a new match into the system.\n\nArgs:\n    match_id (str): Unique identifier for the match.\n    game_title (str): Title of the game for this match.\n    start_time (float): Unix timestamp when match started.\n    end_time (float): Unix timestamp when match ended.\n    outcome (str): Match outcome (win/lose/draw/etc).\n    match_data (Dict): Additional match metadata.\n\nReturns:\n    dict: {\"success\": True, \"message\": \"Match <id> added.\"}\n          or\n          {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - match_id must be unique.\n    - start_time and end_time must be valid numbers and end_time >= start_time.\n    - duration is computed as end_time - start_time and must be non-negative.\n    - Match can be added before participations exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          },
+          "game_title": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "number"
+          },
+          "outcome": {
+            "type": "string"
+          },
+          "match_data": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "match_id",
+          "game_title",
+          "start_time",
+          "end_time",
+          "outcome",
+          "match_data"
+        ]
+      }
+    },
+    {
+      "name": "update_match_info",
+      "description": "Update the properties or outcome of a match.\n\nArgs:\n    match_id (str): The identifier of the match to update.\n    updates (dict): Key-value pairs of match fields to update. \n        Valid fields: game_title, start_time, end_time, outcome, match_data\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Match information updated successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Only fields belonging to MatchInfo can be updated.\n    - If start_time or end_time are updated, duration is recomputed as end_time - start_time.\n    - The duration must not be negative.\n    - If match_id does not exist, operation fails.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "match_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "match_id",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "add_player_match_participation",
+      "description": "Link a player to a match with statistics for that match.\n\nArgs:\n    player_id (str): ID of the player\n    match_id (str): ID of the match\n    stats_in_match (dict): Dictionary of stats (e.g., kills, deaths, score) for the player in this match\n    role (str): The role of the player in that match\n    team (str): The team name or id for that player in the match\n\nReturns:\n    dict: \n        - {\"success\": True, \"message\": \"Player participation added to match.\"}\n        - or {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - player_id must exist in players.\n    - match_id must exist in matches.\n    - The same player cannot be linked to the same match more than once.\n    - All attributes must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "match_id": {
+            "type": "string"
+          },
+          "stats_in_match": {
+            "type": "object"
+          },
+          "role": {
+            "type": "string"
+          },
+          "team": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id",
+          "match_id",
+          "stats_in_match",
+          "role",
+          "team"
+        ]
+      }
+    },
+    {
+      "name": "update_player_match_stats",
+      "description": "Update the statistics (stats_in_match) for a specific player in a specific match.\n\nArgs:\n    player_id (str): Unique identifier for the player.\n    match_id (str): Unique identifier for the match.\n    stats_update (dict): Dictionary of stat fields and values to update.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Player match stats updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - player_id and match_id must exist.\n    - Player must be participating in the match (PlayerMatchParticipationInfo exists).\n    - Only updates provided fields; other stats remain unchanged.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "match_id": {
+            "type": "string"
+          },
+          "stats_update": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "player_id",
+          "match_id",
+          "stats_update"
+        ]
+      }
+    },
+    {
+      "name": "add_achievement",
+      "description": "Add a new achievement record for a player.\n\nArgs:\n    achievement_id (str): Unique identifier for the achievement.\n    player_id (str): The player who earned the achievement. Must exist in players.\n    achievement_type (str): The type/category of the achievement.\n    date_earned (float): The timestamp when the achievement was earned.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Achievement added for player <player_id>\" }\n        On failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - achievement_id must be unique.\n    - player_id must already exist in the system.\n    - The achievement is linked to the player in both achievements dict and player's achievement list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "achievement_id": {
+            "type": "string"
+          },
+          "player_id": {
+            "type": "string"
+          },
+          "achievement_type": {
+            "type": "string"
+          },
+          "date_earned": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "achievement_id",
+          "player_id",
+          "achievement_type",
+          "date_earned"
+        ]
+      }
+    },
+    {
+      "name": "remove_achievement",
+      "description": "Removes an achievement from a player and from the system.\n\nArgs:\n    achievement_id (str): The ID of the achievement to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Achievement removed from player.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\nConstraints:\n    - The achievement must exist in the system.\n    - The player associated with the achievement must exist to remove the reference from their achievement list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "achievement_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "achievement_id"
+        ]
+      }
+    }
+  ]
+}

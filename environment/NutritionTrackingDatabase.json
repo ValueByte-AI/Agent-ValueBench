@@ -1,0 +1,610 @@
+{
+  "env_name": "NutritionTrackingDatabase",
+  "description": "A nutrition tracking application database maintains records of users' dietary intake, nutritional goals, and progress over time. It stores detailed logs of foods consumed, automatically calculates nutrient values, and supports queries for daily summaries and goal tracking. This environment is widely used in health, fitness, and wellness contexts to facilitate self-monitoring and data-driven decision making.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "age": {
+            "type": "integer"
+          },
+          "sex": {
+            "type": "string"
+          },
+          "weight": {
+            "type": "number"
+          },
+          "height": {
+            "type": "number"
+          },
+          "activity_level": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "age",
+          "sex",
+          "weight",
+          "height",
+          "activity_level"
+        ]
+      }
+    },
+    "food_items": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "food_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "brand": {
+            "type": "string"
+          },
+          "serving_size": {
+            "type": "number"
+          },
+          "calories": {
+            "type": "number"
+          },
+          "macronutrients": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "micronutrients": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          }
+        },
+        "required": [
+          "food_id",
+          "name",
+          "brand",
+          "serving_size",
+          "calories",
+          "macronutrients",
+          "micronutrients"
+        ]
+      }
+    },
+    "food_logs": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "log_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "food_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "serving_size": {
+            "type": "number"
+          },
+          "calculated_nutrients": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          }
+        },
+        "required": [
+          "log_id",
+          "user_id",
+          "food_id",
+          "date",
+          "serving_size",
+          "calculated_nutrients"
+        ]
+      }
+    },
+    "nutrition_goals": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "goal_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "calorie_goal": {
+            "type": "number"
+          },
+          "macronutrient_goals": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "micronutrient_goals": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          }
+        },
+        "required": [
+          "goal_id",
+          "user_id",
+          "date",
+          "calorie_goal",
+          "macronutrient_goals",
+          "micronutrient_goals"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_info": [
+      "users"
+    ],
+    "get_food_item_info": [
+      "food_items"
+    ],
+    "list_food_logs_by_user_and_date": [
+      "food_logs",
+      "users"
+    ],
+    "get_nutrition_goal_by_user_and_date": [
+      "nutrition_goals",
+      "users"
+    ],
+    "aggregate_daily_nutrient_intake": [
+      "food_logs",
+      "users"
+    ],
+    "calculate_remaining_nutrients": [
+      "food_logs",
+      "nutrition_goals",
+      "users"
+    ],
+    "get_daily_summary": [
+      "food_logs",
+      "nutrition_goals",
+      "users"
+    ],
+    "list_all_users": [
+      "users"
+    ],
+    "list_all_food_items": [
+      "food_items"
+    ],
+    "add_food_log": [
+      "food_items",
+      "food_logs",
+      "users"
+    ],
+    "update_food_log": [
+      "food_items",
+      "food_logs"
+    ],
+    "delete_food_log": [
+      "food_logs"
+    ],
+    "add_nutrition_goal": [
+      "nutrition_goals",
+      "users"
+    ],
+    "update_nutrition_goal": [
+      "nutrition_goals"
+    ],
+    "delete_nutrition_goal": [
+      "nutrition_goals"
+    ],
+    "add_food_item": [
+      "food_items"
+    ],
+    "update_food_item": [
+      "food_items"
+    ],
+    "delete_food_item": [
+      "food_items",
+      "food_logs"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_info",
+      "description": "Retrieve detailed user profile (ID, demographics, activity level, etc.) by user_id.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"data\": UserInfo }\n        - On failure: { \"success\": False, \"error\": \"User not found\" }\n\nConstraints:\n    - The user_id must exist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_food_item_info",
+      "description": "Retrieve nutritional information about a specific food item.\n\nArgs:\n    food_id (str, optional): Unique identifier for the food item.\n    name (str, optional): Name of the food item (used with brand for lookup).\n    brand (str, optional): Brand of the food item (used with name for lookup).\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": FoodItemInfo\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - At least 'food_id' OR both 'name' and 'brand' must be provided.\n    - If multiple items match name/brand, the first match is returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "food_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "brand": {
+            "type": "string"
+          }
+        },
+        "required": [
+        ]
+      }
+    },
+    {
+      "name": "list_food_logs_by_user_and_date",
+      "description": "Retrieve all FoodLog entries for a specific user and date.\n\nArgs:\n    user_id (str): The user's unique identifier.\n    date (str): The date to filter logs by ('YYYY-MM-DD').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[FoodLogInfo]  # List of FoodLogInfo for that user and date (empty if none)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If the user does not exist\n    }\n\nConstraints:\n    - user_id must exist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "date"
+        ]
+      }
+    },
+    {
+      "name": "get_nutrition_goal_by_user_and_date",
+      "description": "Retrieve the nutrition goal (calories, macronutrients, micronutrients) for a specific user and date.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n    date (str): The target date in \"YYYY-MM-DD\" format.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": NutritionGoalInfo  # Full goal info if found.\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - user_id must exist.\n    - goal must exist for given user and date.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "date"
+        ]
+      }
+    },
+    {
+      "name": "aggregate_daily_nutrient_intake",
+      "description": "Calculate total calories, macronutrients, and micronutrients consumed\nby a user on a given date by summing all FoodLog entries for that day.\n\nArgs:\n    user_id (str): The user's unique identifier.\n    date (str): The date of interest (format: \"YYYY-MM-DD\").\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": {\n                \"calories\": float,\n                \"macronutrients\": Dict[str, float],\n                \"micronutrients\": Dict[str, float]\n            }\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - User must exist.\n    - Zero values are returned for nutrients if no matching logs exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "date"
+        ]
+      }
+    },
+    {
+      "name": "calculate_remaining_nutrients",
+      "description": "For a given user and date, calculate the remaining nutrients as (goal - intake) for calories,\nall macronutrients, and all micronutrients.\n\nArgs:\n    user_id (str): ID of the user.\n    date (str): Date string for which calculation is performed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": { <nutrient>: remaining_amount (float), ... }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - User must exist.\n    - There must be a NutritionGoal for the user and date.\n    - Intake per nutrient is summed from all FoodLogs for the user/date (missing means zero).\n    - Remaining = goal - intake for every goal-tracked nutrient (calories, macros, micros).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "date"
+        ]
+      }
+    },
+    {
+      "name": "get_daily_summary",
+      "description": "Produce a formatted summary for a given user and date, showing intake and remaining for each tracked nutrient.\n\nArgs:\n    user_id (str): The ID of the user.\n    date (str): The date to summarize (format: YYYY-MM-DD).\n\nReturns:\n    dict:\n        success (bool): Whether the operation succeeded.\n        data (dict): If successful, contains user_id, date, and a nutrients mapping (nutrient_name -> dict with 'intake', 'goal', 'remaining').\n        error (str): If failed, reason for failure.\n\nConstraints:\n    - The user must exist.\n    - NutritionGoal must be defined for the user and date.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "date"
+        ]
+      }
+    },
+    {
+      "name": "list_all_users",
+      "description": "Retrieve a list of all users in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[UserInfo],   # List of all user information dicts (possibly empty)\n    }\n\nConstraints:\n    - This operation simply aggregates all UserInfo records with no permission checks.\n    - No error is returned if there are no users; data will be the empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_all_food_items",
+      "description": "Retrieve all available food items and their nutrition info.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[FoodItemInfo]  # List of all food items' info (may be empty if no items exist)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "add_food_log",
+      "description": "Create a new FoodLog entry for a user referencing a valid FoodItem.\n\nArgs:\n    user_id (str): ID of the user who consumed the food.\n    food_id (str): ID of the food item.\n    date (str): Consumption date ('YYYY-MM-DD').\n    serving_size (float): Amount of food consumed (in food item's units).\n    log_id (Optional[str]): Optionally specify log ID, else auto-generate.\n\nReturns:\n    dict:\n        On success: {\n            \"success\": True,\n            \"message\": \"Food log added\",\n            \"log_id\": <new_log_id>\n        }\n        On error: {\n            \"success\": False,\n            \"error\": <reason>\n        }\n\nConstraints:\n    - user_id must reference an existing user.\n    - food_id must reference an existing food item.\n    - serving_size must be positive.\n    - Each log_id must be unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "food_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "serving_size": {
+            "type": "number"
+          },
+          "log_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "food_id",
+          "date",
+          "serving_size"
+        ]
+      }
+    },
+    {
+      "name": "update_food_log",
+      "description": "Edit the serving size and/or food item in an existing FoodLog entry.\n\nArgs:\n    log_id (str): The identifier of the FoodLog entry to update.\n    food_id (str, optional): The new food_id to use (must exist in food_items).\n    serving_size (float, optional): The new serving size to use (must be > 0).\n\nReturns:\n    dict: On success: { \"success\": True, \"message\": \"FoodLog updated successfully\" }\n          On failure: { \"success\": False, \"error\": error_message }\n\nConstraints:\n    - FoodLog entry must exist.\n    - If food_id is provided, it must exist in food_items.\n    - If serving_size is provided, it must be > 0.\n    - At least one of food_id or serving_size must be provided.\n    - Calculated nutrients must be updated per new food and serving size.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "log_id": {
+            "type": "string"
+          },
+          "food_id": {
+            "type": "string"
+          },
+          "serving_size": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "log_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_food_log",
+      "description": "Remove a FoodLog entry from the database.\n\nArgs:\n    log_id (str): The unique identifier of the FoodLog entry to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"FoodLog <log_id> deleted successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"FoodLog entry not found.\"\n    }\n\nConstraints:\n    - FoodLog entry with the given log_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "log_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "log_id"
+        ]
+      }
+    },
+    {
+      "name": "add_nutrition_goal",
+      "description": "Define or update a NutritionGoal for a user and date.\n\nArgs:\n    user_id (str): User's unique identifier. Must exist.\n    date (str): Date string (e.g., 'YYYY-MM-DD').\n    calorie_goal (float): Total calories goal.\n    macronutrient_goals (Dict[str, float]): Goals for macros (e.g., {'protein_goal': X, ...}).\n    micronutrient_goals (Dict[str, float]): Goals for micros (vitamins, minerals).\n\nReturns:\n    dict, on success: {\"success\": True, \"message\": \"...\"}\n          on failure: {\"success\": False, \"error\": \"...\"}\nConstraints:\n    - user_id must reference an existing user.\n    - For a given (user_id, date), at most one NutritionGoal exists.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "calorie_goal": {
+            "type": "number"
+          },
+          "macronutrient_goals": {
+            "type": "object"
+          },
+          "micronutrient_goals": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "user_id",
+          "date",
+          "calorie_goal",
+          "macronutrient_goals",
+          "micronutrient_goals"
+        ]
+      }
+    },
+    {
+      "name": "update_nutrition_goal",
+      "description": "Modify an existing day's NutritionGoal (calorie/macros/micros).\n\nArgs:\n    goal_id (str): The unique ID of the NutritionGoal to update.\n    calorie_goal (float, optional): New calorie goal.\n    macronutrient_goals (dict, optional): New dict of macro goals, ex: {\"protein_goal\": x, ...}\n    micronutrient_goals (dict, optional): New dict of micro goals, ex: {\"vitamin_c\": x, ...}\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"NutritionGoal <goal_id> updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": error_message\n    }\n\nConstraints:\n    - NutritionGoal (goal_id) must exist.\n    - Only valid types are accepted for update fields.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "goal_id": {
+            "type": "string"
+          },
+          "calorie_goal": {
+            "type": "number"
+          },
+          "macronutrient_goals": {
+            "type": "object"
+          },
+          "micronutrient_goals": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "goal_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_nutrition_goal",
+      "description": "Remove (delete) a NutritionGoal entry for a given user and date.\n\nArgs:\n    user_id (str): The user identifier.\n    date (str): The calendar date string (e.g., '2024-06-30').\n\nReturns:\n    dict:\n        - On success:\n            { \"success\": True, \"message\": \"Nutrition goal deleted for user {user_id} on {date}\" }\n        - If no matching goal:\n            { \"success\": False, \"error\": \"No nutrition goal found for user {user_id} on {date}\" }\n        - If input is missing:\n            { \"success\": False, \"error\": \"user_id and date must be provided\" }\n\nConstraints:\n    - Only allows deletion of goals tied to a valid user/date.\n    - If multiple goals exist for the same user/date, delete all.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "date"
+        ]
+      }
+    },
+    {
+      "name": "add_food_item",
+      "description": "Create a new FoodItem (with nutrient info) for logging.\n\nArgs:\n    food_id (str): Unique identifier for the food item.\n    name (str): Name of the food.\n    brand (str): Brand of the food.\n    serving_size (float): Serving size of the food item.\n    calories (float): Calories per serving.\n    macronutrients (dict): Macronutrient values per serving (protein, fat, carbohydrate keys recommended).\n    micronutrients (dict): Micronutrient values per serving.\n\nReturns:\n    dict:\n        Success: {\"success\": True, \"message\": \"Food item '<name>' added successfully.\"}\n        Failure: {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - food_id must be unique.\n    - All arguments must be provided and of the correct type.\n    - Macronutrients should contain keys: protein, fat, carbohydrate (set to 0.0 if missing).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "food_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "brand": {
+            "type": "string"
+          },
+          "serving_size": {
+            "type": "number"
+          },
+          "calories": {
+            "type": "number"
+          },
+          "macronutrients": {
+            "type": "object"
+          },
+          "micronutrients": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "food_id"
+        ]
+      }
+    },
+    {
+      "name": "update_food_item",
+      "description": "Edit nutritional info for an existing FoodItem, allowing partial updates.\n\nArgs:\n    food_id (str): The unique ID of the food item to update.\n    name (str, optional): New name.\n    brand (str, optional): New brand.\n    serving_size (float, optional): New serving size. Must be positive if provided.\n    calories (float, optional): New calorie value. Must be >= 0 if provided.\n    macronutrients (Dict[str, float], optional): New macro dict. All values must be >= 0.\n    micronutrients (Dict[str, float], optional): New micro dict. All values must be >= 0.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Food item updated.\"\n    }\n    or {\n        \"success\": False,\n        \"error\": str\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "food_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "brand": {
+            "type": "string"
+          },
+          "serving_size": {
+            "type": "number"
+          },
+          "calories": {
+            "type": "number"
+          },
+          "macronutrients": {
+            "type": "object"
+          },
+          "micronutrients": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "food_id",
+          "name",
+          "brand",
+          "serving_size",
+          "calories",
+          "macronutrients",
+          "micronutrients"
+        ]
+      }
+    },
+    {
+      "name": "delete_food_item",
+      "description": "Remove a FoodItem from the reference database.\n\nArgs:\n    food_id (str): The unique identifier of the FoodItem to be deleted.\n\nReturns:\n    dict:\n        - If success:\n            {\"success\": True, \"message\": \"FoodItem <food_id> deleted.\"}\n        - If food_id does not exist:\n            {\"success\": False, \"error\": \"FoodItem not found.\"}\n        - If FoodItem is referenced by any FoodLog:\n            {\"success\": False, \"error\": \"FoodItem is referenced by one or more FoodLogs and cannot be deleted.\"}\n\nConstraints:\n    - Cannot delete FoodItem if it is referenced by existing FoodLogs.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "food_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "food_id"
+        ]
+      }
+    }
+  ]
+}

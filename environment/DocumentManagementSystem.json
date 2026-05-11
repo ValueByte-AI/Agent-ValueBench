@@ -1,0 +1,528 @@
+{
+  "env_name": "DocumentManagementSystem",
+  "description": "A document management system organizes, stores, and manages digital files in various formats such as PDF, DOCX, and others. It maintains metadata about stored documents, offers version control, and supports actions like uploading, downloading, and converting file formats. This environment is widely used to streamline document workflows and ensure easy access and manipulation of digital assets.",
+  "initial_parameter_schema": {
+    "documents": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "upload_date": {
+            "type": "string"
+          },
+          "owner_id": {
+            "type": "string"
+          },
+          "current_version_id": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "document_id",
+          "filename",
+          "format",
+          "size",
+          "upload_date",
+          "owner_id",
+          "current_version_id",
+          "metadata"
+        ]
+      }
+    },
+    "document_versions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "version_id": {
+            "type": "string"
+          },
+          "document_id": {
+            "type": "string"
+          },
+          "version_number": {
+            "type": "integer"
+          },
+          "format": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "file_location": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "version_id",
+          "document_id",
+          "version_number",
+          "format",
+          "created_at",
+          "file_location",
+          "created_by"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "permission": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "email",
+          "permission"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_info": [
+      "users"
+    ],
+    "check_user_permission": [
+      "users"
+    ],
+    "list_user_documents": [
+      "documents",
+      "users"
+    ],
+    "find_document_by_filename": [
+      "documents",
+      "users"
+    ],
+    "filter_documents_by_format": [
+      "documents",
+      "users"
+    ],
+    "get_document_versions": [
+      "document_versions",
+      "documents"
+    ],
+    "get_current_document_version": [
+      "document_versions",
+      "documents"
+    ],
+    "check_filename_uniqueness": [
+      "documents",
+      "users"
+    ],
+    "convert_document_format": [
+      "document_versions",
+      "documents",
+      "users"
+    ],
+    "upload_document": [
+      "document_versions",
+      "documents",
+      "users"
+    ],
+    "upload_new_document_version": [
+      "document_versions",
+      "documents",
+      "users"
+    ],
+    "download_document_version": [
+      "document_versions",
+      "documents",
+      "users"
+    ],
+    "update_document_metadata": [
+      "document_versions",
+      "documents",
+      "users"
+    ],
+    "delete_document": [
+      "document_versions",
+      "documents",
+      "users"
+    ],
+    "delete_document_version": [
+      "document_versions",
+      "documents",
+      "users"
+    ],
+    "restore_previous_document_version": [
+      "document_versions",
+      "documents",
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_info",
+      "description": "Retrieve detailed information and permission level for a user by their unique id or by name.\n\nArgs:\n    _id (str, optional): The user's unique identifier.\n    name (str, optional): The user's name (may return multiple users if names are not unique).\n\nReturns:\n    dict:\n        success: True, data: UserInfo or list of UserInfo (for name search, could be empty list)\n        success: False, error: reason string\n\nConstraints:\n    - If both _id and name are None, returns an error.\n    - If both are provided, user id (_id) is prioritized for search.\n    - If user with that _id or name is not found, error message.\n    - Name searches may return multiple users.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "check_user_permission",
+      "description": "Check if the specified user has permission to perform the given operation.\n\nArgs:\n    user_id (str): The unique user identifier.\n    operation (str): The operation to check ('upload', 'download', 'convert').\n\nReturns:\n    dict:\n        - If the user exists and the operation is recognized:\n            {\n                \"success\": True,\n                \"has_permission\": bool,\n                \"permission\": str  # user's permission level\n            }\n        - If the user does not exist or operation is invalid:\n            {\n                \"success\": False,\n                \"error\": str\n            }\n\nConstraints:\n    - Operations must be in {'upload', 'download', 'convert'}.\n    - Only users with sufficient permissions may do action.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "operation": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "operation"
+        ]
+      }
+    },
+    {
+      "name": "list_user_documents",
+      "description": "List all documents owned by the specified user.\n\nArgs:\n    user_id (str): The identifier for the user.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[DocumentInfo]  # List of document info (can be empty if user owns none)\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Reason for failure (e.g., user not found)\n        }\n\nConstraints:\n    - Returns all documents where DocumentInfo[\"owner_id\"] == user_id\n    - Fails if user does not exist in the system",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "find_document_by_filename",
+      "description": "Retrieve a document's metadata using the filename, possibly filtered by owner.\n\nArgs:\n    filename (str): The target filename to search for.\n    owner_id (str, optional): If provided, restrict search to documents owned by this user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DocumentInfo]  # List of matching documents (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - If owner_id is supplied, it must exist in self.users.\n    - Document filenames are unique per user or scope; search accordingly.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string"
+          },
+          "owner_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "filename"
+        ]
+      }
+    },
+    {
+      "name": "filter_documents_by_format",
+      "description": "List documents filtered by file format. Optionally filter only documents belonging to a specific user.\n\nArgs:\n    format (str): The desired file format to filter documents by (e.g., \"PDF\").\n    user_id (str, optional): If provided, only list documents for this user; otherwise, list for all users.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DocumentInfo]  # May be empty if no matches\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g. user not found\n    }\n\nConstraints:\n    - If user_id is provided, fails if user does not exist.\n    - Case-insensitive match for format for usability.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "format"
+        ]
+      }
+    },
+    {
+      "name": "get_document_versions",
+      "description": "Retrieve all versions associated with the given document.\n\nArgs:\n    document_id (str): The ID of the document to retrieve versions for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DocumentVersionInfo],  # List of matching versions (may be empty if none found)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If the document_id is invalid or document doesn't exist\n    }\n\nConstraints:\n    - The document with the given document_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id"
+        ]
+      }
+    },
+    {
+      "name": "get_current_document_version",
+      "description": "Get metadata for the current (latest) version of a document.\n\nArgs:\n    document_id (str): The unique identifier of the document.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": DocumentVersionInfo (info on current/latest version)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g. document or version not found)\n    }\n\nConstraints:\n    - document_id must exist in the system.\n    - The document must have a current_version_id referencing an existing version.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id"
+        ]
+      }
+    },
+    {
+      "name": "check_filename_uniqueness",
+      "description": "Verify that the given filename is unique for the user (owner_id).\n\nArgs:\n    filename (str): The filename to check for uniqueness.\n    owner_id (str): The user for which the filename uniqueness is checked.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": bool  # True if unique, False if filename exists for this user\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # error description\n    }\n\nConstraints:\n    - The given user must exist.\n    - Filenames are unique per user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string"
+          },
+          "owner_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "filename",
+          "owner_id"
+        ]
+      }
+    },
+    {
+      "name": "convert_document_format",
+      "description": "Convert a document’s format, creating a new DocumentVersion.\nOnly users with correct permissions (\"convert\" or \"admin\") can perform this operation.\n\nArgs:\n    document_id (str): ID of the document to convert.\n    target_format (str): Format to convert to (e.g., 'docx').\n    user_id (str): User performing the action.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Document converted and new version created\",\n        \"new_version_id\": <version_id>\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\nConstraints:\n    - Only users with 'convert' or 'admin' permission can perform conversion.\n    - The document must exist.\n    - A new DocumentVersion is added, and the Document's current_version_id is updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "target_format": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "target_format",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "upload_document",
+      "description": "Upload a new document to the system.\n\nArgs:\n    user_id (str): Uploader's user ID.\n    filename (str): File name to upload (must be unique for this user).\n    format (str): Document file format (e.g., 'pdf', 'docx').\n    size (int): Size of the document in bytes.\n    upload_date (str): Timestamp of upload.\n    file_location (str): Physical location of uploaded file (storage path).\n    metadata (dict, optional): Additional document metadata.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Document uploaded successfully.\",\n        \"document_id\": <str>,\n        \"version_id\": <str>\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <str>\n    }\n\nConstraints:\n    - Only users with appropriate 'upload' permission can upload documents.\n    - Filename must be unique for the user.\n    - Creates the initial version record with version_number=1.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "upload_date": {
+            "type": "string"
+          },
+          "file_location": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "user_id",
+          "filename",
+          "format",
+          "size",
+          "upload_date",
+          "file_location"
+        ]
+      }
+    },
+    {
+      "name": "upload_new_document_version",
+      "description": "Add a new version for an existing document.\n\nArgs:\n    document_id: The ID of the document to add a version for.\n    file_location: Location/path for the uploaded file.\n    format: File format (e.g., \"PDF\").\n    created_by: User ID uploading the version.\n    created_at: Upload timestamp (ISO string).\n    size: Integer file size in bytes.\n    metadata: Optional dictionary of version/file metadata.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"New version uploaded successfully\",\n        \"version_id\": <new_version_id>\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - The document must exist.\n    - The user must exist and have permission (\"upload\" or \"edit\" in their 'permission' field).\n    - Version numbers are per-document, incremented.\n    - The new version gets a new unique version_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "file_location": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "document_id",
+          "file_location",
+          "format",
+          "created_by",
+          "created_at",
+          "size"
+        ]
+      }
+    },
+    {
+      "name": "download_document_version",
+      "description": "Download a specific version of a document.\n\nArgs:\n    user_id (str): The user requesting to download the document version.\n    version_id (str): The specific document version's ID.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"File ready for download.\",\n        \"file_location\": str,     # Path/location of the file\n        \"filename\": str           # The filename of the document\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - User must exist.\n    - Version must exist.\n    - User must have permission ('download', 'admin'), or be the owner of the document.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "version_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "version_id"
+        ]
+      }
+    },
+    {
+      "name": "update_document_metadata",
+      "description": "Modify metadata (such as tags or notes) for a document or a specific version.\n\nArgs:\n    user_id (str): ID of the user requesting the update.\n    document_id (str, optional): Document to update. Required if version_id is not given.\n    version_id (str, optional): Document version to validate/update in context. If both document_id and version_id are provided, the version must belong to the document; the document metadata is updated, and version metadata is mirrored when available.\n    metadata_updates (dict): Dict of updates {key: value} to apply.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Metadata updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The document or version must exist.\n    - The user must exist and have permission to update the metadata.\n    - Only document owner or users with suitable permission ('admin'/'editor') can edit.\n    - Supplying version_id alongside document_id is allowed and should not fail when the target version lacks a pre-existing metadata field.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "document_id": {
+            "type": "string"
+          },
+          "version_id": {
+            "type": "string"
+          },
+          "metadata_updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "user_id",
+          "metadata_updates"
+        ]
+      }
+    },
+    {
+      "name": "delete_document",
+      "description": "Remove a document and all its versions from the system. Only admins or the document's owner\ncan perform this operation.\n\nArgs:\n    document_id (str): The unique identifier of the document to delete.\n    user_id (str): ID of the user performing the deletion.\n\nReturns:\n    dict: On success:\n        { \"success\": True, \"message\": \"Document and all versions deleted successfully.\" }\n    On failure:\n        { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Only users with 'admin' permission or the document's owner can delete the document.\n    - All versions of the document are deleted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_document_version",
+      "description": "Remove a specific version of a document. \n\nArgs:\n    user_id (str): User requesting the operation.\n    version_id (str): The document version to delete.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"message\": \"Document version deleted.\"\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": \"<reason>\"\n        }\n\nConstraints:\n    - User must exist and have permission (permission == 'admin' or 'editor').\n    - The version must exist.\n    - At least one version must remain for the document (cannot delete last version).\n    - If deleting the current version, current_version_id must be set to the latest remaining version and the document's top-level format must sync to that version.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "version_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "version_id"
+        ]
+      }
+    },
+    {
+      "name": "restore_previous_document_version",
+      "description": "Set a previous DocumentVersion as current for a document.\n\nArgs:\n    user_id (str): User performing the operation.\n    document_id (str): The target document.\n    version_id (str): The version to promote to 'current'.\n\nReturns:\n    dict: \n      Success: { \"success\": True, \"message\": str }\n      Failure: { \"success\": False, \"error\": str }\n\nConstraints:\n    - Only users with 'admin' or 'editor' permissions can restore versions.\n    - Document and version must exist.\n    - Version must belong to the document.\n    - Version must not already be the current one.\n    - Restoring a version also synchronizes the document's top-level format to the restored current version.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "document_id": {
+            "type": "string"
+          },
+          "version_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "document_id",
+          "version_id"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,562 @@
+{
+  "env_name": "AntiPhishingThreatIntelligenceDatabase",
+  "description": "An anti-phishing threat intelligence database is a system designed to aggregate, store, and manage information about domains, email addresses, and URLs associated with phishing activities. It typically supports rapid lookups, updates, and analyses to aid security monitoring, incident response, and user protection efforts. The database's state consists of entries marking entities as safe or malicious, along with supporting information like source, detection date, and classification.",
+  "initial_parameter_schema": {
+    "domains": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "domain_name": {
+            "type": "string"
+          },
+          "threat_status": {
+            "type": "string"
+          },
+          "detection_date": {
+            "type": "string"
+          },
+          "classification": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain_name",
+          "threat_status",
+          "detection_date",
+          "classification",
+          "source"
+        ]
+      }
+    },
+    "email_addresses": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "mail_address": {
+            "type": "string"
+          },
+          "threat_status": {
+            "type": "string"
+          },
+          "detection_date": {
+            "type": "string"
+          },
+          "classification": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mail_address",
+          "threat_status",
+          "detection_date",
+          "classification",
+          "source"
+        ]
+      }
+    },
+    "urls": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "threat_status": {
+            "type": "string"
+          },
+          "detection_date": {
+            "type": "string"
+          },
+          "classification": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "threat_status",
+          "detection_date",
+          "classification",
+          "source"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "check_domain_presence": [
+      "domains"
+    ],
+    "check_email_address_presence": [
+      "email_addresses"
+    ],
+    "check_url_presence": [
+      "urls"
+    ],
+    "get_domain_threat_info": [
+      "domains"
+    ],
+    "get_email_address_threat_info": [
+      "email_addresses"
+    ],
+    "get_url_threat_info": [
+      "urls"
+    ],
+    "list_domains_by_threat_status": [
+      "domains"
+    ],
+    "list_email_addresses_by_threat_status": [
+      "email_addresses"
+    ],
+    "list_urls_by_threat_status": [
+      "urls"
+    ],
+    "list_all_domains": [
+      "domains"
+    ],
+    "list_all_email_addresses": [
+      "email_addresses"
+    ],
+    "list_all_urls": [
+      "urls"
+    ],
+    "add_domain_entry": [
+      "domains"
+    ],
+    "add_email_address_entry": [
+      "email_addresses"
+    ],
+    "add_url_entry": [
+      "urls"
+    ],
+    "update_domain_entry": [
+      "domains"
+    ],
+    "update_email_address_entry": [
+      "email_addresses"
+    ],
+    "update_url_entry": [
+      "urls"
+    ],
+    "reclassify_domain_status": [
+      "domains"
+    ],
+    "reclassify_email_address_status": [
+      "email_addresses"
+    ],
+    "reclassify_url_status": [
+      "urls"
+    ]
+  },
+  "tools": [
+    {
+      "name": "check_domain_presence",
+      "description": "Check if the specified domain is present in the threat intelligence database.\nIf found, return its DomainInfo. If not, indicate absence.\n\nArgs:\n    domain_name (str): The domain to check for in the database.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": DomainInfo  # If found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Explanation if not found or invalid input\n    }\n\nConstraints:\n    - domain_name must not be empty.\n    - Presence is exactly by string match.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain_name"
+        ]
+      }
+    },
+    {
+      "name": "check_email_address_presence",
+      "description": "Check if a given email address is present in the database.\nIf found, return its associated threat intelligence information.\n\nArgs:\n    mail_address (str): The email address to check.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": EmailAddressInfo  # All intelligence on the email address\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"Email address not found\"\n    }\n\nConstraints:\n    - Email address (mail_address) must match a key in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mail_address": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mail_address"
+        ]
+      }
+    },
+    {
+      "name": "check_url_presence",
+      "description": "Check if a given URL is present in the threat intelligence database.\n\nArgs:\n    url (str): The URL to look up.\n\nReturns:\n    dict:\n        - If found: {\"success\": True, \"data\": URLInfo}\n        - If not found: {\"success\": False, \"error\": \"URL not found in database\"}\n\nConstraints:\n    - URL string is matched exactly as stored in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      }
+    },
+    {
+      "name": "get_domain_threat_info",
+      "description": "Retrieve the full threat intelligence (status, classification, detection date, source)\nfor a given domain.\n\nArgs:\n    domain_name (str): The domain to query.\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"data\": DomainInfo\n        }\n        On error:\n        {\n            \"success\": False,\n            \"error\": str  # Reason, e.g. \"Domain not found\"\n        }\n\nConstraints:\n    - domain_name must exist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain_name"
+        ]
+      }
+    },
+    {
+      "name": "get_email_address_threat_info",
+      "description": "Retrieve the complete threat intelligence entry (if present) for a given email address.\n\nArgs:\n    mail_address (str): The email address to look up in the intelligence database.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": EmailAddressInfo,  # Full entry for the email address\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., email address not found\n    }\n\nConstraints:\n    - mail_address must be present as a key in self.email_addresses for success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mail_address": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mail_address"
+        ]
+      }
+    },
+    {
+      "name": "get_url_threat_info",
+      "description": "Retrieve the full threat intelligence information for a given URL.\n\nArgs:\n    url (str): The URL to look up.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": URLInfo  # All attributes for the given URL.\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"URL not found\"\n            }\n\nConstraints:\n    - URLs are unique; if not found, return an appropriate error message.\n    - Query is read-only; no change to internal state.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      }
+    },
+    {
+      "name": "list_domains_by_threat_status",
+      "description": "List all domains filtered by a given threat_status ('malicious', 'safe', 'unknown').\n\nArgs:\n    threat_status (str): The threat status to filter by.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DomainInfo],   # may be empty\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str   # e.g. invalid threat_status\n    }\n\nConstraints:\n    - threat_status must be one of 'malicious', 'safe', 'unknown'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "threat_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "threat_status"
+        ]
+      }
+    },
+    {
+      "name": "list_email_addresses_by_threat_status",
+      "description": "List all email addresses filtered by a given threat_status.\n\nArgs:\n    threat_status (str): Filter value, one of \"malicious\", \"safe\", \"unknown\".\n\nReturns:\n    dict:\n        - If threat_status valid:\n          { \"success\": True, \"data\": List[EmailAddressInfo] }\n        - If threat_status invalid:\n          { \"success\": False, \"error\": \"Invalid threat_status value\" }\n\nConstraints:\n    - threat_status must be one of: \"malicious\", \"safe\", \"unknown\"",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "threat_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "threat_status"
+        ]
+      }
+    },
+    {
+      "name": "list_urls_by_threat_status",
+      "description": "List all URLs with the specified threat_status.\n\nArgs:\n    threat_status (str): The threat status filter (\"malicious\", \"safe\", or \"unknown\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[URLInfo],  # May be empty if no match\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If an invalid threat_status is specified\n    }\n\nConstraints:\n    - Only allow threat_status values: \"malicious\", \"safe\", \"unknown\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "threat_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "threat_status"
+        ]
+      }
+    },
+    {
+      "name": "list_all_domains",
+      "description": "Retrieve all domain intelligence entries from the database.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DomainInfo],  # List of all domain entries; empty list if none\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_all_email_addresses",
+      "description": "Retrieve all email address intelligence entries in the database.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[EmailAddressInfo]  # List of all email entries; may be empty.\n    }\n\nConstraints:\n    - None; this operation performs a bulk read of all email addresses.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_all_urls",
+      "description": "Retrieve all URL intelligence entries in the database.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[URLInfo],  # List of all URLInfo entries (may be empty)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "add_domain_entry",
+      "description": "Add a new domain intelligence entry.\n\nArgs:\n    domain_name (str): Unique domain name to add.\n    threat_status (str): Threat status (\"malicious\", \"safe\", \"unknown\").\n    detection_date (str): Date the threat was detected.\n    classification (str): Threat classification.\n    source (str): Source of the intelligence.\n\nReturns:\n    dict: \n        On success: {\"success\": True, \"message\": \"Domain entry added successfully\"}\n        On failure: {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - domain_name must be unique.\n    - threat_status must be \"malicious\", \"safe\", or \"unknown\".\n    - detection_date, classification, source must be provided (non-empty).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain_name": {
+            "type": "string"
+          },
+          "threat_status": {
+            "type": "string"
+          },
+          "detection_date": {
+            "type": "string"
+          },
+          "classification": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain_name",
+          "threat_status",
+          "detection_date",
+          "classification",
+          "source"
+        ]
+      }
+    },
+    {
+      "name": "add_email_address_entry",
+      "description": "Add a new email address threat intelligence entry.\n\nArgs:\n    mail_address (str): Email address (must be unique).\n    threat_status (str): \"malicious\", \"safe\", or \"unknown\".\n    detection_date (str): ISO date string or similar, must not be empty.\n    classification (str): Threat classification (e.g., phishing, malware).\n    source (str): Source of the threat intelligence.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Email address entry added successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - mail_address must be unique (not already present).\n    - threat_status must be one of \"malicious\", \"safe\", \"unknown\".\n    - detection_date must be provided and non-empty.\n    - classification and source must be provided and non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mail_address": {
+            "type": "string"
+          },
+          "threat_status": {
+            "type": "string"
+          },
+          "detection_date": {
+            "type": "string"
+          },
+          "classification": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mail_address",
+          "threat_status",
+          "detection_date",
+          "classification",
+          "source"
+        ]
+      }
+    },
+    {
+      "name": "add_url_entry",
+      "description": "Add a new URL intelligence entry to the database.\n\nArgs:\n    url (str): The URL to add. Must be unique in the database.\n    threat_status (str): The threat status for this URL. Must be \"malicious\", \"safe\", or \"unknown\".\n    detection_date (str): Detection date for this entry (ISO format or similar). Required.\n    classification (str): Threat classification (\"phishing\", \"malware\", etc.).\n    source (str): The source of the intelligence.\n\nReturns:\n    dict:\n        On success:  { \"success\": True, \"message\": \"URL entry added.\" }\n        On failure:  { \"success\": False, \"error\": \"...\" }\n\nConstraints:\n    - URL must not already exist.\n    - threat_status in {\"malicious\", \"safe\", \"unknown\"}.\n    - detection_date must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "threat_status": {
+            "type": "string"
+          },
+          "detection_date": {
+            "type": "string"
+          },
+          "classification": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "threat_status",
+          "detection_date",
+          "classification",
+          "source"
+        ]
+      }
+    },
+    {
+      "name": "update_domain_entry",
+      "description": "Update one or more attributes (threat_status, detection_date, classification, source) of an existing domain entry.\n\nArgs:\n    domain_name (str): The domain to update.\n    threat_status (Optional[str]): New threat status (\"malicious\", \"safe\", or \"unknown\"), if updating.\n    detection_date (Optional[str]): New detection date, if updating.\n    classification (Optional[str]): New classification, if updating.\n    source (Optional[str]): New source, if updating.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Domain entry updated.\" }\n        On failure: { \"success\": False, \"error\": str }\n\nConstraints:\n    - The domain must exist.\n    - threat_status (if specified) must be \"malicious\", \"safe\", or \"unknown\".\n    - At least one attribute to update must be specified.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain_name": {
+            "type": "string"
+          },
+          "threat_status": {
+            "type": "string"
+          },
+          "detection_date": {
+            "type": "string"
+          },
+          "classification": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain_name"
+        ]
+      }
+    },
+    {
+      "name": "update_email_address_entry",
+      "description": "Update any subset of attributes for an existing email address entry.\nCannot update the mail_address itself.\n\nArgs:\n    mail_address (str): The unique identifier for the email address to update.\n    threat_status (str, optional): New threat status; must be \"malicious\", \"safe\", or \"unknown\".\n    detection_date (str, optional): New detection date.\n    classification (str, optional): New classification.\n    source (str, optional): New source string.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Email address entry updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": error message\n    }\n\nConstraints:\n    - Email address must already exist.\n    - Only updates allowed for threat_status, detection_date, classification, source.\n    - If threat_status is provided, it must be \"malicious\", \"safe\", or \"unknown\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mail_address": {
+            "type": "string"
+          },
+          "threat_status": {
+            "type": "string"
+          },
+          "detection_date": {
+            "type": "string"
+          },
+          "classification": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mail_address"
+        ]
+      }
+    },
+    {
+      "name": "update_url_entry",
+      "description": "Update any of the attributes for an existing URL entry.\n\nArgs:\n    url (str): Unique identifier for the URL entry.\n    threat_status (str, optional): New threat status (\"malicious\", \"safe\", or \"unknown\").\n    detection_date (str, optional): Updated detection date (ISO string or similar).\n    classification (str, optional): Updated threat classification.\n    source (str, optional): Updated source information.\n\nReturns:\n    dict:\n        On success:\n            {'success': True, 'message': 'URL entry updated.'}\n        On failure:\n            {'success': False, 'error': <reason>}\n\nConstraints:\n    - The URL entry must already exist in the database.\n    - At least one attribute must be provided for update.\n    - Only updates provided attributes; all others remain unchanged.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "threat_status": {
+            "type": "string"
+          },
+          "detection_date": {
+            "type": "string"
+          },
+          "classification": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      }
+    },
+    {
+      "name": "reclassify_domain_status",
+      "description": "Change the threat_status and/or classification for an existing domain entry.\n\nArgs:\n    domain_name (str): The unique domain name to reclassify.\n    threat_status (Optional[str]): The new threat status (\"malicious\", \"safe\", or \"unknown\"). If omitted, leaves unchanged.\n    classification (Optional[str]): The new threat classification. If omitted, leaves unchanged.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Domain threat status and/or classification updated.\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Domain must already exist.\n    - threat_status must be \"malicious\", \"safe\", or \"unknown\" if provided.\n    - At least one of threat_status/classification must be specified.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain_name": {
+            "type": "string"
+          },
+          "threat_status": {
+            "type": "string"
+          },
+          "classification": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain_name"
+        ]
+      }
+    },
+    {
+      "name": "reclassify_email_address_status",
+      "description": "Change the threat_status and/or classification for an existing email address entry.\n\nArgs:\n    mail_address (str): Unique identifier for the email address entity.\n    threat_status (Optional[str]): The new threat status (\"malicious\", \"safe\", or \"unknown\").\n    classification (Optional[str]): The new threat classification (e.g., \"phishing\", \"scam\").\n\nReturns:\n    dict: Success or failure, with message or error reason.\n\nConstraints:\n    - Operation only allowed if email address exists.\n    - threat_status, if provided, must be one of \"malicious\", \"safe\", \"unknown\".\n    - At least one of threat_status or classification must be provided.\n    - detection_date is updated to now if any change is made.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mail_address": {
+            "type": "string"
+          },
+          "threat_status": {
+            "type": "string"
+          },
+          "classification": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mail_address"
+        ]
+      }
+    },
+    {
+      "name": "reclassify_url_status",
+      "description": "Change the threat_status and/or classification for an existing URL entry.\n\nArgs:\n    url (str): Unique identifier for the URL entry.\n    threat_status (Optional[str]): New threat status. Must be \"malicious\", \"safe\", or \"unknown\" if provided.\n    classification (Optional[str]): New threat classification (e.g. \"phishing\", \"scam\"), if provided.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"URL threat status and/or classification updated\"\n    } or {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The URL entry must exist in the system.\n    - threat_status, if given, must be \"malicious\", \"safe\", or \"unknown\".\n    - At least one of threat_status or classification must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "threat_status": {
+            "type": "string"
+          },
+          "classification": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      }
+    }
+  ]
+}

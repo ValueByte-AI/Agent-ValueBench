@@ -1,0 +1,436 @@
+{
+  "env_name": "MessagingPlatformAccountSystem",
+  "description": "A messaging platform user account management system maintains records of users identified by phone numbers or other unique identifiers. It tracks account registration, verification status, device associations, and supports operations such as looking up whether a given phone number is registered. The system underpins essential features of messaging platforms, enabling user authentication, contact discovery, and secure communication.",
+  "initial_parameter_schema": {
+    "user_accounts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "phone_number": {
+            "type": "string"
+          },
+          "registration_status": {
+            "type": "string"
+          },
+          "verification_status": {
+            "type": "string"
+          },
+          "registration_timestamp": {
+            "type": "string"
+          },
+          "associated_devices": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "_id",
+          "phone_number",
+          "registration_status",
+          "verification_status",
+          "registration_timestamp",
+          "associated_devices"
+        ]
+      }
+    },
+    "devices": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "device_type": {
+            "type": "string"
+          },
+          "device_status": {
+            "type": "string"
+          },
+          "last_active_timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id",
+          "user_id",
+          "device_type",
+          "device_status",
+          "last_active_timestamp"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_account_by_phone_number": [
+      "user_accounts"
+    ],
+    "is_phone_number_registered": [
+      "user_accounts"
+    ],
+    "get_account_verification_status": [
+      "user_accounts"
+    ],
+    "get_account_registration_status": [
+      "user_accounts"
+    ],
+    "list_all_accounts": [
+      "user_accounts"
+    ],
+    "get_devices_for_account": [
+      "user_accounts"
+    ],
+    "get_device_info_by_device_id": [
+      "devices"
+    ],
+    "list_devices_for_phone_number": [
+      "devices",
+      "user_accounts"
+    ],
+    "get_device_status": [
+      "devices"
+    ],
+    "register_account": [
+      "user_accounts"
+    ],
+    "set_account_registration_status": [
+      "user_accounts"
+    ],
+    "set_account_verification_status": [
+      "user_accounts"
+    ],
+    "associate_device_with_account": [
+      "devices",
+      "user_accounts"
+    ],
+    "dissociate_device_from_account": [
+      "devices",
+      "user_accounts"
+    ],
+    "update_device_status": [
+      "devices",
+      "user_accounts"
+    ],
+    "delete_account_by_phone_number": [
+      "devices",
+      "user_accounts"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_account_by_phone_number",
+      "description": "Retrieve full account info for a unique phone number.\n\nArgs:\n    phone_number (str): The phone number to look up.\n\nReturns:\n    dict: \n      On success: { \"success\": True, \"data\": UserAccountInfo }\n      On failure: { \"success\": False, \"error\": \"Account with this phone number does not exist\" }\n\nConstraints:\n    - Each phone number is unique in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "phone_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "phone_number"
+        ]
+      }
+    },
+    {
+      "name": "is_phone_number_registered",
+      "description": "Check if a phone number is registered in the system.\n\nArgs:\n    phone_number (str): The phone number to check (must be non-empty string).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": bool  # True if phone number is registered, False otherwise\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g., invalid input)\n    }\n\nConstraints:\n    - Phone number must be a non-empty string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "phone_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "phone_number"
+        ]
+      }
+    },
+    {
+      "name": "get_account_verification_status",
+      "description": "Query the verification status of an account by phone number or user ID.\n\nArgs:\n    phone_number (str, optional): The phone number linked to the account.\n    user_id (str, optional): The user account's unique ID (_id).\n\nReturns:\n    dict: \n      - On success: {\n            \"success\": True,\n            \"data\": {\n                \"user_id\": str,\n                \"phone_number\": str,\n                \"verification_status\": str\n            }\n        }\n      - On error: {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - At least one of phone_number or user_id must be provided.\n    - Each phone number is unique (one account per phone number).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "phone_number": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [],
+        "anyOf": [
+          {
+            "required": [
+              "phone_number"
+            ]
+          },
+          {
+            "required": [
+              "user_id"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_account_registration_status",
+      "description": "Query the registration status of an account by phone number or user_id.\n\nArgs:\n    phone_number (str, optional): The phone number of the user account.\n    user_id (str, optional): The unique user_id (_id) of the user account.\n\nReturns:\n    dict: \n      - On success: {\"success\": True, \"registration_status\": str}\n      - On failure: {\"success\": False, \"error\": str}\n\nConstraints:\n    - At least one identifier (phone_number or user_id) must be provided.\n    - If both are provided and do not correspond to the same account, the first that resolves is used.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "phone_number": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [],
+        "anyOf": [
+          {
+            "required": [
+              "phone_number"
+            ]
+          },
+          {
+            "required": [
+              "user_id"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "list_all_accounts",
+      "description": "Retrieve all user accounts currently in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[UserAccountInfo],  # List of all user accounts (may be empty if none exist)\n    }\n\nConstraints:\n    - No parameters or constraints. Returns all accounts.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_devices_for_account",
+      "description": "List all device IDs associated with the given user account.\n\nArgs:\n    user_id (str): Account unique identifier (_id).\n\nReturns:\n    dict:\n      - success: True and data: List of device IDs if account exists (possibly empty).\n      - success: False and error: error string if account does not exist.\n\nConstraints:\n    - The specified account (_id) must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_device_info_by_device_id",
+      "description": "Retrieve device information given a device ID.\n\nArgs:\n    device_id (str): The unique identifier of the device.\n\nReturns:\n    dict:\n        - success: True and device info (DeviceInfo) if device exists.\n        - success: False and error message if device does not exist.\n\nConstraints:\n    - device_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id"
+        ]
+      }
+    },
+    {
+      "name": "list_devices_for_phone_number",
+      "description": "Fetch all device info associated with a given phone number’s account.\n\nArgs:\n    phone_number (str): The phone number to look up.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DeviceInfo]  # May be empty\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason (e.g. account not found)\n    }\n\nConstraints:\n    - Each phone number must be unique (one account per phone number).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "phone_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "phone_number"
+        ]
+      }
+    },
+    {
+      "name": "get_device_status",
+      "description": "Query the current status (e.g., active/inactive) of a device by device_id.\n\nArgs:\n    device_id (str): The unique identifier for a device.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"device_id\": str,\n                    \"device_status\": str\n                }\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Device not found\"\n            }\n\nConstraints:\n    - The device_id must exist in the system's devices.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id"
+        ]
+      }
+    },
+    {
+      "name": "register_account",
+      "description": "Register a new user account with the provided phone number, ensuring uniqueness.\n\nArgs:\n    phone_number (str): The phone number for the new account.\n\nReturns:\n    dict:\n        On Success:\n            { \"success\": True, \"message\": \"Account registered\", \"account_id\": <account_id> }\n        On Failure (e.g., phone number already exists):\n            { \"success\": False, \"error\": \"Phone number already registered\" }\n\nConstraints:\n    - Each phone number must be unique (one account per phone number).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "phone_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "phone_number"
+        ]
+      }
+    },
+    {
+      "name": "set_account_registration_status",
+      "description": "Change the registration status of an existing account identified by phone number.\n\nArgs:\n    phone_number (str): The unique phone number of the user account.\n    registration_status (str): The new registration status to be set (e.g., \"pending\", \"registered\", \"suspended\").\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Registration status updated for account with phone number X.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Account with the specified phone number does not exist.\"\n            }\n\nConstraints:\n    - The account must exist (phone number is unique across accounts).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "phone_number": {
+            "type": "string"
+          },
+          "registration_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "phone_number",
+          "registration_status"
+        ]
+      }
+    },
+    {
+      "name": "set_account_verification_status",
+      "description": "Change (set) the verification status of a user account identified by phone number.\n\nArgs:\n    phone_number (str): The unique phone number identifying the account.\n    verification_status (str): New verification status to apply (e.g., 'unverified', 'verified', 'rejected').\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Account verification status updated.\" }\n        On failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Each phone number must correspond to a unique user account.\n    - The account must exist.\n    - No validation is performed on status value (for custom statuses).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "phone_number": {
+            "type": "string"
+          },
+          "verification_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "phone_number",
+          "verification_status"
+        ]
+      }
+    },
+    {
+      "name": "associate_device_with_account",
+      "description": "Add a new device to a user's account.\n\nArgs:\n    user_id (str): The user account's unique identifier (_id).\n    device_info (DeviceInfo): The new device information to be associated with this account.\n\nReturns:\n    dict: Success or error message:\n        {\n            \"success\": True,\n            \"message\": \"Device associated with account.\"\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": \"Reason for failure...\"\n        }\n\nConstraints:\n    - user_id must exist in user_accounts.\n    - The user account must be both registered and verified.\n    - device_id must not already exist in self.devices.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "device_info": {
+            "type": "object",
+            "properties": {
+              "device_id": {
+                "type": "string"
+              },
+              "user_id": {
+                "type": "string"
+              },
+              "device_type": {
+                "type": "string"
+              },
+              "device_status": {
+                "type": "string"
+              },
+              "last_active_timestamp": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "device_id",
+              "device_type",
+              "device_status",
+              "last_active_timestamp"
+            ]
+          }
+        },
+        "required": [
+          "user_id",
+          "device_info"
+        ]
+      }
+    },
+    {
+      "name": "dissociate_device_from_account",
+      "description": "Remove (dissociate) a device from its associated user account in the messaging platform system.\n\nArgs:\n    device_id (str): The unique identifier of the device to be dissociated.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Device <device_id> dissociated from account <user_id>\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Device must exist.\n    - Device must be associated with a user account (device's user_id is non-empty and account exists).\n    - Updates both device and user account records.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id"
+        ]
+      }
+    },
+    {
+      "name": "update_device_status",
+      "description": "Change the status of a device (e.g., lost/active/inactive) by device_id.\n\nArgs:\n    device_id (str): The ID of the device to update.\n    new_status (str): The new status to set for the device.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Device <device_id> status updated to <new_status>.\" }\n        - On failure: { \"success\": False, \"error\": <description> }\n\nConstraints:\n    - The device must exist.\n    - The device must be associated with a registered and verified account.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "delete_account_by_phone_number",
+      "description": "Permanently removes a user account given its phone number, including\ncascading delete on all devices associated with that account.\n\nArgs:\n    phone_number (str): The phone number of the account to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Account (and associated devices if any) deleted for phone number ...\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Account with this phone number does not exist\"\n    }\n\nConstraints:\n    - Each phone number is unique; only one account should match.\n    - All devices associated with the deleted account are also deleted (cascade).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "phone_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "phone_number"
+        ]
+      }
+    }
+  ]
+}

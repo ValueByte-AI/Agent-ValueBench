@@ -1,0 +1,714 @@
+{
+  "env_name": "UserManagementSubsystem",
+  "description": "A user management subsystem in business software maintains structured records of individual user accounts, including statuses, roles, credentials, and access rights. It enables administrative actions such as adding, modifying, deactivating, and querying users, as well as maintaining logs of user activities. This environment is essential in business platforms to ensure secure access control and efficient administration of system users.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "date_created": {
+            "type": "string"
+          },
+          "last_login": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "display_name",
+          "email",
+          "status",
+          "date_created",
+          "last_login"
+        ]
+      }
+    },
+    "roles": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "role_id": {
+            "type": "string"
+          },
+          "role_name": {
+            "type": "string"
+          },
+          "permission": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "role_id",
+          "role_name",
+          "permission"
+        ]
+      }
+    },
+    "credentials": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "password_hash": {
+            "type": "string"
+          },
+          "password_last_changed": {
+            "type": "string"
+          },
+          "two_factor_enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "_id",
+          "password_hash",
+          "password_last_changed",
+          "two_factor_enabled"
+        ]
+      }
+    },
+    "access_rights": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "_id": {
+              "type": "string"
+            },
+            "resource_id": {
+              "type": "string"
+            },
+            "access_level": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "_id",
+            "resource_id",
+            "access_level"
+          ]
+        }
+      }
+    },
+    "activity_logs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "activity_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "activity_id",
+          "user_id",
+          "action",
+          "timestamp",
+          "result"
+        ]
+      }
+    },
+    "user_roles": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_user_by_username": [
+      "users"
+    ],
+    "list_all_users": [
+      "users"
+    ],
+    "list_users_by_status": [
+      "users"
+    ],
+    "get_user_status": [
+      "users"
+    ],
+    "list_user_roles": [
+      "roles",
+      "user_roles",
+      "users"
+    ],
+    "get_role_by_id": [
+      "roles"
+    ],
+    "list_all_roles": [
+      "roles"
+    ],
+    "list_user_access_rights": [
+      "access_rights",
+      "users"
+    ],
+    "get_user_credential_info": [
+      "credentials"
+    ],
+    "list_user_activity_logs": [
+      "activity_logs",
+      "users"
+    ],
+    "get_activity_log_by_id": [
+      "activity_logs"
+    ],
+    "check_user_access_to_resource": [
+      "access_rights",
+      "users"
+    ],
+    "add_user": [
+      "users"
+    ],
+    "update_user_status": [
+      "users"
+    ],
+    "update_user_info": [
+      "users"
+    ],
+    "set_user_roles": [
+      "roles",
+      "user_roles",
+      "users"
+    ],
+    "remove_user_role": [
+      "roles",
+      "user_roles",
+      "users"
+    ],
+    "update_user_credential": [
+      "credentials",
+      "users"
+    ],
+    "add_access_right_to_user": [
+      "access_rights",
+      "users"
+    ],
+    "remove_access_right_from_user": [
+      "access_rights",
+      "users"
+    ],
+    "append_activity_log": [
+      "activity_logs"
+    ],
+    "deactivate_user": [
+      "users"
+    ],
+    "suspend_user": [
+      "users"
+    ],
+    "activate_user": [
+      "users"
+    ],
+    "delete_user": [
+      "access_rights",
+      "credentials",
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve the full information of a user by their unique user ID.\n\nArgs:\n    _id (str): The unique identifier of the user.\n\nReturns:\n    dict:\n        If the user exists:\n            { \"success\": True, \"data\": UserInfo }\n        If not:\n            { \"success\": False, \"error\": \"User not found\" }\nConstraints:\n    - No modification to state. No status check performed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "get_user_by_username",
+      "description": "Retrieve the full user information for a given username.\n\nArgs:\n    username (str): The username of the user to look up.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": UserInfo }\n        - On failure: { \"success\": False, \"error\": \"User not found\" }\n\nConstraints:\n    - Username lookup is case-sensitive.\n    - Usernames are assumed to be unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "list_all_users",
+      "description": "Returns a list of all users registered in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[UserInfo]  # All user info dicts (empty list if no users)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_users_by_status",
+      "description": "Return a list of users whose status matches the provided status.\n\nArgs:\n    status (str): The user status to filter by (e.g., \"active\", \"inactive\", \"suspended\", \"deactivated\", etc.)\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": List[UserInfo],  # May be empty if no users match\n        }\n      OR\n        {\n            \"success\": False,\n            \"error\": str  # Explanation, e.g. invalid status\n        }\n\nConstraints:\n    - The status argument must be one of the allowed values: active, inactive, suspended, deactivated, etc.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "get_user_status",
+      "description": "Fetch the status (active, inactive, etc.) of a specific user.\n\nArgs:\n    _id (str): The unique identifier of the user.\n\nReturns:\n    dict: \n        { \"success\": True, \"data\": str }                   # The user's status\n        or\n        { \"success\": False, \"error\": \"User not found\" }    # If user does not exist\n\nConstraints:\n    - Only checks if user exists. Does not enforce any access permission.\n    - User status values are managed elsewhere via constraints.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id"
+        ]
+      }
+    },
+    {
+      "name": "list_user_roles",
+      "description": "List all roles assigned to a user.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RoleInfo]   # List of role infos assigned to this user (empty if none)\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # e.g., user does not exist\n    }\n\nConstraints:\n    - Returns empty list if user exists but has no roles.\n    - Returns error if user does not exist.\n    - Only returns roles present in the roles dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_role_by_id",
+      "description": "Retrieve full details of a role by role_id.\n\nArgs:\n    role_id (str): The unique identifier for the role.\n\nReturns:\n    dict: \n        {\"success\": True, \"data\": RoleInfo} if found,\n        {\"success\": False, \"error\": str} if not found.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "role_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "role_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_roles",
+      "description": "Return details of all defined roles in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RoleInfo],  # may be empty if no roles are defined\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_user_access_rights",
+      "description": "Retrieve all resource access rights for a specified user.\n\nArgs:\n    _id (str): The unique user ID.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[UserAccessRightInfo],  # List may be empty if user has no access rights\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # e.g., \"User not found\"\n        }\n\nConstraints:\n    - The user must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_credential_info",
+      "description": "Retrieve credential information (password hash, password last changed, 2FA enabled)\nfor the given user id.\n\nArgs:\n    _id (str): The user id.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserCredentialInfo,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,  # Reason for failure (e.g., user credential info not found)\n    }\nConstraints:\n    - Returns only what's in the credentials store, irrespective of the user's status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id"
+        ]
+      }
+    },
+    {
+      "name": "list_user_activity_logs",
+      "description": "Retrieve all activity log entries for a specific user.\n\nArgs:\n    user_id (str): The unique identifier of the user whose logs are requested.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[UserActivityLogInfo]  # May be empty if no logs exist for user\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if user not found, etc.\n    }\n\nConstraints:\n    - User must exist in the subsystem.\n    - Log data is append-only and immutable (no modification here).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_activity_log_by_id",
+      "description": "Retrieve details of a specific activity log entry by activity_id.\n\nArgs:\n    activity_id (str): Unique identifier of the activity log entry.\n\nReturns:\n    dict:\n        - If found: {\"success\": True, \"data\": <UserActivityLogInfo>}\n        - If not found: {\"success\": False, \"error\": \"Activity log entry not found\"}",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "activity_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "activity_id"
+        ]
+      }
+    },
+    {
+      "name": "check_user_access_to_resource",
+      "description": "Determine if a user has access rights to the specified resource, and if so, return the access level.\n\nArgs:\n    user_id (str): The user to check.\n    resource_id (str): The resource identifier.\n\nReturns:\n    dict: On success, if access is granted:\n          {\n            \"success\": True,\n            \"data\": {\n                \"user_id\": <user_id>,\n                \"resource_id\": <resource_id>,\n                \"access_level\": <str>\n            }\n          }\n          If access not granted, or on error:\n          {\n            \"success\": False,\n            \"error\": <error string>\n          }\n\nConstraints:\n    - User must exist and must have 'active' status.\n    - Access rights must explicitly grant access to the specified resource.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "resource_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "resource_id"
+        ]
+      }
+    },
+    {
+      "name": "add_user",
+      "description": "Add a new user to the system with required attributes.\n\nArgs:\n    _id (str): Unique user ID.\n    username (str): Unique username.\n    display_name (str): Display name for the user.\n    email (str): Email address.\n    status (str, optional): Initial user status. Defaults to \"active\".\n    date_created (str, optional): Date created (ISO8601 or similar); will be set to now if empty.\n    last_login (str, optional): Last login time (initially can be empty).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User <username> (<_id>) added.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Status must be in the permitted set (\"active\", \"inactive\", \"suspended\", \"deactivated\", etc.).\n    - _id and username must be unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "date_created": {
+            "type": "string"
+          },
+          "last_login": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "display_name",
+          "email"
+        ]
+      }
+    },
+    {
+      "name": "update_user_status",
+      "description": "Change the status of a user (must set to one of the allowed values).\n\nArgs:\n    user_id (str): The unique ID of the user whose status is to be changed.\n    new_status (str): The new status value; must be one of the allowed values:\n        'active', 'inactive', 'suspended', 'deactivated', etc.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User status updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The user must exist in the system.\n    - The new status must be in the set of allowed statuses.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "update_user_info",
+      "description": "Update modifiable user profile details (such as display_name, email) for the specified user.\n\nArgs:\n    _id (str): The user ID to update.\n    **fields: Arbitrary profile fields to update, e.g., display_name=\"New Name\", email=\"email@domain.com\".\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User info updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason for failure\"\n    }\n\nConstraints:\n    - Only 'display_name' and 'email' are allowed to be updated.\n    - User must exist.\n    - Attempts to update other fields will be ignored.\n    - At least one updatable field must be specified.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "fields": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "_id"
+        ]
+      }
+    },
+    {
+      "name": "set_user_roles",
+      "description": "Assign one or multiple roles (by role ID) to a user.\n\nArgs:\n    user_id (str): The unique ID of the user.\n    role_ids (List[str]): List of role IDs to assign to the user.\n\nReturns:\n    dict: \n        - If success: {\"success\": True, \"message\": \"Roles assigned to user <user_id>\"}\n        - If error: {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - User must exist.\n    - Each role_id in role_ids must be a valid role in the system.\n    - Duplicated role_ids will be ignored (each role assigned at most once).\n    - If role_ids is empty, user will have no roles.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "role_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "user_id",
+          "role_ids"
+        ]
+      }
+    },
+    {
+      "name": "remove_user_role",
+      "description": "Remove a role from a user.\n\nArgs:\n    user_id (str): The user's unique id.\n    role_id (str): The role id to be removed from the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Role <role_id> removed from user <user_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Both user and role must exist.\n    - The role must be currently assigned to the user.\n    - User-role mapping must be maintained (assumed as self.user_roles).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "role_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "role_id"
+        ]
+      }
+    },
+    {
+      "name": "update_user_credential",
+      "description": "Change a user's password and/or 2FA settings.\n\nArgs:\n    _id (str): The user id whose credentials are to be updated.\n    password_hash (Optional[str]): New password hash to set (optional).\n    two_factor_enabled (Optional[bool]): Enable/disable 2FA (optional).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User credential updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - User and their credentials must exist.\n    - password_last_changed should be updated to current time if password_hash is changed.\n    - Must not change any value if neither parameter is given.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "password_hash": {
+            "type": "string"
+          },
+          "two_factor_enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "_id"
+        ]
+      }
+    },
+    {
+      "name": "add_access_right_to_user",
+      "description": "Assign access to a specific resource at a given access level to a user.\n\nArgs:\n    user_id (str): The unique user ID.\n    resource_id (str): The resource identifier.\n    access_level (str): The level of access to be granted.\n\nReturns:\n    dict: {\n       \"success\": True,\n       \"message\": \"Access right assigned to user.\"\n    }\n    OR\n    {\n       \"success\": False,\n       \"error\": <reason>\n    }\n\nConstraints:\n    - The user must exist.\n    - Only users with 'active' status can receive new access rights.\n    - Do not add a duplicate (resource_id, access_level) for the same user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "resource_id": {
+            "type": "string"
+          },
+          "access_level": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "resource_id",
+          "access_level"
+        ]
+      }
+    },
+    {
+      "name": "remove_access_right_from_user",
+      "description": "Remove a specific resource access right from a user.\n\nArgs:\n    user_id (str): The ID of the user for whom resource access is to be removed.\n    resource_id (str): The ID of the resource whose access right should be removed.\n\nReturns:\n    dict:\n        On success: {\"success\": True, \"message\": \"Access right removed from user <user_id> for resource <resource_id>.\"}\n        On failure: {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - User must exist in the system.\n    - The user must have at least one access right for the specified resource_id.\n    - All UserAccessRightInfo entries for this (user, resource_id) will be removed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "resource_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "resource_id"
+        ]
+      }
+    },
+    {
+      "name": "append_activity_log",
+      "description": "Append a new audit activity log entry to the immutable activity log list.\n\nArgs:\n    activity_id (str): Unique identifier for the activity log entry.\n    user_id (str): The user associated with the activity.\n    action (str): The action performed.\n    timestamp (str): When the action occurred (string/ISO time).\n    result (str): Outcome or result of the action.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Activity log appended.\"\n    } on success, or\n    {\n        \"success\": False,\n        \"error\": \"Activity ID already exists\" | \"Missing required field\"\n    }\n\nConstraints:\n    - Log list is append-only and immutable.\n    - activity_id should be unique.\n    - All fields must be provided (not None).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "activity_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "activity_id",
+          "user_id",
+          "action",
+          "timestamp",
+          "result"
+        ]
+      }
+    },
+    {
+      "name": "deactivate_user",
+      "description": "Transition a user's status to 'deactivated'.\n\nArgs:\n    user_id (str): The unique user identifier (_id) to deactivate.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User <user_id> deactivated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The user must exist in the system.\n    - If already deactivated, operation is considered a no-op and returns an error.\n    - Status must be set to 'deactivated' (allowed value).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "suspend_user",
+      "description": "Transition a user's status specifically to 'suspended'.\n\nArgs:\n    user_id (str): Unique identifier of the user whose status is to be set.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User <id> suspended.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error\n    }\n\nConstraints:\n    - Fails if the user does not exist.\n    - Fails if the user is already suspended.\n    - Only updates the 'status' field to 'suspended'.\n    - Must conform to allowed status values.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "activate_user",
+      "description": "Transition the specified user's status to 'active'.\n\nArgs:\n    _id (str): The unique identifier of the user to activate.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User status set to active\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - User must exist in the system.\n    - If the user is already 'active', the operation fails gracefully.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_user",
+      "description": "Permanently remove a user (and associated credentials and access rights) from the system.\n\nArgs:\n    user_id (str): The _id of the user to delete.\n\nReturns:\n    dict:\n        On success: {\n            \"success\": True,\n            \"message\": \"User '<username>' permanently deleted.\"\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": <reason>\n        }\n\nConstraints:\n    - All user records must be deleted from users, credentials, and access_rights.\n    - User activity logs MUST NOT be deleted or edited (must be retained for audit/compliance).\n    - Returns error if user does not exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,598 @@
+{
+  "env_name": "RedditUserInteractionManagementSystem",
+  "description": "A Reddit user interaction management system is designed to facilitate automated or semi-automated operations with Reddit’s ecosystem, including accessing subreddit content, identifying users, and conducting outreach via private messages. It holds state related to tracked subreddits, associated user lists, and outgoing message logs. Typical operations include scraping user information, composing and sending direct messages, and maintaining records for compliance or follow-up.",
+  "initial_parameter_schema": {
+    "subreddits": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "ddit_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "is_tracked": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ddit_id",
+          "name",
+          "description",
+          "is_tracked"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "last_contacted_timestamp": {
+            "type": "string"
+          },
+          "opt_out": {
+            "type": "boolean"
+          },
+          "scraped_from_subredd": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "user_id",
+          "last_contacted_timestamp",
+          "opt_out",
+          "scraped_from_subredd"
+        ]
+      }
+    },
+    "direct_messages": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "sender": {
+            "type": "string"
+          },
+          "recipient_username": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "sent_timestamp": {
+            "type": "string"
+          },
+          "delivery_status": {
+            "type": "string"
+          },
+          "tailored_contex": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id",
+          "sender",
+          "recipient_username",
+          "content",
+          "sent_timestamp",
+          "delivery_status",
+          "tailored_contex"
+        ]
+      }
+    },
+    "message_templates": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "mplate_id": {
+            "type": "string"
+          },
+          "topic": {
+            "type": "string"
+          },
+          "conten": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mplate_id",
+          "topic",
+          "conten"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_tracked_subreddits": [
+      "subreddits"
+    ],
+    "get_subreddit_by_name": [
+      "subreddits"
+    ],
+    "get_users_scraped_from_subreddit": [
+      "subreddits",
+      "users"
+    ],
+    "get_user_by_name": [
+      "users"
+    ],
+    "get_user_eligibility_for_messaging": [
+      "subreddits",
+      "users"
+    ],
+    "get_recent_messages_to_user": [
+      "direct_messages"
+    ],
+    "get_message_templates_by_topic": [
+      "message_templates"
+    ],
+    "get_message_template_by_id": [
+      "message_templates"
+    ],
+    "get_message_log": [
+      "direct_messages"
+    ],
+    "get_users_opted_out": [
+      "users"
+    ],
+    "get_unmessaged_users_from_subreddit": [
+      "subreddits",
+      "users"
+    ],
+    "scrape_reddit_usernames": [
+      "subreddits",
+      "users"
+    ],
+    "send_direct_message": [
+      "direct_messages",
+      "subreddits",
+      "users"
+    ],
+    "log_message_delivery": [
+      "direct_messages"
+    ],
+    "mark_user_opted_out": [
+      "users"
+    ],
+    "add_tracked_subreddit": [
+      "subreddits"
+    ],
+    "remove_tracked_subreddit": [
+      "subreddits"
+    ],
+    "create_message_template": [
+      "message_templates"
+    ],
+    "update_message_template": [
+      "message_templates"
+    ],
+    "delete_message_template": [
+      "message_templates"
+    ],
+    "update_user_last_contacted": [
+      "users"
+    ],
+    "remove_user_from_database": [
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_tracked_subreddits",
+      "description": "Returns a list of all currently tracked subreddits (is_tracked=True).\n\nArgs:\n    None\n\nReturns:\n    dict:\n      - success (bool): Whether the query was successful.\n      - data (List[SubredditInfo]): List of tracked subreddits. May be empty if none are tracked.\n\nConstraints:\n    - Only subreddits with is_tracked == True are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_subreddit_by_name",
+      "description": "Retrieve full information for a specific subreddit by its name.\n\nArgs:\n    subreddit_name (str): The name of the subreddit to retrieve.\n\nReturns:\n    dict:\n      - When found:\n            {\n                \"success\": True,\n                \"data\": SubredditInfo\n            }\n      - When missing:\n            {\n                \"success\": False,\n                \"error\": \"Subreddit not found\"\n            }\n\nConstraints:\n    - Subreddit 'name' must match exactly (case-sensitive).\n    - Only one subreddit should exist for a given name.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subreddit_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subreddit_name"
+        ]
+      }
+    },
+    {
+      "name": "get_users_scraped_from_subreddit",
+      "description": "List all RedditUser records whose 'scraped_from_subredd' matches the given subreddit_id.\n\nArgs:\n    subreddit_id (str): The unique ID ('ddit_id') of the subreddit.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RedditUserInfo],  # All matching users (empty list if none)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - subreddit_id must correspond to a tracked subreddit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subreddit_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subreddit_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_name",
+      "description": "Retrieve detailed RedditUserInfo by username.\n\nArgs:\n    username (str): The Reddit username to query.\n\nReturns:\n    dict:\n        {\"success\": True, \"data\": RedditUserInfo} if user is found\n        {\"success\": False, \"error\": \"User not found\"} if not found\n\nConstraints:\n    - Username comparison is exact and case-sensitive.\n    - No permission or compliance restrictions on this information query.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "get_user_eligibility_for_messaging",
+      "description": "Check whether a Reddit user is eligible to receive a direct message.\n\nArgs:\n    user_id (str): The Reddit user's unique ID.\n    now_timestamp (float): The current Unix timestamp (seconds since epoch) for rate limit checks.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"eligible\": bool,\n        \"reasons\": List[str]  # Reasons for ineligibility or empty if eligible,\n        \"user_info\": RedditUserInfo (if found, optional for auditing)\n    }\n    Or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if user not found\n    }\n\nConstraints Checked:\n    - User must exist in database (scraped from a tracked subreddit).\n    - User must not be opted out (opt_out == True).\n    - User must not have been contacted within RATE_LIMIT_SECONDS.\n    - User must be scraped from a (currently) tracked subreddit (optional; if the subreddit was tracked when scraped).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "now_timestamp": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "user_id",
+          "now_timestamp"
+        ]
+      }
+    },
+    {
+      "name": "get_recent_messages_to_user",
+      "description": "Retrieve all recent DirectMessages sent to a specific user within a time window (in seconds, up to now).\n\nArgs:\n    recipient_username (str): The username to check messages for.\n    time_window_seconds (float): The window (in seconds) to look back from current time.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DirectMessageInfo]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - time_window_seconds must be positive.\n    - Returns all DirectMessageInfo for the recipient within the window.\n    - If no messages, returns an empty list (success).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "recipient_username": {
+            "type": "string"
+          },
+          "time_window_seconds": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "recipient_username",
+          "time_window_seconds"
+        ]
+      }
+    },
+    {
+      "name": "get_message_templates_by_topic",
+      "description": "List message templates available for a specific outreach topic.\n\nArgs:\n    topic (str): The outreach topic to filter message templates by.\n\nReturns:\n    dict: {\n        'success': True,\n        'data': List[MessageTemplateInfo],  # List of templates matching the topic (possibly empty)\n    }\n    or\n    {\n        'success': False,\n        'error': str  # Error description if input is invalid.\n    }\nConstraints:\n    - topic must be a non-empty string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic"
+        ]
+      }
+    },
+    {
+      "name": "get_message_template_by_id",
+      "description": "Retrieve a message template (with attributes: mplate_id, topic, conten; typos preserved) by its mplate_id.\n\nArgs:\n    mplate_id (str): The unique ID of the message template.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": MessageTemplateInfo  # Dict for the template (mplate_id, topic, conten)\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Message template not found\"\n            }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mplate_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mplate_id"
+        ]
+      }
+    },
+    {
+      "name": "get_message_log",
+      "description": "Retrieve the log of all direct messages, optionally filtered by delivery status.\n\nArgs:\n    delivery_status (str, optional): If provided, only messages with this\n        delivery_status (e.g., 'sent', 'pending', 'failed') will be returned.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DirectMessageInfo],  # List of messages (possibly filtered; empty list ok)\n    }\n\nNotes:\n    - If no filter is provided, all messages will be returned.\n    - No error will be raised for missing/empty results.\n    - Filtering is case-insensitive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "delivery_status": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "get_users_opted_out",
+      "description": "Return a list of all users who have opted out (opt_out == True).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RedditUserInfo]  # All users from self.users where opt_out is True.\n    }\n\nConstraints:\n    - Only users with opt_out set to True are included.\n    - Runs a read-only query, cannot fail unless internal state is corrupted.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_unmessaged_users_from_subreddit",
+      "description": "List users scraped from a given subreddit that have not yet been contacted.\n\nArgs:\n    subreddit_id (str): The ID of the subreddit (ddit_id) to search in.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RedditUserInfo],  # Users where scraped_from_subredd == subreddit_id and last_contacted_timestamp is empty/None/zero\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If subreddit does not exist or is not tracked\n    }\n\nConstraints:\n    - subreddit_id must exist in self.subreddits and be marked is_tracked == True.\n    - Only users scraped from specified subreddit and never messaged are included.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subreddit_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subreddit_id"
+        ]
+      }
+    },
+    {
+      "name": "scrape_reddit_usernames",
+      "description": "Extract (simulate scraping) usernames from a specified subreddit and add RedditUserInfo records.\n\nArgs:\n    subreddit_id (str): The ddit_id of the subreddit to scrape from.\n    usernames (list[str], optional): Explicit Reddit usernames to add. If omitted, the tool will auto-discover representative usernames from the tracked subreddit metadata.\n    user_ids (list[str], optional): List of corresponding user IDs (must match usernames in order). If not provided, user_id will be set as username in manual mode, or auto-generated in discovery mode.\n    count (int, optional): Number of representative users to auto-discover when usernames are omitted. Defaults to 3.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"added\": List[RedditUserInfo],  # Users actually newly added to the system\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - The subreddit must exist and be tracked (`is_tracked` is True).\n    - Only usernames not already present in self.users will be added.\n    - Discovery mode is triggered by omitting `usernames`.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subreddit_id": {
+            "type": "string"
+          },
+          "usernames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "user_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "subreddit_id"
+        ]
+      }
+    },
+    {
+      "name": "send_direct_message",
+      "description": "Compose and send a DM to a user. This operation will:\n  - Check eligibility (user exists, is scraped from tracked subreddit, not opted out, not recently contacted).\n  - Create and log a DirectMessage object.\n  - Update the user's `last_contacted_timestamp`.\n\nArgs:\n    sender (str): Username or ID of the sender.\n    recipient_username (str): Reddit username of the recipient (must exist in the user database).\n    content (str): The message content.\n    tailored_contex (str): Context of the message, e.g. outreach topic.\n    sent_timestamp (str, optional): Timestamp to log (supports numeric or ISO-8601 strings; defaults to now).\n    cooldown_seconds (int): Minimum seconds since last contact before another message (default 86400; 24 hours).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Direct message sent to <recipient_username>\",\n        \"message_id\": str,\n        \"sent_timestamp\": str,\n        \"delivery_status\": \"pending\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"<error description>\"\n    }\n\nConstraints:\n    - Users must be scraped from tracked subreddits before messaging.\n    - No user should receive the same message multiple times within a certain period (anti-spam/rate limit).\n    - Users who have opted out (opt_out=True) must not be messaged.\n    - New messages are created with delivery_status='pending' until log_message_delivery records the final status.\n    - last_contacted_timestamp must be updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sender": {
+            "type": "string"
+          },
+          "recipient_username": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "tailored_contex": {
+            "type": "string"
+          },
+          "sent_timestamp": {
+            "type": "string"
+          },
+          "cooldown_seconds": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sender",
+          "recipient_username",
+          "content",
+          "tailored_contex"
+        ]
+      }
+    },
+    {
+      "name": "log_message_delivery",
+      "description": "Record (update) the delivery status and sent timestamp for a DirectMessage.\n\nArgs:\n    message_id (str): The unique ID of the DirectMessage to update.\n    delivery_status (str): The delivery status (\"delivered\", \"failed\", etc).\n    sent_timestamp (str, optional): The time the delivery status was updated. If omitted, the system records the current time automatically.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Delivery status for message <message_id> updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\nConstraints:\n    - message_id must exist in direct_messages.\n    - The operation is used to maintain compliance/tracking logs.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "delivery_status": {
+            "type": "string"
+          },
+          "sent_timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id",
+          "delivery_status"
+        ]
+      }
+    },
+    {
+      "name": "mark_user_opted_out",
+      "description": "Set a Reddit user's opt_out status to True, making them ineligible for future outreach.\n\nArgs:\n    user_id (str): The unique Reddit user identifier.\n\nReturns:\n    dict:\n        - On success:\n            {\"success\": True, \"message\": \"User marked as opted out.\"}\n        - On error (user not found):\n            {\"success\": False, \"error\": \"User not found.\"}\n        - If already opted out (idempotent success):\n            {\"success\": True, \"message\": \"User was already opted out.\"}\nConstraints:\n    - User must exist in the system.\n    - Opt_out is set to True, regardless of prior value.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "add_tracked_subreddit",
+      "description": "Mark a subreddit as tracked to allow subsequent scraping.\n\nArgs:\n    ddit_id (str): Unique subreddit ID.\n    name (str): Subreddit display name.\n    description (str): Subreddit description.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Subreddit <name> is now tracked.\" }\n        - On error: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - If the subreddit with ddit_id is already tracked (is_tracked=True), do not add/modify and return error.\n    - If the subreddit with ddit_id exists but is_tracked=False, set is_tracked=True and update details.\n    - If ddit_id is new, add it as tracked.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ddit_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ddit_id",
+          "name",
+          "description"
+        ]
+      }
+    },
+    {
+      "name": "remove_tracked_subreddit",
+      "description": "Mark a subreddit as untracked, preventing further user scraping.\n\nArgs:\n    ddit_id (str): The unique ID of the subreddit to untrack.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Subreddit <ddit_id> marked as untracked.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Subreddit not found\" | \"Subreddit is already untracked\"\n    }\n\nConstraints:\n    - Subreddit must exist in database.\n    - If subreddit is already untracked, operation fails.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ddit_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ddit_id"
+        ]
+      }
+    },
+    {
+      "name": "create_message_template",
+      "description": "Add a new message template for future outreach.\n\nArgs:\n    mplate_id (str): Unique message template ID (must not exist already).\n    topic (str): The topic or context for this message template.\n    conten (str): The message template content (body). Note: 'conten' typo preserved per schema.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Message template '<mplate_id>' added.\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - mplate_id must be unique within message_templates.\n    - topic and conten cannot be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mplate_id": {
+            "type": "string"
+          },
+          "topic": {
+            "type": "string"
+          },
+          "conten": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mplate_id"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "topic"
+            ]
+          },
+          {
+            "required": [
+              "conten"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "update_message_template",
+      "description": "Modify the topic and/or conten (content) of an existing message template.\n\nArgs:\n    mplate_id (str): ID of the message template to update.\n    topic (str, optional): New topic for the template (if updating).\n    conten (str, optional): New content for the template (if updating).\n\nReturns:\n    dict:\n        Success: { \"success\": True, \"message\": \"Message template updated.\" }\n        Failure: { \"success\": False, \"error\": <error_message> }\n\nConstraints:\n    - mplate_id must exist in self.message_templates.\n    - At least one of topic or conten should be provided for an actual update.\n    - Will update only those fields that are non-None.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mplate_id": {
+            "type": "string"
+          },
+          "topic": {
+            "type": "string"
+          },
+          "conten": {
+            "type": "string"
+          }
+        },
+      "required": [
+        "mplate_id"
+      ]
+      }
+    },
+    {
+      "name": "delete_message_template",
+      "description": "Remove a message template from the template catalog.\n\nArgs:\n    mplate_id (str): The ID of the message template to delete.\n\nReturns:\n    dict: \n        - If successful: {\n            \"success\": True,\n            \"message\": \"Message template <ID> deleted.\"\n          }\n        - If not found: {\n            \"success\": False,\n            \"error\": \"Message template not found.\"\n          }\n\nConstraints:\n    - No restrictions on deleting a template, \n      but must exist in the catalog to delete.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mplate_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mplate_id"
+        ]
+      }
+    },
+    {
+      "name": "update_user_last_contacted",
+      "description": "Update the last_contacted_timestamp for the specified Reddit user.\n\nArgs:\n    user_id (str): Reddit user's unique ID.\n    timestamp (str): New value for last_contacted_timestamp (ISO8601 or epoch string).\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"message\": \"User last_contacted_timestamp updated\"\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": <reason>\n        }\n\nConstraints:\n    - The user with user_id must exist in the system database.\n    - No side effects beyond updating last_contacted_timestamp for the user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "remove_user_from_database",
+      "description": "Delete a RedditUser from the system.\n\nArgs:\n    user_id (str): The unique Reddit user ID to be removed.\n\nReturns:\n    dict:\n        - If successful: {\"success\": True, \"message\": \"User <user_id> removed from database\"}\n        - If user not found: {\"success\": False, \"error\": \"User not found\"}\n\nConstraints:\n    - The user must exist in the database.\n    - Associated message logs are not deleted by this operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    }
+  ]
+}

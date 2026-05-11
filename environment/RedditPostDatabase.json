@@ -1,0 +1,494 @@
+{
+  "env_name": "RedditPostDatabase",
+  "description": "A Reddit post database is a structured environment that holds records of Reddit submissions and their associated metadata. It preserves a mutable state encompassing post IDs, content, authorship, timestamps, and other attributes. Typical operations include querying posts by ID, updating or deleting entries, and aggregating data for analysis or display.",
+  "initial_parameter_schema": {
+    "posts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "post_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "author_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "subreddit_id": {
+            "type": "string"
+          },
+          "score": {
+            "type": "integer"
+          },
+          "num_comments": {
+            "type": "integer"
+          },
+          "flair": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "post_id",
+          "title",
+          "content",
+          "author_id",
+          "timestamp",
+          "subreddit_id",
+          "score",
+          "num_comments",
+          "flair",
+          "status"
+        ]
+      }
+    },
+    "authors": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "author_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "account_sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "author_id",
+          "username",
+          "account_sta"
+        ]
+      }
+    },
+    "subreddits": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "subreddit_id": {
+            "type": "string"
+          },
+          "subreddit_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "creation_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subreddit_id",
+          "subreddit_name",
+          "description",
+          "creation_date"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_post_by_id": [
+      "posts"
+    ],
+    "get_multiple_posts_by_ids": [
+      "posts"
+    ],
+    "list_posts_by_author": [
+      "authors",
+      "posts"
+    ],
+    "list_posts_by_subreddit": [
+      "posts",
+      "subreddits"
+    ],
+    "get_author_by_id": [
+      "authors"
+    ],
+    "get_subreddit_by_id": [
+      "subreddits"
+    ],
+    "filter_posts_by_status": [
+      "posts"
+    ],
+    "filter_posts_by_flair": [
+      "posts"
+    ],
+    "get_post_metadata": [
+      "posts"
+    ],
+    "create_post": [
+      "authors",
+      "posts",
+      "subreddits"
+    ],
+    "update_post_content": [
+      "posts"
+    ],
+    "delete_post": [
+      "posts"
+    ],
+    "archive_post": [
+      "posts"
+    ],
+    "restore_post": [
+      "posts"
+    ],
+    "update_post_score": [
+      "posts"
+    ],
+    "update_num_comments": [
+      "posts"
+    ],
+    "update_author_info": [
+      "authors"
+    ],
+    "update_subreddit_info": [
+      "subreddits"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_post_by_id",
+      "description": "Retrieve the full metadata and content of a post given its unique post_id.\n\nArgs:\n    post_id (str): The unique identifier of the post.\n\nReturns:\n    dict:\n        - If found: {\"success\": True, \"data\": PostInfo}\n        - If not found: {\"success\": False, \"error\": \"Post with id <post_id> does not exist\"}\n\nConstraints:\n    - The post_id must exist in the database.\n    - Returns all metadata and content for the post.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "post_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "post_id"
+        ]
+      }
+    },
+    {
+      "name": "get_multiple_posts_by_ids",
+      "description": "Retrieve details (full metadata/content) for a batch of posts given a list of post_ids.\n\nArgs:\n    post_ids (list[str]): List of post IDs to query.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[PostInfo],  # List of posts found (order may match input or be unordered)\n            \"not_found\": List[str]   # post_ids from input not present in the database\n        }\n    If `post_ids` is empty, returns empty data and not_found lists.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "post_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "post_ids"
+        ]
+      }
+    },
+    {
+      "name": "list_posts_by_author",
+      "description": "Retrieve all post records authored by the specified author_id.\n\nArgs:\n    author_id (str): The ID of the author.\n\nReturns:\n    dict:\n        - success: True and 'data' is a list of PostInfo objects representing posts by this author\n        - success: False and 'error' describes the error if the author does not exist\n\nConstraints:\n    - author_id must exist in the authors database.\n    - returns an empty list if author exists but has no posts.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "author_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "author_id"
+        ]
+      }
+    },
+    {
+      "name": "list_posts_by_subreddit",
+      "description": "Retrieve all posts belonging to the given subreddit_id.\n\nArgs:\n    subreddit_id (str): The unique identifier of the subreddit.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[PostInfo],   # array of post records, possibly empty\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - subreddit_id must exist in the environment.\n    - Each result is a full PostInfo dict for posts with matching subreddit_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subreddit_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subreddit_id"
+        ]
+      }
+    },
+    {
+      "name": "get_author_by_id",
+      "description": "Retrieve the details of an author using their author_id.\n\nArgs:\n    author_id (str): The unique identifier for the author.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"data\": AuthorInfo }\n        On failure: { \"success\": False, \"error\": \"Author not found\" }\n\nConstraints:\n    - The given author_id must exist in the authors database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "author_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "author_id"
+        ]
+      }
+    },
+    {
+      "name": "get_subreddit_by_id",
+      "description": "Retrieve the details of a subreddit by subreddit_id.\n\nArgs:\n    subreddit_id (str): The unique identifier for the subreddit.\n\nReturns:\n    dict: On success:\n              {\"success\": True, \"data\": SubredditInfo}\n          On failure:\n              {\"success\": False, \"error\": \"Subreddit not found\"}\n\nConstraints:\n    - subreddit_id must exist in the subreddit database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subreddit_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subreddit_id"
+        ]
+      }
+    },
+    {
+      "name": "filter_posts_by_status",
+      "description": "List all posts with the given status.\n\nArgs:\n    status (str): The status value to filter posts by (e.g., 'active', 'deleted', 'archived').\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"data\": List[PostInfo]  # List of posts matching the status (may be empty)\n        }\n        On error:\n        {\n            \"success\": False,\n            \"error\": str  # Reason for failure\n        }\nConstraints:\n    - Only filters posts by the 'status' field, does not modify state.\n    - Returns all posts where post['status'] == status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "filter_posts_by_flair",
+      "description": "Search for posts with a specific flair.\n\nArgs:\n    flair (str): The flair string to filter posts by.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PostInfo]  # List of posts whose 'flair' matches the given flair, may be empty\n    }\n\nNotes:\n    - If no posts have the given flair, returns an empty list (successfully).\n    - Flair-match is exact (case-sensitive).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "flair": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "flair"
+        ]
+      }
+    },
+    {
+      "name": "get_post_metadata",
+      "description": "Retrieve only the basic metadata (title, author, timestamp, subreddit) for the given post_id.\n\nArgs:\n    post_id (str): Unique identifier of the post.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"title\": str,\n            \"author_id\": str,\n            \"timestamp\": str,\n            \"subreddit_id\": str\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., \"Post not found\"\n    }\n\nConstraints:\n    - The post_id must exist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "post_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "post_id"
+        ]
+      }
+    },
+    {
+      "name": "create_post",
+      "description": "Add a new post to the database.\n\nArgs:\n    post_id (str): Unique identifier for the post.\n    title (str): Post title.\n    content (str): Post body/content.\n    author_id (str): Author's unique ID (must exist).\n    timestamp (str): Timestamp of creation (ISO or unix time).\n    subreddit_id (str): Subreddit identifier (must exist).\n    flair (str, optional): Flair for the post. Default \"\".\n    status (str, optional): Post status. Default \"active\".\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Post created successfully\"\n    } or {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - post_id must be unique.\n    - author_id must exist in authors.\n    - subreddit_id must exist in subreddits.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "post_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "author_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "subreddit_id": {
+            "type": "string"
+          },
+          "flair": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "post_id",
+          "title",
+          "content",
+          "author_id",
+          "timestamp",
+          "subreddit_id"
+        ]
+      }
+    },
+    {
+      "name": "update_post_content",
+      "description": "Edit the title, content, and/or flair of a Reddit post; only allowed if post status is \"active\".\n\nArgs:\n    post_id (str): The post's unique identifier.\n    title (str, optional): New title (leave as None to not change).\n    content (str, optional): New post content/body (leave as None to not change).\n    flair (str, optional): New flair (leave as None to not change).\n\nReturns:\n    dict:\n        - If successful:\n            { \"success\": True, \"message\": \"Post content updated.\" }\n        - On failure (post not found, post not active, nothing to update):\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Only \"active\" posts (status == \"active\") may be edited.\n    - At least one field (title, content, or flair) must be provided for update.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "post_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "flair": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "post_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_post",
+      "description": "Marks the post with the given post_id as \"deleted\" by setting its status, if permitted.\n\nArgs:\n    post_id (str): Unique identifier for the post to be deleted.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Post <post_id> marked as deleted.\" }\n        - On error: { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - Post must exist.\n    - Only posts with a status other than \"archived\" can be deleted.\n    - If already deleted, operation is idempotent and treated as success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "post_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "post_id"
+        ]
+      }
+    },
+    {
+      "name": "archive_post",
+      "description": "Change the status of a post to 'archived', which makes it immutable.\n\nArgs:\n    post_id (str): ID of the post to archive.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"message\": \"Post <post_id> archived successfully.\"}\n        - On error: {\"success\": False, \"error\": \"reason\"}\n\nConstraints:\n    - The post must exist (valid post_id).\n    - If the post is already archived, returns success with an appropriate message.\n    - An archived post becomes immutable (other state-modifying operations check for this separately).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "post_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "post_id"
+        ]
+      }
+    },
+    {
+      "name": "restore_post",
+      "description": "Revert a \"deleted\" post back to \"active\", if allowed by status constraints.\n\nArgs:\n    post_id (str): The unique identifier for the post to restore.\n\nReturns:\n    dict: \n        Success: { \"success\": True, \"message\": \"Post restored to active.\" }\n        Failure (not found): { \"success\": False, \"error\": \"Post not found.\" }\n        Failure (not deleted): { \"success\": False, \"error\": \"Post is not deleted.\" }\n        Failure (archived): { \"success\": False, \"error\": \"Archived post cannot be restored.\" }\n\nConstraints:\n    - Only posts with status 'deleted' can be restored.\n    - Archived posts are immutable and cannot be restored.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "post_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "post_id"
+        ]
+      }
+    },
+    {
+      "name": "update_post_score",
+      "description": "Update the score (ranking/karma) for a Reddit post.\n\nArgs:\n    post_id (str): The ID of the post to update.\n    new_score (int): The new score to assign to the post.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Score updated for post <post_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of why update failed\n    }\n\nConstraints:\n    - Post must exist.\n    - Post status must permit updates (must be 'active').",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "post_id": {
+            "type": "string"
+          },
+          "new_score": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "post_id",
+          "new_score"
+        ]
+      }
+    },
+    {
+      "name": "update_num_comments",
+      "description": "Update the number of comments for a specific post.\n\nArgs:\n    post_id (str): The unique identifier for the post to update.\n    num_comments (int): The new value for the number of comments (must be non-negative).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Comment count updated for post <post_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The post must exist in the database.\n    - The number of comments must be non-negative.\n    - Posts with status \"archived\" or \"deleted\" cannot be updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "post_id": {
+            "type": "string"
+          },
+          "num_comments": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "post_id",
+          "num_comments"
+        ]
+      }
+    },
+    {
+      "name": "update_author_info",
+      "description": "Edit author properties such as username or account status.\n\nArgs:\n    author_id (str): The ID of the author whose info is to be updated.\n    username (str, optional): The new username to set. If None, not updated.\n    account_sta (str, optional): The new account status to set. If None, not updated.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Author info updated for author_id <author_id>\" }\n        - On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - author_id must exist in self.authors.\n    - At least one of username or account_sta must be provided to update.\n    - Only valid fields are updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "author_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "account_sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "author_id"
+        ]
+      }
+    },
+    {
+      "name": "update_subreddit_info",
+      "description": "Edit subreddit properties such as its name and/or description.\n\nArgs:\n    subreddit_id (str): Unique ID of the subreddit to modify.\n    subreddit_name (str, optional): New name for the subreddit.\n    description (str, optional): New description for the subreddit.\n\nReturns:\n    dict: \n      - {\"success\": True, \"message\": \"Subreddit info updated\"}\n      - {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - Subreddit ID must exist.\n    - Only subreddit_name and description may be updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subreddit_id": {
+            "type": "string"
+          },
+          "subreddit_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subreddit_id"
+        ]
+      }
+    }
+  ]
+}

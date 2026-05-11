@@ -1,0 +1,344 @@
+{
+  "env_name": "MedicalProfessionalLicensingRegistry",
+  "description": "A medical professional licensing registry is a centralized database that manages and verifies the licensure status of healthcare practitioners. It stores identifiers, personal information, license validity dates, and status flags (active, expired, suspended) for doctors and other medical professionals. The registry supports queries related to license verification, credential checks, and status updates, ensuring that only qualified professionals are authorized to practice.",
+  "initial_parameter_schema": {
+    "professionals": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "professional_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "date_of_birth": {
+            "type": "string"
+          },
+          "specialty": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "professional_id",
+          "name",
+          "date_of_birth",
+          "specialty",
+          "contact_info"
+        ]
+      }
+    },
+    "licenses": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "license_number": {
+            "type": "string"
+          },
+          "professional_id": {
+            "type": "string"
+          },
+          "issue_date": {
+            "type": "string"
+          },
+          "expiry_date": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "license_number",
+          "professional_id",
+          "issue_date",
+          "expiry_date",
+          "status"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_professional_by_name": [
+      "professionals"
+    ],
+    "get_professional_by_id": [
+      "professionals"
+    ],
+    "list_all_professionals": [
+      "professionals"
+    ],
+    "list_licenses_for_professional": [
+      "licenses",
+      "professionals"
+    ],
+    "get_license_by_number": [
+      "licenses"
+    ],
+    "list_licenses_by_status": [
+      "licenses"
+    ],
+    "check_license_status": [
+      "licenses"
+    ],
+    "check_if_professional_has_active_license": [
+      "licenses",
+      "professionals"
+    ],
+    "check_license_validity": [
+      "licenses"
+    ],
+    "create_license": [
+      "licenses",
+      "professionals"
+    ],
+    "update_license_status": [
+      "licenses"
+    ],
+    "update_license_expiry_date": [
+      "licenses"
+    ],
+    "expire_all_licenses_for_professional": [
+      "licenses",
+      "professionals"
+    ],
+    "assign_active_license": [
+      "licenses"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_professional_by_name",
+      "description": "Retrieve all medical professionals' information matching the specified name.\n\nArgs:\n    name (str): The name of the medical professional to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MedicalProfessionalInfo],  # List of professional info dicts (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g. missing name\n    }\n\nNotes:\n    - The match is exact and case-sensitive.\n    - Multiple professionals may share the same name.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_professional_by_id",
+      "description": "Retrieve a medical professional's info given their professional_id.\n\nArgs:\n    professional_id (str): The unique identifier for the medical professional.\n\nReturns:\n    dict: \n        On success: {\"success\": True, \"data\": MedicalProfessionalInfo}\n        On failure: {\"success\": False, \"error\": \"Professional not found\"}\n\nConstraints:\n    - The professional_id must exist in the registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "professional_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "professional_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_professionals",
+      "description": "List all registered medical professionals in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MedicalProfessionalInfo]  # All professionals (may be empty if none registered)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_licenses_for_professional",
+      "description": "Get all license records associated with a given professional_id.\n\nArgs:\n    professional_id (str): Unique identifier of the medical professional.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MedicalLicenseInfo]  # All licenses for this professional (may be empty)\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., professional not found.\n    }\n\nConstraints:\n    - professional_id must exist in the registry (self.professionals).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "professional_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "professional_id"
+        ]
+      }
+    },
+    {
+      "name": "get_license_by_number",
+      "description": "Retrieve full license information for a given license_number.\n\nArgs:\n    license_number (str): The unique identifier of the medical license.\n\nReturns:\n    dict:\n      - Success: { \"success\": True, \"data\": MedicalLicenseInfo }\n      - Failure: { \"success\": False, \"error\": \"License not found\" }\n\nConstraints:\n    - license_number must exist in the registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "license_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "license_number"
+        ]
+      }
+    },
+    {
+      "name": "list_licenses_by_status",
+      "description": "List all license records filtered by their status.\n\nArgs:\n    status (str): License status to filter by. Must be one of {\"active\", \"expired\", \"suspended\"}.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MedicalLicenseInfo],  # Matching license records (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\nConstraints:\n    - Only the statuses {\"active\", \"expired\", \"suspended\"} are allowed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "check_license_status",
+      "description": "Query the status field (\"active\", \"expired\", \"suspended\") of a medical license.\n\nArgs:\n    license_number (str): The unique identifier for the license to query.\n\nReturns:\n    dict: \n        On success:\n        {\n            \"success\": True,\n            \"data\": {\n                \"license_number\": str,\n                \"status\": str\n            }\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - license_number must exist in the registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "license_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "license_number"
+        ]
+      }
+    },
+    {
+      "name": "check_if_professional_has_active_license",
+      "description": "Determine if the specified professional currently has a valid (active) license.\n\nArgs:\n    professional_id (str): The professional's unique identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": bool  # True if professional has an active and currently valid license, else False\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g. not found\n    }\n\nConstraints:\n    - License considered valid if:\n        - status == \"active\"\n        - current date is >= issue_date and <= expiry_date (inclusive)\n    - Each medical professional can have at most one active license at a time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "professional_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "professional_id"
+        ]
+      }
+    },
+    {
+      "name": "check_license_validity",
+      "description": "Evaluate if the given license is currently valid.\n\nArgs:\n    license_number (str): The medical license number to check.\n\nReturns:\n    dict: \n        {\n          \"success\": True,\n          \"data\": { \"license_number\": ..., \"valid\": True/False }\n        }\n        or\n        {\n          \"success\": False,\n          \"error\": <reason>\n        }\n\nValidity logic:\n    - License status must be \"active\"\n    - Current date must be >= issue_date and <= expiry_date (inclusive)\n    - Dates are assumed to be in 'YYYY-MM-DD' or ISO format",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "license_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "license_number"
+        ]
+      }
+    },
+    {
+      "name": "create_license",
+      "description": "Create a new MedicalLicense record associated with a medical professional.\n\nArgs:\n    license_number (str): Unique license number.\n    professional_id (str): ID of the medical professional (must exist).\n    issue_date (str): License issue date (ISO formatted string).\n    expiry_date (str): License expiry date (ISO formatted string).\n    status (str): Initial status (\"active\", \"expired\", or \"suspended\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"License created successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\nConstraints:\n    - license_number must be unique.\n    - professional_id must refer to an existing professional.\n    - status must be in {\"active\", \"expired\", \"suspended\"}.\n    - Only one active license per professional at a time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "license_number": {
+            "type": "string"
+          },
+          "professional_id": {
+            "type": "string"
+          },
+          "issue_date": {
+            "type": "string"
+          },
+          "expiry_date": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "license_number",
+          "professional_id",
+          "issue_date",
+          "expiry_date",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "update_license_status",
+      "description": "Change the status of a medical license (must be one of allowed values).\n\nArgs:\n    license_number (str): The license to update.\n    new_status (str): The new status ('active', 'expired', or 'suspended').\n\nReturns:\n    dict: { \"success\": True, \"message\": str } on success,\n          { \"success\": False, \"error\": str } on error.\n\nConstraints:\n    - new_status must be in {'active', 'expired', 'suspended'}\n    - License must exist.\n    - Only one 'active' license per medical professional is allowed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "license_number": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "license_number",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "update_license_expiry_date",
+      "description": "Modifies the expiry date of an existing medical license.\n\nArgs:\n    license_number (str): The unique identifier for the license to update.\n    new_expiry_date (str): The new expiry date to set (should follow standard format, e.g., \"YYYY-MM-DD\").\n\nReturns:\n    dict: \n    - On success: { \"success\": True, \"message\": \"Expiry date updated successfully.\" }\n    - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The license_number must exist in the system.\n    - Does not enforce date format or ordering with issue_date (unless specified elsewhere).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "license_number": {
+            "type": "string"
+          },
+          "new_expiry_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "license_number",
+          "new_expiry_date"
+        ]
+      }
+    },
+    {
+      "name": "expire_all_licenses_for_professional",
+      "description": "Set all licenses for a specific medical professional to status \"expired\".\n\nArgs:\n    professional_id (str): The unique ID for the medical professional.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"...\"}\n        - On error (professional does not exist): { \"success\": False, \"error\": \"Professional not found\" }\n\nConstraints:\n    - Status must only be set to \"expired\".\n    - Status must be one of {\"active\", \"expired\", \"suspended\"}.\n    - No-op if the professional has no licenses (still success).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "professional_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "professional_id"
+        ]
+      }
+    },
+    {
+      "name": "assign_active_license",
+      "description": "Assign the specified license as active for its professional. Expire all other\nlicenses for that professional as per registry constraints.\n\nArgs:\n    license_number (str): The license number to activate.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The license must exist.\n    - Only one active license per professional.\n    - Other licenses for the professional will be set to 'expired'.\n    - License status must be one of {\"active\", \"expired\", \"suspended\"}.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "license_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "license_number"
+        ]
+      }
+    }
+  ]
+}

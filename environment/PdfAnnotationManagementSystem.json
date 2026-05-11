@@ -1,0 +1,574 @@
+{
+  "env_name": "PdfAnnotationManagementSystem",
+  "description": "A PDF document annotation management system is designed to store, retrieve, and manipulate annotation objects embedded within PDF documents. It tracks documents, their individual pages, and annotation metadata such as type, position, author, and content. Common operations include adding, removing, and querying annotations, facilitating digital review and collaboration workflows.",
+  "initial_parameter_schema": {
+    "documents": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "file_path": {
+            "type": "string"
+          },
+          "upload_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "name",
+          "file_path",
+          "upload_date"
+        ]
+      }
+    },
+    "pages": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "page_number": {
+            "type": "integer"
+          },
+          "page_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "page_number",
+          "page_id"
+        ]
+      }
+    },
+    "annotations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "annotation_id": {
+            "type": "string"
+          },
+          "document_id": {
+            "type": "string"
+          },
+          "page_number": {
+            "type": "integer"
+          },
+          "annotation_type": {
+            "type": "string"
+          },
+          "position": {},
+          "author": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "modified_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "annotation_id",
+          "document_id",
+          "page_number",
+          "annotation_type",
+          "position",
+          "author",
+          "content",
+          "created_at",
+          "modified_at"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "email"
+        ]
+      }
+    },
+    "list_defined_annotation_types": {
+      "type": "string"
+    }
+  },
+  "tool_state_dependencies": {
+    "get_document_by_name": [
+      "documents"
+    ],
+    "list_all_documents": [
+      "documents"
+    ],
+    "get_page_by_document_and_number": [
+      "pages"
+    ],
+    "list_pages_for_document": [
+      "documents",
+      "pages"
+    ],
+    "list_annotations_by_document_and_page": [
+      "annotations",
+      "documents",
+      "pages"
+    ],
+    "filter_annotations_by_type": [
+      "annotations",
+      "list_defined_annotation_types"
+    ],
+    "get_annotation_by_id": [
+      "annotations"
+    ],
+    "list_defined_annotation_types": [],
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_user_by_name": [
+      "users"
+    ],
+    "list_annotations_by_author": [
+      "annotations",
+      "users"
+    ],
+    "add_annotation": [
+      "annotations",
+      "documents",
+      "list_defined_annotation_types",
+      "pages",
+      "users"
+    ],
+    "remove_annotation": [
+      "annotations"
+    ],
+    "modify_annotation": [
+      "annotations",
+      "list_defined_annotation_types",
+      "users"
+    ],
+    "add_document": [
+      "documents"
+    ],
+    "remove_document": [
+      "annotations",
+      "documents",
+      "pages"
+    ],
+    "add_page": [
+      "documents",
+      "pages"
+    ],
+    "remove_page": [
+      "annotations",
+      "pages"
+    ],
+    "add_user": [
+      "users"
+    ],
+    "remove_user": [
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_document_by_name",
+      "description": "Retrieve document metadata (including document_id) for a document by its name.\n\nArgs:\n    name (str): The name of the document to search for.\n\nReturns:\n    dict:\n        If document with given name found:\n            {\n                \"success\": True,\n                \"data\": DocumentInfo\n            }\n        If not found:\n            {\n                \"success\": False,\n                \"error\": \"Document not found\"\n            }\nConstraints:\n    - Returns the first document found with the given name.\n    - Document names are assumed to be unique; if multiple exist, only the first is returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "list_all_documents",
+      "description": "List basic information for all documents in the system.\n\nArgs:\n    None\n\nReturns:\n    dict:\n        success (bool): True if retrieval is successful.\n        data (List[DocumentInfo]): A list of document information dictionaries. Empty if no documents exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_page_by_document_and_number",
+      "description": "Retrieve the PageInfo (including page_id) given a document_id and page_number.\n\nArgs:\n    document_id (str): The unique identifier of the PDF document.\n    page_number (int): The page number within the document.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": PageInfo,    # If the page exists.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str         # Error message such as \"Page not found\".\n    }\n\nConstraints:\n    - Document and page identifiers must correspond to existing documents and pages.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "page_number": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "document_id",
+          "page_number"
+        ]
+      }
+    },
+    {
+      "name": "list_pages_for_document",
+      "description": "Retrieve all pages belonging to a specific document.\n\nArgs:\n    document_id (str): The unique identifier of the document.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PageInfo]  # All pages for the specified document (empty list if none)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g. document does not exist\n    }\n\nConstraints:\n    - document_id must correspond to an existing document.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id"
+        ]
+      }
+    },
+    {
+      "name": "list_annotations_by_document_and_page",
+      "description": "Retrieve all annotations for a specified document and page.\n\nArgs:\n    document_id (str): The ID of the document.\n    page_number (int): The page number within the document.\n\nReturns:\n    dict:\n        - On success:\n            { \"success\": True, \"data\": List[AnnotationInfo] }\n        - On failure (document or page missing):\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - document_id must exist in self.documents.\n    - (document_id, page_number) must correspond to an existing page in self.pages.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "page_number": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "document_id",
+          "page_number"
+        ]
+      }
+    },
+    {
+      "name": "filter_annotations_by_type",
+      "description": "Filter all annotations in the system that match the specified annotation_type.\n\nArgs:\n    annotation_type (str): The type of annotation to filter for (e.g., \"circle\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AnnotationInfo]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Only defined annotation types are permitted. If the type is not defined, operation fails.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "annotation_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "annotation_type"
+        ]
+      }
+    },
+    {
+      "name": "get_annotation_by_id",
+      "description": "Retrieve the full metadata/details for a specific annotation by its annotation_id.\n\nArgs:\n    annotation_id (str): The unique identifier of the annotation to retrieve.\n\nReturns:\n    dict:\n        If annotation exists:\n            { \"success\": True, \"data\": AnnotationInfo }\n        If not found:\n            { \"success\": False, \"error\": \"Annotation not found\" }\nConstraints:\n    - annotation_id must exist in self.annotations.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "annotation_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "annotation_id"
+        ]
+      }
+    },
+    {
+      "name": "list_defined_annotation_types",
+      "description": "Retrieve all permitted annotation types in the system.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[str]  # List of defined annotation types\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Description of the error (e.g., not configured)\n        }\n\nNotes:\n    - Only the defined annotation types (e.g., circle, highlight, comment) are valid in the system.\n    - If enumeration is not available in system, the function returns commonly accepted defaults.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user info by user_id.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo  # User metadata if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str      # Error message if not found\n    }\n\nConstraints:\n    - The user_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_name",
+      "description": "Retrieve user info(s) by user name.\n\nArgs:\n    name (str): The name of the user to search for.\n\nReturns:\n    dict:\n        - If at least one user is found with the provided name:\n            {\"success\": True, \"data\": List[UserInfo]}\n        - If no user found:\n            {\"success\": False, \"error\": \"User not found\"}\n\nNotes:\n    - Multiple users can share the same name; all matches will be returned in a list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "list_annotations_by_author",
+      "description": "Retrieve all annotations created by a specified author (user).\n\nArgs:\n    author_id (str): The user_id of the author whose annotations are to be retrieved.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AnnotationInfo],  # All annotations with author == author_id (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If the specified author/user does not exist\n    }\n\nConstraints:\n    - The author_id must exist in the user registry.\n    - Only annotations where annotation[\"author\"] == author_id are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "author_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "author_id"
+        ]
+      }
+    },
+    {
+      "name": "add_annotation",
+      "description": "Add a new annotation to a specific document and page, ensuring:\n  - annotation_id is unique,\n  - annotation_type is valid,\n  - referenced document/page exist,\n  - author exists,\n  - (optionally) position is valid within page bounds.\n\nArgs:\n    annotation_id (str): Unique identifier for annotation.\n    document_id (str): ID of the document.\n    page_number (int): Page number within the document.\n    annotation_type (str): Annotation type (must be defined/supported).\n    position (Any): Position information (structure may vary).\n    author (str): User ID of the authoring user.\n    content (str): Annotation content.\n    created_at (str): Creation timestamp.\n    modified_at (str): Modification timestamp.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Annotation added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": Reason for failure\n    }\n\nConstraints:\n    - annotation_id must be unique\n    - document_id must exist\n    - (document_id, page_number) must exist as a page\n    - annotation_type must be defined\n    - author must be a real user\n    - (position should be valid if position spec is available)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "annotation_id": {
+            "type": "string"
+          },
+          "document_id": {
+            "type": "string"
+          },
+          "page_number": {
+            "type": "integer"
+          },
+          "annotation_type": {
+            "type": "string"
+          },
+          "position": {
+            "type": "object"
+          },
+          "author": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "modified_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "annotation_id",
+          "document_id",
+          "page_number",
+          "annotation_type",
+          "position",
+          "author",
+          "content",
+          "created_at",
+          "modified_at"
+        ]
+      }
+    },
+    {
+      "name": "remove_annotation",
+      "description": "Delete an annotation entry given its annotation_id.\n\nArgs:\n    annotation_id (str): The unique identifier of the annotation to delete.\n\nReturns:\n    dict:\n      - On success: {\n            \"success\": True,\n            \"message\": \"Annotation <annotation_id> removed successfully\"\n        }\n      - On failure: {\n            \"success\": False,\n            \"error\": \"Annotation not found\"\n        }\n\nConstraints:\n    - The annotation_id must exist in the system for deletion.\n    - Annotation removal should not impact document/page integrity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "annotation_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "annotation_id"
+        ]
+      }
+    },
+    {
+      "name": "modify_annotation",
+      "description": "Update fields ('annotation_type', 'position', 'content', 'author') of an existing annotation.\nOnly provided (non-None) fields are updated.\n\nArgs:\n    annotation_id (str): The ID of the annotation to update.\n    annotation_type (str, optional): New annotation type (must be allowed).\n    position (Any, optional): New position (format should match system expectations).\n    content (str, optional): New annotation content.\n    author (str, optional): New author ID.\n\nReturns:\n    dict: Success or failure message.\n        On success: {\"success\": True, \"message\": \"Annotation updated successfully\"}\n        On failure: {\"success\": False, \"error\": \"reason\"}\n\nConstraints:\n    - 'annotation_id' must exist.\n    - Only updates allowed fields (type, position, content, author).\n    - If 'annotation_type' is provided, must be among allowed types.\n    - Updates 'modified_at' timestamp to now on success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "annotation_id": {
+            "type": "string"
+          },
+          "annotation_type": {
+            "type": "string"
+          },
+          "position": {},
+          "content": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "annotation_id"
+        ]
+      }
+    },
+    {
+      "name": "add_document",
+      "description": "Adds/registers a new PDF document in the system.\n\nArgs:\n    document_id (str): Unique identifier for the document.\n    name (str): Name of the document.\n    file_path (str): Path or URI to the PDF file.\n    upload_date (str): Upload timestamp (ISO-8601 string recommended).\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Document '<name>' added successfully.\" }\n        On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - document_id must be unique in the system.\n    - All fields are required and must be non-empty strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "file_path": {
+            "type": "string"
+          },
+          "upload_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "name",
+          "file_path",
+          "upload_date"
+        ]
+      }
+    },
+    {
+      "name": "remove_document",
+      "description": "Remove a document from the system.\n\nArgs:\n    document_id (str): The ID of the document to remove.\n    remove_associated (bool): If True (default), remove all associated pages and annotations.\n        If False, will error if associated pages or annotations exist.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": Description of what was removed\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": Error message\n    }\n\nConstraints:\n    - If remove_associated=False, refuse removal if pages or annotations reference the document.\n    - If remove_associated=True, remove document, all its pages, and annotations for any of those pages.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "remove_associated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "document_id",
+          "remove_associated"
+        ]
+      }
+    },
+    {
+      "name": "add_page",
+      "description": "Add a new page entry for a given document.\n\nArgs:\n    document_id (str): The ID of the document to which this page belongs.\n    page_number (int): The page number within the document.\n    page_id (str): Unique identifier for the new page.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Page added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<error message>\"\n    }\n\nConstraints:\n    - The specified document_id must exist.\n    - page_id must be unique (not already used in self.pages).\n    - (document_id, page_number) combination must not already exist in self.pages.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "page_number": {
+            "type": "integer"
+          },
+          "page_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "page_number",
+          "page_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_page",
+      "description": "Remove a page entry identified by page_id from the system.\nOptionally, remove all annotations on this page as well if cascade_annotations is True.\n\nArgs:\n    page_id (str): The unique page identifier.\n    cascade_annotations (bool): Whether to remove all annotations on this page. Default: False.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"message\": \"Page <page_id> removed.\"\n                  or\n                \"message\": \"Page <page_id> and <N> annotations removed.\"\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": <reason>\n            }\n\nConstraints:\n    - Page must exist.\n    - If there are annotations on the page and cascade_annotations is False, do not remove and return error.\n    - When removing, maintain annotation and page integrity (no annotation may exist for a non-existent page).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "page_id": {
+            "type": "string"
+          },
+          "cascade_annotations": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "page_id",
+          "cascade_annotations"
+        ]
+      }
+    },
+    {
+      "name": "add_user",
+      "description": "Register a new user in the system.\n\nArgs:\n    user_id (str): Unique identifier for the user.\n    name (str): Full name of the user.\n    email (str): Email address of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - user_id must not already exist in the system.\n    - All input fields must be non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "email"
+        ]
+      }
+    },
+    {
+      "name": "remove_user",
+      "description": "Deletes a user from the system.\n\nArgs:\n    user_id (str): The unique ID of the user to remove.\n\nReturns:\n    dict: \n      On success: { \"success\": True, \"message\": \"User <user_id> removed.\" }\n      On failure: { \"success\": False, \"error\": \"User does not exist.\" }\n\nConstraints:\n    - If user_id does not exist, operation fails.\n    - No checks on downstream annotation references (removal always permitted).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    }
+  ]
+}

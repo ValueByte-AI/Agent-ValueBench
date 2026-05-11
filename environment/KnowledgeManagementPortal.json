@@ -1,0 +1,503 @@
+{
+  "env_name": "KnowledgeManagementPortal",
+  "description": "A knowledge management portal is an online system that aggregates information resources, organizes them into domains or categories, and facilitates search and retrieval. The environment maintains metadata for each resource, supports filtering and pagination, and enables users to efficiently browse and access relevant content. Common operations include adding resources, querying by domain or keyword, and displaying results across multiple pages.",
+  "initial_parameter_schema": {
+    "resources": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "creation_date": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_id",
+          "title",
+          "description",
+          "author",
+          "creation_date",
+          "domain",
+          "tags",
+          "url"
+        ]
+      }
+    },
+    "domains": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "domain_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain_id",
+          "name",
+          "description"
+        ]
+      }
+    },
+    "user_queries": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "query_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "domain_filter": {
+            "type": "string"
+          },
+          "keyword_filter": {
+            "type": "string"
+          },
+          "sort_order": {
+            "type": "string"
+          },
+          "page_number": {
+            "type": "integer"
+          },
+          "items_per_page": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query_id",
+          "user_id",
+          "domain_filter",
+          "keyword_filter",
+          "sort_order",
+          "page_number",
+          "items_per_page"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_domains": [
+      "domains"
+    ],
+    "get_domain_by_name": [
+      "domains"
+    ],
+    "list_resources_by_domain": [
+      "domains",
+      "resources"
+    ],
+    "paginate_resources": [],
+    "get_resource_by_id": [
+      "resources"
+    ],
+    "search_resources_by_keyword": [
+      "domains",
+      "resources"
+    ],
+    "list_all_resources": [
+      "resources"
+    ],
+    "get_user_query_by_id": [
+      "user_queries"
+    ],
+    "add_resource": [
+      "domains",
+      "resources"
+    ],
+    "update_resource": [
+      "domains",
+      "resources"
+    ],
+    "delete_resource": [
+      "resources"
+    ],
+    "add_domain": [
+      "domains"
+    ],
+    "update_domain": [
+      "domains"
+    ],
+    "record_user_query": [
+      "domains",
+      "user_queries"
+    ],
+    "delete_domain": [
+      "domains",
+      "resources"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_domains",
+      "description": "Retrieve the list of all valid domains available in the portal.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[{\"domain_id\": str, \"name\": str}]\n        # May be empty if no domains are present\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_domain_by_name",
+      "description": "Retrieve details for a domain matching the specified name.\n\nArgs:\n    name (str): The domain name to look up.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": DomainInfo\n    } \n    OR\n    {\n        \"success\": False,\n        \"error\": \"Domain not found\"\n    }\n\nConstraints:\n    - Only valid (i.e., existing) domain names can be queried.\n    - Domain name search is exact and case-sensitive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "list_resources_by_domain",
+      "description": "List all resources assigned to a specific valid domain.\n\nArgs:\n    domain_name (str): The name of the domain to retrieve resources for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ResourceInfo]  # Might be empty if no resources assigned to domain\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # reason why operation failed (e.g. invalid domain)\n    }\n\nConstraints:\n    - Only valid domain names can be used as filters for queries.\n    - Resources must belong to exactly one domain.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain_name"
+        ]
+      }
+    },
+    {
+      "name": "paginate_resources",
+      "description": "Return the sublist of resources corresponding to the requested page, respecting pagination constraints.\n\nArgs:\n    resources (List[ResourceInfo]): Full resource list to paginate.\n    page_number (int): The page number (0-based, must be >= 0).\n    items_per_page (int): Number of items per page (must be >= 1).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ResourceInfo]  # List of resources for the requested page (possibly empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Explanation of error\n    }\n\nConstraints:\n    - page_number and items_per_page must be non-negative integers.\n    - items_per_page must be >= 1.\n    - Result list length will be ≤ items_per_page.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resources": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "resource_id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "author": {
+                  "type": "string"
+                },
+                "creation_date": {
+                  "type": "string"
+                },
+                "domain": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "resource_id",
+                "title",
+                "description",
+                "author",
+                "creation_date",
+                "domain",
+                "tags",
+                "url"
+              ]
+            }
+          },
+          "page_number": {
+            "type": "integer"
+          },
+          "items_per_page": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "resources",
+          "page_number",
+          "items_per_page"
+        ]
+      }
+    },
+    {
+      "name": "get_resource_by_id",
+      "description": "Retrieve metadata and details of a specific resource by its resource_id.\n\nArgs:\n    resource_id (str): Unique identifier for the resource.\n\nReturns:\n    dict: \n        If found: { \"success\": True, \"data\": ResourceInfo }\n        If not:   { \"success\": False, \"error\": \"Resource not found\" }\nConstraints:\n    - resource_id must uniquely identify a resource in the portal.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_id"
+        ]
+      }
+    },
+    {
+      "name": "search_resources_by_keyword",
+      "description": "Retrieve resources matching a keyword in title, description, or tags, possibly filtered by domain.\n\nArgs:\n    keyword (str): Keyword to search for (case-insensitive substring match).\n    domain_filter (str, optional): Domain name to restrict search to.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ResourceInfo],  # Resources matching keyword (+ domain, if specified)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of error (e.g., invalid domain)\n    }\n\nConstraints:\n    - Only valid domain names may be used as filter.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "keyword": {
+            "type": "string"
+          },
+          "domain_filter": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "keyword"
+        ]
+      }
+    },
+    {
+      "name": "list_all_resources",
+      "description": "List all available resources in the portal.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ResourceInfo],  # List of all resources (possibly empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - No explicit inputs or filters.\n    - Returns the current list of all resources in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_user_query_by_id",
+      "description": "Retrieve metadata for a specific user query based on its unique query ID.\n\nArgs:\n    query_id (str): The unique identifier for the user query.\n\nReturns:\n    dict:\n        On success: {\n            \"success\": True,\n            \"data\": UserQueryInfo  # The stored info for this query_id\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": \"User query not found\"\n        }\n\nConstraints:\n    - The queried ID must exist in stored user queries.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query_id"
+        ]
+      }
+    },
+    {
+      "name": "add_resource",
+      "description": "Add a new resource to the portal, assigning it to an existing domain.\n\nArgs:\n    resource_id (str): Unique identifier for the resource.\n    title (str): Resource title.\n    description (str): Resource description.\n    author (str): Author name.\n    creation_date (str): Creation date (string format).\n    domain (str): Name of existing domain to assign resource to.\n    tags (List[str]): List of tags.\n    url (str): Resource URL.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Resource added: <resource_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Resources must belong to exactly one (existing) domain, referenced by name.\n    - Resource ID must be unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "creation_date": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_id",
+          "title",
+          "description",
+          "author",
+          "creation_date",
+          "domain",
+          "tags",
+          "url"
+        ]
+      }
+    },
+    {
+      "name": "update_resource",
+      "description": "Modify the details or metadata of an existing resource.\n\nArgs:\n    resource_id (str): The unique ID of the resource to update.\n    updates (dict): Dictionary containing keys and new values for ResourceInfo fields\n                    (except 'resource_id', which cannot be changed).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Resource updated successfully\"\n    }\n    or\n    dict: {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The resource must exist.\n    - If the 'domain' is being updated, it must reference a valid domain name (that exists in self.domains.values()).\n    - resource_id cannot be changed.\n    - All other updates override the existing values for that resource.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "resource_id",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "delete_resource",
+      "description": "Remove an existing resource from the portal by its unique resource_id.\n\nArgs:\n    resource_id (str): The ID of the resource to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str,  # Success message\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str     # Reason for failure (e.g., not found)\n    }\n\nConstraints:\n    - The resource with the specified resource_id must exist in the portal.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_id"
+        ]
+      }
+    },
+    {
+      "name": "add_domain",
+      "description": "Add a new subject domain/category to organize resources.\n\nArgs:\n    domain_id (str): Unique identifier for the domain (must not duplicate an existing domain's id).\n    name (str): Unique name for the domain (must not duplicate existing domain name).\n    description (str): Description for the domain.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Domain added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason str>\n    }\n\nConstraints:\n    - domain_id and name must be unique (not present in self.domains or any domain's name).\n    - All fields are required and cannot be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain_id",
+          "name",
+          "description"
+        ]
+      }
+    },
+    {
+      "name": "update_domain",
+      "description": "Modify the name and/or description of an existing domain.\n\nArgs:\n    domain_id (str): Identifier of the domain to modify.\n    name (str, optional): New name for the domain. Must be unique if specified.\n    description (str, optional): New description.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Domain updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Domain must exist.\n    - If a new name is provided, it must not duplicate another domain's name.\n    - Name/description, if provided, must be non-empty strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain_id"
+        ]
+      }
+    },
+    {
+      "name": "record_user_query",
+      "description": "Store a user's query (including domain filter, keyword, sort preference, pagination) for reference or analytics.\nConstraints:\n    - page_number and items_per_page must be non-negative integers.\n    - If domain_filter is not empty, it must match an existing domain name.\n    - query_id must be unique (not already recorded).\n\nArgs:\n    query_id (str): Unique ID for this query record.\n    user_id (str): Identifier of the user making the query.\n    domain_filter (str): Domain filter (should match a valid domain name or be empty).\n    keyword_filter (str): Keyword filter string.\n    sort_order (str): Sort order requested.\n    page_number (int): Page index (must be >= 0).\n    items_per_page (int): Items per page (must be >= 0).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User query recorded successfully.\"\n    } or {\n        \"success\": False,\n        \"error\": \"<error description>\"\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "domain_filter": {
+            "type": "string"
+          },
+          "keyword_filter": {
+            "type": "string"
+          },
+          "sort_order": {
+            "type": "string"
+          },
+          "page_number": {
+            "type": "integer"
+          },
+          "items_per_page": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query_id",
+          "user_id",
+          "domain_filter",
+          "keyword_filter",
+          "sort_order",
+          "page_number",
+          "items_per_page"
+        ]
+      }
+    },
+    {
+      "name": "delete_domain",
+      "description": "Remove an existing domain and delete all resources assigned to it.\n\nArgs:\n    domain_id (str): The ID of the domain to delete.\n\nReturns:\n    dict:\n        Success: {\n            \"success\": True,\n            \"message\": \"Domain '<name>' deleted and <N> resource(s) removed.\"\n        }\n        Failure: {\n            \"success\": False,\n            \"error\": \"Domain with id <domain_id> does not exist.\"\n        }\n\nConstraints:\n    - Domain must exist.\n    - All resources must belong to one valid domain; when domain is deleted, associated resources are removed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain_id"
+        ]
+      }
+    }
+  ]
+}

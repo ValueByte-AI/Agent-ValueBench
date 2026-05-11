@@ -1,0 +1,346 @@
+{
+  "env_name": "UserAccountActivityTrackingSystem",
+  "description": "A user account activity tracking system records and organizes timelines of user actions within a digital platform. It maintains stateful logs of authentication events, purchases, and profile changes, each associated with user identifiers and precise timestamps. This environment enables querying, auditing, and analysis of user behavior for purposes such as security, personalization, and compliance.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          },
+          "registration_da": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "account_status",
+          "registration_da"
+        ]
+      }
+    },
+    "activity_events": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "event_detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "user_id",
+          "event_type",
+          "timestamp",
+          "event_detail"
+        ]
+      }
+    },
+    "user_events": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_id": [
+      "users"
+    ],
+    "list_all_users": [
+      "users"
+    ],
+    "get_event_timeline_for_user": [
+      "activity_events",
+      "user_events",
+      "users"
+    ],
+    "get_events_by_type_for_user": [
+      "activity_events",
+      "user_events",
+      "users"
+    ],
+    "get_event_by_id": [
+      "activity_events"
+    ],
+    "list_predefined_event_types": [],
+    "get_user_event_count_by_type": [
+      "activity_events",
+      "user_events",
+      "users"
+    ],
+    "check_user_existence": [
+      "users"
+    ],
+    "add_activity_event": [
+      "activity_events",
+      "user_events",
+      "users"
+    ],
+    "update_event_timestamp": [
+      "activity_events",
+      "user_events"
+    ],
+    "delete_activity_event": [
+      "activity_events",
+      "user_events",
+      "users"
+    ],
+    "edit_event_detail": [
+      "activity_events"
+    ],
+    "bulk_delete_events_for_user": [
+      "activity_events",
+      "user_events",
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user information by user_id.\n\nArgs:\n    user_id (str): Unique identifier for the user.\n\nReturns:\n    dict:\n        If success:\n            {\"success\": True, \"data\": UserInfo}\n        If failure (user not found):\n            {\"success\": False, \"error\": \"User not found\"}\nConstraints:\n    - user_id must exist in the self.users dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_users",
+      "description": "Return a list of all users currently registered in the system.\n\nArgs:\n    None\n\nReturns:\n    dict:\n        \"success\": True,\n        \"data\": List[UserInfo]  # All user info dicts (empty if no users)\n\nConstraints:\n    - None (returns all loaded users, empty list if none exist).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_event_timeline_for_user",
+      "description": "Retrieve the user's stored event timeline in its current recorded order.\n\nArgs:\n    user_id (str): The ID of the user whose activity timeline is requested.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ActivityEventInfo],  # current stored order (may be empty if no events)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # description of the error (e.g., user does not exist)\n    }\n\nConstraints:\n    - User must exist.\n    - Timeline reflects the system's current recorded order for that user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_events_by_type_for_user",
+      "description": "Retrieve all activity events for a user of the specified event types, preserving the current stored timeline order.\n\nArgs:\n    user_id (str): The user identifier whose events to query.\n    event_types (list of str): Allowed event types to filter (e.g., \"login\", \"logout\", \"purchase\", \"account update\").\n\nReturns:\n    dict:\n        On success:\n            {\n              \"success\": True,\n              \"data\": List[ActivityEventInfo]  # List can be empty if no match\n            }\n        On failure:\n            {\n              \"success\": False,\n              \"error\": str  # Error message (user not found, invalid event type, etc.)\n            }\n\nConstraints:\n    - user_id must exist\n    - All event_types must be among the system's predefined event types\n    - Events are returned in the user's current stored order",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "event_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "user_id",
+          "event_types"
+        ]
+      }
+    },
+    {
+      "name": "get_event_by_id",
+      "description": "Fetch details of a particular activity event by its event_id.\n\nArgs:\n    event_id (str): Unique identifier for the activity event to fetch.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ActivityEventInfo  # The activity event information.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., \"Event not found\"\n    }\n\nConstraints:\n    - The specified event_id must exist in the activity_events.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "list_predefined_event_types",
+      "description": "List all event types currently recognized by the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str]  # List of recognized event types (e.g., [\"login\", \"logout\", ...])\n    }\n\nConstraints:\n    - Event types are derived from the system's predefined categories and currently loaded activity data.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_user_event_count_by_type",
+      "description": "Returns the number of events per event_type for the given user.\n\nArgs:\n    user_id (str): The user's unique identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {event_type (str): count (int), ...}\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"User does not exist\"\n    }\n\nConstraints:\n    - User must exist.\n    - Counts only events belonging to the specified user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "check_user_existence",
+      "description": "Validate whether a given user_id exists and is active in the system.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"exists\": bool,  # True if user exists, else False\n            \"active\": bool   # True if user is active (account_status == \"active\"), else False\n        }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "add_activity_event",
+      "description": "Add a new activity event for a user, enforcing association, event type, and uniqueness constraints.\n\nArgs:\n    event_id (str): Unique identifier for the activity event.\n    user_id (str): User ID associated with the event (must exist).\n    event_type (str): Kind of activity ('login', 'logout', 'purchase', 'account update', etc.).\n    timestamp (float): Timestamp of the event in seconds since epoch.\n    event_detail (str): Additional context/details for this event.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Activity event added for user.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <error_message>\n    }\nConstraints:\n    - user_id must exist in self.users\n    - event_id must not already exist in self.activity_events\n    - event_type must be one of the system's recognized event types\n    - Event added to self.user_events[user_id] and must maintain time order\n    - Timestamps of events for a user should remain in chronological order",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "event_detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "user_id",
+          "event_type",
+          "timestamp",
+          "event_detail"
+        ]
+      }
+    },
+    {
+      "name": "update_event_timestamp",
+      "description": "Modify the timestamp of a given activity event and reorder the user's event timeline if changed.\n\nArgs:\n    event_id (str): The unique identifier of the event to update.\n    new_timestamp (float): The new timestamp to set for the event.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"message\": \"Event timestamp updated and timeline reordered\"\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": \"reason\"\n        }\nConstraints:\n    - The event_id must exist.\n    - After updating, the user's timeline (user_events[user_id]) must be re-ordered in ascending timestamp order.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "new_timestamp": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "event_id",
+          "new_timestamp"
+        ]
+      }
+    },
+    {
+      "name": "delete_activity_event",
+      "description": "Remove an activity event from the system.\n\nArgs:\n    event_id (str): The unique identifier of the activity event to be removed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Event deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - The activity event must exist.\n    - All references to the event (in per-user timelines) must be removed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "edit_event_detail",
+      "description": "Update the event_detail field of an existing activity event.\n\nArgs:\n    event_id (str): The identifier of the activity event to update.\n    new_event_detail (str): The new detail information to be stored for the event.\n\nReturns:\n    dict: \n        {\"success\": True, \"message\": \"Event detail updated.\"}\n        or\n        {\"success\": False, \"error\": \"Event not found.\"}\n\nConstraints:\n    - event_id must exist in the system.\n    - Only event_detail is modified; other fields remain unchanged.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "new_event_detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "new_event_detail"
+        ]
+      }
+    },
+    {
+      "name": "bulk_delete_events_for_user",
+      "description": "Remove multiple activity events for a given user.\n\nArgs:\n    user_id (str): The ID of the user whose events should be deleted.\n    event_ids (List[str]): List of event IDs to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"N events deleted for user <user_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Provided user_id must exist.\n    - Each event_id must exist, be associated with user_id, and be present in user's timeline.\n    - Events will be deleted from both self.activity_events and self.user_events[user_id].\n    - If event_ids is empty, operation succeeds (\"0 events deleted for user ...\").",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "event_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "user_id",
+          "event_ids"
+        ]
+      }
+    }
+  ]
+}

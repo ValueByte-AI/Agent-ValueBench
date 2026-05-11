@@ -1,0 +1,492 @@
+{
+  "env_name": "AlcoholicBeverageInventoryManagementSystem",
+  "description": "An alcoholic beverage inventory management system API provides access to a catalog of beverage products, including details like name, pricing, volume, alcohol percentage, and product categories. The system maintains a structured database of inventory and supports operations such as search, filter, retrieval, and update of beverage records programmatically. This environment is essential for facilitating sales, stock management, and consumer information in bars, liquor retailers, and online marketplaces.",
+  "initial_parameter_schema": {
+    "products": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "volume_ml": {
+            "type": "integer"
+          },
+          "alcohol_percent": {
+            "type": "number"
+          },
+          "description": {
+            "type": "string"
+          },
+          "available_quantity": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "product_id",
+          "name",
+          "category",
+          "price",
+          "volume_ml",
+          "alcohol_percent",
+          "description",
+          "available_quantity"
+        ]
+      }
+    },
+    "categories": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id",
+          "name",
+          "description"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "search_products_by_name": [
+      "products"
+    ],
+    "get_product_by_id": [
+      "products"
+    ],
+    "get_product_by_name": [
+      "products"
+    ],
+    "list_all_products": [
+      "products"
+    ],
+    "filter_products_by_category": [
+      "categories",
+      "products"
+    ],
+    "filter_products_by_alcohol_percent": [
+      "products"
+    ],
+    "filter_products_by_price_range": [
+      "products"
+    ],
+    "get_product_attributes": [
+      "products"
+    ],
+    "list_all_categories": [
+      "categories"
+    ],
+    "get_category_by_id": [
+      "categories"
+    ],
+    "get_category_by_name": [
+      "categories"
+    ],
+    "add_product": [
+      "categories",
+      "products"
+    ],
+    "update_product_attributes": [
+      "categories",
+      "products"
+    ],
+    "adjust_product_quantity": [
+      "products"
+    ],
+    "remove_product": [
+      "products"
+    ],
+    "add_category": [
+      "categories"
+    ],
+    "update_category": [
+      "categories"
+    ],
+    "remove_category": [
+      "categories",
+      "products"
+    ],
+    "validate_product_constraints": [
+      "categories",
+      "products"
+    ]
+  },
+  "tools": [
+    {
+      "name": "search_products_by_name",
+      "description": "Search for beverage products by (partial) name, supporting unique or closest match identification.\n\nArgs:\n    name_query (str): The (partial) name to search for; case-insensitive.\n\nReturns:\n    dict: \n      - On success: { \"success\": True, \"data\": List[ProductInfo] }\n        If no matches, returns empty list in data.\n      - On error: { \"success\": False, \"error\": str }\n\nConstraints:\n    - Product names are assumed to be unique, but partial matches may return multiple products.\n    - name_query should be a non-empty string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name_query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name_query"
+        ]
+      }
+    },
+    {
+      "name": "get_product_by_id",
+      "description": "Retrieve full information of a product using its product_id.\n\nArgs:\n    product_id (str): Unique identifier of the product to retrieve.\n\nReturns:\n    dict:\n        - On success: {\n              \"success\": True,\n              \"data\": ProductInfo\n          }\n        - On error: {\n              \"success\": False,\n              \"error\": \"Product not found\"\n          }\nConstraints:\n    - product_id must exist in the product records.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "get_product_by_name",
+      "description": "Retrieve full information for a product using its unique name.\n\nArgs:\n    name (str): The name of the product to retrieve.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": ProductInfo }\n        - On failure: { \"success\": False, \"error\": error_message }\n\nConstraints:\n    - Product names should be unique or uniquely identifiable.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "list_all_products",
+      "description": "List all beverage products in the inventory.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ProductInfo],  # List of all products, possibly empty\n    }\n\nConstraints:\n    - None. Returns all records from the current state.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "filter_products_by_category",
+      "description": "Retrieve all products assigned to a specific category.\n\nArgs:\n    category_id (str): The category's unique identifier.\n\nReturns:\n    dict: \n      - {\n            \"success\": True,\n            \"data\": List[ProductInfo],   # List of matching products, empty if none found\n        }\n      - {\n            \"success\": False,\n            \"error\": str  # \"Category not found\"\n        }\n\nConstraints:\n    - category_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id"
+        ]
+      }
+    },
+    {
+      "name": "filter_products_by_alcohol_percent",
+      "description": "Find products whose alcohol_percent is within the specified, inclusive range.\n\nArgs:\n    min_alcohol_percent (float): The minimum alcohol percentage (inclusive), must be between 0 and 100.\n    max_alcohol_percent (float): The maximum alcohol percentage (inclusive), must be between 0 and 100.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ProductInfo]  # List of matching product info dicts. May be empty.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for input failure\n    }\n\nConstraints:\n    - Both min and max must be in [0, 100], and min <= max.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "min_alcohol_percent": {
+            "type": "number"
+          },
+          "max_alcohol_percent": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "min_alcohol_percent",
+          "max_alcohol_percent"
+        ]
+      }
+    },
+    {
+      "name": "filter_products_by_price_range",
+      "description": "Find and return all products with a price in the inclusive range [min_price, max_price].\n\nArgs:\n    min_price (float): Minimum price (inclusive).\n    max_price (float): Maximum price (inclusive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": list of ProductInfo for matching products (may be empty)\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str (reason for failure, e.g., invalid input)\n    }\n\nConstraints:\n    - min_price and max_price must be numbers and min_price <= max_price.\n    - Only products whose price falls within the range are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "min_price": {
+            "type": "number"
+          },
+          "max_price": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "min_price",
+          "max_price"
+        ]
+      }
+    },
+    {
+      "name": "get_product_attributes",
+      "description": "Retrieve selected attributes (name, price, volume_ml, alcohol_percent, category)\nfor a specified product identified by its product_id.\n\nArgs:\n    product_id (str): The unique ID of the product.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True,\n            \"data\": {\n                \"name\": str,\n                \"price\": float,\n                \"volume_ml\": int,\n                \"alcohol_percent\": float,\n                \"category\": str\n            }\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": str  # Error message if product not found\n        }\nConstraints:\n    - product_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_categories",
+      "description": "Retrieve all beverage categories with IDs and descriptions.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CategoryInfo],  # List of all categories (can be empty)\n    }\n\nNotes:\n    - No constraints or validation required; simply returns all categories.\n    - If there are no categories, returns an empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_category_by_id",
+      "description": "Retrieve information about a category using its category_id.\n\nArgs:\n    category_id (str): The unique identifier for the category.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": CategoryInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Category not found\"\n    }\n\nConstraints:\n    - The specified category_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id"
+        ]
+      }
+    },
+    {
+      "name": "get_category_by_name",
+      "description": "Retrieve information about a category using its name.\n\nArgs:\n    name (str): The name of the category to search for.\n\nReturns:\n    dict:\n        - If found: { \"success\": True, \"data\": CategoryInfo }\n        - If not found: { \"success\": False, \"error\": \"Category with the specified name does not exist.\" }\n\nConstraints:\n    - Category names may not be unique, but this returns the first match found.\n    - Name comparison is case-sensitive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "add_product",
+      "description": "Add a new beverage product to the inventory after verifying all value and uniqueness constraints.\n\nArgs:\n    product_id (str): Unique identifier for the product.\n    name (str): Unique product name.\n    category (str): category_id that the product belongs to.\n    price (float): Price of the product (must be >= 0).\n    volume_ml (int): Volume in milliliters (must be > 0).\n    alcohol_percent (float): Alcohol percentage (must be between 0 and 100, inclusive).\n    description (str): Description of the product.\n    available_quantity (int): Stock (must be >= 0).\n\nReturns:\n    dict: { \"success\": True, \"message\": str }\n          or\n          { \"success\": False, \"error\": str }\n\nConstraints enforced:\n    - product_id must be unique.\n    - name must be unique (case-insensitive).\n    - category must exist.\n    - price >= 0, volume_ml > 0, 0 <= alcohol_percent <= 100, available_quantity >= 0.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "volume_ml": {
+            "type": "integer"
+          },
+          "alcohol_percent": {
+            "type": "number"
+          },
+          "description": {
+            "type": "string"
+          },
+          "available_quantity": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "product_id",
+          "name",
+          "category",
+          "price",
+          "volume_ml",
+          "alcohol_percent",
+          "description",
+          "available_quantity"
+        ]
+      }
+    },
+    {
+      "name": "update_product_attributes",
+      "description": "Update attributes (price, volume_ml, alcohol_percent, name, category, description,\navailable_quantity) for an existing product, with full validation.\n\nArgs:\n    product_id (str): Unique identifier for the product.\n    updates (dict): Key-value pairs of attributes to update.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Product attributes updated successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Updated name (if provided) must be unique among all products except the current one.\n    - category (if provided) must point to an existing category_id.\n    - price, volume_ml must be non-negative.\n    - alcohol_percent must be between 0 and 100.\n    - available_quantity must be a non-negative integer.\n    - Ignores unrecognized attributes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "product_id",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "adjust_product_quantity",
+      "description": "Increase or decrease the available_quantity for a product, ensuring it does not become negative.\n\nArgs:\n    product_id (str): The ID of the product whose stock quantity will be adjusted.\n    adjustment (int): The integer amount to adjust by (can be positive or negative).\n\nReturns:\n    dict: \n        - On success: {\n            \"success\": True, \n            \"message\": \"Product quantity adjusted to X.\"  # X is the new quantity\n          }\n        - On failure: {\n            \"success\": False,\n            \"error\": str  # Description of the error\n          }\n\nConstraints:\n    - Product must exist.\n    - Resulting available_quantity must be a non-negative integer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "adjustment": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "product_id",
+          "adjustment"
+        ]
+      }
+    },
+    {
+      "name": "remove_product",
+      "description": "Delete a beverage product from the inventory.\n\nArgs:\n    product_id (str): Unique identifier of the product to remove.\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"message\": \"Product <product_id> removed from inventory.\"}\n        - On failure: {\"success\": False, \"error\": \"Product not found.\"}\n\nConstraints:\n    - The product must exist in the inventory (self.products).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "add_category",
+      "description": "Insert a new beverage category into the inventory system.\n\nArgs:\n    category_id (str): Unique identifier for the new category.\n    name (str): Human-readable category name.\n    description (str): Category description.\n\nReturns:\n    dict: {\n        \"success\": True, \"message\": \"Category '<name>' added successfully.\"\n    }\n    or\n    {\n        \"success\": False, \"error\": <error reason>\n    }\n\nConstraints:\n    - category_id must be unique (not in self.categories).\n    - category name should not duplicate an existing category's name.\n    - All fields are required and must be non-empty strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "name"
+            ]
+          },
+          {
+            "required": [
+              "description"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "update_category",
+      "description": "Edit the name and/or description of an existing category.\n\nArgs:\n    category_id (str): The ID of the category to update.\n    name (str, optional): New name for the category (if changing).\n    description (str, optional): New description for the category (if changing).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Category updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - category_id must exist.\n    - At least one of 'name' or 'description' must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id",
+          "name",
+          "description"
+        ]
+      }
+    },
+    {
+      "name": "remove_category",
+      "description": "Remove the specified category from the inventory, only if no product uses this category.\n\nArgs:\n    category_id (str): The unique identifier of the category to be removed.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"message\": \"Category <category_id> removed successfully.\"\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": \"<reason>\"\n        }\n\nConstraints:\n    - Category must exist.\n    - No product may reference this category (category_id) at time of removal.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id"
+        ]
+      }
+    },
+    {
+      "name": "validate_product_constraints",
+      "description": "Validate that a product's attributes and relations satisfy all inventory constraints.\n\nArgs:\n    product_id (str, optional): ID of the product to validate.\n    name (str, optional): Name of the product to validate (case-insensitive).\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"message\": \"Product constraints valid.\"\n        }\n        Or on failure:\n        {\n            \"success\": False,\n            \"error\": <reason>\n        }\n\nConstraints Checked:\n    - Product must exist (by ID or unique name).\n    - Must have unique name (no others with same case-insensitive name).\n    - price >= 0.0\n    - volume_ml >= 0\n    - 0 <= alcohol_percent <= 100\n    - available_quantity >= 0 and integer\n    - category refers to a valid category",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [],
+        "anyOf": [
+          {
+            "required": [
+              "product_id"
+            ]
+          },
+          {
+            "required": [
+              "name"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,508 @@
+{
+  "env_name": "MessagingUserAccountSystem",
+  "description": "A messaging application user account system consists of user profiles, contact lists, message storage, and delivery mechanisms. It supports operations such as composing, sending, receiving, and archiving messages between registered users, ensuring communication is organized and traced through account state. The environment is essential for real-time or asynchronous personal and group messaging in both social and professional contexts.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          },
+          "profile_info": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "display_name",
+          "account_status",
+          "profile_info"
+        ]
+      }
+    },
+    "contact_lists": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "contacts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "_id",
+          "contacts"
+        ]
+      }
+    },
+    "messages": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "sender_id": {
+            "type": "string"
+          },
+          "recipient_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "delivery_status": {
+            "type": "string"
+          },
+          "is_archived": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "message_id",
+          "sender_id",
+          "recipient_id",
+          "content",
+          "timestamp",
+          "delivery_status",
+          "is_archived"
+        ]
+      }
+    },
+    "conversations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "conversation_id": {
+            "type": "string"
+          },
+          "participant_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "message_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "conversation_id",
+          "participant_ids",
+          "message_ids"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_username": [
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_user_account_status": [
+      "users"
+    ],
+    "list_user_contacts": [
+      "contact_lists",
+      "users"
+    ],
+    "is_contact": [
+      "contact_lists",
+      "users"
+    ],
+    "list_user_messages": [
+      "messages",
+      "users"
+    ],
+    "get_message_by_id": [
+      "messages"
+    ],
+    "get_user_conversations": [
+      "conversations",
+      "users"
+    ],
+    "get_conversation_by_id": [
+      "conversations"
+    ],
+    "send_message": [
+      "contact_lists",
+      "messages",
+      "users"
+    ],
+    "update_message_delivery_status": [
+      "messages"
+    ],
+    "archive_message": [
+      "messages"
+    ],
+    "add_contact": [
+      "contact_lists",
+      "users"
+    ],
+    "remove_contact": [
+      "contact_lists",
+      "users"
+    ],
+    "create_conversation": [
+      "conversations",
+      "users"
+    ],
+    "add_message_to_conversation": [
+      "conversations",
+      "messages"
+    ],
+    "delete_message": [
+      "conversations",
+      "messages"
+    ],
+    "update_user_account_status": [
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_username",
+      "description": "Retrieve user information by their username.\n\nArgs:\n    username (str): The username to look up.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo,  # User information for the matching username\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description, e.g. user not found\n    }\n\nConstraints:\n    - Username lookup is case sensitive.\n    - Fails if no user with the given username exists.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve full user information by their unique _id.\n\nArgs:\n    _id (str): Unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo,    # If user exists\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str         # If user does not exist\n    }\n\nConstraints:\n    - Only checks for existence of the user _id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_account_status",
+      "description": "Query the account status (e.g., active, inactive, suspended) for a user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"data\": <account_status: str> }\n        On failure: { \"success\": False, \"error\": \"User not found\" }\n\nConstraints:\n    - user_id must correspond to an existing user in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_user_contacts",
+      "description": "List all contact user_ids for a given user.\n\nArgs:\n    user_id (str): The unique identifier of the user whose contacts are to be listed.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[str],  # User IDs of contacts (may be an empty list)\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - user_id must exist in the users registry.\n    - User must have a contact list entry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "is_contact",
+      "description": "Check if contact_user_id is present in the contact list of user_id.\n\nArgs:\n    user_id (str): The user whose contact list is being checked.\n    contact_user_id (str): The user to check for within the contact list.\n\nReturns:\n    dict: \n        - { \"success\": True, \"is_contact\": bool }\n          (True if contact_user_id is a contact of user_id, False otherwise)\n        - { \"success\": False, \"error\": str } on invalid input\n\nConstraints:\n    - Both user_id and contact_user_id must correspond to existing users.\n    - The contact list for user_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "contact_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "contact_user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_user_messages",
+      "description": "Retrieve all messages (sent or received) by a user, identified by their _id.\n\nArgs:\n    user_id (str): The user ID to fetch messages for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MessageInfo]  # May be empty if no messages found.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # E.g., \"User does not exist\"\n    }\n\nConstraints:\n    - user_id must be a valid registered user (must exist in self.users).\n    - Returns all messages where sender_id == user_id or recipient_id == user_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_message_by_id",
+      "description": "Retrieve message details by its unique message_id.\n\nArgs:\n    message_id (str): Unique identifier for the message.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": MessageInfo\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"Message not found\"\n    }\n\nConstraints:\n    - message_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_conversations",
+      "description": "Retrieve all conversation threads in which the given user is a participant.\n\nArgs:\n    user_id (str): ID of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ConversationInfo]  # List of conversations the user participates in (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g., \"User does not exist\"\n    }\n\nConstraints:\n    - The user_id must correspond to an existing user in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_conversation_by_id",
+      "description": "Retrieve full information about a conversation given its conversation_id.\n\nArgs:\n    conversation_id (str): The unique identifier of the conversation.\n\nReturns:\n    dict:\n        If successful:\n            {\n                \"success\": True,\n                \"data\": ConversationInfo  # Conversation record (may have empty fields)\n            }\n        If conversation not found:\n            {\n                \"success\": False,\n                \"error\": \"Conversation does not exist\"\n            }\nConstraints:\n    - conversation_id must exist in the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "conversation_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "conversation_id"
+        ]
+      }
+    },
+    {
+      "name": "send_message",
+      "description": "Create and send a new message from sender_id to recipient_id with given content and timestamp.\n\nArgs:\n    sender_id (str): User ID of the sender.\n    recipient_id (str): User ID of the recipient.\n    content (str): Message content.\n    timestamp (str): Timestamp for the message (ISO 8601 or epoch string).\n    delivery_status (str): Initial delivery status (default \"sent\").\n\nReturns:\n    dict:\n        - success: True and the created message_id on success.\n        - success: False and error message on failure.\n\nConstraints:\n    - Both sender and recipient must exist and be 'active'.\n    - Recipient must be in sender's contact list.\n    - Content must not be empty or prohibited (placeholder policy).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sender_id": {
+            "type": "string"
+          },
+          "recipient_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "delivery_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sender_id",
+          "recipient_id",
+          "content",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "update_message_delivery_status",
+      "description": "Change the delivery_status of a message (e.g., from sent→delivered→read).\n\nArgs:\n    message_id (str): The unique message identifier.\n    new_status (str): The new delivery status value to assign.\n\nReturns:\n    dict: \n        On success:\n            { \"success\": True, \"message\": \"Delivery status updated.\" }\n        On error:\n            { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - message_id must exist in self.messages.\n    - Status transition must not regress: can't go from a later status to an earlier one (e.g., \"read\"→\"sent\").\n    - Allowed progression: \"sent\" → \"delivered\" → \"read\".\n    - Idempotent: same status is allowed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "archive_message",
+      "description": "Mark a message as archived.\n\nArgs:\n    message_id (str): The unique identifier for the message to archive.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Message archived\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Message does not exist\"\n    }\n\nConstraints:\n    - The message_id must exist in the system.\n    - This operation sets is_archived=True for the given message.\n    - If already archived, this is a no-op and still succeeds.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id"
+        ]
+      }
+    },
+    {
+      "name": "add_contact",
+      "description": "Add a user (contact_user_id) to the contact list of another user (owner_user_id).\n\nArgs:\n    owner_user_id (str): The user whose contact list will be updated\n    contact_user_id (str): The user to add as a contact\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Contact added.\" }\n        - On error: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Both owner and contact must exist as users\n    - Cannot add oneself as a contact\n    - Contact user must not already be in the owner's contact list\n    - If owner has no contact list, create a new one",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner_user_id": {
+            "type": "string"
+          },
+          "contact_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "owner_user_id",
+          "contact_user_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_contact",
+      "description": "Remove an existing contact from a user’s contact list.\n\nArgs:\n    user_id (str): The user whose contact list to modify.\n    contact_user_id (str): The user to remove from the contact list.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Contact removed from user contact list.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Both users must exist.\n    - The user's contact list must exist.\n    - The contact must be present in the user's contact list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "contact_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "contact_user_id"
+        ]
+      }
+    },
+    {
+      "name": "create_conversation",
+      "description": "Initiate a new conversation with a set of participant user_ids.\n\nArgs:\n    participant_ids (list of str): List of user_ids to include in the conversation.\n\nReturns:\n    dict:\n        On success:\n            {'success': True, 'message': 'Conversation created', 'conversation_id': <new_id>}\n        On failure:\n            {'success': False, 'error': <reason>}\n\nConstraints:\n    - Each participant_id must correspond to an existing user in self.users.\n    - There must be at least 2 distinct participants in the conversation.\n    - Duplicates in participant_ids are ignored.\n    - conversation_id must be globally unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "participant_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "participant_ids"
+        ]
+      }
+    },
+    {
+      "name": "add_message_to_conversation",
+      "description": "Append a message_id to the message_ids list of an existing conversation.\n\nArgs:\n    conversation_id (str): The ID of the conversation to which to add the message.\n    message_id (str): The ID of the message to add.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Message added to conversation.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Both conversation_id and message_id must exist.\n    - The message_id cannot already be in the conversation's message_ids.\n    - (Recommended) The message's sender and recipient should be among the conversation's participant_ids.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "conversation_id": {
+            "type": "string"
+          },
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "conversation_id",
+          "message_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_message",
+      "description": "Remove a message from the system.\nCan be performed by the sender, recipient, or (if policy allows) an admin user.\n\nArgs:\n    message_id (str): The unique identifier of the message to be deleted.\n    requester_id (str): The user_id of the account requesting the deletion.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Message <id> deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The message must exist.\n    - Only the sender, recipient, or admin may delete a message (admin not implemented here).\n    - Must also remove the message_id from any ConversationInfo that contains it.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "requester_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id",
+          "requester_id"
+        ]
+      }
+    },
+    {
+      "name": "update_user_account_status",
+      "description": "Change the account_status of a user (e.g., activate, suspend, deactivate).\n\nArgs:\n    user_id (str): The user ID whose status should be updated.\n    new_status (str): The new status value to assign (e.g., \"active\", \"suspended\", \"deactivated\").\n        NOTE: This function does not enforce a specific set of allowed status values.\n\nReturns:\n    dict: \n        If successful:\n            {\n                \"success\": True,\n                \"message\": \"User account status updated to <new_status>\"\n            }\n        If user not found:\n            {\n                \"success\": False,\n                \"error\": \"User not found\"\n            }\n\nConstraints:\n    - user_id must exist in the system.\n    - No check on validity of new_status value unless otherwise specified.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "new_status"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,438 @@
+{
+  "env_name": "MobileAppConfigManagementSystem",
+  "description": "A Mobile Application Configuration Management System organizes and maintains various configuration parameters, version numbers, and resource references essential to the operation and deployment of mobile apps. It tracks metadata such as app versions, translation releases, menu states, platform compatibility, and UI settings. The system allows developers and administrators to query and update these values, ensuring consistency and control throughout the app's lifecycle.",
+  "initial_parameter_schema": {
+    "app_configurations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          },
+          "current_version": {
+            "type": "string"
+          },
+          "release_channel": {
+            "type": "string"
+          },
+          "last_updated": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_id",
+          "current_version",
+          "release_channel",
+          "last_updated"
+        ]
+      }
+    },
+    "resource_versions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "resource_type": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "last_updated": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_type",
+          "version",
+          "last_updated"
+        ]
+      }
+    },
+    "platform_compatibility": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "platform_name": {
+            "type": "string"
+          },
+          "platform_version": {
+            "type": "string"
+          },
+          "min_supported_version": {
+            "type": "string"
+          },
+          "max_supported_version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform_name",
+          "platform_version",
+          "min_supported_version",
+          "max_supported_version"
+        ]
+      }
+    },
+    "ui_settings": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "setting_name": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "last_updated": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "setting_name",
+          "value",
+          "last_updated"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_app_configuration": [
+      "app_configurations"
+    ],
+    "get_resource_version": [
+      "resource_versions"
+    ],
+    "list_resource_versions": [
+      "resource_versions"
+    ],
+    "get_platform_compatibility": [
+      "platform_compatibility"
+    ],
+    "list_platform_compatibility": [
+      "platform_compatibility"
+    ],
+    "get_ui_setting": [
+      "ui_settings"
+    ],
+    "list_ui_settings": [
+      "ui_settings"
+    ],
+    "update_app_configuration": [
+      "app_configurations"
+    ],
+    "update_resource_version": [
+      "resource_versions"
+    ],
+    "update_platform_compatibility": [
+      "platform_compatibility"
+    ],
+    "apply_ui_settings_atomically": [
+      "ui_settings"
+    ],
+    "batch_update_resource_versions": [
+      "resource_versions"
+    ],
+    "timestamp_configuration_change": [
+      "app_configurations",
+      "resource_versions",
+      "ui_settings"
+    ],
+    "delete_resource_version": [
+      "resource_versions"
+    ],
+    "remove_platform_compatibility": [
+      "platform_compatibility"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_app_configuration",
+      "description": "Retrieve app configuration details including current_version, release_channel, and last_updated for the specified app_id.\n\nArgs:\n    app_id (str): The unique identifier for the app.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": AppConfigurationInfo\n            }\n        On failure (if app_id not found):\n            {\n                \"success\": False,\n                \"error\": \"App ID not found\"\n            }\n\nConstraints:\n    - The app_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_id"
+        ]
+      }
+    },
+    {
+      "name": "get_resource_version",
+      "description": "Retrieve the version and last_updated timestamp for a specific resource type.\n\nArgs:\n    resource_type (str): The type of the resource to look up (e.g., 'menu', 'translations').\n\nReturns:\n    dict: \n      {\n          \"success\": True,\n          \"data\": ResourceVersionInfo\n      }\n      or\n      {\n          \"success\": False,\n          \"error\": str\n      }\n    - On success, returns version info for the resource type.\n    - If resource_type not found, returns error.\n\nConstraints:\n    - Each resource type must have a unique version tracked.\n    - Read-only operation; no timestamp update.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_type"
+        ]
+      }
+    },
+    {
+      "name": "list_resource_versions",
+      "description": "Retrieve all registered resource types and their current versions.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ResourceVersionInfo]  # May be empty if no resource types are registered.\n    }\n\nConstraints:\n    - Each resource type is unique (enforced by resource_versions dictionary key).\n    - Read-only operation; does not modify state.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_platform_compatibility",
+      "description": "Retrieve platform compatibility information (min/max supported version) for a given platform name and version.\n\nArgs:\n    platform_name (str): The name of the platform (e.g., 'Android', 'iOS').\n    platform_version (str): The specific version of the platform.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": PlatformCompatibilityInfo  # Information about min/max supported version, etc.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description if not found\n    }\n\nConstraints:\n    - The pair (platform_name, platform_version) is used as a unique key for lookup.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "platform_name": {
+            "type": "string"
+          },
+          "platform_version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform_name",
+          "platform_version"
+        ]
+      }
+    },
+    {
+      "name": "list_platform_compatibility",
+      "description": "Lists compatibility info for all supported platforms and versions.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PlatformCompatibilityInfo]  # All platform compatibility entries\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_ui_setting",
+      "description": "Retrieve the current value and last_updated timestamp of a specific UI setting.\n\nArgs:\n    setting_name (str): The key/name of the UI setting to retrieve.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"setting_name\": str,\n            \"value\": str,\n            \"last_updated\": str\n        }\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"UI setting not found\"\n    }\n\nConstraints:\n    - The requested setting must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "setting_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "setting_name"
+        ]
+      }
+    },
+    {
+      "name": "list_ui_settings",
+      "description": "Retrieve all UI setting names and values.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[dict]  # Each dict has \"setting_name\" and \"value\"\n    }\n\nConstraints:\n    - Returns all UI settings; success even if no settings exist (empty list).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "update_app_configuration",
+      "description": "Update the app configuration for the specified app.\n\nArgs:\n    app_id (str): App identifier to update.\n    current_version (str): New version label/string to set.\n    release_channel (str): New release channel (e.g., 'beta', 'stable') to set.\n    last_updated (str): Timestamp string (ISO or epoch) of this update.\n\nReturns:\n    dict: {\n      \"success\": True,\n      \"message\": \"App configuration updated for app_id=...\"\n    }\n    or\n    {\n      \"success\": False,\n      \"error\": \"App ID ... does not exist\"\n    }\n\nConstraints:\n  - The given app_id must already exist in the system.\n  - The last_updated field is mandatory and will be set.\n  - Only current_version, release_channel, and last_updated are affected.\n  - All configuration changes must have the last_updated timestamp for auditability.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          },
+          "current_version": {
+            "type": "string"
+          },
+          "release_channel": {
+            "type": "string"
+          },
+          "last_updated": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_id",
+          "current_version",
+          "release_channel",
+          "last_updated"
+        ]
+      }
+    },
+    {
+      "name": "update_resource_version",
+      "description": "Set a new version for a given resource type (creating or updating as needed).\nEnsures each resource_type remains unique and updates the last_updated timestamp.\n\nArgs:\n    resource_type (str): The type identifier for the resource (e.g., 'menu', 'translations').\n    version (str): The new version string to assign.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Resource version updated.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Reason for failure.\"\n            }\n\nConstraints:\n    - Each resource_type must have a unique version tracked.\n    - Must update last_updated timestamp to now.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_type": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_type",
+          "version"
+        ]
+      }
+    },
+    {
+      "name": "update_platform_compatibility",
+  "description": "Modify the platform compatibility info for a platform/version.\n\nArgs:\n    platform_name (str): The name of the platform (e.g., \"Android\", \"iOS\").\n    platform_version (str): The major (or major.minor) platform version to update.\n    min_supported_version (str): New minimum supported version.\n    max_supported_version (str): New maximum supported version.\n    last_updated (str): Timestamp of this configuration change (ISO or epoch).\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Platform compatibility for ... updated.\" }\n        On failure: { \"success\": False, \"error\": \"...reason...\" }\n\nConstraints:\n    - The record to update must exist. (No create-on-missing.)\n    - The min_supported_version must not be greater than max_supported_version (numeric version compare when possible).\n    - All configuration changes should be timestamped (last_updated).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "platform_name": {
+            "type": "string"
+          },
+          "platform_version": {
+            "type": "string"
+          },
+          "min_supported_version": {
+            "type": "string"
+          },
+          "max_supported_version": {
+            "type": "string"
+          },
+          "last_updated": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform_name",
+          "platform_version",
+          "min_supported_version",
+          "max_supported_version",
+          "last_updated"
+        ]
+      }
+    },
+    {
+      "name": "apply_ui_settings_atomically",
+      "description": "Atomically apply a batch of UI setting updates.\n\nArgs:\n    updates (list): List of dicts, each with:\n        - 'setting_name' (str): the UI setting name to update.\n        - 'value' (str): the new value to assign.\n\nReturns:\n    dict:\n        On Success:\n            { \"success\": True, \"message\": \"All UI settings updated atomically\" }\n        On Failure:\n            {\n                \"success\": False,\n                \"error\": <reason string>\n            }\nConstraints:\n    - If any setting_name does not exist or input is malformed, no updates are applied.\n    - All last_updated fields must be set to the current timestamp.\n    - If updates is empty, do nothing and succeed.\n    - Duplicate setting_names in input are treated as an error (no updates performed).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "updates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "setting_name": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "setting_name",
+                "value"
+              ]
+            }
+          }
+        },
+        "required": [
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "batch_update_resource_versions",
+      "description": "Atomically update multiple resource types and their versions,\nenforcing per-resource-type uniqueness and timestamping 'last_updated' for auditability.\n\nArgs:\n    updates (list): List of dicts, each with 'resource_type' (str) and 'version' (str).\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"message\": \"Successfully updated N resource versions atomically.\"\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason for failure\n            }\n\nConstraints:\n    - Each resource type can appear at most once in the updates list.\n    - All updates are atomic: either all are applied, or none.\n    - All updates are timestamped with the same new 'last_updated'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "updates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "resource_type": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "resource_type",
+                "version"
+              ]
+            }
+          }
+        },
+        "required": [
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "timestamp_configuration_change",
+      "description": "Apply an updated last_updated timestamp to any configuration entity for auditability.\n\nArgs:\n    entity_type (str): The kind of entity to update.\n        Must be one of: 'app_configuration', 'resource_version', 'ui_setting'\n    identifier: The unique identifying key for the entity:\n        - For 'app_configuration': app_id (str)\n        - For 'resource_version': resource_type (str)\n        - For 'ui_setting': setting_name (str)\n    timestamp (str): The timestamp (ISO or epoch as used by the config DB) to set.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"...\",\n    }\n    or {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The identified entity must exist and support 'last_updated'.\n    - Only updates the last_updated field.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entity_type": {
+            "type": "string"
+          },
+          "identifier": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity_type",
+          "identifier",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "delete_resource_version",
+      "description": "Remove a resource version entry by resource_type.\n\nArgs:\n    resource_type (str): The resource type to delete from resource_versions.\n\nReturns:\n    dict:\n        - {\"success\": True, \"message\": \"Resource version '<resource_type>' deleted.\"}\n        - {\"success\": False, \"error\": \"Resource version for '<resource_type>' does not exist.\"}\n\nConstraints:\n    - Each resource type must have a unique version tracked.\n    - Only delete if resource_type exists.\n    - No exception should be raised; always return a result dict.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_type"
+        ]
+      }
+    },
+    {
+      "name": "remove_platform_compatibility",
+      "description": "Remove platform compatibility setting for a specific platform/version.\n\nArgs:\n    platform_name (str): The name of the platform (e.g., 'Android').\n    platform_version (str): The version string (e.g., '12.0').\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"message\": \"Platform compatibility for <platform_name> <platform_version> removed.\"\n        }\n    OR\n        {\n            \"success\": False,\n            \"error\": \"Platform compatibility for <platform_name> <platform_version> not found.\"\n        }\n\nConstraints:\n    - Must only remove the specified platform/version.\n    - No exceptions raised. Result indicated via return dict.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "platform_name": {
+            "type": "string"
+          },
+          "platform_version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform_name",
+          "platform_version"
+        ]
+      }
+    }
+  ]
+}

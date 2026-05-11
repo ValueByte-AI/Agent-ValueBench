@@ -1,0 +1,637 @@
+{
+  "env_name": "TimeSeriesDatabaseSystem",
+  "description": "A time series database system is specialized for efficiently storing, indexing, and querying large volumes of data points characterized by timestamped values, such as sensor readings or application metrics. These systems typically support measurements/series, advanced querying/filtering, integration hooks (webhooks), and rapid retrieval of the latest or historical data for analytics and alerting. They provide the foundation for telemetry, IoT solutions, and other domains requiring high-throughput, structured collection of time-indexed records.",
+  "initial_parameter_schema": {
+    "measurements": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "measurement_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "measurement_id",
+          "name",
+          "description"
+        ]
+      }
+    },
+    "datapoints": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "datapoint_id": {
+            "type": "string"
+          },
+          "measurement_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "value": {
+            "type": "number"
+          },
+          "tags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "source_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "datapoint_id",
+          "measurement_id",
+          "timestamp",
+          "value",
+          "tags",
+          "source_id"
+        ]
+      }
+    },
+    "queries": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "query_id": {
+            "type": "string"
+          },
+          "query_string": {
+            "type": "string"
+          },
+          "associated_measurements": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "filters": {
+            "type": "object"
+          },
+          "last_run_time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "query_id",
+          "query_string",
+          "associated_measurements",
+          "filters",
+          "last_run_time"
+        ]
+      }
+    },
+    "webhooks": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "webhook_id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "associated_query_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string"
+          },
+          "last_trigger_time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "webhook_id",
+          "url",
+          "associated_query_ids",
+          "status",
+          "last_trigger_time"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_measurement_by_name": [
+      "measurements"
+    ],
+    "get_measurement_by_id": [
+      "measurements"
+    ],
+    "list_measurements": [
+      "measurements"
+    ],
+    "get_datapoints_by_measurement": [
+      "datapoints",
+      "measurements"
+    ],
+    "get_latest_datapoints_by_measurement": [
+      "datapoints",
+      "measurements"
+    ],
+    "get_query_by_id": [
+      "queries"
+    ],
+    "list_queries_by_measurement": [
+      "measurements",
+      "queries"
+    ],
+    "list_queries_by_webhook": [
+      "queries",
+      "webhooks"
+    ],
+    "get_webhook_by_id": [
+      "webhooks"
+    ],
+    "list_webhooks": [
+      "webhooks"
+    ],
+    "run_query": [
+      "datapoints",
+      "measurements",
+      "queries"
+    ],
+    "get_latest_query_results": [
+      "datapoints",
+      "queries"
+    ],
+    "insert_datapoint": [
+      "datapoints",
+      "measurements"
+    ],
+    "insert_measurement": [
+      "measurements"
+    ],
+    "insert_query": [
+      "measurements",
+      "queries"
+    ],
+    "insert_webhook": [
+      "queries",
+      "webhooks"
+    ],
+    "update_query_last_run_time": [
+      "queries"
+    ],
+    "trigger_webhook": [
+      "datapoints",
+      "queries",
+      "webhooks"
+    ],
+    "update_webhook_status": [
+      "webhooks"
+    ],
+    "delete_datapoint": [
+      "datapoints"
+    ],
+    "delete_measurement": [
+      "datapoints",
+      "measurements"
+    ],
+    "delete_query": [
+      "queries",
+      "webhooks"
+    ],
+    "delete_webhook": [
+      "webhooks"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_measurement_by_name",
+      "description": "Retrieve metadata and ID for a measurement given its name.\n\nArgs:\n    name (str): The measurement name to search for.\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"data\": MeasurementInfo}\n        - On failure: {\"success\": False, \"error\": \"Measurement not found\"}\n\nNotes:\n    - If multiple measurements share the same name, the first found will be returned.\n    - Measurement names are not guaranteed to be unique unless enforced elsewhere.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_measurement_by_id",
+      "description": "Retrieve metadata for a measurement by its unique ID.\n\nArgs:\n    measurement_id (str): The unique identifier of the measurement.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": MeasurementInfo\n    } on success,\n    or\n    {\n        \"success\": False,\n        \"error\": \"Measurement not found\"\n    } if the measurement does not exist.\n\nConstraints:\n    - The measurement_id must exist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "measurement_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "measurement_id"
+        ]
+      }
+    },
+    {
+      "name": "list_measurements",
+      "description": "Get a list of all measurements registered in the database.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MeasurementInfo]  # All registered measurements (empty list if none)\n    }\n\nConstraints:\n    - Returns all MeasurementInfo entries in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_datapoints_by_measurement",
+      "description": "Fetch all DataPoints for a given measurement, optionally filtered by:\n    - time window (start_time <= timestamp <= end_time)\n    - tags (must match all key-value pairs exactly if provided)\n\nArgs:\n    measurement_id (str): The measurement ID whose data points are desired.\n    start_time (float, optional): If specified, lower bound (inclusive) for timestamps.\n    end_time (float, optional): If specified, upper bound (inclusive) for timestamps.\n    tag_filters (Dict[str, str], optional): If specified, filters for exact tag key-value matches.\n\nReturns:\n    dict: \n        { \"success\": True, \"data\": List[DataPointInfo] }  # May be empty if no matches.\n        or \n        { \"success\": False, \"error\": str }\n\nConstraints:\n    - The specified measurement_id must exist in the database.\n    - Tag matching uses exact equality for all provided filters.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "measurement_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "number"
+          },
+          "tag_filters": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "measurement_id"
+        ]
+      }
+    },
+    {
+      "name": "get_latest_datapoints_by_measurement",
+      "description": "Retrieve the most recent DataPoints for a specific measurement, sorted by timestamp descending.\n\nArgs:\n    measurement_id (str): The unique ID of the measurement.\n    limit (int, optional): The maximum number of datapoints to return. If None, returns all.\n\nReturns:\n    dict:\n        On success: {\n            \"success\": True,\n            \"data\": List[DataPointInfo], # ordered by timestamp descending; may be empty\n        }\n        On error: {\n            \"success\": False,\n            \"error\": str, # e.g., \"Measurement not found\"\n        }\n\nConstraints:\n    - measurement_id must exist in self.measurements\n    - Only datapoints belonging to the measurement_id are returned",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "measurement_id": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "measurement_id"
+        ]
+      }
+    },
+    {
+      "name": "get_query_by_id",
+      "description": "Retrieve full details of a query using its query_id.\n\nArgs:\n    query_id (str): Unique identifier of the query.\n\nReturns:\n    dict:\n        On success:\n        {\n            \"success\": True,\n            \"data\": QueryInfo  # Dictionary of full query details\n        }\n        On failure (query not found):\n        {\n            \"success\": False,\n            \"error\": \"Query not found\"\n        }\n\nConstraints:\n    - query_id must exist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query_id"
+        ]
+      }
+    },
+    {
+      "name": "list_queries_by_measurement",
+      "description": "List all queries that reference the given measurement_id.\n\nArgs:\n    measurement_id (str): The ID of the measurement to search queries for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[QueryInfo],  # May be empty if no queries found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If the measurement does not exist\n    }\n\nConstraints:\n    - The measurement_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "measurement_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "measurement_id"
+        ]
+      }
+    },
+    {
+      "name": "list_queries_by_webhook",
+      "description": "List all QueryInfo dicts associated with the given webhook_id.\n\nArgs:\n    webhook_id (str): The identifier of the webhook.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[QueryInfo],  # All currently existing queries for the webhook (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g. 'Webhook not found'\n    }\n\nConstraints:\n    - webhook_id must exist in the system.\n    - Only currently existing queries are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "webhook_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "webhook_id"
+        ]
+      }
+    },
+    {
+      "name": "get_webhook_by_id",
+      "description": "Retrieve a webhook's configuration using its webhook_id.\n\nArgs:\n    webhook_id (str): The unique identifier of the webhook.\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"data\": WebhookInfo}\n        - On failure: {\"success\": False, \"error\": \"Webhook not found\"}\n\nConstraints:\n    - webhook_id must exist in the webhooks dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "webhook_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "webhook_id"
+        ]
+      }
+    },
+    {
+      "name": "list_webhooks",
+      "description": "List all webhooks and their details currently present in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[WebhookInfo]  # List containing each webhook's info (empty if none exist)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "run_query",
+      "description": "Execute a query against the time series database, specified by either stored query_id or provided query_string plus filters.\n\nArgs:\n    query_id (str, optional): The ID of a persisted query to execute.\n    query_string (str, optional): Ad hoc query string (not actually parsed in this simple implementation).\n    filters (dict, optional): Filters to apply if using query_string (e.g., time range, tags).\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": List[DataPointInfo] }\n        - On error:   { \"success\": False, \"error\": str }\nConstraints:\n    - Must specify either query_id or query_string, not both.\n    - If using query_id, query must exist.\n    - Only datapoints in existing measurements will be returned.\n    - Filters can include:\n        - \"time_start\": float (optional)\n        - \"time_end\": float (optional)\n        - \"tags\": dict (optional): key-value pairs to match\n        - \"source_id\": str (optional)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query_id": {
+            "type": "string"
+          },
+          "query_string": {
+            "type": "string"
+          },
+          "filters": {
+            "type": "object"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "get_latest_query_results",
+      "description": "Retrieve the latest (most recent) result set of DataPoints for a given query, ordered by timestamp descending.\n\nArgs:\n    query_id (str): The ID of the query whose latest results to retrieve.\n\nReturns:\n    dict: On success,\n        { \"success\": True, \"data\": List[DataPointInfo] }\n      On failure,\n        { \"success\": False, \"error\": str }\n\nConstraints:\n    - Results must be filtered by the query's filters and associated_measurements.\n    - Results must be sorted by timestamp descending.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query_id"
+        ]
+      }
+    },
+    {
+      "name": "insert_datapoint",
+      "description": "Add a new DataPoint to a measurement, enforcing unique timestamp constraint per measurement.\n\nArgs:\n    datapoint_id (str): Unique identifier for this DataPoint.\n    measurement_id (str): The measurement/table to insert into (must exist).\n    timestamp (float): Timestamp for the DataPoint (must be unique within measurement).\n    value (float): The data value.\n    tags (Dict[str, str]): Metadata key-value pairs.\n    source_id (str): Source identifier.\n\nReturns:\n    dict: {\n      \"success\": True,\n      \"message\": \"DataPoint inserted successfully\"\n    }\n    or\n    {\n      \"success\": False,\n      \"error\": <reason>\n    }\n\nConstraints:\n    - The measurement_id must exist.\n    - Datapoint timestamp must be unique inside its measurement.\n    - datapoint_id must not already exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "datapoint_id": {
+            "type": "string"
+          },
+          "measurement_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "value": {
+            "type": "number"
+          },
+          "tags": {
+            "type": "object"
+          },
+          "source_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "datapoint_id",
+          "measurement_id",
+          "timestamp",
+          "value",
+          "tags",
+          "source_id"
+        ]
+      }
+    },
+    {
+      "name": "insert_measurement",
+      "description": "Register a new measurement in the system.\n\nArgs:\n    measurement_id (str): Unique identifier for the measurement.\n    name (str): Human-readable name for the measurement.\n    description (str): Measurement description.\n\nReturns:\n    dict:\n        - On success:\n            { \"success\": True, \"message\": \"Measurement <measurement_id> inserted.\" }\n        - On failure:\n            { \"success\": False, \"error\": \"...\" }\n\nConstraints:\n    - measurement_id must be unique within self.measurements.\n    - Does not enforce name uniqueness or other schema.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "measurement_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "measurement_id",
+          "name",
+          "description"
+        ]
+      }
+    },
+    {
+      "name": "insert_query",
+      "description": "Add a new query definition to the system.\n\nArgs:\n    query_id (str): Unique ID for the query. Must not already exist.\n    query_string (str): The query string or logic.\n    associated_measurements (List[str]): List of measurement_ids the query references. All must exist.\n    filters (Dict[str, Any], optional): Filtering options for the query. Defaults to empty dict.\n    last_run_time (float, optional): Initial value; defaults to 0.0.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Query <id> inserted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure.\"\n    }\n\nConstraints:\n    - Query ID must not already exist.\n    - All associated measurement IDs must exist.\n    - Filters may be omitted (treated as empty dict).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query_id": {
+            "type": "string"
+          },
+          "query_string": {
+            "type": "string"
+          },
+          "associated_measurements": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "filters": {
+            "type": "object"
+          },
+          "last_run_time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "query_id",
+          "query_string",
+          "associated_measurements"
+        ]
+      }
+    },
+    {
+      "name": "insert_webhook",
+      "description": "Register a new webhook and associate it with queries.\n\nArgs:\n    webhook_id (str): Unique identifier for the webhook.\n    url (str): The webhook's endpoint URL.\n    associated_query_ids (List[str]): List of existing query IDs to associate this webhook with.\n    status (str): The status for the webhook (default 'active').\n    last_trigger_time (float): Timestamp for last trigger (default 0.0).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Webhook registered and associated with queries.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - The webhook_id must be unique (not already in self.webhooks).\n    - All associated_query_ids must exist in self.queries.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "webhook_id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "associated_query_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string"
+          },
+          "last_trigger_time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "webhook_id",
+          "url",
+          "associated_query_ids"
+        ]
+      }
+    },
+    {
+      "name": "update_query_last_run_time",
+      "description": "Update the last_run_time for the query with the provided query_id.\n\nArgs:\n    query_id (str): The unique identifier of the query to update.\n    last_run_time (float): The timestamp (Unix epoch) representing the new last_run_time.\n\nReturns:\n    dict: \n        { \"success\": True, \"message\": \"Query last_run_time updated\" }\n        or\n        { \"success\": False, \"error\": \"Query not found\" }\n\nConstraints:\n    - The query_id must exist in the system.\n    - last_run_time should be a float (Unix timestamp).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query_id": {
+            "type": "string"
+          },
+          "last_run_time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "query_id",
+          "last_run_time"
+        ]
+      }
+    },
+    {
+      "name": "trigger_webhook",
+      "description": "Attempt to explicitly trigger the webhook if any associated query has a successful/relevant result.\nOn success, updates last_trigger_time and status.\n\nArgs:\n    webhook_id (str): ID of the webhook to trigger.\n\nReturns:\n    dict:\n        success (bool): True if webhook triggered, False otherwise.\n        message (str): Success message, if any.\n        error (str): Error message, if any.\n\nConstraints:\n    - Webhooks can only be triggered if at least one associated query returns a relevant result (at least one datapoint for its associated measurement(s)).\n    - Updates last_trigger_time and webhook status upon success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "webhook_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "webhook_id"
+        ]
+      }
+    },
+    {
+      "name": "update_webhook_status",
+      "description": "Change the status of a webhook (e.g., active, inactive, disabled).\n\nArgs:\n    webhook_id (str): The unique identifier of the webhook to update.\n    status (str): The new status to set (e.g., 'active', 'inactive', 'disabled', etc.).\n\nReturns:\n    dict: \n      - { \"success\": True, \"message\": \"Webhook status updated.\" } on success\n      - { \"success\": False, \"error\": <reason> } on failure\n\nConstraints:\n    - The webhook must exist.\n    - Status must be a non-empty string (no schema restrictions specified).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "webhook_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "webhook_id",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "delete_datapoint",
+      "description": "Remove a datapoint by its unique datapoint_id.\n\nArgs:\n    datapoint_id (str): The unique identifier of the datapoint to be removed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Datapoint <datapoint_id> deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Datapoint <datapoint_id> does not exist.\"\n    }\n\nConstraints:\n    - The datapoint_id must exist in the database system.\n    - No cascading or measurement-level changes occur.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "datapoint_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "datapoint_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_measurement",
+      "description": "Remove a measurement and all associated datapoints from the system.\n\nArgs:\n    measurement_id (str): Unique identifier for the measurement to remove.\n\nReturns:\n    dict:\n        - If successful:\n            {\"success\": True, \"message\": \"Measurement and associated datapoints deleted.\"}\n        - If measurement_id does not exist:\n            {\"success\": False, \"error\": \"Measurement does not exist.\"}\n\nConstraints:\n    - All DataPoints with the specified measurement_id will be removed.\n    - Queries or webhooks referencing this measurement are not modified.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "measurement_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "measurement_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_query",
+      "description": "Remove a persistently saved query by its query_id.\n\nArgs:\n    query_id (str): The ID of the query to delete.\n\nReturns:\n    dict: \n      - On success: { \"success\": True, \"message\": \"Query <query_id> deleted.\" }\n      - On failure: { \"success\": False, \"error\": \"Query <query_id> does not exist.\" }\n\nConstraints:\n    - The query must exist.\n    - If the query is referenced by any webhooks, it should be removed from their associated_query_ids.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_webhook",
+      "description": "Remove a webhook from the system by its webhook_id.\n\nArgs:\n    webhook_id (str): The unique identifier of the webhook to remove.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Webhook <webhook_id> deleted\" }\n        - On failure: { \"success\": False, \"error\": \"Webhook not found\" }\n\nConstraints:\n    - The webhook must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "webhook_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "webhook_id"
+        ]
+      }
+    }
+  ]
+}

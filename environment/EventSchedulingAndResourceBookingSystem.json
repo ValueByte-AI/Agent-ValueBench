@@ -1,0 +1,657 @@
+{
+  "env_name": "EventSchedulingAndResourceBookingSystem",
+  "description": "An event scheduling and resource booking system manages the lifecycle of events, reservations of resources, and user authentication. It tracks bookable assets (such as rooms or equipment), event details, and user session data. These systems are commonly used in organizational and commercial contexts to coordinate meetings, allocate resources, and ensure authorized access to scheduling capabilities.",
+  "initial_parameter_schema": {
+    "resources": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "availability_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_id",
+          "name",
+          "type",
+          "location",
+          "availability_status"
+        ]
+      }
+    },
+    "events": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "organizer_id": {
+            "type": "string"
+          },
+          "resource_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "event_id",
+          "title",
+          "description",
+          "start_time",
+          "end_time",
+          "location",
+          "organizer_id",
+          "resource_ids",
+          "participants"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "role",
+          "contact_info",
+          "account_status"
+        ]
+      }
+    },
+    "sessions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "authentication_status": {
+            "type": "string"
+          },
+          "last_active": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "user_id",
+          "authentication_status",
+          "last_active"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "check_authentication_status": [
+      "sessions",
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_user_by_session": [
+      "sessions",
+      "users"
+    ],
+    "list_all_resources": [
+      "resources",
+      "sessions"
+    ],
+    "list_available_resources": [
+      "resources",
+      "sessions"
+    ],
+    "get_resource_by_id": [
+      "resources",
+      "sessions"
+    ],
+    "list_all_events": [
+      "events",
+      "sessions"
+    ],
+    "get_event_by_id": [
+      "events",
+      "sessions"
+    ],
+    "get_event_resources": [
+      "events",
+      "resources",
+      "sessions"
+    ],
+    "get_active_session_by_user": [
+      "sessions",
+      "users"
+    ],
+    "get_session_info": [
+      "sessions"
+    ],
+    "create_event": [
+      "events",
+      "resources",
+      "sessions",
+      "users"
+    ],
+    "book_resource": [
+      "resources",
+      "sessions"
+    ],
+    "release_resource": [
+      "resources"
+    ],
+    "update_resource_status": [
+      "resources"
+    ],
+    "expire_session": [
+      "sessions"
+    ],
+    "add_participant_to_event": [
+      "events",
+      "sessions",
+      "users"
+    ],
+    "remove_participant_from_event": [
+      "events",
+      "users"
+    ],
+    "update_event": [
+      "events",
+      "resources",
+      "sessions"
+    ],
+    "cancel_event": [
+      "events",
+      "resources",
+      "sessions"
+    ]
+  },
+  "tools": [
+    {
+      "name": "check_authentication_status",
+      "description": "Determines if a session or user is currently authenticated.\n\nArgs:\n    session_id (str, optional): The session ID to check authentication for.\n    user_id (str, optional): The user ID to check authentication for (checks for any active session).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"authenticated\": bool,\n            \"session_id\": str or None,\n            \"user_id\": str or None,\n            \"reason\": str\n        }\n    }\n    OR\n    { \"success\": False, \"error\": str }\n\nConstraints:\n    - At least one of session_id or user_id must be provided.\n    - A session is considered authenticated if authentication_status == \"authenticated\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "anyOf": [
+          {
+            "required": [
+              "session_id"
+            ]
+          },
+          {
+            "required": [
+              "user_id"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user information for the specified user_id.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"data\": UserInfo }\n        - On error:   { \"success\": False, \"error\": \"User not found\" }\n\nConstraints:\n    - user_id must exist in self.users.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_session",
+      "description": "Retrieve the user information associated with a valid, authenticated session ID.\n\nArgs:\n    session_id (str): The session identifier.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": UserInfo }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - session_id must exist in the system.\n    - Only authenticated sessions ('authentication_status' == 'authenticated') are allowed.\n    - The associated user must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_resources",
+      "description": "List all resources (rooms, equipment, etc.) tracked by the system.\n\nArgs:\n    session_id (str): The session identifier of the requesting user.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": List[ResourceInfo]  # May be empty if no resources\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Reason: invalid session, not authenticated, etc.\n        }\n\nConstraints:\n    - Only authenticated users (active session, authentication_status == 'authenticated') can access resource details.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "list_available_resources",
+      "description": "List all resources currently available for booking (filtered by availability_status).\n\nArgs:\n    session_id (str): The current user's session identifier.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[ResourceInfo],  # List may be empty if nothing available.\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason for failure (authentication/session issue)\n            }\n     \nConstraints:\n    - Only authenticated users (via valid session with 'authenticated' status) can list resources.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "get_resource_by_id",
+      "description": "Retrieve the details of a resource by resource_id.\n\nArgs:\n    session_id (str): The session of the requesting user.\n    resource_id (str): The ID of the resource to retrieve.\n\nReturns:\n    dict:\n      - If authenticated and resource exists:\n          {\n              \"success\": True,\n              \"data\": ResourceInfo\n          }\n      - If session invalid or not authenticated:\n          {\n              \"success\": False,\n              \"error\": \"User not authenticated\"\n          }\n      - If resource not found:\n          {\n              \"success\": False,\n              \"error\": \"Resource not found\"\n          }\n\nConstraints:\n    - Only authenticated users can access resource details.\n    - Session must exist and be authenticated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "resource_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "resource_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_events",
+      "description": "Retrieve all scheduled events in the system.\n\nArgs:\n    session_id (str): The ID of the user session requesting the event list.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[EventInfo]  # List of all events (can be empty if none).\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (not authenticated, invalid session, etc.)\n    }\n\nConstraints:\n    - Only authenticated users (with valid session and authentication_status == \"authenticated\") can access event details.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "get_event_by_id",
+      "description": "Retrieve all details of an event given its event_id. Only authenticated users can perform this operation.\n\nArgs:\n    session_id (str): The session identifier of the requesting user.\n    event_id (str): The unique identifier of the target event.\n\nReturns:\n    dict: On success:\n            { \"success\": True, \"data\": EventInfo }\n          On failure:\n            { \"success\": False, \"error\": \"Event not found\" | \"User not authenticated\" | \"Invalid or expired session\" }\n\nConstraints:\n    - Only authenticated users (session with 'authentication_status' == 'authenticated') can access event details.\n    - The event must exist (event_id in self.events).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "get_event_resources",
+      "description": "Lists all resource information linked to the given event by resource_ids.\n\nArgs:\n    event_id (str): ID of the event to query.\n    session_id (str): Session ID of the requesting user. Must be authenticated.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ResourceInfo]  # List of matched resources (may be empty if event has no resources)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (authentication required, not found, etc.)\n    }\n\nConstraints:\n    - Only authenticated users (authentication_status == 'authenticated') can use this.\n    - Event must exist.\n    - All referenced resource_ids in the event must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "get_active_session_by_user",
+      "description": "Retrieve the active session (if any) for a user_id.\n\nArgs:\n    user_id (str): The ID of the user for whom to find an active session.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": SessionInfo  # The user's active session data\n    } or {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The user must exist.\n    - A session is \"active\" if authentication_status is \"active\" or \"authenticated\".\n    - Each session is associated with exactly one user.\n    - If multiple active sessions exist, return the one with the latest last_active timestamp.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_session_info",
+      "description": "Retrieve session details by session_id.\n\nArgs:\n    session_id (str): The unique session identifier to look up.\n\nReturns:\n    dict: \n        { \"success\": True, \"data\": SessionInfo } if session is found\n        { \"success\": False, \"error\": \"Session not found\" } if no such session exists\n\nConstraints:\n    - Only looks up by provided session_id; does not check active/expired/authenticated status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "create_event",
+      "description": "Schedule a new event, referencing resources and participants.\nEnsures:\n  - Only authenticated users (session_id) can create,\n  - All resource_ids exist and are assignable,\n  - Organizer and participants are valid user_ids.\n\nArgs:\n    session_id (str): Calling user's session token (must be authenticated)\n    title (str): Event title\n    description (str): Event description\n    start_time (str): Event start time (ISO string)\n    end_time (str): Event end time (ISO string)\n    location (str): Event location string\n    organizer_id (str): User ID creating event\n    resource_ids (List[str]): List of resource IDs to link\n    participants (List[str]): List of user IDs as event participants\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Event created\", \"event_id\": <new_event_id> }\n        On failure:\n            { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Only authenticated users (session_id with authentication_status==\"authenticated\") may create.\n    - All resource_ids must exist and be available for assignment.\n    - Organizer and participants user_ids must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "organizer_id": {
+            "type": "string"
+          },
+          "resource_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "session_id",
+          "title",
+          "description",
+          "start_time",
+          "end_time",
+          "location",
+          "organizer_id",
+          "resource_ids",
+          "participants"
+        ]
+      }
+    },
+    {
+      "name": "book_resource",
+      "description": "Books a resource (sets its status to 'booked') for a specific time interval if it is available,\nand the requesting user is authenticated.\n\nArgs:\n    resource_id (str): The ID of the resource to book.\n    session_id (str): The session of the requesting user (must be active and authenticated).\n    start_time (str): Booking interval start time (string).\n    end_time (str): Booking interval end time (string).\n\nReturns:\n    dict: \n        On success:\n            {'success': True, 'message': \"Resource <id> has been booked from <start> to <end>.\"}\n        On failure:\n            {'success': False, 'error': \"<reason>\"}\n\nConstraints:\n    - Only authenticated users can perform bookings.\n    - Resource must exist and be available (availability_status == 'available').\n    - Session must be valid and authenticated.\n    - No resource double-booking (simple availability_status).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_id",
+          "session_id",
+          "start_time",
+          "end_time"
+        ]
+      }
+    },
+    {
+      "name": "release_resource",
+      "description": "Mark a resource as 'available' after event completion or cancellation.\n\nArgs:\n    resource_id (str): The unique identifier of the resource to release.\n\nReturns:\n    dict: \n      - On success: { \"success\": True, \"message\": \"Resource <resource_id> released and marked as available.\" }\n      - On failure: { \"success\": False, \"error\": \"Resource not found.\" }\n\nConstraints:\n    - The resource must exist in the system.\n    - The resource's availability_status will be set to 'available' upon success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_id"
+        ]
+      }
+    },
+    {
+      "name": "update_resource_status",
+      "description": "Change a resource's availability_status to a new value.\n\nArgs:\n    resource_id (str): The unique identifier of the resource to update.\n    new_status (str): The new availability_status (e.g., 'available', 'booked', 'maintenance', etc.).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Resource availability_status updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # reason for failure, e.g. resource_id does not exist\n    }\n\nConstraints:\n    - resource_id must exist.\n    - No explicit status value validation or permission checks are implemented unless specified elsewhere.\n    - Should ideally reflect booking status, but operation allows manual updating.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "expire_session",
+      "description": "Expire a session due to inactivity or logout.\nUpdates the session's authentication_status to 'expired'.\n\nArgs:\n    session_id (str): The ID of the session to expire.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Session expired successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Session does not exist.\"\n    }\n\nConstraints:\n    - session_id must exist in the system.\n    - This operation is idempotent (expiring an already expired session has no adverse effect).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "add_participant_to_event",
+      "description": "Add a user (user_id) as a participant to an event (event_id).\n\nArgs:\n    session_id (str): Current session—must be authenticated.\n    event_id (str): Event to which the participant is added.\n    user_id (str): User to be added as a participant.\n\nReturns:\n    dict:\n        Success: { \"success\": True, \"message\": \"<user> added as participant to <event>\" }\n        Failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Only authenticated users (session) may perform this operation.\n    - Event and user must exist.\n    - User must not already be a participant of the event.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "event_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "event_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_participant_from_event",
+      "description": "Remove a user (user_id) as a participant from an event (event_id).\n\nArgs:\n    event_id (str): The unique identifier of the event.\n    user_id (str): The unique identifier of the user to remove.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"User removed from event participants.\" }\n        On failure: { \"success\": False, \"error\": str }\n\nConstraints:\n    - The event must exist.\n    - The user must exist.\n    - The user must be a participant of the event.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "update_event",
+      "description": "Update an event's details. Only authenticated users may update an event.\nOnly fields specified are updated; others remain unchanged.\n\nArgs:\n    session_id (str): Session identifier for authentication.\n    event_id (str): Identifier of the event to update.\n    title (str): New title for the event (optional).\n    description (str): New description (optional).\n    start_time (str): Updated start time (optional).\n    end_time (str): Updated end time (optional).\n    location (str): Updated location (optional).\n    organizer_id (str): Updated organizer (optional).\n    resource_ids (List[str]): Updated list of linked resources (optional).\n    participants (List[str]): Updated list of participants (optional).\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Event updated successfully.\" }\n        On error: { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - Only authenticated users can update events.\n    - resource_ids (if updated) must reference valid, assignable resources.\n    - Replaced resources are released when no longer used by any event.\n    - Event must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "event_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "organizer_id": {
+            "type": "string"
+          },
+          "resource_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "session_id",
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "cancel_event",
+      "description": "Cancel a scheduled event and release all associated resources.\n\nArgs:\n    session_id (str): The current user's session for authentication.\n    event_id (str): The identifier for the event to cancel.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Event canceled and resources released.\"\n    }\n    or\n    dict: {\n        \"success\": False,\n        \"error\": str  # Description of error\n    }\n\nConstraints:\n    - Only authenticated sessions may cancel events.\n    - All resources associated with the event are released if they are no longer used by another event.\n    - Event must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "event_id"
+        ]
+      }
+    }
+  ]
+}

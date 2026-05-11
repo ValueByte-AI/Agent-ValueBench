@@ -1,0 +1,408 @@
+{
+  "env_name": "HospitalBillingManagementSystem",
+  "description": "A hospital billing management system tracks patient billing records, manages outstanding balances, and processes payments for medical services. It maintains stateful data including bill IDs, patient information, billed amounts, and payment history. The system supports typical operations such as bill lookup, payment processing, and account reconciliation to ensure accurate financial management within healthcare facilities.",
+  "initial_parameter_schema": {
+    "patients": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id",
+          "name",
+          "contact_info"
+        ]
+      }
+    },
+    "bills": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "bill_id": {
+            "type": "string"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "total_amount": {
+            "type": "number"
+          },
+          "outstanding_balance": {
+            "type": "number"
+          },
+          "bill_date": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bill_id",
+          "patient_id",
+          "total_amount",
+          "outstanding_balance",
+          "bill_date",
+          "status"
+        ]
+      }
+    },
+    "payments": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "payment_id": {
+            "type": "string"
+          },
+          "bill_id": {
+            "type": "string"
+          },
+          "payment_date": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "payment_method": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "payment_id",
+          "bill_id",
+          "payment_date",
+          "amount",
+          "payment_method"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_patient_by_id": [
+      "patients"
+    ],
+    "list_all_patients": [
+      "patients"
+    ],
+    "get_bill_by_id": [
+      "bills"
+    ],
+    "list_bills_by_patient": [
+      "bills",
+      "patients"
+    ],
+    "get_bill_status": [
+      "bills"
+    ],
+    "get_bill_outstanding_balance": [
+      "bills"
+    ],
+    "list_payments_by_bill": [
+      "bills",
+      "payments"
+    ],
+    "get_payment_by_id": [
+      "payments"
+    ],
+    "apply_payment_to_bill": [
+      "bills",
+      "payments"
+    ],
+    "update_bill_status": [
+      "bills"
+    ],
+    "update_bill_outstanding_balance": [
+      "bills"
+    ],
+    "create_bill": [
+      "bills",
+      "patients"
+    ],
+    "delete_payment": [
+      "bills",
+      "payments"
+    ],
+    "revert_payment": [
+      "bills",
+      "payments"
+    ],
+    "edit_bill_amount": [
+      "bills"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_patient_by_id",
+      "description": "Retrieve patient information given a patient_id.\n\nArgs:\n    patient_id (str): The identifier of the patient.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": PatientInfo  # All patient fields\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"Patient not found\"\n    }\n\nConstraints:\n    - The patient_id must exist in the system for a successful query.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_patients",
+      "description": "Retrieve information for all registered patients in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PatientInfo]  # May be empty if no patients exist\n    }\n\nConstraints:\n    - No special constraints; all patients present in the self.patients dictionary are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_bill_by_id",
+      "description": "Retrieve bill details (BillInfo) based on the provided bill_id.\n\nArgs:\n    bill_id (str): The bill identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": BillInfo,  # on success\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # if the bill_id does not exist\n    }\n\nConstraints:\n    - The provided bill_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bill_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bill_id"
+        ]
+      }
+    },
+    {
+      "name": "list_bills_by_patient",
+      "description": "List all bills (with metadata) associated with the specified patient.\n\nArgs:\n    patient_id (str): The ID of the patient whose bills are to be listed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BillInfo]  # List of BillInfo dicts; may be empty if the patient has no bills.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description, e.g., patient not found\n    }\n\nConstraints:\n    - The patient_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      }
+    },
+    {
+      "name": "get_bill_status",
+      "description": "Retrieve the current status (\"unpaid\", \"partially paid\", \"paid\") of the bill with the given bill_id.\n\nArgs:\n    bill_id (str): The unique identifier for the bill.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": <str: status> }\n        - On failure: { \"success\": False, \"error\": \"Bill not found\" }\n\nConstraints:\n    - The bill with bill_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bill_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bill_id"
+        ]
+      }
+    },
+    {
+      "name": "get_bill_outstanding_balance",
+      "description": "Retrieve the outstanding balance amount for a given bill.\n\nArgs:\n    bill_id (str): The ID of the bill whose outstanding balance is being queried.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": float  # The outstanding balance amount\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason for failure, e.g., bill not found\n            }\n\nConstraints:\n    - The bill must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bill_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bill_id"
+        ]
+      }
+    },
+    {
+      "name": "list_payments_by_bill",
+      "description": "Retrieve all payment records for a specific bill_id.\n\nArgs:\n    bill_id (str): The ID of the bill whose payments are to be listed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PaymentInfo],  # list of payments for the bill (may be empty if no payments)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,  # explanation, e.g. \"Bill does not exist\"\n    }\n\nConstraints:\n    - The bill with bill_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bill_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bill_id"
+        ]
+      }
+    },
+    {
+      "name": "get_payment_by_id",
+      "description": "Retrieve payment details for a given payment_id.\n\nArgs:\n    payment_id (str): The unique identifier for the payment record.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": PaymentInfo  # The payment detail, if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g., payment not found)\n    }\n\nConstraints:\n    - No additional constraints; simply a read lookup for payment_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "payment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "payment_id"
+        ]
+      }
+    },
+    {
+      "name": "apply_payment_to_bill",
+      "description": "Processes a new payment for a bill. Updates the bill's outstanding balance, adds the payment,\nand changes the bill's status to 'paid' if the outstanding balance reaches zero.\n\nArgs:\n    bill_id (str): Bill to which payment applies.\n    payment_id (str): Unique identifier for the new payment.\n    payment_date (str): Date of payment.\n    amount (float): Amount paid (must be > 0 and <= outstanding balance).\n    payment_method (str): Payment method (cash, card, etc.).\n\nReturns:\n    dict: Success or error message.\n\nConstraints:\n    - Bill must exist.\n    - Payments cannot exceed the outstanding balance.\n    - Each payment_id must be unique.\n    - After payment, bill's outstanding_balance is reduced by amount.\n    - When outstanding_balance is zero, status becomes 'paid'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bill_id": {
+            "type": "string"
+          },
+          "payment_id": {
+            "type": "string"
+          },
+          "payment_date": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "payment_method": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bill_id",
+          "payment_id",
+          "payment_date",
+          "amount",
+          "payment_method"
+        ]
+      }
+    },
+    {
+      "name": "update_bill_status",
+      "description": "Explicitly set the status of a bill when it matches the bill's current balance state.\n\nArgs:\n    bill_id (str): The unique identifier of the bill to modify.\n    new_status (str): The new status to assign (e.g., 'unpaid', 'partially paid', 'paid').\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Bill status updated to <new_status>.\" }\n        On error (e.g., bill missing or inconsistent status):\n            { \"success\": False, \"error\": \"<reason>.\" }\n\nConstraints:\n    - Bill must exist to be updated.\n    - Explicit status overrides must remain consistent with the current total_amount and outstanding_balance.\n    - Expected status is 'paid' if outstanding_balance == 0, 'unpaid' if outstanding_balance == total_amount, and 'partially paid' otherwise.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bill_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bill_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "update_bill_outstanding_balance",
+      "description": "Adjust the outstanding balance of a bill. If the outstanding balance\nbecomes zero, also update the bill status to 'paid'.\n\nArgs:\n    bill_id (str): ID of the target bill.\n    new_outstanding_balance (float): New outstanding balance value.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Outstanding balance updated for Bill <bill_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <str>\n    }\n\nConstraints:\n    - Bill must exist.\n    - Outstanding balance cannot be negative.\n    - Bill status changes to 'paid' if outstanding balance is zero.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bill_id": {
+            "type": "string"
+          },
+          "new_outstanding_balance": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "bill_id",
+          "new_outstanding_balance"
+        ]
+      }
+    },
+    {
+      "name": "create_bill",
+      "description": "Create a new bill entry for a patient.\n\nArgs:\n    bill_id (str): Unique identifier for the new bill.\n    patient_id (str): Existing patient's ID this bill is for.\n    total_amount (float): Total amount billed (>0).\n    bill_date (str): Date the bill is issued (format e.g. 'YYYY-MM-DD').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Bill created for patient {patient_id}\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure\"\n    }\n\nConstraints:\n    - Patient must exist.\n    - bill_id must be unique.\n    - total_amount must be positive.\n    - outstanding_balance initialized to total_amount.\n    - status initialized to 'unpaid'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bill_id": {
+            "type": "string"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "total_amount": {
+            "type": "number"
+          },
+          "bill_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bill_id",
+          "patient_id",
+          "total_amount",
+          "bill_date"
+        ]
+      }
+    },
+    {
+      "name": "delete_payment",
+      "description": "Remove a payment record from the system and update related bill's outstanding balance and status.\n\nArgs:\n    payment_id (str): The unique ID of the payment to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Payment <payment_id> deleted and bill adjusted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - Payment to be deleted must exist.\n    - Associated bill must exist.\n    - Removing the payment increases the bill's outstanding_balance.\n    - If the bill status is \"paid\" and outstanding_balance is increased > 0, set status appropriately.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "payment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "payment_id"
+        ]
+      }
+    },
+    {
+      "name": "revert_payment",
+      "description": "Revert a specific payment and adjust the associated bill’s outstanding balance and status.\n\nArgs:\n    payment_id (str): The payment to revert.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Payment reverted, bill updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - Payment must exist.\n    - Bill associated with payment must exist.\n    - After reversion, outstanding_balance should not exceed total_amount.\n    - Bill status must be updated: \n        \"paid\" if outstanding_balance == 0,\n        \"unpaid\" if outstanding_balance == total_amount,\n        \"partially paid\" otherwise.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "payment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "payment_id"
+        ]
+      }
+    },
+    {
+      "name": "edit_bill_amount",
+      "description": "Modify the total amount and/or outstanding balance of a bill.\nThis is an admin-level operation.\n\nArgs:\n    bill_id (str): The ID of the bill to modify.\n    total_amount (float, optional): The new total amount. Must be non-negative, if provided.\n    outstanding_balance (float, optional): The new outstanding balance. Must be non-negative and <= total_amount.\n\nReturns:\n    dict:\n        - On success:\n            {\"success\": True, \"message\": \"Bill amount and/or outstanding balance updated successfully.\"}\n        - On failure:\n            {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - Bill must exist.\n    - Outstanding balance must not exceed total amount or be negative.\n    - Total amount must not be negative.\n    - Status auto-updates: paid if outstanding_balance==0, unpaid/partially paid otherwise.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bill_id": {
+            "type": "string"
+          },
+          "total_amount": {
+            "type": "number"
+          },
+          "outstanding_balance": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "bill_id"
+        ]
+      }
+    }
+  ]
+}

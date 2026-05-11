@@ -1,0 +1,706 @@
+{
+  "env_name": "MedicationManagementApplication",
+  "description": "A medication management application is a digital platform that helps users track and adhere to their prescribed medication schedules. It securely stores user profiles, manages lists of medications, and schedules reminders for each dose. The system supports querying and updating medication events, notification delivery, and historical adherence tracking.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "account_sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "contact_info",
+          "account_sta"
+        ]
+      }
+    },
+    "medications": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "medication_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "dosage": {
+            "type": "string"
+          },
+          "instruction": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "medication_id",
+          "user_id",
+          "name",
+          "dosage",
+          "instruction"
+        ]
+      }
+    },
+    "reminders": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "reminder_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "medication_id": {
+            "type": "string"
+          },
+          "schedule_time": {
+            "type": "string"
+          },
+          "recurrence_pattern": {
+            "type": "string"
+          },
+          "active_sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reminder_id",
+          "user_id",
+          "medication_id",
+          "schedule_time",
+          "recurrence_pattern",
+          "active_sta"
+        ]
+      }
+    },
+    "dose_events": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "medication_id": {
+            "type": "string"
+          },
+          "scheduled_time": {
+            "type": "string"
+          },
+          "taken_time": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "user_id",
+          "medication_id",
+          "scheduled_time",
+          "taken_time",
+          "sta"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_id": [
+      "users"
+    ],
+    "list_medications_for_user": [
+      "medications",
+      "users"
+    ],
+    "get_medication_by_id": [
+      "medications"
+    ],
+    "list_active_reminders_for_user": [
+      "reminders",
+      "users"
+    ],
+    "list_reminders_for_user": [
+      "reminders",
+      "users"
+    ],
+    "list_reminders_for_user_and_medication": [
+      "medications",
+      "reminders",
+      "users"
+    ],
+    "get_reminder_by_id": [
+      "reminders"
+    ],
+    "check_reminder_overlap": [
+      "medications",
+      "reminders",
+      "users"
+    ],
+    "list_dose_events_for_user": [
+      "dose_events",
+      "users"
+    ],
+    "list_dose_events_for_user_and_medication": [
+      "dose_events",
+      "medications",
+      "users"
+    ],
+    "get_dose_event_by_id": [
+      "dose_events"
+    ],
+    "create_reminder": [
+      "medications",
+      "reminders",
+      "users"
+    ],
+    "update_reminder_status": [
+      "reminders"
+    ],
+    "update_reminder_time": [
+      "reminders"
+    ],
+    "delete_reminder": [
+      "reminders"
+    ],
+    "create_dose_event": [
+      "dose_events",
+      "medications",
+      "users"
+    ],
+    "update_dose_event_status": [
+      "dose_events"
+    ],
+    "create_medication": [
+      "medications",
+      "users"
+    ],
+    "update_medication": [
+      "medications"
+    ],
+    "delete_medication": [
+      "dose_events",
+      "medications",
+      "reminders"
+    ],
+    "create_user": [
+      "users"
+    ],
+    "update_user_account_status": [
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve detailed user information for a given user ID.\n\nArgs:\n    _id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo,  # User information if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"User not found\" if the ID does not exist\n    }\n\nConstraints:\n    - The user ID must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id"
+        ]
+      }
+    },
+    {
+      "name": "list_medications_for_user",
+      "description": "Retrieve all medications assigned to a specific user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict:\n        - On success: {\n              \"success\": True,\n              \"data\": List[MedicationInfo]  # all medications for the user (may be empty)\n          }\n        - On failure: {\n              \"success\": False,\n              \"error\": str  # Reason, e.g., \"User does not exist\"\n          }\n\nConstraints:\n    - The user_id must reference an existing user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_medication_by_id",
+      "description": "Retrieve details for a specific medication via medication ID.\n\nArgs:\n    medication_id (str): The unique identifier of the medication.\n\nReturns:\n    dict:\n        On success: {\n            \"success\": True,\n            \"data\": MedicationInfo\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": str (\"Medication not found\")\n        }\nConstraints:\n    - The medication_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "medication_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "medication_id"
+        ]
+      }
+    },
+    {
+      "name": "list_active_reminders_for_user",
+      "description": "Retrieve all active medication reminders for a given user ID.\n\nArgs:\n    user_id (str): The user ID for which to list active reminders.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ReminderInfo]  # All active reminders for the user, or []\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - User must exist.\n    - Only reminders with active_sta == \"active\" are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_reminders_for_user",
+      "description": "Retrieve all reminders (active or inactive) for a user by their user ID.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ReminderInfo], # empty list if none found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g. user does not exist\n    }\n\nConstraints:\n    - user_id must refer to an existing user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_reminders_for_user_and_medication",
+      "description": "Retrieve all reminders for a given user ID and medication ID.\n\nArgs:\n    user_id (str): The user's unique identifier.\n    medication_id (str): The medication's unique identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ReminderInfo]  # List of matching reminders (possibly empty)\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Error reason (\"User not found\", \"Medication not found\", etc)\n    }\n\nConstraints:\n    - The user must exist.\n    - The medication must exist and be assigned to the user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "medication_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "medication_id"
+        ]
+      }
+    },
+    {
+      "name": "get_reminder_by_id",
+      "description": "Retrieve details for a specific reminder by its reminder ID.\n\nArgs:\n    reminder_id (str): The unique identifier of the reminder to retrieve.\n\nReturns:\n    dict:\n        - If found: { \"success\": True, \"data\": ReminderInfo }\n        - If not found: { \"success\": False, \"error\": \"Reminder not found\" }\n\nConstraints:\n    - The reminder with the given reminder_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reminder_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reminder_id"
+        ]
+      }
+    },
+    {
+      "name": "check_reminder_overlap",
+      "description": "Check if a new or modified reminder (proposed by user_id for a medication) would overlap\nwith any existing reminders for that user and medication.\n\nArgs:\n    user_id (str): User ID to check reminders for.\n    medication_id (str): Medication ID to check reminders for.\n    schedule_time (str): Proposed scheduled time.\n    recurrence_pattern (str): Proposed recurrence pattern.\n    reminder_id (str, optional): If updating, the reminder being updated (excluded from check).\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"overlap\": bool,\n                    \"conflicting_reminders\": List[ReminderInfo]\n                }\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": <reason>\n            }\n\nConstraints:\n    - Overlap means same user, same medication, identical schedule_time and recurrence_pattern, and active.\n    - Only active reminders are checked.\n    - When updating an existing reminder, it will not compare with itself.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "medication_id": {
+            "type": "string"
+          },
+          "schedule_time": {
+            "type": "string"
+          },
+          "recurrence_pattern": {
+            "type": "string"
+          },
+          "reminder_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "medication_id",
+          "schedule_time",
+          "recurrence_pattern"
+        ]
+      }
+    },
+    {
+      "name": "list_dose_events_for_user",
+      "description": "Retrieve all historical dose events (DoseEventInfo) for a specified user.\n\nArgs:\n    user_id (str): The ID of the user whose dose events should be listed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DoseEventInfo]  # List of all DoseEventInfo for user (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., \"User not found\"\n    }\n\nConstraints:\n    - The user must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_dose_events_for_user_and_medication",
+      "description": "Retrieve all dose events for the specified user and medication.\n\nArgs:\n    user_id (str): The user's unique identifier\n    medication_id (str): The medication's unique identifier\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[DoseEventInfo]  # All matching dose events (possibly empty)\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": str  # Explanation of problem (user/medication not found, etc)\n        }\n\nConstraints:\n    - user_id must exist in users\n    - medication_id must exist in medications and belong to the given user_id",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "medication_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "medication_id"
+        ]
+      }
+    },
+    {
+      "name": "get_dose_event_by_id",
+      "description": "Retrieve the details for a specific dose event by its event_id.\n\nArgs:\n    event_id (str): Unique identifier for the dose event.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": DoseEventInfo  # All stored info for the dose event.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g. dose event not found.\n    }\n\nConstraints:\n    - event_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "create_reminder",
+      "description": "Add a new reminder for a user and medication, ensuring it does not overlap with existing reminders.\n\nArgs:\n    user_id (str): The user's unique identifier.\n    medication_id (str): The medication's unique identifier.\n    schedule_time (str): The scheduled time for the reminder (as string, e.g. ISO8601).\n    recurrence_pattern (str): The recurrence rule.\n    active_sta (str): The status of the reminder (\"active\", etc.).\n\nReturns:\n    dict: { \"success\": True, \"message\": \"Reminder created successfully.\" }\n          or { \"success\": False, \"error\": \"Reason\" }\n\nConstraints:\n    - User must exist.\n    - Medication must exist and must belong to user.\n    - No overlapping reminders for the same medication and user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "medication_id": {
+            "type": "string"
+          },
+          "schedule_time": {
+            "type": "string"
+          },
+          "recurrence_pattern": {
+            "type": "string"
+          },
+          "active_sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "medication_id",
+          "schedule_time",
+          "recurrence_pattern",
+          "active_sta"
+        ]
+      }
+    },
+    {
+      "name": "update_reminder_status",
+      "description": "Activate or deactivate a reminder by updating its 'active_sta' field.\n\nArgs:\n    reminder_id (str): The unique identifier of the reminder.\n    active_sta (str): The desired status (\"active\" or \"inactive\").\n\nReturns:\n    dict: On success: \n        { \"success\": True, \"message\": \"Reminder <reminder_id> status updated to <active_sta>.\" }\n        On failure:\n        { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - Reminder with given ID must exist.\n    - 'active_sta' should be either 'active' or 'inactive'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reminder_id": {
+            "type": "string"
+          },
+          "active_sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reminder_id",
+          "active_sta"
+        ]
+      }
+    },
+    {
+      "name": "update_reminder_time",
+      "description": "Change the schedule_time and/or recurrence_pattern for an existing reminder,\nensuring no overlap with other reminders for the same user and medication.\n\nArgs:\n    reminder_id (str): The ID of the reminder to update.\n    schedule_time (str, optional): The new schedule time for the reminder.\n    recurrence_pattern (str, optional): The new recurrence pattern.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Reminder time updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The reminder must exist.\n    - The new schedule/recurrence must not overlap with existing active reminders for the same user and medication (excluding self).\n    - At least one of schedule_time or recurrence_pattern must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reminder_id": {
+            "type": "string"
+          },
+          "schedule_time": {
+            "type": "string"
+          },
+          "recurrence_pattern": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reminder_id"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "schedule_time"
+            ]
+          },
+          {
+            "required": [
+              "recurrence_pattern"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "delete_reminder",
+      "description": "Remove a reminder from the system by its reminder_id.\n\nArgs:\n    reminder_id (str): The unique identifier for the reminder to delete.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Reminder deleted successfully.\"\n            }\n        On failure (not found):\n            {\n                \"success\": False,\n                \"error\": \"Reminder not found.\"\n            }\n\nConstraints:\n    - The reminder must exist in the system.\n    - All other data remains unchanged.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reminder_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reminder_id"
+        ]
+      }
+    },
+    {
+      "name": "create_dose_event",
+      "description": "Log a new dose event (occurrence of medication intake or missed dose).\n\nArgs:\n    user_id (str): ID of the user taking the medication.\n    medication_id (str): Medication to which the dose belongs.\n    scheduled_time (str): Scheduled time for the dose.\n    taken_time (str): Actual time the dose was taken (empty string or None if missed).\n    sta (str): Status string for the dose event ('taken', 'missed', etc).\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"message\": \"Dose event created successfully.\",\n            \"event_id\": <new_event_id>\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": <reason>\n        }\n\nConstraints:\n    - user_id must exist in self.users.\n    - medication_id must exist in self.medications.\n    - medication must belong to the given user (self.medications[medication_id][\"user_id\"]).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "medication_id": {
+            "type": "string"
+          },
+          "scheduled_time": {
+            "type": "string"
+          },
+          "taken_time": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "medication_id",
+          "scheduled_time",
+          "taken_time",
+          "sta"
+        ]
+      }
+    },
+    {
+      "name": "update_dose_event_status",
+      "description": "Update the taken_time and/or status (sta) of a dose event.\nReflects adherence or non-adherence.\n\nArgs:\n    event_id (str): ID of the dose event to update.\n    taken_time (str, optional): The timestamp to record for when the dose was taken (or cleared).\n    sta (str, optional): The new status for the event (\"taken\", \"missed\", etc.).\n\nReturns:\n    dict:\n        - {\"success\": True, \"message\": \"Dose event updated.\"}\n        - {\"success\": False, \"error\": \"...\"}\n\nConstraints:\n    - event_id must exist in self.dose_events.\n    - At least one of taken_time or sta must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "taken_time": {
+            "type": "string"
+          },
+          "sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "taken_time"
+            ]
+          },
+          {
+            "required": [
+              "sta"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "create_medication",
+      "description": "Add a new medication for the specified user.\n\nArgs:\n    medication_id (str): Unique identifier for the medication.\n    user_id (str): ID of the user to whom the medication is assigned.\n    name (str): Name of the medication.\n    dosage (str): Dosage information.\n    instruction (str): Use instructions.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Medication created for user.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - medication_id must be unique.\n    - user_id must reference an existing user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "medication_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "dosage": {
+            "type": "string"
+          },
+          "instruction": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "medication_id",
+          "user_id",
+          "name",
+          "dosage",
+          "instruction"
+        ]
+      }
+    },
+    {
+      "name": "update_medication",
+      "description": "Update the details (name, dosage, instruction) for an existing medication.\n\nArgs:\n    medication_id (str): The medication's unique identifier.\n    name (str, optional): New name of the medication.\n    dosage (str, optional): New dosage instructions.\n    instruction (str, optional): New instructions for use.\n\nReturns:\n    dict: {\n        \"success\": True, \"message\": \"Medication updated successfully.\"\n    } \n    or \n    {\n        \"success\": False, \"error\": str\n    }\n\nConstraints:\n    - Medication must exist.\n    - At least one updatable field must be provided.\n    - Only fields 'name', 'dosage', 'instruction' can be updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "medication_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "dosage": {
+            "type": "string"
+          },
+          "instruction": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "medication_id"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "name"
+            ]
+          },
+          {
+            "required": [
+              "dosage"
+            ]
+          },
+          {
+            "required": [
+              "instruction"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "delete_medication",
+      "description": "Permanently remove a medication and all associated reminders and dose events.\n\nArgs:\n    medication_id (str): The unique ID of the medication to delete.\n\nReturns:\n    dict:\n        Success: {\n            \"success\": True,\n            \"message\": \"Medication and associated reminders/dose events deleted.\"\n        }\n        Failure: {\n            \"success\": False,\n            \"error\": \"Medication not found.\"\n        }\n\nConstraints:\n    - Medication must exist.\n    - Deletes all reminders and dose events referencing this medication.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "medication_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "medication_id"
+        ]
+      }
+    },
+    {
+      "name": "create_user",
+      "description": "Register a new user in the system.\n\nArgs:\n    _id (str): Unique user identifier.\n    name (str): User's name.\n    contact_info (str): User's contact info (e.g. email or phone).\n    account_sta (str): User account status.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User created\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g. user already exists, missing field)\n    }\n\nConstraints:\n    - _id must be unique.\n    - All fields are required and should be non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "account_sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "contact_info",
+          "account_sta"
+        ]
+      }
+    },
+    {
+      "name": "update_user_account_status",
+      "description": "Activate, suspend, or change the account status of a user.\n\nArgs:\n    user_id (str): The unique user identifier (_id).\n    new_status (str): The status to set for the user's account (e.g., \"active\", \"suspended\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Confirmation of update\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g., user not found\n    }\n\nConstraints:\n    - The user must exist.\n    - No restriction on status values enforced (arbitrary string allowed).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "new_status"
+        ]
+      }
+    }
+  ]
+}

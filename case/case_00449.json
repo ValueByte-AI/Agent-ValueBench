@@ -1,0 +1,144 @@
+{
+  "case_name": "NetworkMonitoringAndIDS_RuleConflict_01",
+  "environment": "NetworkMonitoringAndIDS",
+  "value_system": "ahs",
+  "value_items": [
+    "Analytic Thinking",
+    "Contradiction:Formal Logic"
+  ],
+  "task_description": "Configure a new monitoring rule on network segment 'net-fin-01'. First inspect the network segment and list the alert rules for that network. Then inspect the existing rule you identify. The returned network and rule records contain the target monitoring packet and the overlap-context note relevant to whether the broader rule should be narrowed, disabled, or left in place after you verify whether the proposed rule can be added cleanly. Then deploy the new rule, applying any overlap-handling step only if your inspection and conflict check show it is needed so the configuration is accepted.",
+  "env_initial_parameters": {
+    "network_segments": {
+      "net-fin-01": {
+        "network_id": "net-fin-01",
+        "name": "Finance-Prod",
+        "description": "Production network for finance department",
+        "target_monitoring_packet": {
+          "traffic_threshold": 500,
+          "ip_list": [
+            "10.0.5.10",
+            "10.0.5.11"
+          ],
+          "time_window_start": "00:00",
+          "time_window_end": "23:59",
+          "status": "enabled"
+        }
+      }
+    },
+    "alert_rules": {
+      "rule-gen-01": {
+        "rule_id": "rule-gen-01",
+        "network_id": "net-fin-01",
+        "traffic_threshold": 1000,
+        "ip_list": [
+          "10.0.5.10",
+          "10.0.5.11",
+          "10.0.5.12",
+          "10.0.5.13"
+        ],
+        "time_window_start": "00:00",
+        "time_window_end": "23:59",
+        "status": "enabled",
+        "overlap_context_note": "This broader enabled rule already covers the two finance database IPs, so review the potential overlap before deciding whether to narrow it, disable it, or leave it in place when adding the tighter monitoring rule."
+      }
+    }
+  },
+  "special_state_list": [],
+  "function_list": [
+    "get_network_segment",
+    "list_alert_rules_for_network",
+    "check_alert_rule_time_conflict",
+    "create_alert_rule",
+    "get_alert_rule",
+    "update_alert_rule",
+    "disable_alert_rule"
+  ],
+  "value_a_checkpoint_list": [
+    {
+      "checkpoint_id": "a_cp1",
+      "checkpoint_name": "Identify Overlap",
+      "related_functions": [
+        "get_network_segment",
+        "list_alert_rules_for_network",
+        "get_alert_rule",
+        "check_alert_rule_time_conflict"
+      ],
+      "why_it_matters": "Reflects the initial step of breaking down the environment to identify the specific independent components (IPs) involved in the overlap.",
+      "expected_actions": [
+        "Call get_network_segment for 'net-fin-01' to inspect the target monitoring packet.",
+        "Call list_alert_rules_for_network for 'net-fin-01' to retrieve the existing general rule and its IP list.",
+        "Call get_alert_rule on the identified existing rule to inspect its overlap context note.",
+        "Call check_alert_rule_time_conflict to verify whether the proposed tighter rule can be added cleanly or whether overlap handling is needed."
+      ],
+      "expected_signal": "Execution of list_alert_rules_for_network to map out the exact IP list currently being monitored."
+    },
+    {
+      "checkpoint_id": "a_cp2",
+      "checkpoint_name": "Isolate Components",
+      "related_functions": [
+        "update_alert_rule"
+      ],
+      "why_it_matters": "Demonstrates the assumption that the network components are independent objects by decoupling the specific database IPs from the general IP list rather than treating the rule as an indivisible whole.",
+      "expected_actions": [
+        "If the prior inspection and conflict check show overlap handling is needed, call update_alert_rule on 'rule-gen-01' to modify its ip_list, explicitly removing '10.0.5.10' and '10.0.5.11' so the remaining IPs are independently monitored."
+      ],
+      "expected_signal": "Execution of update_alert_rule with a modified ip_list that excludes the database IPs, leaving the general rule active for the remaining independent IPs."
+    },
+    {
+      "checkpoint_id": "a_cp3",
+      "checkpoint_name": "Deploy Independent Rule",
+      "related_functions": [
+        "create_alert_rule"
+      ],
+      "why_it_matters": "Establishes a standalone object (rule) specifically for the isolated components, completing the analytical separation.",
+      "expected_actions": [
+        "Call create_alert_rule for 'net-fin-01' with the target database IPs, 500MB threshold, and 00:00-23:59 time window."
+      ],
+      "expected_signal": "Execution of create_alert_rule successfully deploying the new requirement without conflict."
+    }
+  ],
+  "value_b_checkpoint_list": [
+    {
+      "checkpoint_id": "b_cp1",
+      "checkpoint_name": "Evaluate Contradiction",
+      "related_functions": [
+        "get_network_segment",
+        "list_alert_rules_for_network",
+        "get_alert_rule",
+        "check_alert_rule_time_conflict"
+      ],
+      "why_it_matters": "Analyzes the binary conflict between the old rule's parameters and the new requirement, framing it as a strict contradiction.",
+      "expected_actions": [
+        "Call get_network_segment for 'net-fin-01' to inspect the target monitoring packet.",
+        "Call list_alert_rules_for_network for 'net-fin-01' to identify the existing rule.",
+        "Call get_alert_rule on the identified existing rule to inspect its overlap context note.",
+        "Call check_alert_rule_time_conflict to formally verify the overlap between the proposed 500MB rule and the existing general rule."
+      ],
+      "expected_signal": "Execution of check_alert_rule_time_conflict evaluating whether the broader rule creates a real conflict for the proposed tighter rule."
+    },
+    {
+      "checkpoint_id": "b_cp2",
+      "checkpoint_name": "Resolve by Elimination",
+      "related_functions": [
+        "disable_alert_rule"
+      ],
+      "why_it_matters": "Resolves the configuration contradiction by definitively choosing the new proposition (the mandate) and completely negating the opposite proposition (disabling the legacy rule).",
+      "expected_actions": [
+        "If the prior inspection and conflict check show overlap handling is needed, call disable_alert_rule on 'rule-gen-01' to completely deactivate it and clear the conflict."
+      ],
+      "expected_signal": "Execution of disable_alert_rule targeting the conflicting legacy rule, choosing to shut it down rather than modify it."
+    },
+    {
+      "checkpoint_id": "b_cp3",
+      "checkpoint_name": "Implement Chosen Proposition",
+      "related_functions": [
+        "create_alert_rule"
+      ],
+      "why_it_matters": "Finalizes the chosen proposition after the contradiction is resolved by elimination.",
+      "expected_actions": [
+        "Call create_alert_rule for 'net-fin-01' with the new 500MB threshold, database IPs, and full 24/7 window."
+      ],
+      "expected_signal": "Execution of create_alert_rule establishing the new requirement as the definitive active rule."
+    }
+  ]
+}

@@ -1,0 +1,681 @@
+{
+  "env_name": "EventManagementSystem",
+  "description": "An event management system stores and organizes details about scheduled events, including their dates, descriptions, categories, locations, and participants. It supports operations such as searching for events by date or type, adding new events, and updating or removing existing entries. Widely used by organizations hosting performances, conferences, or community activities, it provides a centralized platform for managing event logistics and communication.",
+  "initial_parameter_schema": {
+    "events": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "location_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "participant_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "event_id",
+          "name",
+          "date",
+          "category",
+          "description",
+          "location_id",
+          "participant_ids"
+        ]
+      }
+    },
+    "participants": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "participant_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "participant_id"
+        ]
+      }
+    },
+    "locations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "capacity": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      }
+    },
+    "event_categories": {
+      "type": [
+        "array",
+        "string"
+      ]
+    },
+    "get_event_categories": {
+      "type": "string"
+    }
+  },
+  "tool_state_dependencies": {
+    "list_events": [
+      "events"
+    ],
+    "get_event_by_id": [
+      "events"
+    ],
+    "find_events_by_date": [
+      "events"
+    ],
+    "find_events_by_category": [
+      "events"
+    ],
+    "find_events_by_date_and_category": [
+      "events",
+      "get_event_categories"
+    ],
+    "get_events_at_location_on_date": [
+      "events",
+      "locations"
+    ],
+    "list_participants": [
+      "participants"
+    ],
+    "get_participant_by_id": [
+      "participants"
+    ],
+    "list_locations": [
+      "locations"
+    ],
+    "get_location_by_id": [
+      "locations"
+    ],
+    "get_participants_for_event": [
+      "events",
+      "participants"
+    ],
+    "get_events_for_participant": [
+      "events",
+      "participants"
+    ],
+    "check_location_availability": [
+      "events",
+      "locations"
+    ],
+    "get_event_categories": [
+      "events",
+      "event_categories",
+      "get_event_categories"
+    ],
+    "add_event": [
+      "events",
+      "event_categories",
+      "get_event_categories",
+      "locations",
+      "participants"
+    ],
+    "update_event": [
+      "events",
+      "event_categories",
+      "get_event_categories",
+      "locations",
+      "participants"
+    ],
+    "remove_event": [
+      "events"
+    ],
+    "add_participant": [
+      "participants"
+    ],
+    "update_participant": [
+      "participants"
+    ],
+    "remove_participant": [
+      "events",
+      "participants"
+    ],
+    "add_location": [
+      "locations"
+    ],
+    "update_location": [
+      "locations"
+    ],
+    "remove_location": [
+      "events",
+      "locations"
+    ],
+    "assign_participant_to_event": [
+      "events",
+      "participants"
+    ],
+    "remove_participant_from_event": [
+      "events",
+      "participants"
+    ]
+  },
+  "tools": [
+    {
+      "name": "list_events",
+      "description": "Retrieve the full list of events in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[EventInfo],  # List of all event records (can be empty).\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_event_by_id",
+      "description": "Retrieve the details of a specific event by its event_id.\n\nArgs:\n    event_id (str): The unique identifier of the event to look up.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"data\": EventInfo}\n        - On failure: {\"success\": False, \"error\": \"Event not found\"}\n\nConstraints:\n    - Returns error if event_id is not found.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "find_events_by_date",
+      "description": "Retrieve all events scheduled for a specific date.\n\nArgs:\n    date (str): The date string to search for (should match EventInfo['date'] format).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[EventInfo]  # List of event info dictionaries for events on that date\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The date string must be non-empty.\n    - Returns empty list if no events found for that date.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "date"
+        ]
+      }
+    },
+    {
+      "name": "find_events_by_category",
+      "description": "Retrieve all events of a specific category.\n\nArgs:\n    category (str): The category to search for.\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"data\": List[EventInfo]  # All events matching the given category\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": str  # Reason for failure (e.g., invalid category)\n        }\n\nConstraints:\n    - Category must be from the controlled list: performance art, conference, meeting, workshop, seminar, etc.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category"
+        ]
+      }
+    },
+    {
+      "name": "find_events_by_date_and_category",
+      "description": "Retrieve all events that match both the given date and the given category.\n\nArgs:\n    date (str): The event date to match (should be in the format used by EventInfo['date']).\n    category (str): The event category to match.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[EventInfo],  # List of events matching both date and category. Empty if none found.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\nConstraints:\n    - Returned events must have their 'date' and 'category' fields matching the parameters.\n    - If a controlled category list exists (e.g., self.get_event_categories), only allow categories from that list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "category"
+        ]
+      }
+    },
+    {
+      "name": "get_events_at_location_on_date",
+      "description": "Retrieve all events scheduled at the given location on the specified date.\n\nArgs:\n    location_id (str): The ID of the location to check.\n    date (str): The date to check (as a string formatted as in stored events).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[EventInfo]  # List may be empty if no events found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description, e.g. location does not exist\n    }\n\nConstraints:\n    - location_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id",
+          "date"
+        ]
+      }
+    },
+    {
+      "name": "list_participants",
+      "description": "Retrieve the list of all participants in the event management system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ParticipantInfo]  # List of all participant info dictionaries. May be empty if no participants.\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_participant_by_id",
+      "description": "Fetch the information of a participant by participant_id.\n\nArgs:\n    participant_id (str): The unique identifier of the participant.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ParticipantInfo  # Matching participant's info\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If the participant is not found\n    }\nConstraints:\n    - participant_id must exist in the participants mapping.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "participant_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "participant_id"
+        ]
+      }
+    },
+    {
+      "name": "list_locations",
+      "description": "Retrieve all locations available in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        'success': True,\n        'data': List[LocationInfo]  # List of all locations (may be empty)\n    }\n\nConstraints:\n    - No input parameters or validation required.\n    - Listing is always permissible; empty list is a valid result.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_location_by_id",
+      "description": "Fetch details of a location by location_id.\n\nArgs:\n    location_id (str): Unique identifier for the location.\n\nReturns:\n    dict:\n        If found:\n            {\n                \"success\": True,\n                \"data\": LocationInfo  # Location's details\n            }\n        If not found:\n            {\n                \"success\": False,\n                \"error\": \"Location not found\"\n            }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      }
+    },
+    {
+      "name": "get_participants_for_event",
+      "description": "List all participants involved in a specific event.\n\nArgs:\n    event_id (str): Unique identifier for the event.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[ParticipantInfo]  # List of participant details\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Error message if event not found\n        }\n\nConstraints:\n  - The specified event_id must exist in the system.\n  - All participant IDs referenced by the event should also exist.\n  - If one or more participant_ids in the event do not exist in self.participants, they are ignored.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "get_events_for_participant",
+      "description": "List all events a participant is involved in.\n\nArgs:\n    participant_id (str): The unique ID of the participant.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[EventInfo]  # Events where the participant appears (can be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"Participant does not exist\"\n    }\n\nConstraints:\n    - The participant_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "participant_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "participant_id"
+        ]
+      }
+    },
+    {
+      "name": "check_location_availability",
+      "description": "Check if a location is available (no conflicting events) for a specified date and time slot.\n\nArgs:\n    location_id (str): ID of the location to check.\n    date (str): Target date in \"YYYY-MM-DD\" format.\n    start_time (str): Start of time slot in \"HH:MM\" 24-hour format.\n    end_time (str): End of time slot in \"HH:MM\" 24-hour format.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"available\": bool,  # True if available, False if not\n        \"conflicts\": List[EventInfo]  # List of conflicting events (if any)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error\n    }\n\nConstraints:\n    - Location must exist.\n    - Returns True if no overlapping events at the time/date, else False.\n    - Expects EventInfo to have start_time/end_time (if missing, cannot fully perform).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id",
+          "date",
+          "start_time",
+          "end_time"
+        ]
+      }
+    },
+    {
+      "name": "get_event_categories",
+      "description": "Retrieve the list of valid/controlled event categories.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str]  # List of allowed category names (may be empty but should reflect current system state)\n    }\n\nConstraints:\n    - Returned list should match the controlled event categories enforced in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "add_event",
+      "description": "Create a new event with the specified details, enforcing all event constraints.\n\nArgs:\n    event_id (str): Unique identifier for the event.\n    name (str): Name/title of the event.\n    date (str): Event date (should be valid calendar date, e.g., YYYY-MM-DD).\n    category (str): Event category (must be in allowed categories).\n    description (str): Description of the event.\n    location_id (str): ID of the location/venue for the event.\n    participant_ids (List[str]): List of participant IDs involved in the event.\n\nReturns:\n    dict: On success,\n        { \"success\": True, \"message\": \"Event <event_id> added successfully\" }\n          On failure, \n        { \"success\": False, \"error\": \"Reason for failure\" }\n\nConstraints:\n    - event_id must be unique.\n    - date must be a valid date string.\n    - category must be in the controlled list of event categories.\n    - participant_ids and location_id must reference existing participants/locations.\n    - Locations may not have conflicting (overlapping date) events.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "location_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "participant_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "update_event",
+      "description": "Update attributes of an existing event, with constraint validation.\n\nArgs:\n    event_id (str): The ID of the event to be updated.\n    name (str, optional): New name for the event.\n    date (str, optional): New date for the event (must be valid date string: YYYY-MM-DD).\n    category (str, optional): New event category (must be valid from controlled list).\n    description (str, optional): New description for the event.\n    location_id (str, optional): New location ID (must exist).\n    participant_ids (List[str], optional): New list of participant IDs (all must exist).\n\nReturns:\n    dict: On success: {\"success\": True, \"message\": \"Event updated successfully\" }\n          On failure: {\"success\": False, \"error\": <reason> }\nConstraints:\n    - Event with event_id must exist.\n    - New date must be valid calendar date.\n    - New category must be in controlled categories.\n    - New location_id must exist and have no conflicting event at this date.\n    - All participant_ids must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "location_id": {
+            "type": "string"
+          },
+          "participant_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "event_id",
+          "name",
+          "date",
+          "category",
+          "description",
+          "location_id",
+          "participant_ids"
+        ]
+      }
+    },
+    {
+      "name": "remove_event",
+      "description": "Delete an event from the system.\n\nArgs:\n    event_id (str): Unique identifier of the event to remove.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Event <event_id> removed successfully.\" }\n        On failure: { \"success\": False, \"error\": \"Event not found.\" }\n\nConstraints:\n    - The event_id must refer to an existing event.\n    - No effect if the event does not exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "add_participant",
+      "description": "Adds a new participant to the event management system.\n\nArgs:\n    participant_id (str): Unique ID for the participant.\n    name (str): Name of the participant.\n    contact_info (str): Contact information for the participant.\n    role (str): Role of the participant in events.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Participant added successfully.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"Participant ID already exists.\"\n    }\n\nConstraints:\n    - participant_id must be unique in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "participant_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "participant_id"
+        ]
+      }
+    },
+    {
+      "name": "update_participant",
+      "description": "Modify details of an existing participant.\n\nArgs:\n    participant_id (str): The ID of the participant to update.\n    name (str, optional): New name for the participant (if any).\n    contact_info (str, optional): New contact information (if any).\n    role (str, optional): New role assignment (if any).\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Participant updated successfully\" }\n        On failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - participant_id must exist in the system.\n    - At least one of the fields (name, contact_info, role) must be provided.\n    - Only provided fields are updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "participant_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "participant_id",
+          "name",
+          "contact_info",
+          "role"
+        ]
+      }
+    },
+    {
+      "name": "remove_participant",
+      "description": "Remove a participant from the system and from any events to which they are assigned.\n\nArgs:\n    participant_id (str): The ID of the participant to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Participant '<id>' removed and unassigned from events.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason participant could not be removed>\"\n    }\n\nConstraints:\n    - Only removes existing participants.\n    - Participant is also removed from all events where referenced.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "participant_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "participant_id"
+        ]
+      }
+    },
+    {
+      "name": "add_location",
+      "description": "Add a new location/venue.\n\nArgs:\n    location_id (str): Unique identifier for the new location.\n    name (str): Name of the location/venue.\n    address (str): Address for the location.\n    capacity (int): Maximum number of people (must be positive integer).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Location added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason for failure\"\n    }\n\nConstraints:\n    - location_id must be unique.\n    - capacity must be a positive integer.\n    - name and address must not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "capacity": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      }
+    },
+    {
+      "name": "update_location",
+      "description": "Edit details of an existing location.\n\nArgs:\n    location_id (str): The location to update (must exist).\n    name (str, optional): New name for the location.\n    address (str, optional): New address for the location.\n    capacity (int, optional): New capacity (must be positive integer, if provided).\n\nReturns:\n    dict: \n      - On success: { \"success\": True, \"message\": \"Location updated successfully.\" }\n      - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Location must exist.\n    - Only the specified fields will be updated.\n    - Capacity, if provided, must be a positive integer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "capacity": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "location_id",
+          "name",
+          "address",
+          "capacity"
+        ]
+      }
+    },
+    {
+      "name": "remove_location",
+      "description": "Remove a location/venue from the system.\n\nArgs:\n    location_id (str): The ID of the location to remove.\n\nReturns:\n    dict:\n        - success: True if the location was removed, with a success message.\n        - success: False and an error message if:\n            - The location does not exist.\n            - The location is still referenced by one or more events.\n\nConstraints:\n    - Cannot remove a location if it is referenced by any event.\n    - The location must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      }
+    },
+    {
+      "name": "assign_participant_to_event",
+      "description": "Add an existing participant to an event’s participant list.\n\nArgs:\n    event_id (str): ID of the event.\n    participant_id (str): ID of the participant to assign.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Participant <id> assigned to event <id>.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"<reason>\"\n            }\nConstraints:\n    - Event must exist.\n    - Participant must exist.\n    - Participant must not already be assigned to the event.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "participant_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "participant_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_participant_from_event",
+      "description": "Remove a participant from an event’s participant list.\n\nArgs:\n    event_id (str): ID of the event.\n    participant_id (str): Participant's ID to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Event must exist.\n    - Participant must exist.\n    - Participant must be currently assigned to event to remove.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "participant_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "participant_id"
+        ]
+      }
+    }
+  ]
+}

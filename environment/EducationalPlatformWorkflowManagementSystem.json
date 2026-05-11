@@ -1,0 +1,586 @@
+{
+  "env_name": "EducationalPlatformWorkflowManagementSystem",
+  "description": "An educational platform workflow management system orchestrates and tracks a variety of asynchronous and interactive tasks such as quiz generation, resource creation, and analytics. It maintains stateful records of task submissions and results, manages task IDs for later retrieval, and supports operations for both educators and students. The environment streamlines educational resource management and task handling in online learning contexts.",
+  "initial_parameter_schema": {
+    "tasks": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          },
+          "task_type": {
+            "type": "string"
+          },
+          "initiator_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "result": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "related_resource_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "task_type",
+          "initiator_id",
+          "status",
+          "result",
+          "created_at",
+          "related_resource_id"
+        ]
+      }
+    },
+    "quizzes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "quiz_id": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "creator_id": {
+            "type": "string"
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "creation_time": {
+            "type": "string"
+          },
+          "assigned_to": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "quiz_id",
+          "subject",
+          "creator_id",
+          "questions",
+          "creation_time",
+          "assigned_to"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "associated_task": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "_id",
+          "role",
+          "name",
+          "associated_task"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_user_by_name": [
+      "users"
+    ],
+    "list_user_tasks": [
+      "tasks",
+      "users"
+    ],
+    "get_user_role": [
+      "users"
+    ],
+    "get_task_by_id": [
+      "tasks"
+    ],
+    "get_task_status": [
+      "tasks"
+    ],
+    "get_task_result": [
+      "quizzes",
+      "tasks",
+      "users"
+    ],
+    "list_tasks_by_status": [
+      "tasks"
+    ],
+    "list_tasks_by_type": [
+      "tasks"
+    ],
+    "get_quiz_by_id": [
+      "quizzes"
+    ],
+    "list_quizzes_by_creator": [
+      "quizzes",
+      "users"
+    ],
+    "list_quizzes_for_user": [
+      "quizzes",
+      "users"
+    ],
+    "create_task": [
+      "tasks",
+      "users"
+    ],
+    "update_task_status": [
+      "tasks"
+    ],
+    "set_task_result": [
+      "tasks"
+    ],
+    "create_quiz": [
+      "quizzes",
+      "users"
+    ],
+    "assign_quiz_to_students": [
+      "quizzes",
+      "users"
+    ],
+    "link_task_to_quiz": [
+      "quizzes",
+      "tasks"
+    ],
+    "add_user": [
+      "users"
+    ],
+    "associate_task_with_user": [
+      "tasks",
+      "users"
+    ],
+    "remove_task": [
+      "tasks",
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user details by user ID.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of why the operation failed (e.g., user not found)\n    }\n\nConstraints:\n    - The user ID must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_name",
+      "description": "Retrieve user(s) information by their name.\n\nArgs:\n    name (str): The name of the user to find.\n\nReturns:\n    dict:\n        - On success: {\n            \"success\": True,\n            \"data\": List[UserInfo]  # List of user info dicts with given name\n          }\n        - On failure: {\n            \"success\": False,\n            \"error\": str  # Reason for failure (e.g. not found)\n          }\n\nConstraints:\n    - All users with the given name are returned.\n    - If no user with that name exists, an error is returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "list_user_tasks",
+      "description": "List all tasks (full TaskInfo) associated with a specific user.\n\nArgs:\n    user_id (str): The ID of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TaskInfo],  # List of task dictionaries (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g., user not found)\n    }\n\nConstraints:\n    - User must exist.\n    - Tasks returned must exist in the tasks registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_role",
+      "description": "Query a user's role ('educator' or 'student') in the system.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: \n    {\n        \"success\": True,\n        \"data\": role (str)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - User with the given user_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_task_by_id",
+      "description": "Retrieve details for a given task ID.\n\nArgs:\n    task_id (str): The unique identifier of the task to retrieve.\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"data\": TaskInfo  # All properties for the task.\n        }\n        On failure (e.g. task_id doesn't exist):\n        {\n            \"success\": False,\n            \"error\": str  # \"Task not found\"\n        }\nConstraints:\n    - task_id must exist in the system.\n    - No authorization is required to retrieve a task's basic info.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id"
+        ]
+      }
+    },
+    {
+      "name": "get_task_status",
+      "description": "Return the current status of a task by its task_id.\n\nArgs:\n    task_id (str): The unique identifier of the task.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": str  # The current status of the task.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message, e.g., task not found.\n    }\n\nConstraints:\n    - The task_id must exist in the system.\n    - No authorization check is required for status query.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id"
+        ]
+      }
+    },
+    {
+      "name": "get_task_result",
+      "description": "Retrieve the result/content of a given task.\nOnly the task initiator or, if the task is associated with a resource (e.g., quiz), an authorized assignee may retrieve the result.\n\nArgs:\n    task_id (str): The task identifier.\n    user_id (str): The ID of the user requesting the result.\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"data\": <task_result: Optional[str]>\n        }\n        Failure:\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - Task must exist.\n    - User must exist.\n    - The requester must be the task initiator or an explicitly authorized assignee for the resource.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_tasks_by_status",
+      "description": "List all tasks filtered by a specific status.\n\nArgs:\n    status (str): The status value to filter tasks by (e.g., 'pending', 'completed').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TaskInfo],  # List of matching tasks (can be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g., missing status)\n    }\n\nConstraints:\n    - Status must be specified (non-empty string).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "list_tasks_by_type",
+      "description": "List all tasks of a specific type (e.g., analytics, quiz generation).\n\nArgs:\n    task_type (str): The exact type of tasks to filter (case-sensitive).\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": List[TaskInfo]  # List of task dicts matching the task_type\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # If invalid input (e.g., blank task_type)\n        }\n\nConstraints:\n    - task_type must be a non-empty string.\n    - No permission check: anyone can list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_type"
+        ]
+      }
+    },
+    {
+      "name": "get_quiz_by_id",
+      "description": "Retrieve all details of a given quiz using its quiz_id.\n\nArgs:\n    quiz_id (str): Unique identifier of the quiz.\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"data\": QuizInfo  # All attributes of the quiz\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": \"Quiz not found\"\n        }\nConstraints:\n    - The quiz_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "quiz_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "quiz_id"
+        ]
+      }
+    },
+    {
+      "name": "list_quizzes_by_creator",
+      "description": "List all quizzes created by a specific educator.\n\nArgs:\n    educator_id (str): The unique user ID of the educator.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[QuizInfo]  # List of quiz info dicts, can be empty if none created\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Error message, e.g. educator not found, not an educator, etc.\n        }\n\nConstraints:\n    - educator_id must exist and must refer to a user with role == 'educator'\n    - Returns empty list if educator exists but has created no quizzes",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "educator_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "educator_id"
+        ]
+      }
+    },
+    {
+      "name": "list_quizzes_for_user",
+      "description": "List all quizzes assigned to a specific user (typically a student).\n\nArgs:\n    user_id (str): The user ID of the student for whom to list assigned quizzes.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[QuizInfo],  # List of quizzes assigned to the user (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., \"User not found\"\n    }\n\nConstraints:\n    - user_id must exist in the system.\n    - Quizzes are assigned only to students, but if queried for educators, returns empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "create_task",
+      "description": "Initiate a new task (e.g., quiz generation or analysis).\nEnforces:\n    - Unique task_id.\n    - Only educators can initiate resource creation tasks (e.g., 'quiz_generation').\n    - Initiator must be a valid user.\nAutomatically sets initial status to 'pending' and result to None.\nAssociates the task with the initiator's user profile.\n\nArgs:\n    task_id (str): Unique identifier for the task.\n    task_type (str): Type of the task (e.g., 'quiz_generation', 'analysis').\n    initiator_id (str): User ID of who initiates the task.\n    created_at (str): Timestamp of creation.\n    related_resource_id (str, optional): Associated resource.\n\nReturns:\n    dict:\n        { \"success\": True, \"message\": str } on success,\n        or { \"success\": False, \"error\": str } describing failure.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          },
+          "task_type": {
+            "type": "string"
+          },
+          "initiator_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "related_resource_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "task_type",
+          "initiator_id",
+          "created_at"
+        ]
+      }
+    },
+    {
+      "name": "update_task_status",
+      "description": "Change the status of a task, ensuring the transition is valid per the allowed state machine.\n\nArgs:\n    task_id (str): The ID of the task to update.\n    new_status (str): The new status to set.\n\nReturns:\n    dict: {\n        \"success\": True, \"message\": \"Task status updated from <old> to <new>.\"\n    }\n    or\n    {\n        \"success\": False, \"error\": \"<error description>\"\n    }\n\nConstraints:\n    - Task must exist.\n    - Status transitions must be valid as per system logic.\n    - Typical statuses: pending → in_progress → completed/failed/cancelled, etc.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "set_task_result",
+      "description": "Attach/store the result string to a completed task.\n\nArgs:\n    task_id (str): The unique identifier of the task.\n    result (str): The result data to attach to the task.\n\nReturns:\n    dict: On success:\n        {\"success\": True, \"message\": \"Result set for task <task_id>.\"}\n        On failure:\n        {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - Task must exist.\n    - Task status must be 'completed' to set result.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          },
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "result"
+        ]
+      }
+    },
+    {
+      "name": "create_quiz",
+      "description": "Create a new quiz resource, linked to an educator and subject.\n\nArgs:\n    quiz_id (str): Unique identifier for the quiz.\n    subject (str): The subject of the quiz.\n    creator_id (str): Educator's user ID who creates the quiz.\n    questions (List[str]): List of quiz questions.\n    creation_time (str): Timestamp for quiz creation.\n    assigned_to (List[str]): List of student IDs assigned to the quiz.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Quiz created successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - quiz_id must be unique.\n    - creator_id must refer to an existing educator.\n    - subject and creator_id are required.\n    - Each quiz must have a subject and a creator.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "quiz_id": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "creator_id": {
+            "type": "string"
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "creation_time": {
+            "type": "string"
+          },
+          "assigned_to": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "quiz_id",
+          "subject",
+          "creator_id",
+          "questions",
+          "creation_time",
+          "assigned_to"
+        ]
+      }
+    },
+    {
+      "name": "assign_quiz_to_students",
+      "description": "Assign an existing quiz to a list of students by updating the assigned_to field.\n\nArgs:\n    quiz_id (str): The ID of the quiz resource to assign.\n    student_ids (List[str]): A list of student user IDs.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Quiz assigned to students successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Error message\"\n    }\n\nConstraints:\n    - The quiz must exist.\n    - Each user in student_ids must exist and be of role 'student'.\n    - Duplicate assignments are ignored (idempotent).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "quiz_id": {
+            "type": "string"
+          },
+          "student_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "quiz_id",
+          "student_ids"
+        ]
+      }
+    },
+    {
+      "name": "link_task_to_quiz",
+      "description": "Links a resource creation task (e.g., quiz generation) to its resulting quiz\nby setting the related_resource_id field.\n\nArgs:\n    task_id (str): The unique ID of the resource creation (e.g., quiz generation) task.\n    quiz_id (str): The unique ID of the quiz to link as the resource.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Task successfully linked to quiz.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The task_id must exist in the tasks dictionary.\n    - The quiz_id must exist in the quizzes dictionary.\n    - Only resource creation tasks (e.g., task_type == 'quiz_generation') may be linked to a quiz.\n    - The related_resource_id must NOT already be set for the task.\n    - Does not overwrite existing links.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          },
+          "quiz_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "quiz_id"
+        ]
+      }
+    },
+    {
+      "name": "add_user",
+      "description": "Add a new user (educator or student) to the system.\n\nArgs:\n    _id (str): Unique identifier for the user.\n    role (str): User's role, must be either 'educator' or 'student'.\n    name (str): Name of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - User ID (_id) must be unique across all users.\n    - Role must be either 'educator' or 'student'.\n    - User's name should not be empty.\n    - Associated tasks are initialized empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "role",
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "associate_task_with_user",
+      "description": "Associate (add) or dissociate (remove) a task_id with/from a user's associated_task list.\n\nArgs:\n    user_id (str): User _id (must exist).\n    task_id (str): Task task_id (must exist).\n    action (str): 'add' to associate, 'remove' to dissociate.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Task <task_id> added/removed for user <user_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - User and task must both exist.\n    - Only 'add' or 'remove' are accepted as action.\n    - Adding an already-added task is a no-op (success).\n    - Removing a non-associated task is a no-op (success).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "task_id": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "task_id",
+          "action"
+        ]
+      }
+    },
+    {
+      "name": "remove_task",
+      "description": "Delete a task from the system, if permissible.\n\nArgs:\n    task_id (str): The unique identifier of the task to remove.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Task <task_id> removed from the system.\" }\n        - On failure: { \"success\": False, \"error\": str }\n\nConstraints:\n    - The task must exist in the system.\n    - Only tasks in a terminal state (\"completed\", \"canceled\") are eligible for removal.\n    - All references to this task in UserInfo.associated_task lists must be removed to avoid dangling references.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id"
+        ]
+      }
+    }
+  ]
+}

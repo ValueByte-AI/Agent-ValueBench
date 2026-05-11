@@ -1,0 +1,515 @@
+{
+  "env_name": "EnterpriseApplicationServer",
+  "description": "An Enterprise Application Server provides a runtime environment for hosting applications and services accessed by users across an organization. It maintains critical state information such as system time, user sessions, application data, and logs. These servers often act as central hubs for coordinating activities, ensuring consistent time, and supporting collaboration among distributed teams.",
+  "initial_parameter_schema": {
+    "server": {
+      "type": "object",
+      "properties": {
+        "current_time": {
+          "type": "number"
+        },
+        "timezone": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "current_time",
+        "timezone",
+        "status"
+      ]
+    },
+    "user_sessions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "login_time": {
+            "type": "number"
+          },
+          "last_activity_time": {
+            "type": "number"
+          },
+          "session_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "user_id",
+          "login_time",
+          "last_activity_time",
+          "session_status"
+        ]
+      }
+    },
+    "applications": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "deployment_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "application_id",
+          "name",
+          "version",
+          "deployment_status"
+        ]
+      }
+    },
+    "application_data": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string"
+          },
+          "data_blob": {
+            "type": "string"
+          },
+          "last_modified": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "application_id",
+          "data_blob",
+          "last_modified"
+        ]
+      }
+    },
+    "log_entries": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "log_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "log_id",
+          "timestamp",
+          "user_id",
+          "action",
+          "status",
+          "message"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_server_time": [
+      "server"
+    ],
+    "get_server_status": [
+      "server"
+    ],
+    "get_all_sessions": [
+      "user_sessions"
+    ],
+    "get_session_by_user": [
+      "user_sessions"
+    ],
+    "get_session_by_id": [
+      "user_sessions"
+    ],
+    "get_applications": [
+      "applications"
+    ],
+    "get_application_by_id": [
+      "applications"
+    ],
+    "get_application_data": [
+      "application_data",
+      "applications"
+    ],
+    "get_logs": [
+      "log_entries"
+    ],
+    "get_log_by_id": [
+      "log_entries"
+    ],
+    "update_server_time": [
+      "log_entries",
+      "server"
+    ],
+    "update_server_status": [
+      "log_entries",
+      "server"
+    ],
+    "expire_user_sessions": [
+      "log_entries",
+      "server",
+      "user_sessions"
+    ],
+    "update_session_activity": [
+      "log_entries",
+      "server",
+      "user_sessions"
+    ],
+    "deploy_application": [
+      "applications",
+      "log_entries",
+      "server"
+    ],
+    "undeploy_application": [
+      "applications",
+      "log_entries",
+      "server"
+    ],
+    "update_application_data": [
+      "application_data",
+      "applications",
+      "log_entries",
+      "server"
+    ],
+    "create_log_entry": [
+      "log_entries",
+      "server"
+    ],
+    "purge_old_logs": [
+      "log_entries"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_server_time",
+      "description": "Retrieve the authoritative current time from the server.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": { \"current_time\": float }  # Current server time\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if server time unavailable\n    }\n\nConstraints:\n    - Server time (current_time) must be globally synchronized and monotonically increasing.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_server_status",
+      "description": "Retrieve the current operational status and timezone of the server.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"status\": str,\n            \"timezone\": str\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_all_sessions",
+      "description": "Retrieve the list of all active user sessions and their statuses.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[UserSessionInfo]  # A list of all UserSessionInfo dicts (may be empty)\n    }\n\nConstraints:\n    - Returns sessions currently stored in self.user_sessions (active sessions).\n    - Expiration or timeout of sessions is handled elsewhere.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_session_by_user",
+      "description": "Retrieve all active and historical user sessions for a specific user ID.\n\nArgs:\n    user_id (str): The user identifier to find sessions for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[UserSessionInfo]  # List of all sessions for the user_id, may be empty.\n    }\n    or, if the user_id is not provided or not valid:\n    {\n        \"success\": False,\n        \"error\": str  # Error message\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_session_by_id",
+      "description": "Retrieve detailed user session info by session_id.\n\nArgs:\n    session_id (str): The unique identifier of the user session.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserSessionInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g. \"Session not found\"\n    }\n\nConstraints:\n    - No permission or expiry checks performed in this method.\n    - Returns current info as present in the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "get_applications",
+      "description": "List all applications on the server along with their deployment status and version.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ApplicationInfo],  # Each contains application_id, name, version, deployment_status, etc.\n    }\nIf no applications exist, returns an empty list in \"data\".",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_application_by_id",
+      "description": "Retrieve information for a specific application by its unique identifier.\n\nArgs:\n    application_id (str): The unique application identifier.\n\nReturns:\n    dict: \n        - On success: {\n            \"success\": True,\n            \"data\": ApplicationInfo\n          }\n        - On failure: {\n            \"success\": False,\n            \"error\": \"Application not found\"\n          }\n\nConstraints:\n    - The application_id must exist in the applications state.\n    - No permissions or deployment status checked for info query.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "application_id"
+        ]
+      }
+    },
+    {
+      "name": "get_application_data",
+      "description": "Retrieve stored application data for a given application, but only if the application is currently deployed.\n\nArgs:\n    application_id (str): The unique identifier of the application.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ApplicationDataInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Only deployed applications (deployment_status == \"deployed\") may access or manipulate data.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "application_id"
+        ]
+      }
+    },
+    {
+      "name": "get_logs",
+      "description": "Query log entries, optionally filtered by user ID, time range, or action.\n\nArgs:\n    user_id (str, optional): Filter logs for a specific user ID.\n    start_time (float, optional): Only logs with timestamp >= start_time are included.\n    end_time (float, optional): Only logs with timestamp <= end_time are included.\n    action (str, optional): Only logs where action matches.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[LogEntryInfo]  # List of log entries satisfying filters (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If any parameter is invalid\n    }\n\nConstraint:\n    - This method does not perform state mutation and does not enforce permissions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "number"
+          },
+          "action": {
+            "type": "string"
+          }
+        },
+        "required": [
+          
+        ]
+      }
+    },
+    {
+      "name": "get_log_by_id",
+      "description": "Retrieve a single log entry by its log_id.\n\nArgs:\n    log_id (str): The unique identifier of the log entry to retrieve.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True,\n            \"data\": LogEntryInfo\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": \"Log entry not found\"\n        }\n\nConstraints:\n    - No permission check required for this operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "log_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "log_id"
+        ]
+      }
+    },
+    {
+      "name": "update_server_time",
+      "description": "Set the server's current_time ensuring monotonicity and traceability.\n\nArgs:\n    new_time (float): The new server time value (Unix timestamp).\n\nReturns:\n    dict: {\n        'success': True,\n        'message': 'Server time updated to <new_time>'\n    }\n    or\n    {\n        'success': False,\n        'error': <reason>\n    }\n\nConstraints:\n    - new_time must be strictly greater than the current server time (monotonic increase)\n    - All updates must be logged in log_entries",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "new_time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "new_time"
+        ]
+      }
+    },
+    {
+      "name": "update_server_status",
+      "description": "Update the server's operational status and/or timezone. At least one field must be provided.\nAll changes are logged for compliance.\n\nArgs:\n    status (str, optional): New operational status for the server.\n    timezone (str, optional): New timezone for the server.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Server status/timezone updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - At least one of `status` or `timezone` must be provided.\n    - Action must be logged in log_entries.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          
+        ]
+      }
+    },
+    {
+      "name": "expire_user_sessions",
+      "description": "Mark sessions as expired/terminated if inactive beyond the allowed timeout.\n\nArgs:\n    timeout (float): Timeout in seconds. All sessions where (server.current_time - last_activity_time) > timeout\n                     and session_status is not already 'expired' will be marked as 'expired'.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"N sessions expired.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Sessions are expired if inactivity (current_time - last_activity_time) exceeds the given timeout.\n    - All such expiration actions are logged.\n    - Negative or missing timeout argument results in error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "timeout": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "timeout"
+        ]
+      }
+    },
+    {
+      "name": "update_session_activity",
+      "description": "Update the last_activity_time and/or session_status for a user session.\n\nArgs:\n    session_id (str): The session identifier to update.\n    last_activity_time (float, optional): New last activity time (unix timestamp, must be >= login_time and >= old last_activity_time).\n    session_status (str, optional): New status for the session.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Session activity updated\" }\n        On failure: { \"success\": False, \"error\": \"...reason...\" }\n\nConstraints:\n    - session_id must be valid.\n    - If setting last_activity_time, it must be >= login_time, >= old last_activity_time, and >= server's current_time.\n    - All actions must be logged.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "last_activity_time": {
+            "type": "number"
+          },
+          "session_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "deploy_application",
+      "description": "Change an application's deployment status to 'deployed' and log the action.\n\nArgs:\n    application_id (str): ID of the application to deploy.\n    user_id (str): Initiator of deployment (default: 'system').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Application <id> deployed.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Application must exist.\n    - All actions must be logged.\n    - If already deployed, still log and consider successful.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "application_id"
+        ]
+      }
+    },
+    {
+      "name": "undeploy_application",
+      "description": "Mark an application as not deployed (disabled).\nArgs:\n    application_id (str): Unique identifier for the application to undeploy.\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Application {application_id} undeployed.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Application does not exist.\"\n    }\nConstraints:\n    - Application must exist in self.applications.\n    - Operation must log action to self.log_entries.\n    - Operation is idempotent (undeploying an already undeployed is still success).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "application_id"
+        ]
+      }
+    },
+    {
+      "name": "update_application_data",
+      "description": "Modify the application data for a deployed application.\n\nArgs:\n    application_id (str): The ID of the application whose data will be modified.\n    new_data_blob (str): The new data blob to store.\n    user_id (str): The user performing the operation (for auditing/logging).\n\nReturns:\n    dict: \n        On success:\n            { \"success\": True, \"message\": \"Application data updated.\" }\n        On error:\n            { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Only applications with deployment_status == \"deployed\" can be modified.\n    - Application must exist and have existing ApplicationData.\n    - last_modified is set to current server time.\n    - All actions must be logged.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string"
+          },
+          "new_data_blob": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "application_id",
+          "new_data_blob",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "create_log_entry",
+      "description": "Manually generate a system log entry for an action or event.\n\nArgs:\n    user_id (str): ID of the user associated with the action/event.\n    action (str): The action performed (e.g., \"login\", \"update\", \"shutdown\").\n    status (str): Result/status of the action (e.g., \"success\", \"failure\").\n    message (str): Additional information/details.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Log entry created\",\n                \"log_id\": <str>\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": <error message>\n            }\n\nConstraints:\n    - The log_id must be unique.\n    - Timestamp should use the server's current_time at time of entry.\n    - Parameters should be non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "action",
+          "status",
+          "message"
+        ]
+      }
+    },
+    {
+      "name": "purge_old_logs",
+      "description": "Permanently deletes (purges) log entries older than the specified time threshold.\n\nArgs:\n    time_threshold (float): All logs with timestamp < time_threshold are purged.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"<N> log entries purged.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<error_message>\"\n    }\n\nConstraints:\n    - All log entries before time_threshold should be deleted from the system.\n    - Returns how many entries were purged in the message.\n    - No error if no entries are older than threshold (purge count is 0).\n    - Fails if threshold is not a valid number.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "time_threshold": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "time_threshold"
+        ]
+      }
+    }
+  ]
+}

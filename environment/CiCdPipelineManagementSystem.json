@@ -1,0 +1,645 @@
+{
+  "env_name": "CiCdPipelineManagementSystem",
+  "description": "A CI/CD pipeline management system orchestrates automated software builds, tests, and deployments. It maintains structured definitions for pipelines, each specifying source repository connections, target branches, build instructions, and workflow steps. This environment supports configuring, updating, and monitoring build processes, enabling organizations to streamline software delivery and maintain consistent release practices.",
+  "initial_parameter_schema": {
+    "repositories": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "repository_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository_id",
+          "name",
+          "url",
+          "status"
+        ]
+      }
+    },
+    "build_definitions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "build_definition_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "repository_id": {
+            "type": "string"
+          },
+          "branch": {
+            "type": "string"
+          },
+          "build_steps": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "build_definition_id",
+          "name",
+          "repository_id",
+          "branch",
+          "build_steps",
+          "status"
+        ]
+      }
+    },
+    "build_steps": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "step_id": {
+            "type": "string"
+          },
+          "build_definition_id": {
+            "type": "string"
+          },
+          "command": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "step_id",
+          "build_definition_id",
+          "command",
+          "order"
+        ]
+      }
+    },
+    "build_history": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "build_id": {
+            "type": "string"
+          },
+          "build_definition_id": {
+            "type": "string"
+          },
+          "trigger_time": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "log": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "build_id",
+          "build_definition_id",
+          "trigger_time",
+          "status",
+          "log"
+        ]
+      }
+    },
+    "_branch_inventory_state": {
+      "type": "object"
+    }
+  },
+  "tool_state_dependencies": {
+    "get_build_definition_by_id": [
+      "build_definitions"
+    ],
+    "find_build_definition_by_name": [
+      "build_definitions"
+    ],
+    "list_all_build_definitions": [
+      "build_definitions"
+    ],
+    "list_all_repositories": [
+      "repositories"
+    ],
+    "get_repository_by_name": [
+      "repositories"
+    ],
+    "get_repository_by_id": [
+      "repositories"
+    ],
+    "list_branches_for_repository": [
+      "build_definitions",
+      "repositories"
+    ],
+    "get_build_steps_for_definition": [
+      "build_definitions",
+      "build_steps"
+    ],
+    "get_build_step_by_id": [
+      "build_steps"
+    ],
+    "check_build_definition_name_uniqueness": [
+      "build_definitions"
+    ],
+    "get_build_history_for_definition": [
+      "build_definitions",
+      "build_history"
+    ],
+    "update_build_definition_metadata": [
+      "build_definitions",
+      "list_branches_for_repository",
+      "repositories"
+    ],
+    "set_build_steps_for_definition": [
+      "build_definitions",
+      "build_steps"
+    ],
+    "add_build_step_to_definition": [
+      "build_definitions",
+      "build_steps"
+    ],
+    "remove_build_step_from_definition": [
+      "build_definitions",
+      "build_steps"
+    ],
+    "reorder_build_steps_for_definition": [
+      "build_definitions",
+      "build_steps"
+    ],
+    "validate_build_definition_update": [
+      "build_definitions",
+      "build_steps",
+      "repositories"
+    ],
+    "create_build_step": [
+      "build_definitions",
+      "build_steps"
+    ],
+    "delete_build_step": [
+      "build_definitions",
+      "build_steps"
+    ],
+    "create_build_definition": [
+      "build_definitions",
+      "build_steps",
+      "repositories"
+    ],
+    "delete_build_definition": [
+      "build_definitions",
+      "build_steps"
+    ],
+    "trigger_build": [
+      "build_definitions",
+      "build_history",
+      "repositories"
+    ],
+    "set_repository_status": [
+      "repositories"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_build_definition_by_id",
+      "description": "Retrieve details of a build definition given its build_definition_id.\n\nArgs:\n    build_definition_id (str): The unique identifier for the build definition.\n\nReturns:\n    dict:\n        - {\"success\": True, \"data\": BuildDefinitionInfo} if found\n        - {\"success\": False, \"error\": \"Build definition not found\"} if not found\n\nConstraints:\n    - build_definition_id must exist in self.build_definitions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "build_definition_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "build_definition_id"
+        ]
+      }
+    },
+    {
+      "name": "find_build_definition_by_name",
+      "description": "Find a build definition by its unique name.\n\nArgs:\n    name (str): The name of the build definition to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": BuildDefinitionInfo,  # The build definition info, if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If not found\n    }\n\nConstraints:\n    - Only one build definition can have a given name (enforced by environment policy).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "list_all_build_definitions",
+      "description": "Retrieve all build definitions present in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BuildDefinitionInfo],  # List of all build definitions (may be empty if none are defined)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_all_repositories",
+      "description": "Retrieve all repositories in the CI/CD management system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RepositoryInfo]  # List of all repositories (may be empty)\n    }\n\nConstraints:\n    - None. This is a read-only operation that returns all known repositories.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_repository_by_name",
+      "description": "Retrieve repository information using its name.\n\nArgs:\n    name (str): The name of the repository to look up.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": RepositoryInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If the repository is not found\n    }\n\nConstraints:\n    - Repository names are unique within the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_repository_by_id",
+      "description": "Retrieve repository information by its repository_id.\n\nArgs:\n    repository_id (str): The unique identifier for the repository.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": RepositoryInfo,  # Repository information if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if the repository is not found\n    }\n\nConstraints:\n    - The repository_id must exist in the repositories collection.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "repository_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository_id"
+        ]
+      }
+    },
+    {
+      "name": "list_branches_for_repository",
+      "description": "List all available branch names for a given repository, based on branches\nreferenced by existing build definitions.\n\nArgs:\n    repository_id (str): The unique identifier of the repository.\n\nReturns:\n    dict:\n        - success (bool): True if repository exists, False otherwise.\n        - data (List[str]): List of unique branch names for this repository,\n                            possibly empty if no branches found.\n        - error (str): Error message, populated only if success is False.\n\nConstraints:\n    - The repository must exist.\n    - Branches are inferred from build definitions referencing the repository.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "repository_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository_id"
+        ]
+      }
+    },
+    {
+      "name": "get_build_steps_for_definition",
+      "description": "Retrieve the ordered list of build steps (including command details) for a specified build definition.\n\nArgs:\n    build_definition_id (str): Unique identifier of the build definition.\n\nReturns:\n    dict:\n        - success: True/False\n        - data: On success, List[BuildStepInfo] ordered as in BuildDefinition['build_steps']\n        - error: On failure, error message\n\nConstraints:\n    - BuildDefinition must exist.\n    - Only steps referenced in build_steps will be returned, in their specified order.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "build_definition_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "build_definition_id"
+        ]
+      }
+    },
+    {
+      "name": "get_build_step_by_id",
+      "description": "Retrieve the details of a build step given its step_id.\n\nArgs:\n    step_id (str): The unique identifier of the build step.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": BuildStepInfo    # The build step's information\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str             # If the build step does not exist\n    }\n\nConstraints:\n    - The build step (step_id) must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "step_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "step_id"
+        ]
+      }
+    },
+    {
+      "name": "check_build_definition_name_uniqueness",
+      "description": "Verify whether a given build definition name is unique in the system.\n\nArgs:\n    name (str): The name to check for uniqueness among build definitions.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": { \"is_unique\": bool }\n    }\n    Returns 'is_unique': True if no existing BuildDefinition uses that name,\n    otherwise False.\n\nConstraints:\n    - Names are considered case-sensitive (unless documented otherwise).\n    - All current build definition names must be unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_build_history_for_definition",
+      "description": "Retrieve all build execution history records for a given build definition.\n\nArgs:\n    build_definition_id (str): The ID of the build definition to query.\n\nReturns:\n    dict:\n        - success: True/False\n        - data: List[BuildHistoryInfo] if success (may be empty)\n        - error: str if not success\n\nConstraints:\n    - build_definition_id must exist in build_definitions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "build_definition_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "build_definition_id"
+        ]
+      }
+    },
+    {
+      "name": "update_build_definition_metadata",
+      "description": "Update the name, repository_id, branch, or status of a build definition.\n\nArgs:\n    build_definition_id (str): ID of the build definition to update.\n    name (str, optional): New name for the build definition (must be unique).\n    repository_id (str, optional): New repository_id (must exist).\n    branch (str, optional): New branch name (must exist in the repository).\n    status (str, optional): New status.\n\nReturns:\n    dict: { \"success\": True, \"message\": str } or { \"success\": False, \"error\": str }\n\nConstraints:\n    - BuildDefinition must exist.\n    - Name must be unique among all BuildDefinitions.\n    - repository_id must exist in repositories if provided.\n    - (If supported) branch must exist in the repository if provided.\n    - Only supplied fields are updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "build_definition_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "repository_id": {
+            "type": "string"
+          },
+          "branch": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "build_definition_id"
+        ]
+      }
+    },
+    {
+      "name": "set_build_steps_for_definition",
+      "description": "Assigns a new ordered list of build steps (by step_ids or command dicts) to the specified build definition,\nensuring no duplicates and correct ordering.\n\nArgs:\n    build_definition_id (str): The ID of the build definition to update.\n    steps (List[Union[str, dict]]): The new ordered build steps, each either:\n        - a step_id (str) referencing an existing BuildStep for this definition, or\n        - a dict: { \"command\": <command_str> }, in which case a new BuildStep is created and added.\n\nReturns:\n    dict: On success: { \"success\": True, \"message\": \"Successfully set build steps for build definition <id>\" }\n          On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - BuildDefinition must exist.\n    - All step_ids must reference BuildSteps for this build_definition_id only.\n    - Commands will create new BuildSteps.\n    - The resulting step list must have no duplicates (by step_id).\n    - BuildSteps must have correct sequential order fields.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "build_definition_id": {
+            "type": "string"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "command": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "command"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "build_definition_id",
+          "steps"
+        ]
+      }
+    },
+    {
+      "name": "add_build_step_to_definition",
+      "description": "Add and position a new build step to a build definition.\n\nArgs:\n    build_definition_id (str): The ID of the build definition to modify.\n    command (str): The shell command for the build step.\n    position (int, optional): 0-based desired position to insert. If out of range or not set, appends to end.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Build step added\", \"step_id\": <new_step_id> }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The build definition must exist.\n    - The build step will be inserted at the specified position; all subsequent step orders will be updated.\n    - Build steps must remain uniquely ordered.\n    - The command must not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "build_definition_id": {
+            "type": "string"
+          },
+          "command": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "build_definition_id",
+          "command"
+        ]
+      }
+    },
+    {
+      "name": "remove_build_step_from_definition",
+      "description": "Remove a build step from the specified build definition's workflow.\n\nArgs:\n    build_definition_id (str): The ID of the build definition.\n    step_id (str): The ID of the build step to remove.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Build step removed from build definition workflow.\" }\n        - On failure: { \"success\": False, \"error\": str }\n\nConstraints:\n    - Both build_definition_id and step_id must exist.\n    - The step must belong to the specified build definition.\n    - The step must exist in the build_steps list of the build definition.\n    - After removal, the list remains ordered.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "build_definition_id": {
+            "type": "string"
+          },
+          "step_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "build_definition_id",
+          "step_id"
+        ]
+      }
+    },
+    {
+      "name": "reorder_build_steps_for_definition",
+      "description": "Change the sequence/order of the steps within a build definition.\n\nArgs:\n    build_definition_id (str): The unique identifier for the build definition to modify.\n    new_order (List[str]): The new ordered list of step_ids (strings) representing the desired build step sequence.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Build steps reordered successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error.\n    }\n\nConstraints:\n    - build_definition_id must exist.\n    - new_order must be a permutation of the build_definition's current build_steps (no missing or extra step_ids, no duplicates).\n    - All step_ids in new_order must belong to the build definition.\n    - The order field in each BuildStepInfo is updated to reflect the new sequence (starting from 1).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "build_definition_id": {
+            "type": "string"
+          },
+          "new_order": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "build_definition_id",
+          "new_order"
+        ]
+      }
+    },
+    {
+      "name": "validate_build_definition_update",
+      "description": "Perform validation checks before allowing a build definition update.\n\nArgs:\n    build_definition_id (str): The ID of the build definition to validate an update for.\n    proposed_metadata (dict): Dict with proposed updates (may contain 'name', 'repository_id', 'branch', 'build_steps').\n    permission_token (str, optional): Token for checking update permissions.\n\nReturns:\n    dict:\n        { \"success\": True, \"message\": \"Validation passed\" }\n        or\n        { \"success\": False, \"error\": \"<reason>\" }\n\nValidation Constraints:\n    - Repository (repository_id) must exist.\n    - Branch must exist in the repository.\n    - BuildDefinition name must remain unique.\n    - BuildSteps must be ordered, unique, belong to the build_definition_id, and not have duplicate order values.\n    - Permission token check (if implemented).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "build_definition_id": {
+            "type": "string"
+          },
+          "proposed_metadata": {
+            "type": "object"
+          },
+          "permission_token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "build_definition_id",
+          "proposed_metadata"
+        ]
+      }
+    },
+    {
+      "name": "create_build_step",
+      "description": "Create a new build step and optionally link it to a build definition.\n\nArgs:\n    step_id (str): Unique identifier for the step (must not already exist).\n    command (str): The command this build step will execute.\n    order (int): The sequence order for the step (if linking to a definition).\n    build_definition_id (str, optional): If provided, link step to this build definition (must exist).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Created build step <step_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<error reason>\"\n    }\n\nConstraints:\n    - step_id must be unique.\n    - If build_definition_id is provided:\n        - It must exist.\n        - The order value must not duplicate any existing step in the build definition.\n        - The step_id is added to build_steps of build definition in correct order position.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "step_id": {
+            "type": "string"
+          },
+          "command": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer"
+          },
+          "build_definition_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "step_id",
+          "command",
+          "order"
+        ]
+      }
+    },
+    {
+      "name": "delete_build_step",
+      "description": "Remove a build step from the system, including removing it from any build definition referencing it.\n\nArgs:\n    step_id (str): The identifier of the build step to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Build step <step_id> deleted from system and build definitions.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"Build step does not exist.\"\n    }\n\nConstraints:\n    - The step must exist to be deleted.\n    - Remove the step from all build definitions' build_steps lists that reference it.\n    - This operation must maintain list order for remaining steps.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "step_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "step_id"
+        ]
+      }
+    },
+    {
+      "name": "create_build_definition",
+      "description": "Add a new build definition to the system with specified metadata and steps.\n\nArgs:\n    name (str): Name for the build definition (must be unique).\n    repository_id (str): The ID of the repository to associate.\n    branch (str): The branch in the repository to target (must be non-empty).\n    build_steps (List[Dict]): List of steps, each dict with keys 'command' (str), and 'order' (int).\n    status (str): BuildDefinition status (optional; defaults to 'active').\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Build definition created\",\n                \"build_definition_id\": <str>\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"<reason>\"\n            }\nConstraints:\n    - Name must be unique among all build definitions.\n    - repository_id must exist.\n    - branch must be non-empty.\n    - build_steps must be a non-empty ordered list, with unique 'order' values.\n    - Each step must contain at least 'command' (str) and 'order' (int).\n    - Each BuildDefinition, BuildStep gets a unique ID (generated).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "repository_id": {
+            "type": "string"
+          },
+          "branch": {
+            "type": "string"
+          },
+          "build_steps": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "repository_id",
+          "branch",
+          "build_steps"
+        ]
+      }
+    },
+    {
+      "name": "delete_build_definition",
+      "description": "Remove a build definition from the system, including its associated build steps.\n\nArgs:\n    build_definition_id (str): The ID of the build definition to delete.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Build definition <id> deleted.\" }\n        - On error: { \"success\": False, \"error\": str }\n\nConstraints:\n    - Build definition must exist.\n    - All associated build steps must also be deleted.\n    - Build history for the build definition is preserved (not deleted) for audit purposes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "build_definition_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "build_definition_id"
+        ]
+      }
+    },
+    {
+      "name": "trigger_build",
+      "description": "Manually queue a build for the specified build definition.\n\nArgs:\n    build_definition_id (str): ID of the build definition to trigger.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Build manually triggered.\",\n                \"build_id\": str,  # the new build ID\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": <reason>\n            }\n\nConstraints:\n    - The build definition must exist.\n    - The linked repository (and branch) must exist.\n    - The linked repository and build definition must both be active.\n    - The build definition must have at least one configured build step.\n    - Known blocking steps (for example the unresolved strict lint gate or the beta-audit-tool step) prevent a build from being queued until the pipeline is modified.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "build_definition_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "build_definition_id"
+        ]
+      }
+    },
+    {
+      "name": "set_repository_status",
+      "description": "Update the status field of a repository.\n\nArgs:\n    repository_id (str): Unique ID of the repository to update.\n    status (str): New status to assign (e.g., \"active\", \"archived\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Repository status updated successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Repository does not exist\"\n    }\n\nConstraints:\n    - Repository with the given ID must exist in self.repositories.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "repository_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository_id",
+          "status"
+        ]
+      }
+    }
+  ]
+}

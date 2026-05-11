@@ -1,0 +1,478 @@
+{
+  "env_name": "AmazonPriceTrackerSystem",
+  "description": "An Amazon product price tracker system records, stores, and analyzes historical pricing information for products sold on Amazon, indexed by their unique ASINs. It maintains a time series of price points, supports queries for statistics (such as latest, highest, and lowest prices), and generates visualizations like price history charts. Such a system is commonly used for price monitoring, deal discovery, and market research in the e-commerce sector.",
+  "initial_parameter_schema": {
+    "products": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "asin": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "image_url": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "asin",
+          "title",
+          "url",
+          "image_url",
+          "category"
+        ]
+      }
+    },
+    "price_history": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "asin": {
+              "type": "string"
+            },
+            "price": {
+              "type": "number"
+            },
+            "currency": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "asin",
+            "price",
+            "currency",
+            "timestamp"
+          ]
+        }
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_product_by_asin": [
+      "products"
+    ],
+    "list_all_products": [
+      "products"
+    ],
+    "get_latest_price": [
+      "price_history",
+      "products"
+    ],
+    "get_highest_price": [
+      "price_history",
+      "products"
+    ],
+    "get_lowest_price": [
+      "price_history",
+      "products"
+    ],
+    "get_price_history": [
+      "price_history",
+      "products"
+    ],
+    "generate_price_history_chart": [
+      "price_history",
+      "products"
+    ],
+    "get_price_statistics": [
+      "price_history",
+      "products"
+    ],
+    "validate_asin_exists": [
+      "products"
+    ],
+    "add_product": [
+      "products"
+    ],
+    "update_product_info": [
+      "products"
+    ],
+    "remove_product": [
+      "price_history",
+      "products"
+    ],
+    "add_price_record": [
+      "price_history",
+      "products"
+    ],
+    "delete_price_record": [
+      "price_history",
+      "products"
+    ],
+    "purge_price_records_by_time": [
+      "price_history",
+      "products"
+    ],
+    "correct_price_record": [
+      "price_history",
+      "products"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_product_by_asin",
+      "description": "Retrieve full product information for a specified ASIN.\n\nArgs:\n    asin (str): Amazon Standard Identification Number (unique product ID).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ProductInfo  # Complete product information for given ASIN\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if ASIN not found\n    }\n\nConstraints:\n    - ASIN must exist in the product list (self.products).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "asin": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "asin"
+        ]
+      }
+    },
+    {
+      "name": "list_all_products",
+      "description": "Retrieve a summary list of all tracked products.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ProductInfo]   # list may be empty if no products exist\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_latest_price",
+      "description": "Fetch the most recent price record (price, currency, timestamp, asin) for a specified product ASIN.\n\nArgs:\n    asin (str): Amazon Standard Identification Number of the product.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": Latest PriceRecordInfo (dict: asin, price, currency, timestamp)\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str (reason: ASIN not found or no price history)\n            }\n\nConstraints:\n    - ASIN must exist in the product list.\n    - There must be at least one PriceRecordInfo for the product.\n    - Returns only the record with the highest timestamp for the ASIN.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "asin": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "asin"
+        ]
+      }
+    },
+    {
+      "name": "get_highest_price",
+      "description": "Retrieve the highest observed price (with currency and timestamp) for the specified ASIN,\noptionally within the given time window.\n\nArgs:\n    asin (str): ASIN (Amazon product ID) of the product.\n    start_time (float, optional): Include only records from this epoch timestamp onwards.\n    end_time (float, optional): Include only records up to this epoch timestamp.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"price\": float,\n            \"currency\": str,\n            \"timestamp\": float\n        }\n    }\n    If no price records are found for the condition (asin, time window), then:\n    {\n        \"success\": True,\n        \"data\": None\n    }\n    On error (e.g. asin does not exist, time window invalid):\n    {\n        \"success\": False,\n        \"error\": str\n    }\nConstraints:\n    - ASIN must exist in products.\n    - Only returns highest among available PriceRecords for that ASIN in the specified time window (if any).\n    - start_time and end_time, if specified, must form a valid window (start_time <= end_time).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "asin": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "asin"
+        ]
+      }
+    },
+    {
+      "name": "get_lowest_price",
+      "description": "Retrieve the lowest observed price (and timestamp/currency) for the given ASIN,\noptionally restricted to a [start_time, end_time] window.\n\nArgs:\n    asin (str): The target ASIN.\n    start_time (float, optional): Epoch seconds for start of the time window (inclusive).\n    end_time (float, optional): Epoch seconds for end of the time window (inclusive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"price\": float,\n            \"currency\": str,\n            \"timestamp\": float\n        } | None  # None if no price record found in window\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - ASIN must exist in the tracked products.\n    - If no price records exist in the time window, data is None.\n    - Time window [start_time, end_time] is inclusive. If either not provided, treated as unbounded.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "asin": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "asin"
+        ]
+      }
+    },
+    {
+      "name": "get_price_history",
+      "description": "Retrieve all price records for a given ASIN, optionally within a provided time window.\n\nArgs:\n    asin (str): The ASIN (unique product identifier) to query price history for.\n    start_time (float, optional): Minimum timestamp (inclusive) for filtering. Epoch seconds.\n    end_time (float, optional): Maximum timestamp (inclusive) for filtering. Epoch seconds.\n\nReturns:\n    dict: On success:\n        {\"success\": True, \"data\": List[PriceRecordInfo]}\n        (list may be empty if no records match.)\n    On failure:\n        {\"success\": False, \"error\": str}\n\nConstraints:\n    - ASIN must exist in the system.\n    - If provided, start_time must be <= end_time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "asin": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "asin"
+        ]
+      }
+    },
+    {
+      "name": "generate_price_history_chart",
+      "description": "Generate chart data representing the price history for a specified product (ASIN)\nover a given time range.\n\nArgs:\n    asin (str): Product ASIN to query.\n    start_time (float): Start of the time window (epoch seconds, inclusive).\n    end_time (float): End of the time window (epoch seconds, inclusive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[dict],  # Each dict: {\"timestamp\": float, \"price\": float, \"currency\": str}\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - ASIN must exist.\n    - start_time <= end_time.\n    - Only include PriceRecord in the [start_time, end_time] interval.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "asin": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "asin",
+          "start_time",
+          "end_time"
+        ]
+      }
+    },
+    {
+      "name": "get_price_statistics",
+      "description": "Aggregate price statistics for a product (by ASIN) over a [start_time, end_time] window.\n\nArgs:\n    asin (str): Product ASIN.\n    start_time (float): Start of time window (epoch seconds, inclusive).\n    end_time (float): End of time window (epoch seconds, inclusive).\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"data\": {\n                \"average\": float,\n                \"stddev\": float,\n                \"min\": float,\n                \"max\": float,\n                \"first\": float,\n                \"last\": float,\n                \"currency\": str\n            }\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": str\n        }\nConstraints:\n    - ASIN must be tracked.\n    - Time window must be valid.\n    - Statistics computed are over records strictly within [start_time, end_time].",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "asin": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "asin",
+          "start_time",
+          "end_time"
+        ]
+      }
+    },
+    {
+      "name": "validate_asin_exists",
+      "description": "Check if a given ASIN is present in the Product entity.\n\nArgs:\n    asin (str): The ASIN to validate.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"exists\": bool  # True if the ASIN exists, False otherwise.\n    }\nConstraints:\n    - None. Returns True/False based on presence of asin in products.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "asin": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "asin"
+        ]
+      }
+    },
+    {
+      "name": "add_product",
+      "description": "Add a new product to the system.\n\nArgs:\n    asin (str): The unique Amazon product identifier.\n    title (str): Product title.\n    url (str): Amazon product URL.\n    image_url (str): URL to the product image.\n    category (str): Product category.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Product with ASIN <asin> successfully added.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Description of the reason (e.g., ASIN exists, missing field)\"\n            }\n\nConstraints:\n    - ASIN must be unique/not already present.\n    - All fields are required and must be non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "asin": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "image_url": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "asin",
+          "title",
+          "url",
+          "image_url",
+          "category"
+        ]
+      }
+    },
+    {
+      "name": "update_product_info",
+      "description": "Update metadata information of an existing product.\n\nArgs:\n    asin (str): The ASIN of the product to update.\n    title (str, optional): New title for the product.\n    url (str, optional): New URL for the product.\n    image_url (str, optional): New image URL for the product.\n    category (str, optional): New category for the product.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"message\": \"...\"}\n        - On failure: {\"success\": False, \"error\": \"...\"}\n\nConstraints:\n    - Product with the given ASIN must exist.\n    - At least one metadata field must be provided for update.\n    - ASIN may not be changed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "asin": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "image_url": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "asin"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "title"
+            ]
+          },
+          {
+            "required": [
+              "url"
+            ]
+          },
+          {
+            "required": [
+              "image_url"
+            ]
+          },
+          {
+            "required": [
+              "category"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "remove_product",
+      "description": "Delete a product specified by its ASIN from the system, including all associated PriceRecords.\n\nArgs:\n    asin (str): The ASIN of the product to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Product and associated price records deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Product does not exist\"\n    }\n\nConstraints:\n    - Only removes if the product exists.\n    - Removes all associated price records (if any).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "asin": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "asin"
+        ]
+      }
+    },
+    {
+      "name": "add_price_record",
+      "description": "Insert a new price record for an ASIN.\n\nArgs:\n    asin (str): The product's ASIN (must exist).\n    price (float): The observed price (must be non-negative).\n    currency (str): Currency code for the price.\n    timestamp (float): Epoch time of the observation (must be strictly increasing for this ASIN).\n\nReturns:\n    dict: Success: { \"success\": True, \"message\": ... }\n          Failure: { \"success\": False, \"error\": ... }\n\nConstraints:\n    - ASIN must exist in Product entity.\n    - Price must be non-negative.\n    - Timestamp must be strictly greater than previous records for this ASIN.\n    - Duplicate (asin, timestamp) records are forbidden.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "asin": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "asin",
+          "price",
+          "currency",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "delete_price_record",
+      "description": "Remove a specific price record identified by ASIN and timestamp.\n\nArgs:\n    asin (str): The ASIN (Amazon product identifier) of the product.\n    timestamp (float): The timestamp (epoch seconds) of the price record to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Price record deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason for failure\"\n    }\n\nConstraints:\n    - The (asin, timestamp) pair must exist uniquely in price_history.\n    - Associated product (ASIN) must exist.\n    - On success, the price record is removed and no data corruption occurs.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "asin": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "asin",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "purge_price_records_by_time",
+      "description": "Delete all price records for a given ASIN that have a timestamp between start_time and end_time (inclusive).\n\nArgs:\n    asin (str): The ASIN of the product whose price records should be purged.\n    start_time (float): Epoch time (inclusive) for start of purge window.\n    end_time (float): Epoch time (inclusive) for end of purge window.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"<N> price records deleted for ASIN <asin> within time window.\" }\n        - On error: { \"success\": False, \"error\": \"error message\" }\n\nConstraints:\n    - ASIN must exist in the Product entity.\n    - start_time must be <= end_time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "asin": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "asin",
+          "start_time",
+          "end_time"
+        ]
+      }
+    },
+    {
+      "name": "correct_price_record",
+      "description": "Modify the price value of the price record for a given product (ASIN) at a specific timestamp.\n\nArgs:\n    asin (str): The ASIN of the product whose price record is to be corrected.\n    timestamp (float): The timestamp (epoch seconds) of the target price record.\n    new_price (float): The corrected, non-negative price value.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Price record updated successfully\" }\n        - On failure: { \"success\": False, \"error\": <reason str> }\n\nConstraints:\n    - ASIN must correspond to a valid product.\n    - Price value must be non-negative.\n    - The (asin, timestamp) record must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "asin": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "new_price": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "asin",
+          "timestamp",
+          "new_price"
+        ]
+      }
+    }
+  ]
+}

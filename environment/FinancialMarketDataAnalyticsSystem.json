@@ -1,0 +1,560 @@
+{
+  "env_name": "FinancialMarketDataAnalyticsSystem",
+  "description": "A financial market data and analytics system stores and organizes comprehensive time-series data for various financial instruments, such as stocks, bonds, and indices. The system maintains historical and real-time price data, metadata like ticker symbols, and often provides methods to calculate technical indicators including moving averages and EMAs. Users can query, analyze, and visualize price trends and trading signals for informed decision-making in trading, research, or portfolio management.",
+  "initial_parameter_schema": {
+    "instruments": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "instrument_id": {
+            "type": "string"
+          },
+          "ticker_symbol": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "exchange": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "instrument_id",
+          "ticker_symbol",
+          "type",
+          "name",
+          "exchange"
+        ]
+      }
+    },
+    "price_data": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "instrument_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "open_price": {
+              "type": "number"
+            },
+            "high_price": {
+              "type": "number"
+            },
+            "low_price": {
+              "type": "number"
+            },
+            "close_price": {
+              "type": "number"
+            },
+            "volume": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "instrument_id",
+            "timestamp",
+            "open_price",
+            "high_price",
+            "low_price",
+            "close_price",
+            "volume"
+          ]
+        }
+      }
+    },
+    "technical_indicators": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "indicator_type": {
+            "type": "string"
+          },
+          "instrument_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          },
+          "param": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "indicator_type",
+          "instrument_id",
+          "timestamp",
+          "value",
+          "param"
+        ]
+      }
+    },
+    "_SUPPORTED_INDICATORS": {
+      "type": "string"
+    },
+    "_SUPPORTED_PARAMS": {
+      "type": "string"
+    }
+  },
+  "tool_state_dependencies": {
+    "get_instrument_by_ticker": [
+      "instruments"
+    ],
+    "list_instruments": [
+      "instruments"
+    ],
+    "get_price_data_for_instrument": [
+      "instruments",
+      "price_data"
+    ],
+    "get_supported_indicators": [],
+    "get_technical_indicators": [
+      "instruments",
+      "technical_indicators"
+    ],
+    "get_latest_technical_indicator": [
+      "technical_indicators"
+    ],
+    "get_instrument_type": [
+      "instruments"
+    ],
+    "check_price_data_consistency": [
+      "instruments",
+      "price_data",
+      "technical_indicators"
+    ],
+    "add_price_data": [
+      "instruments",
+      "price_data"
+    ],
+    "update_price_data": [
+      "instruments",
+      "price_data"
+    ],
+    "delete_price_data_entry": [
+      "price_data"
+    ],
+    "calculate_and_store_technical_indicator": [
+      "instruments",
+      "price_data",
+      "technical_indicators"
+    ],
+    "recalculate_all_indicators_for_instrument": [
+      "instruments",
+      "price_data",
+      "technical_indicators"
+    ],
+    "add_instrument": [
+      "instruments"
+    ],
+    "remove_instrument": [
+      "instruments",
+      "price_data",
+      "technical_indicators"
+    ],
+    "delete_technical_indicator_entry": [
+      "technical_indicators"
+    ],
+    "update_technical_indicator_entry": [
+      "_SUPPORTED_INDICATORS",
+      "_SUPPORTED_PARAMS",
+      "price_data",
+      "technical_indicators"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_instrument_by_ticker",
+      "description": "Retrieve the FinancialInstrumentInfo for a given ticker symbol.\n\nArgs:\n    ticker_symbol (str): The ticker to search for.\n\nReturns:\n    dict:\n        - { \"success\": True, \"data\": FinancialInstrumentInfo }\n        - { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Ticker symbol must exist among registered instruments.\n    - At most one instrument is associated with a ticker symbol.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticker_symbol": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticker_symbol"
+        ]
+      }
+    },
+    {
+      "name": "list_instruments",
+      "description": "List all available financial instruments in the system with their metadata.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[FinancialInstrumentInfo],  # May be empty if no instruments\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Unexpected environment or data structure failure\n    }\n\nConstraints:\n    - None (listing operation; always succeeds with empty list if no data)",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_price_data_for_instrument",
+      "description": "Retrieve price data (OHLCV) for a given instrument over a specified ISO date/time range.\n\nArgs:\n    instrument_id (str): The instrument to fetch data for.\n    start_time (str): ISO-formatted string for range start (inclusive).\n    end_time (str): ISO-formatted string for range end (inclusive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PriceDataInfo],  # Chronologically sorted (by timestamp) price data\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # error description\n    }\n\nConstraints:\n    - Instrument must exist in system.\n    - start_time must be <= end_time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "instrument_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "instrument_id",
+          "start_time",
+          "end_time"
+        ]
+      }
+    },
+    {
+      "name": "get_supported_indicators",
+      "description": "List the supported technical indicator types and their accepted parameterizations.\n\nReturns:\n    dict:\n    {\n        \"success\": True,\n        \"data\": Dict[str, List[str]]\n            # Mapping from indicator type (e.g. \"EMA\") to list of accepted parameterization names (e.g. [\"period\"])\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if unavailable\n    }\n\nConstraints:\n    - Supported indicators and parameterizations are environment-defined and static.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_technical_indicators",
+      "description": "Retrieve stored technical indicator values for an instrument, indicator type, parameterization, and date/time range.\n\nArgs:\n    instrument_id (str): The instrument ID to query indicators for.\n    indicator_type (str): The technical indicator type (e.g., \"EMA\", \"MA\").\n    param (str): Parameterization for the indicator (e.g., period/window).\n    start_timestamp (str): ISO datetime string (inclusive, lower bound).\n    end_timestamp (str): ISO datetime string (inclusive, upper bound).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TechnicalIndicatorInfo],  # Sorted by timestamp ascending, possibly empty.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str,  # Only on missing instrument.\n    }\n\nConstraints:\n    - The instrument_id must exist.\n    - Technical indicators outside the date range (start, end) are not included.\n    - If no indicators match, returns a success with empty data list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "instrument_id": {
+            "type": "string"
+          },
+          "indicator_type": {
+            "type": "string"
+          },
+          "param": {
+            "type": "string"
+          },
+          "start_timestamp": {
+            "type": "string"
+          },
+          "end_timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "instrument_id",
+          "indicator_type",
+          "param",
+          "start_timestamp",
+          "end_timestamp"
+        ]
+      }
+    },
+    {
+      "name": "get_latest_technical_indicator",
+      "description": "Retrieve the latest (most recent) stored technical indicator value for a given instrument and indicator configuration.\n\nArgs:\n    indicator_type (str): The type of technical indicator (e.g., 'EMA', 'SMA').\n    instrument_id (str): The instrument ID to retrieve the indicator for.\n    param (str): Parameterization string (e.g., window/period).\n\nReturns:\n    dict:\n        - success: True, and 'data' contains the most recent TechnicalIndicatorInfo if found.\n        - success: False, and 'error' describes why not found.\n\nConstraints:\n    - If no technical indicator entry exists for this configuration, return an error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "indicator_type": {
+            "type": "string"
+          },
+          "instrument_id": {
+            "type": "string"
+          },
+          "param": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "indicator_type",
+          "instrument_id",
+          "param"
+        ]
+      }
+    },
+    {
+      "name": "get_instrument_type",
+      "description": "Query the instrument’s type (e.g., 'stock', 'bond', etc.) for the specified instrument_id.\n\nArgs:\n    instrument_id (str): The unique identifier for the financial instrument.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": str }\n            where data is the instrument type (e.g., 'stock').\n        - On failure: { \"success\": False, \"error\": str }\n            where error explains the problem (e.g., instrument not found).\n\nConstraints:\n    - instrument_id must reference a valid FinancialInstrument.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "instrument_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "instrument_id"
+        ]
+      }
+    },
+    {
+      "name": "check_price_data_consistency",
+      "description": "Verify that for every stored technical indicator, the referenced price data (by instrument_id and timestamp) exists.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[\n            {\n                \"indicator\": TechnicalIndicatorInfo,\n                \"consistent\": bool,\n                \"reason\": Optional[str]\n            }\n        ]\n    }\n    Always succeeds; returns a report of consistency for each indicator.\n\nConstraints:\n    - Checks only existence of referenced price data for each indicator. \n    - Returns inconsistency if price data is missing, or instrument is missing.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "add_price_data",
+      "description": "Insert a new OHLCV (Open, High, Low, Close, Volume) entry for a given\ninstrument at the specified timestamp.\n\nArgs:\n    instrument_id (str): The financial instrument's unique identifier.\n    timestamp (str): ISO date-time string (must be unique per instrument).\n    open_price (float): Opening price.\n    high_price (float): Highest price.\n    low_price (float): Lowest price.\n    close_price (float): Closing price.\n    volume (float): Traded volume.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Price data added for instrument <id> at <timestamp>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<Reason for failure>\"\n    }\n\nConstraints:\n    - instrument_id must reference an existing financial instrument.\n    - (instrument_id, timestamp) combination must not already exist.\n    - Prices and volume must be non-negative (>= 0).\n    - high_price >= max(open, close, low)\n    - low_price <= min(open, close, high)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "instrument_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "open_price": {
+            "type": "number"
+          },
+          "high_price": {
+            "type": "number"
+          },
+          "low_price": {
+            "type": "number"
+          },
+          "close_price": {
+            "type": "number"
+          },
+          "volume": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "instrument_id",
+          "timestamp",
+          "open_price",
+          "high_price",
+          "low_price",
+          "close_price",
+          "volume"
+        ]
+      }
+    },
+    {
+      "name": "update_price_data",
+      "description": "Update an existing OHLCV (open, high, low, close, volume) PriceData entry for a given instrument and timestamp.\n\nArgs:\n    instrument_id (str): The instrument whose data to update (must exist).\n    timestamp (str): ISO timestamp for the entry to update (must already exist).\n    open_price (float): Updated open price.\n    high_price (float): Updated high price.\n    low_price (float): Updated low price.\n    close_price (float): Updated close price.\n    volume (float): Updated volume.\n\nReturns:\n    dict: { \"success\": True, \"message\": \"...\" } on success;\n          { \"success\": False, \"error\": \"...\" } on failure.\n\nConstraints:\n    - instrument_id must exist in the instruments DB.\n    - PriceData for (instrument_id, timestamp) must already exist.\n    - Does NOT create new price data.\n    - (Optional) Prices and volume should be non-negative.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "instrument_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "open_price": {
+            "type": "number"
+          },
+          "high_price": {
+            "type": "number"
+          },
+          "low_price": {
+            "type": "number"
+          },
+          "close_price": {
+            "type": "number"
+          },
+          "volume": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "instrument_id",
+          "timestamp",
+          "open_price",
+          "high_price",
+          "low_price",
+          "close_price",
+          "volume"
+        ]
+      }
+    },
+    {
+      "name": "delete_price_data_entry",
+      "description": "Remove an OHLCV price data entry for a given instrument and timestamp.\n\nArgs:\n    instrument_id (str): Unique identifier for the financial instrument.\n    timestamp (str): ISO-formatted date-time string for the target entry.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"message\": \"Price data entry deleted for instrument {instrument_id} at {timestamp}\"\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": \"reason\"\n        }\n\nConstraints:\n    - The instrument_id must exist in price_data dictionary.\n    - The timestamp must exist for this instrument's data dictionary.\n    - No exception is raised; errors are returned in result dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "instrument_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "instrument_id",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "calculate_and_store_technical_indicator",
+      "description": "Compute and store a technical indicator (e.g., EMA, MA) for the given instrument, timestamp, and parameterization.\nEnsures consistency with underlying price data and system constraints.\n\nArgs:\n    indicator_type (str): The type of indicator to compute ('EMA' or 'MA' supported).\n    instrument_id (str): The instrument ID to operate on.\n    timestamp (str): The reference timestamp (ISO string) for the computed value.\n    param (str): String parameterization (must be an integer window size, e.g., '10' for 10-period).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Calculated and stored ...\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Only 'EMA' and 'MA' indicator types are supported.\n    - The instrument and required price data must exist.\n    - The parameter must be a positive integer window size.\n    - Timestamps must reference actual price data entries.\n    - Indicator value must be consistent with price data.\n    - If indicator already exists for (indicator_type, instrument_id, timestamp, param), it is overwritten.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "indicator_type": {
+            "type": "string"
+          },
+          "instrument_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "param": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "indicator_type",
+          "instrument_id",
+          "timestamp",
+          "param"
+        ]
+      }
+    },
+    {
+      "name": "recalculate_all_indicators_for_instrument",
+      "description": "Recalculate all stored technical indicators for a given instrument, ensuring they\nmatch the up-to-date price data. Updates internal technical_indicators storage in-place.\n\nArgs:\n    instrument_id (str): The ID of the financial instrument to update indicators for.\n\nReturns:\n    dict:\n      - On success: { \"success\": True, \"message\": \"All technical indicators for instrument {instrument_id} have been recalculated.\" }\n      - On error: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Instrument must exist.\n    - Only recalculates already-stored indicators for this instrument.\n    - Skips updating an indicator if required price data is missing.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "instrument_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "instrument_id"
+        ]
+      }
+    },
+    {
+      "name": "add_instrument",
+      "description": "Register a new financial instrument in the system.\n\nArgs:\n    instrument_id (str): Unique ID for the financial instrument.\n    ticker_symbol (str): The instrument's ticker symbol.\n    type (str): Instrument type (e.g., 'stock', 'bond', 'index').\n    name (str): Formal name of the instrument.\n    exchange (str): Which exchange it's traded on.\n\nReturns:\n    dict: On success,\n        { \"success\": True, \"message\": \"Financial instrument <instrument_id> added.\" }\n    On failure (duplicate or missing fields),\n        { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Instrument ID must be unique.\n    - All fields are required (non-empty strings).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "instrument_id": {
+            "type": "string"
+          },
+          "ticker_symbol": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "exchange": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "instrument_id",
+          "ticker_symbol",
+          "type",
+          "name",
+          "exchange"
+        ]
+      }
+    },
+    {
+      "name": "remove_instrument",
+      "description": "Permanently delete a FinancialInstrument and all related price data and technical indicators from the system.\n\nArgs:\n    instrument_id (str): Unique identifier for the financial instrument.\n\nReturns:\n    dict:\n        Success: { \"success\": True, \"message\": \"Instrument <instrument_id> and all associated data removed.\" }\n        Failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Instrument must exist.\n    - All related PriceData and TechnicalIndicator entries must also be deleted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "instrument_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "instrument_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_technical_indicator_entry",
+      "description": "Delete a stored technical indicator value for the specified configuration.\n\nArgs:\n    indicator_type (str): The type of technical indicator (e.g., \"EMA\", \"SMA\").\n    instrument_id (str): The ID of the instrument.\n    timestamp (str): The ISO formatted timestamp for the indicator value.\n    param (str): The parameterization (e.g., period/window) for the indicator.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Technical indicator entry deleted.\" }\n        - On failure: { \"success\": False, \"error\": \"Technical indicator entry not found.\" }\n\nConstraints:\n    - The technical indicator entry must exist to be deleted.\n    - The combination (indicator_type, instrument_id, timestamp, param) uniquely identifies the entry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "indicator_type": {
+            "type": "string"
+          },
+          "instrument_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "param": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "indicator_type",
+          "instrument_id",
+          "timestamp",
+          "param"
+        ]
+      }
+    },
+    {
+      "name": "update_technical_indicator_entry",
+      "description": "Amend the value or configuration (param) of a stored technical indicator, maintaining system constraints.\n\nArgs:\n    indicator_type (str): The type of the indicator (e.g., 'EMA').\n    instrument_id (str): The ID of the financial instrument.\n    timestamp (str): The ISO-format timestamp for the indicator.\n    param (str): The current parameterization (e.g., period/window).\n    value (float, optional): New value for the indicator.\n    new_param (str, optional): New parameterization (changes configuration window).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Technical indicator updated successfully\"\n    }\n    or {\n        \"success\": False,\n        \"error\": str  # reason for failure\n    }\n\nConstraints:\n    - The targeted indicator must exist.\n    - If changing param, no duplicate (indicator_type, instrument_id, timestamp, new_param) may exist.\n    - Only supported indicator types/param combinations may be set.\n    - Underlying price data consistency must be maintained.\n    - indicator_type, instrument_id, and timestamp are immutable for this operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "indicator_type": {
+            "type": "string"
+          },
+          "instrument_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "param": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          },
+          "new_param": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "indicator_type",
+          "instrument_id",
+          "timestamp",
+          "param"
+        ]
+      }
+    }
+  ]
+}

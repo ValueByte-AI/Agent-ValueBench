@@ -1,0 +1,439 @@
+{
+  "env_name": "CloudInfrastructureMonitoringDashboard",
+  "description": "A cloud infrastructure monitoring dashboard is a centralized system that collects, visualizes, and manages performance and usage metrics from various cloud-based services. It maintains historical and real-time data on resource utilization, scalability, availability, and operational health for each managed service. Users can query, analyze, and report on specific metrics over custom time periods to inform decision-making and optimize cloud operations.",
+  "initial_parameter_schema": {
+    "cloud_services": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_id",
+          "name",
+          "type",
+          "status",
+          "region"
+        ]
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "metric_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "metric_id",
+          "name",
+          "category",
+          "unit"
+        ]
+      }
+    },
+    "metric_records": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "metric_id": {
+                "type": "string"
+              },
+              "service_id": {
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              },
+              "value": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "metric_id",
+              "service_id",
+              "timestamp",
+              "value"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_cloud_service_by_name": [
+      "cloud_services"
+    ],
+    "list_cloud_services": [
+      "cloud_services"
+    ],
+    "get_service_metrics": [
+      "cloud_services",
+      "metric_records",
+      "metrics"
+    ],
+    "list_metrics_by_category": [
+      "metrics"
+    ],
+    "get_metric_by_name_or_id": [
+      "metrics"
+    ],
+    "query_metric_records_time_range": [
+      "cloud_services",
+      "metric_records",
+      "metrics"
+    ],
+    "get_service_status": [
+      "cloud_services"
+    ],
+    "list_metric_records_for_service": [
+      "cloud_services",
+      "metric_records"
+    ],
+    "add_cloud_service": [
+      "cloud_services",
+      "metric_records"
+    ],
+    "update_cloud_service_status": [
+      "cloud_services"
+    ],
+    "add_metric": [
+      "metrics"
+    ],
+    "add_metric_record": [
+      "cloud_services",
+      "metric_records",
+      "metrics"
+    ],
+    "remove_metric_record": [
+      "metric_records"
+    ],
+    "remove_cloud_service": [
+      "cloud_services",
+      "metric_records"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_cloud_service_by_name",
+      "description": "Retrieve cloud service metadata and service_id by its name.\n\nArgs:\n    name (str): The name of the cloud service to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": CloudServiceInfo  # Metadata including service_id\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason cloud service was not found\n    }\n\nConstraints:\n    - Service must exist with the given name.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "list_cloud_services",
+      "description": "Returns all registered cloud services and their metadata.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CloudServiceInfo]  # May be empty if no cloud services are present\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_service_metrics",
+      "description": "Retrieve all metrics (with metadata) associated with a given cloud service.\n\nArgs:\n    service_id (str): The cloud service identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MetricInfo],  # the list of metrics collected/associated with the service.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # reason, e.g. service does not exist\n    }\n\nConstraints:\n    - The specified service_id must exist in cloud_services.\n    - Returns all metrics for which there are metric records for the service.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_id"
+        ]
+      }
+    },
+    {
+      "name": "list_metrics_by_category",
+      "description": "List all metrics (with metadata) filtered by their category.\n\nArgs:\n    category (str): The category to filter metrics by (e.g., \"scalability\", \"availability\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MetricInfo],  # List of metrics in the specified category (could be empty)\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Description of error, e.g. \"Invalid category\"\n    }\n\nConstraints:\n    - Category matching is case-sensitive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category"
+        ]
+      }
+    },
+    {
+      "name": "get_metric_by_name_or_id",
+      "description": "Retrieve details of a metric by its name or metric_id.\nAt least one of metric_id or name must be provided.\n\nArgs:\n    metric_id (str, optional): The ID of the metric to retrieve.\n    name (str, optional): The name of the metric to retrieve.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": MetricInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - If both metric_id and name are provided, metric_id takes precedence.\n    - If metric not found, return error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "metric_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [],
+        "anyOf": [
+          {
+            "required": [
+              "metric_id"
+            ]
+          },
+          {
+            "required": [
+              "name"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "query_metric_records_time_range",
+      "description": "Retrieve all MetricRecordInfo for the given service_id and metric_id where the\ntimestamp is within [start_time, end_time] (inclusive).\n\nArgs:\n    service_id (str): The ID of the monitored cloud service.\n    metric_id (str): The ID of the metric type.\n    start_time (float): Beginning of time range (inclusive).\n    end_time (float): End of time range (inclusive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MetricRecordInfo]  # List of matching records (empty if none found)\n    }\n    or {\n        \"success\": False,\n        \"error\": str  # Description of error encountered\n    }\n\nConstraints:\n    - service_id and metric_id must exist.\n    - start_time must be <= end_time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          },
+          "metric_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "service_id",
+          "metric_id",
+          "start_time",
+          "end_time"
+        ]
+      }
+    },
+    {
+      "name": "get_service_status",
+      "description": "Query the current status (active/inactive) of a cloud service.\n\nArgs:\n    service_id (str): The identifier of the cloud service.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"service_id\": str,\n            \"status\": str  # Status value as stored, e.g. \"active\", \"inactive\"\n        }\n    }\n    or {\n        \"success\": False,\n        \"error\": str  # Description of the error: service not found\n    }\n\nConstraints:\n    - Service must exist in the monitoring dashboard.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_id"
+        ]
+      }
+    },
+    {
+      "name": "list_metric_records_for_service",
+      "description": "Retrieve all metric records for a given service.\n\nArgs:\n    service_id (str): ID of the service whose records to fetch.\n    metric_id (str, optional): Only include records for this metric (if provided).\n    start_time (float, optional): Only include records with timestamp >= start_time.\n    end_time (float, optional): Only include records with timestamp <= end_time.\n\nReturns:\n    dict:\n        - On success:\n            {\"success\": True, \"data\": List[MetricRecordInfo]}\n        - On error:\n            {\"success\": False, \"error\": str}\n\nConstraints:\n    - service_id must be valid (exist in cloud_services).\n    - Time window must be respected if specified.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          },
+          "metric_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "service_id"
+        ]
+      }
+    },
+    {
+      "name": "add_cloud_service",
+      "description": "Add a new cloud service to the monitoring dashboard.\n\nArgs:\n    service_id (str): Unique identifier for the cloud service.\n    name (str): Display name of the cloud service.\n    type (str): Service type (e.g., Compute, Storage).\n    status (str): Status of the service (e.g., \"active\", \"inactive\", etc.).\n    region (str): Region/location of the cloud service.\n\nReturns:\n    dict:\n        - On success: \n            { \"success\": True, \"message\": \"Cloud service <name> added.\" }\n        - On failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - service_id must be unique across the environment.\n    - All parameters must be supplied and non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_id",
+          "name",
+          "type",
+          "status",
+          "region"
+        ]
+      }
+    },
+    {
+      "name": "update_cloud_service_status",
+      "description": "Change the status of a cloud service (e.g., activate, deactivate monitoring).\n\nArgs:\n    service_id (str): The unique identifier of the cloud service to update.\n    new_status (str): The new status to assign to the cloud service.\n\nReturns:\n    dict:\n        On success:\n            {\n              \"success\": True,\n              \"message\": \"Cloud service status updated.\"\n            }\n        On failure (e.g., invalid service_id):\n            {\n              \"success\": False,\n              \"error\": <str>\n            }\n\nConstraints:\n    - The service must exist in the monitoring dashboard.\n    - No assumptions are made about the allowed status values (any string is accepted).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "add_metric",
+      "description": "Register a new metric to be collected.\n\nArgs:\n    metric_id (str): Unique identifier for the metric.\n    name (str): Name of the metric.\n    category (str): Category of the metric (e.g., scalability, availability).\n    unit (str): Unit of the metric.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Metric registered successfully.\" }\n        - On failure: { \"success\": False, \"error\": \"Reason for failure\" }\n\nConstraints:\n    - metric_id must be unique.\n    - name must not be empty.\n    - All parameters must be non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "metric_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "metric_id",
+          "name",
+          "category",
+          "unit"
+        ]
+      }
+    },
+    {
+      "name": "add_metric_record",
+      "description": "Add a new metric record for a given service and metric type at a specific timestamp.\n\nArgs:\n    service_id (str): The ID of the cloud service to associate with this record.\n    metric_id (str): The ID of the metric to associate.\n    timestamp (float): The measurement time (Unix timestamp, float).\n    value (float): The value of the metric.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Metric record added.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description\n    }\n\nConstraints:\n    - Service must exist and be active.\n    - Metric must exist.\n    - Metric record is appended (not unique).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          },
+          "metric_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "value": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "service_id",
+          "metric_id",
+          "timestamp",
+          "value"
+        ]
+      }
+    },
+    {
+      "name": "remove_metric_record",
+      "description": "Delete a specific metric record for a given service, metric, and timestamp.\n\nArgs:\n    service_id (str): The cloud service identifier.\n    metric_id (str): The metric identifier.\n    timestamp (float): The timestamp of the record to remove.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Metric record removed successfully.\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The record must exist under the given service_id and metric_id with the exact timestamp.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          },
+          "metric_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "service_id",
+          "metric_id",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "remove_cloud_service",
+      "description": "Permanently delete the specified cloud service and all associated metric data.\n\nArgs:\n    service_id (str): The unique identifier of the cloud service to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # On successful deletion\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # On failure (e.g., service not found)\n    }\n\nConstraints:\n    - If the specified service_id does not exist, an error is returned.\n    - All metric records for this service are removed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_id"
+        ]
+      }
+    }
+  ]
+}

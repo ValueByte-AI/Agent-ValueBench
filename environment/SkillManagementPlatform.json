@@ -1,0 +1,663 @@
+{
+  "env_name": "SkillManagementPlatform",
+  "description": "A Skill Management Platform is designed to organize, categorize, and track individual skills within an organization or educational context. It maintains a searchable catalog of skills, links them to relevant files or resources, and supports operations to query, manage, and update skill information. Typical use cases include employee development, training programs, and capability mapping, making it a critical component in learning and talent systems.",
+  "initial_parameter_schema": {
+    "skills": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "skill_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          },
+          "related_files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "skill_id",
+          "name",
+          "description",
+          "category_id",
+          "related_files"
+        ]
+      }
+    },
+    "categories": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id",
+          "name",
+          "description"
+        ]
+      }
+    },
+    "files": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          },
+          "file_name": {
+            "type": "string"
+          },
+          "file_type": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "associated_skill_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "file_id",
+          "file_name",
+          "file_type",
+          "url",
+          "associated_skill_ids"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_category_by_name": [
+      "categories"
+    ],
+    "get_category_by_id": [
+      "categories"
+    ],
+    "list_all_categories": [
+      "categories"
+    ],
+    "list_skills_by_category": [
+      "categories",
+      "skills"
+    ],
+    "get_skill_by_id": [
+      "skills"
+    ],
+    "get_skill_by_name": [
+      "skills"
+    ],
+    "list_all_skills": [
+      "skills"
+    ],
+    "list_files_by_skill": [
+      "files",
+      "skills"
+    ],
+    "get_file_by_id": [
+      "files"
+    ],
+    "get_files_by_name": [
+      "files"
+    ],
+    "list_skills_by_file": [
+      "files"
+    ],
+    "list_files_by_category": [
+      "categories",
+      "files",
+      "skills"
+    ],
+    "add_category": [
+      "categories"
+    ],
+    "update_category": [
+      "categories"
+    ],
+    "delete_category": [
+      "categories",
+      "skills"
+    ],
+    "add_skill": [
+      "categories",
+      "files",
+      "skills"
+    ],
+    "update_skill": [
+      "categories",
+      "files",
+      "skills"
+    ],
+    "delete_skill": [
+      "files",
+      "skills"
+    ],
+    "add_file": [
+      "files",
+      "skills"
+    ],
+    "update_file": [
+      "files",
+      "skills"
+    ],
+    "delete_file": [
+      "files",
+      "skills"
+    ],
+    "link_file_to_skill": [
+      "files",
+      "skills"
+    ],
+    "unlink_file_from_skill": [
+      "files",
+      "skills"
+    ],
+    "bulk_link_files_to_skill": [
+      "files",
+      "skills"
+    ],
+    "bulk_unlink_files_from_skill": [
+      "files",
+      "skills"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_category_by_name",
+      "description": "Retrieve details of a category given its name.\n\nArgs:\n    name (str): The name of the category to retrieve.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": CategoryInfo\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Category not found\"\n            }\n\nConstraints:\n    - Returns the first exact match for category name.\n    - Category names must be matched exactly (case-sensitive).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_category_by_id",
+      "description": "Retrieve a category’s details using the category_id.\n\nArgs:\n    category_id (str): The unique ID of the category.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": CategoryInfo,  # Details of the category\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Category not found\"\n    }\n\nConstraints:\n    - The category_id must exist in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_categories",
+      "description": "Get a list of all skill categories in the platform.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CategoryInfo]  # List of category information, possibly empty if none present\n    }\nConstraints:\n    None",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_skills_by_category",
+      "description": "Retrieve all skills belonging to the specified category_id.\n\nArgs:\n    category_id (str): The identifier of the category.\n\nReturns:\n    dict:\n        success: True and a list of SkillInfo for matching skills\n        OR\n        success: False and an error message if the category does not exist\n\nConstraints:\n    - The given category_id must exist in the categories.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id"
+        ]
+      }
+    },
+    {
+      "name": "get_skill_by_id",
+      "description": "Retrieve the full detail of a specific skill by its skill_id.\n\nArgs:\n    skill_id (str): The unique ID of the skill to retrieve.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": SkillInfo  # If found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Skill ID not found\"  # If the skill_id is not present\n    }\n\nConstraints:\n    - None for query; the method will simply check presence.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "skill_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "skill_id"
+        ]
+      }
+    },
+    {
+      "name": "get_skill_by_name",
+      "description": "Retrieve detailed information for a specific skill by its name.\n\nArgs:\n    name (str): The name of the skill to look up (case-sensitive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": SkillInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Skill not found\"\n    }\n\nConstraints:\n    - Skill name must exactly match (case-sensitive).\n    - If multiple skills share a name, the first match is returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "list_all_skills",
+      "description": "List all skills currently present in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SkillInfo]  # List of all skills (can be empty)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_files_by_skill",
+      "description": "Retrieve all files/resources (with metadata) associated with the given skill_id.\n\nArgs:\n    skill_id (str): The identifier of the skill.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[FileInfo],  # All files/resources linked to this skill (may be empty).\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Error message if skill does not exist.\n    }\n\nConstraints:\n    - Skill must exist in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "skill_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "skill_id"
+        ]
+      }
+    },
+    {
+      "name": "get_file_by_id",
+      "description": "Retrieve details (metadata) of a file/resource by its unique file_id.\n\nArgs:\n    file_id (str): The unique identifier of the file/resource.\n\nReturns:\n    dict:\n        - On success: {\n              \"success\": True,\n              \"data\": FileInfo (the metadata dictionary of the file/resource)\n          }\n        - On failure: {\n              \"success\": False,\n              \"error\": \"File/resource with specified file_id does not exist\"\n          }\n\nConstraints:\n    - file_id must correspond to an existing file/resource in the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id"
+        ]
+      }
+    },
+    {
+      "name": "get_files_by_name",
+      "description": "Search for files/resources whose file_name contains the given substring (case-insensitive).\n\nArgs:\n    file_name (str): The (partial) file/resource name to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[FileInfo],  # List of matching file/resource info (may be empty if none match)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if input invalid\n    }\n\nConstraints:\n    - file_name must be a non-empty string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_name"
+        ]
+      }
+    },
+    {
+      "name": "list_skills_by_file",
+      "description": "Return the list of skill_ids associated with the file identified by file_id.\n\nArgs:\n    file_id (str): The unique ID of the file/resource.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str],   # The skill_ids associated with this file (may be empty)\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"File does not exist\"\n    }\n\nConstraints:\n    - The file_id must refer to an existing file/resource.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id"
+        ]
+      }
+    },
+    {
+      "name": "list_files_by_category",
+      "description": "Retrieve all files/resources (FileInfo) associated with any skill in a given category.\n\nArgs:\n    category_id (str): The ID of the target category.\n\nReturns:\n    dict:\n        - success: True, data: List[FileInfo] of unique files linked to any skill in the category.\n        - success: False, error: If the category does not exist.\n\nConstraints:\n    - Category with the given ID must exist.\n    - Files may be linked to multiple skills; output is deduplicated by file_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id"
+        ]
+      }
+    },
+    {
+      "name": "add_category",
+      "description": "Add a new category to the platform. The category_id must be unique.\n\nArgs:\n    category_id (str): Unique identifier for the category.\n    name (str): Name of the category.\n    description (str): Description of the category.\n\nReturns:\n    dict: \n        On success:\n            { \"success\": True, \"message\": \"<category_id> created\" }\n        On failure:\n            { \"success\": False, \"error\": \"Category ID already exists\" }\n            or\n            { \"success\": False, \"error\": \"Invalid input - category_id, name, and description required\" }\n\nConstraints:\n    - category_id must be unique within categories.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id",
+          "name",
+          "description"
+        ]
+      }
+    },
+    {
+      "name": "update_category",
+      "description": "Edit the details (name, description) of an existing category.\n\nArgs:\n    category_id (str): ID of the category to update (must exist).\n    name (str, optional): New name for the category.\n    description (str, optional): New description for the category.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Category updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - category_id must reference an existing category.\n    - At least one of name or description should be provided to update.\n    - Unspecified fields are left unchanged.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id",
+          "name",
+          "description"
+        ]
+      }
+    },
+    {
+      "name": "delete_category",
+      "description": "Remove a category by its ID. Deletion is only allowed if no skills are currently assigned to the category.\n\nArgs:\n    category_id (str): Unique identifier of the category to delete.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True,\n            \"message\": \"Category deleted: <category_id>\"\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": str  # Reason: non-existent, or skills still linked.\n        }\nConstraints:\n    - The category must exist.\n    - No skill can reference the category (category must not be used by any skill).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id"
+        ]
+      }
+    },
+    {
+      "name": "add_skill",
+      "description": "Add a new skill.\n\nArgs:\n    skill_id (str): Unique identifier for the skill.\n    name (str): Skill name.\n    description (str): Description of the skill.\n    category_id (str): ID of the category the skill belongs to (must exist).\n    related_files (List[str], optional): List of file_ids to associate with this skill (must all exist).\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"message\": \"Skill '<skill_id>' added.\"}\n        - On failure: {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - skill_id must not duplicate existing skill.\n    - category_id must exist in the platform.\n    - All related file_ids must exist.\n    - If files are linked to this skill, update each file's associated_skill_ids.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "skill_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          },
+          "related_files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "skill_id",
+          "name",
+          "description",
+          "category_id",
+          "related_files"
+        ]
+      }
+    },
+    {
+      "name": "update_skill",
+      "description": "Edit metadata of a skill (name, description, category, linked files).\n\nArgs:\n    skill_id (str): The ID of the skill to update.\n    name (str, optional): New skill name.\n    description (str, optional): New skill description.\n    category_id (str, optional): New category ID (must exist).\n    related_files (list of str, optional): New list of related file IDs (must exist).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Skill updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <error message>\n    }\n\nConstraints:\n    - skill_id must refer to an existing skill.\n    - If category_id is provided, it must exist.\n    - If related_files is provided, all files must exist.\n    - Adjust associations in both Skill and File/Resource accordingly.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "skill_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          },
+          "related_files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "skill_id",
+          "name",
+          "description",
+          "category_id",
+          "related_files"
+        ]
+      }
+    },
+    {
+      "name": "delete_skill",
+      "description": "Remove a skill from the platform, and unlink it from all associated files/resources.\n\nArgs:\n    skill_id (str): The unique identifier of the skill to remove.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Skill <skill_id> deleted successfully.\" }\n        - On failure: { \"success\": False, \"error\": \"Skill <skill_id> does not exist.\" }\n\nConstraints:\n    - The skill must already exist in the platform.\n    - After deletion, any files/resources that were linked to this skill must have the reference removed from their 'associated_skill_ids'.\n    - The category and files themselves are not deleted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "skill_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "skill_id"
+        ]
+      }
+    },
+    {
+      "name": "add_file",
+      "description": "Add a new file/resource to the platform.\n\nArgs:\n    file_id (str): Unique identifier for the file/resource.\n    file_name (str): Name/title of the file/resource.\n    file_type (str): File/resource type (e.g., 'pdf', 'link', etc.).\n    url (str): URL or path for the file/resource.\n    associated_skill_ids (list of str): List of skill_ids to link this file to (can be empty).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"File added successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <error description>\n    }\nConstraints:\n    - file_id must be unique (not already in self.files).\n    - Each skill_id in associated_skill_ids must exist in self.skills.\n    - File will be linked to skills by updating file.associated_skill_ids,\n      but does not update skill.related_files; that is handled separately.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          },
+          "file_name": {
+            "type": "string"
+          },
+          "file_type": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "associated_skill_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "file_id",
+          "file_name",
+          "file_type",
+          "url",
+          "associated_skill_ids"
+        ]
+      }
+    },
+    {
+      "name": "update_file",
+      "description": "Edit metadata of a file/resource, including linkage to skills.\n\nArgs:\n    file_id (str): The ID of the file/resource to edit.\n    file_name (str, optional): New file name.\n    file_type (str, optional): New file type.\n    url (str, optional): New URL.\n    associated_skill_ids (list, optional): New list of skill_ids to associate with.\n\nReturns:\n    dict: \n        On success: {\"success\": True, \"message\": \"File metadata updated.\" }\n        On failure: {\"success\": False, \"error\": <reason> }\n\nConstraints:\n    - File must exist.\n    - All skills in associated_skill_ids must exist.\n    - Ensure backlinks between file and skills are consistent.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          },
+          "file_name": {
+            "type": "string"
+          },
+          "file_type": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "associated_skill_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "file_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_file",
+      "description": "Remove a file/resource from the platform.\n\nArgs:\n    file_id (str): The ID of the file/resource to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"File <file_id> deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"File not found.\"\n    }\n\nConstraints:\n    - File must exist.\n    - When deleting a file, remove its file_id from related_files in all skills.\n    - No skill.related_files should reference the deleted file after the operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id"
+        ]
+      }
+    },
+    {
+      "name": "link_file_to_skill",
+      "description": "Associate an existing file with a skill.\n\nArgs:\n    file_id (str): The ID of the file to associate.\n    skill_id (str): The ID of the skill to associate the file with.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"File linked to skill.\" }\n        - On error:\n            { \"success\": False, \"error\": \"File does not exist.\" }\n            { \"success\": False, \"error\": \"Skill does not exist.\" }\n            { \"success\": False, \"error\": \"File is already linked to skill.\" }\n\nConstraints:\n    - File and skill must both exist.\n    - Association must not already exist.\n    - Maintains many-to-many relation: adds skill_id to file, file_id to skill.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          },
+          "skill_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id",
+          "skill_id"
+        ]
+      }
+    },
+    {
+      "name": "unlink_file_from_skill",
+      "description": "Remove the association between a file/resource and a skill.\n\nArgs:\n    file_id (str): ID of the file to unlink.\n    skill_id (str): ID of the skill to unlink from.\n\nReturns:\n    dict: \n        - On success: {\"success\": True, \"message\": \"File unlinked from skill successfully.\"}\n        - On failure: {\"success\": False, \"error\": <reason>}\n\nConstraints:\n  - Both file_id and skill_id must exist.\n  - The association is removed from both sides (SkillInfo.related_files and FileInfo.associated_skill_ids).\n  - Idempotent: if already unlinked, still considered success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          },
+          "skill_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id",
+          "skill_id"
+        ]
+      }
+    },
+    {
+      "name": "bulk_link_files_to_skill",
+      "description": "Associate multiple files with a single skill.\n\nArgs:\n    skill_id (str): The skill to associate files with.\n    file_ids (list): List of file IDs (str) to link to the skill.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"N files linked to skill <skill_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - skill_id must exist in self.skills.\n    - Each file_id in file_ids must exist in self.files.\n    - Linking is idempotent: files already linked are ignored.\n    - Both skill.related_files and file.associated_skill_ids must be updated symmetrically.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "skill_id": {
+            "type": "string"
+          },
+          "file_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "skill_id",
+          "file_ids"
+        ]
+      }
+    },
+    {
+      "name": "bulk_unlink_files_from_skill",
+      "description": "Remove multiple file associations from a single skill.\n\nArgs:\n    skill_id (str): ID of the skill whose file associations are to be removed.\n    file_ids (List[str]): List of file_ids to unlink from the skill.\n\nReturns:\n    dict:\n        - success: True/False\n        - message: On success, summary of unlink results.\n        - error: On failure, reason.\n\nConstraints:\n    - Skill must exist.\n    - Files must exist to be unlinked; invalid file_ids are skipped with notice.\n    - Unlinking an already-unlinked file is ignored.\n    - Updates both skill.related_files and file.associated_skill_ids.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "skill_id": {
+            "type": "string"
+          },
+          "file_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "skill_id",
+          "file_ids"
+        ]
+      }
+    }
+  ]
+}

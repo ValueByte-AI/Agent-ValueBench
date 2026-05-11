@@ -1,0 +1,570 @@
+{
+  "env_name": "CareerManagementPlatform",
+  "description": "A career management platform maintains structured data on job roles, user profiles, and the relationships between various career paths and job titles. The platform supports operations such as job search, recommendations, career path exploration, and trend analytics. Users interact with the system to access personalized job information and plan their professional development.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "current_job_id": {
+            "type": "string"
+          },
+          "job_history": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "preferences": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "current_job_id",
+          "job_history",
+          "skills",
+          "preferences"
+        ]
+      }
+    },
+    "job_roles": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "required_skills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "industry": {
+            "type": "string"
+          },
+          "typical_career_path": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "job_id",
+          "title",
+          "description",
+          "required_skills",
+          "industry",
+          "typical_career_path"
+        ]
+      }
+    },
+    "job_relationships": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "from_job_id": {
+            "type": "string"
+          },
+          "to_job_id": {
+            "type": "string"
+          },
+          "relationship_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "from_job_id",
+          "to_job_id",
+          "relationship_type"
+        ]
+      }
+    },
+    "is_jobrole_active": {
+      "type": "string"
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_user_by_name": [
+      "users"
+    ],
+    "get_user_current_job_id": [
+      "job_roles",
+      "users"
+    ],
+    "get_jobrole_by_id": [
+      "job_roles"
+    ],
+    "get_jobrole_by_title": [
+      "job_roles"
+    ],
+    "list_all_jobroles": [
+      "job_roles"
+    ],
+    "get_jobrelationships_from_job": [
+      "job_relationships",
+      "job_roles"
+    ],
+    "get_jobrelationships_to_job": [
+      "job_relationships",
+      "job_roles"
+    ],
+    "get_related_jobroles": [
+      "is_jobrole_active",
+      "job_relationships",
+      "job_roles"
+    ],
+    "get_typical_career_path_for_job": [
+      "job_roles"
+    ],
+    "is_jobrole_active": [
+      "job_roles"
+    ],
+    "add_jobrole": [
+      "job_roles"
+    ],
+    "update_jobrole": [
+      "job_roles"
+    ],
+    "delete_jobrole": [
+      "job_relationships",
+      "job_roles",
+      "users"
+    ],
+    "add_jobrelationship": [
+      "job_relationships",
+      "job_roles"
+    ],
+    "update_jobrelationship": [
+      "job_relationships",
+      "job_roles"
+    ],
+    "delete_jobrelationship": [
+      "job_relationships",
+      "job_roles"
+    ],
+    "update_user_current_job": [
+      "job_roles",
+      "users"
+    ],
+    "update_user_profile": [
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve the full user profile using the user's unique identifier.\n\nArgs:\n    _id (str): Unique user identifier.\n\nReturns:\n    dict:\n        success: True and data with UserInfo if found,\n        otherwise success: False and an error message.\n\nConstraints:\n    - The _id must exist in the users dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_name",
+      "description": "Retrieve user profile(s) by exact or partial (case-insensitive) name match.\nIf 'name' is an empty string, returns all users.\n\nArgs:\n    name (str): Username or partial name string to match (case-insensitive, substring match).\n\nReturns:\n    dict:\n        - success (bool): Whether the operation succeeded.\n        - data (List[UserInfo]): List of matching user profiles. Empty if no matches.\n        - error (str, optional): Error message on failure.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_user_current_job_id",
+      "description": "Fetch the current_job_id for a given user.\n\nArgs:\n    user_id (str): The unique identifier (_id) of the user.\n\nReturns:\n    dict:\n        - { \"success\": True, \"data\": current_job_id } if found and valid.\n        - { \"success\": False, \"error\": reason } if not found or invalid.\n\nConstraints:\n    - The user must exist.\n    - The user's current_job_id must reference an existing job role.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_jobrole_by_id",
+      "description": "Retrieve job role details by job_id.\n\nArgs:\n    job_id (str): The unique identifier of the job role.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": JobRoleInfo  # The job role details if found,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error explanation if the job role does not exist.\n    }\n\nConstraints:\n    - job_id must correspond to a valid JobRole in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      }
+    },
+    {
+      "name": "get_jobrole_by_title",
+      "description": "Lookup a job role by its title.\n\nArgs:\n    title (str): The exact title of the job role to find.\n\nReturns:\n    dict:\n        If found:\n            {\n                \"success\": True,\n                \"data\": JobRoleInfo\n            }\n        If not found:\n            {\n                \"success\": False,\n                \"error\": \"JobRole not found with the specified title\"\n            }\n\nConstraints:\n    - Title matching is case-sensitive.\n    - Returns the first match if duplicates (should not occur in a properly managed system).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      }
+    },
+    {
+      "name": "list_all_jobroles",
+      "description": "Return a list of all job roles in the system.\n\nReturns:\n    dict:\n        - success (bool): True if the operation succeeded.\n        - data (List[JobRoleInfo]): List of job role info dicts (may be empty if no job roles are present).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_jobrelationships_from_job",
+      "description": "List all job relationships where the given job_id is the source (from_job_id),\noptionally filtering by relationship_type.\n\nArgs:\n    job_id (str): The job_role ID to be used as the source for relationships.\n    relationship_type (str, optional): If provided, filter relationships by this type.\n\nReturns:\n    dict: \n        Success: {\n            \"success\": True,\n            \"data\": List[JobRelationshipInfo]\n        }\n        Failure: {\n            \"success\": False,\n            \"error\": str\n        }\nConstraints:\n    - job_id must reference an existing JobRole.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "relationship_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      }
+    },
+    {
+      "name": "get_jobrelationships_to_job",
+      "description": "Retrieve all job relationships where the given job_id is the destination (to_job_id).\nOptionally filter results by relationship_type.\n\nArgs:\n    job_id (str): The destination job role's unique identifier.\n    relationship_type (str, optional): Filter for relationship type (e.g., 'promotion').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[JobRelationshipInfo]  # may be empty if no matches\n    }\n    or {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - job_id must exist in self.job_roles.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "relationship_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      }
+    },
+    {
+      "name": "get_related_jobroles",
+      "description": "Get all job roles related to a specified job_id by any JobRelationship\n(e.g., 'promotion', 'lateral move', 'related to'). Includes both outgoing\nand incoming relationships.\n\nArgs:\n    job_id (str): The job_id for which to find related job roles.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[JobRoleInfo]  # List of unique, active related job roles\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - job_id must exist in self.job_roles.\n    - Only include valid, active job roles in result.\n    - No duplicates in output.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      }
+    },
+    {
+      "name": "get_typical_career_path_for_job",
+      "description": "List the typical career path for a given job_role.\n\nArgs:\n    job_id (str): The job_id of the starting job_role.\n    return_titles (bool): If True, returns job_titles instead of job_ids.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str],  # Ordered list of job_ids or job_titles found in typical_career_path.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g. job not found)\n    }\n\nConstraints:\n    - The job_role must exist.\n    - Only valid job_ids (present in job_roles) are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "return_titles": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      }
+    },
+    {
+      "name": "is_jobrole_active",
+      "description": "Check if the specified job_id corresponds to a valid, active JobRole in the system.\n\nArgs:\n    job_id (str): The job role identifier to check.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": bool  # True if job_id is valid and active, False otherwise\n    }\n\nConstraints:\n    - The job_id must be present in self.job_roles to be considered active.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      }
+    },
+    {
+      "name": "add_jobrole",
+      "description": "Add a new job role to the system.\n\nArgs:\n    job_id (str): Unique job role identifier.\n    title (str): Title of the job role.\n    description (str): Description of the job role.\n    required_skills (List[str]): List of required skill keywords.\n    industry (str): Name of the industry this job is in.\n    typical_career_path (List[str]): List of job_ids representing typical career paths from this job.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"message\": \"Job role <job_id> added.\"}\n        - On failure: {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - job_id must be unique (not already in use).\n    - Each id in typical_career_path (if not empty) must reference an existing job_role.\n    - All fields must be present and valid.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "required_skills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "industry": {
+            "type": "string"
+          },
+          "typical_career_path": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "job_id",
+          "title",
+          "description",
+          "required_skills",
+          "industry",
+          "typical_career_path"
+        ]
+      }
+    },
+    {
+      "name": "update_jobrole",
+      "description": "Modify the attributes of an existing job role.\n\nArgs:\n    job_id (str): The identifier of the job role to update.\n    title (str, optional): New title to set.\n    description (str, optional): New description to set.\n    required_skills (list, optional): List of new required skills.\n    industry (str, optional): New industry string.\n    typical_career_path (list, optional): List of new job_ids for career path.\n\nReturns:\n    dict: {\n        \"success\": True, \"message\": \"JobRole <job_id> updated\"\n    } on success,\n    or {\n        \"success\": False, \"error\": \"reason\"\n    } on failure.\n\nConstraints:\n    - job_id must exist.\n    - Any job_ids in typical_career_path (if provided) must exist in job_roles (data consistency).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "required_skills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "industry": {
+            "type": "string"
+          },
+          "typical_career_path": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_jobrole",
+      "description": "Remove a job role from the system.\n\nArgs:\n    job_id (str): The job role's unique identifier to be deleted.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Job role '<job_id>' deleted successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Cannot delete a JobRole if any user's current_job_id references it.\n    - Remove job_relationships where from_job_id or to_job_id is job_id.\n    - Remove job_id from job_history of all users and from all job_roles' typical_career_path.\n    - If job_id does not exist, return error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      }
+    },
+    {
+      "name": "add_jobrelationship",
+      "description": "Add a new job relationship between two existing job roles.\n\nArgs:\n    from_job_id (str): JobRole ID for the source job.\n    to_job_id (str): JobRole ID for the target job.\n    relationship_type (str): The type of relationship (e.g., 'promotion', 'lateral move').\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Job relationship added successfully.\" }\n        On failure: \n            { \"success\": False, \"error\": <error message> }\n\nConstraints:\n    - Both job IDs must exist in the job_roles dictionary.\n    - An identical relationship (from_job_id, to_job_id, relationship_type) should not already exist.\n    - Relationship type is assumed arbitrary unless a schema is provided elsewhere.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "from_job_id": {
+            "type": "string"
+          },
+          "to_job_id": {
+            "type": "string"
+          },
+          "relationship_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "from_job_id",
+          "to_job_id",
+          "relationship_type"
+        ]
+      }
+    },
+    {
+      "name": "update_jobrelationship",
+      "description": "Edit an existing job relationship's endpoints or type.\n\nArgs:\n    old_from_job_id (str): Source job_id of the original relationship.\n    old_to_job_id (str): Target job_id of the original relationship.\n    old_relationship_type (str): Type of the original relationship.\n    new_from_job_id (str): New source job_id to update to.\n    new_to_job_id (str): New target job_id to update to.\n    new_relationship_type (str): New relationship type to update to.\n\nReturns:\n    dict: {\n        \"success\": True, \"message\": \"Job relationship updated successfully\"\n    } or {\n        \"success\": False, \"error\": \"<error message>\"\n    }\n\nConstraints:\n    - Original relationship must exist.\n    - New job_ids (from and to) must exist in job_roles.\n    - Must not duplicate an existing relationship of (from, to, type).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "old_from_job_id": {
+            "type": "string"
+          },
+          "old_to_job_id": {
+            "type": "string"
+          },
+          "old_relationship_type": {
+            "type": "string"
+          },
+          "new_from_job_id": {
+            "type": "string"
+          },
+          "new_to_job_id": {
+            "type": "string"
+          },
+          "new_relationship_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "old_from_job_id",
+          "old_to_job_id",
+          "old_relationship_type",
+          "new_from_job_id",
+          "new_to_job_id",
+          "new_relationship_type"
+        ]
+      }
+    },
+    {
+      "name": "delete_jobrelationship",
+      "description": "Remove a specific job relationship.\n\nArgs:\n    from_job_id (str): JobRole ID where the relationship starts.\n    to_job_id (str): JobRole ID where the relationship ends.\n    relationship_type (str): The type of relationship (e.g. 'promotion', 'lateral move').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Job relationship deleted successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Job relationship not found.\" | \"Invalid job_id(s).\"\n    }\n\nConstraints:\n    - Both job IDs must reference existing JobRoles.\n    - The relationship must exist before it can be deleted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "from_job_id": {
+            "type": "string"
+          },
+          "to_job_id": {
+            "type": "string"
+          },
+          "relationship_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "from_job_id",
+          "to_job_id",
+          "relationship_type"
+        ]
+      }
+    },
+    {
+      "name": "update_user_current_job",
+      "description": "Update the current job for a given user to a new valid JobRole.\n\nArgs:\n    user_id (str): The unique user identifier.\n    new_job_id (str): The job ID to set as the user's current job.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User's current job updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The user must exist.\n    - The new_job_id must reference a valid JobRole.\n    - Data consistency must be maintained.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "new_job_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "new_job_id"
+        ]
+      }
+    },
+    {
+      "name": "update_user_profile",
+      "description": "Modify user attributes such as name, skills, or preferences.\n\nArgs:\n    user_id (str): Unique ID of the user to update.\n    name (str, optional): New name for the user.\n    skills (List[str], optional): New list of skills.\n    preferences (Dict[str, Any], optional): Updated preferences dict.\n\nReturns:\n    dict:\n      - On success:\n          { \"success\": True, \"message\": \"User profile updated successfully.\" }\n      - On failure:\n          { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - User ID must exist.\n    - Attribute types must be correct.\n    - Only name, skills, and preferences can be updated.\n    - At least one modifiable attribute must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "preferences": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    }
+  ]
+}

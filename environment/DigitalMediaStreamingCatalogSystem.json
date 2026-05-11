@@ -1,0 +1,631 @@
+{
+  "env_name": "DigitalMediaStreamingCatalogSystem",
+  "description": "A digital media streaming catalog system manages an extensive, structured repository of video content and metadata, including titles, genres, formats, and availability. It supports user requests for browsing, searching, and filtering the collection by criteria like resolution or content type. The system maintains the current state of the catalog to accurately reflect offerings available for on-demand viewing.",
+  "initial_parameter_schema": {
+    "media_items": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "genres": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "formats": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "availability_status": {
+            "type": "string"
+          },
+          "release_date": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_id",
+          "title",
+          "type",
+          "genres",
+          "formats",
+          "availability_status",
+          "release_date",
+          "description"
+        ]
+      }
+    },
+    "formats": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "format_id": {
+            "type": "string"
+          },
+          "resolution": {
+            "type": "string"
+          },
+          "audio_languages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "subtitle_languages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "format_id",
+          "resolution",
+          "audio_languages",
+          "subtitle_languages"
+        ]
+      }
+    },
+    "genres": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "genre_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "genre_id",
+          "name"
+        ]
+      }
+    },
+    "catalog_state": {
+      "type": "object",
+      "properties": {
+        "last_updated": {
+          "type": "string"
+        },
+        "total_items": {
+          "type": "integer"
+        },
+        "current_offering": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "last_updated",
+        "total_items",
+        "current_offering"
+      ]
+    }
+  },
+  "tool_state_dependencies": {
+    "list_available_media": [
+      "media_items"
+    ],
+    "list_media_by_type": [
+      "media_items"
+    ],
+    "get_media_by_id": [
+      "media_items"
+    ],
+    "get_format_by_id": [
+      "formats"
+    ],
+    "list_formats_for_media": [
+      "formats",
+      "media_items"
+    ],
+    "filter_media_by_format_resolution": [
+      "formats",
+      "media_items"
+    ],
+    "list_media_by_genre": [
+      "genres",
+      "media_items"
+    ],
+    "get_genre_by_id": [
+      "genres"
+    ],
+    "get_catalog_state": [
+      "catalog_state"
+    ],
+    "list_available_movies_by_resolution": [
+      "formats",
+      "media_items"
+    ],
+    "get_media_description": [
+      "media_items"
+    ],
+    "update_media_availability": [
+      "catalog_state",
+      "media_items"
+    ],
+    "add_format_to_media": [
+      "formats",
+      "media_items"
+    ],
+    "remove_format_from_media": [
+      "formats",
+      "media_items"
+    ],
+    "refresh_catalog_state": [
+      "catalog_state",
+      "media_items"
+    ],
+    "add_new_media_item": [
+      "catalog_state",
+      "formats",
+      "genres",
+      "media_items"
+    ],
+    "update_media_metadata": [
+      "genres",
+      "media_items"
+    ],
+    "remove_media_item": [
+      "catalog_state",
+      "media_items"
+    ],
+    "add_new_format": [
+      "formats"
+    ],
+    "update_format_info": [
+      "formats"
+    ],
+    "add_new_genre": [
+      "genres"
+    ],
+    "update_genre_info": [
+      "genres"
+    ]
+  },
+  "tools": [
+    {
+      "name": "list_available_media",
+      "description": "Retrieve all media items with availability_status set to \"available\".\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[MediaItemInfo]  # May be empty if no available items\n            }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_media_by_type",
+      "description": "Retrieve all available media items of a given type (e.g., movie, series, episode).\n\nArgs:\n    media_type (str): The media type to filter by (\"movie\", \"series\", etc).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MediaItemInfo],  # List of available items of the specified type.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if type is invalid.\n    }\n\nConstraints:\n    - Only items with availability_status = \"available\" are returned.\n    - Only items with at least one format (formats not empty) are included.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "media_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_type"
+        ]
+      }
+    },
+    {
+      "name": "get_media_by_id",
+      "description": "Retrieve metadata for a specific media item by its media_id.\n\nArgs:\n    media_id (str): The unique identifier for the desired media item.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": MediaItemInfo  # All metadata fields of the media item\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g., \"Media item not found\"\n    }\n\nConstraints:\n    - Operation does not depend on availability_status; any item may be retrieved if it exists.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_id"
+        ]
+      }
+    },
+    {
+      "name": "get_format_by_id",
+      "description": "Retrieve format details by format_id.\n\nArgs:\n    format_id (str): The ID of the format to retrieve.\n\nReturns:\n    dict:\n        - If found: { \"success\": True, \"data\": FormatInfo }\n        - If not found: { \"success\": False, \"error\": \"Format not found\" }\n\nConstraints:\n    - Only retrieves information—no state is changed.\n    - Returns error if format_id does not exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "format_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "format_id"
+        ]
+      }
+    },
+    {
+      "name": "list_formats_for_media",
+      "description": "List all formats (with detailed information) associated with a given media item.\n\nArgs:\n    media_id (str): The unique identifier of the media item.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[FormatInfo],  # List of associated formats (may be empty if none found)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if the media item does not exist\n    }\n\nConstraints:\n    - The media item specified by media_id must exist.\n    - Format info is included only for formats that exist in the catalog.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_id"
+        ]
+      }
+    },
+    {
+      "name": "filter_media_by_format_resolution",
+      "description": "Retrieve media items that have at least one format matching the desired resolution (e.g., 'HD').\nFilters from the provided list of media_ids if given, otherwise considers all items.\nOnly includes items with availability_status 'available'.\n\nArgs:\n    resolution (str): Target resolution to filter by (case sensitive, e.g., 'HD', '4K').\n    media_ids (List[str], optional): Restrict filtering to this set of media_ids; consider all if None.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MediaItemInfo]  # List of media items passing the filter\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Description if required parameters are missing or bad\n    }\nConstraints:\n    - Only includes items with availability_status 'available'.\n    - Only includes media items with at least one format whose resolution matches.\n    - Skips media_ids not present in system.\n    - Skips media items with missing or corrupt formats.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resolution": {
+            "type": "string"
+          },
+          "media_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "resolution"
+        ]
+      }
+    },
+    {
+      "name": "list_media_by_genre",
+      "description": "Retrieve all available media items associated with a specified genre.\n\nArgs:\n    genre_id (str): The genre ID to filter by.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MediaItemInfo],  # matching available media items\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Only media with availability_status == \"available\" will be returned.\n    - genre_id must exist in the catalog.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "genre_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "genre_id"
+        ]
+      }
+    },
+    {
+      "name": "get_genre_by_id",
+      "description": "Retrieve genre metadata by genre_id.\n\nArgs:\n    genre_id (str): The unique identifier of the genre to be retrieved.\n\nReturns:\n    dict: \n        If found: { \"success\": True, \"data\": GenreInfo }\n        If not found: { \"success\": False, \"error\": \"Genre not found\" }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "genre_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "genre_id"
+        ]
+      }
+    },
+    {
+      "name": "get_catalog_state",
+      "description": "Return overall catalog statistics, including last_updated, total_items, and current_offering.\n\nReturns:\n    dict: \n      {\n        \"success\": True,\n        \"data\": CatalogStateInfo  # Contains last_updated, total_items, current_offering\n      }\n      OR\n      {\n        \"success\": False,\n        \"error\": str  # Description of error, if state is corrupted/unavailable\n      }\n\nConstraints:\n    - Read-only operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_available_movies_by_resolution",
+      "description": "Retrieve all available movies having at least one format with a matching resolution.\n\nArgs:\n    resolution (str): The desired format resolution (e.g., 'HD', '4K').\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[MediaItemInfo],  # Media items matching criteria\n            }\n        On error:\n            {\n                \"success\": False,\n                \"error\": str\n            }\n\nConstraints:\n    - Only include items with type='movie' and availability_status='available'.\n    - At least one associated format must have resolution == specified.\n    - Safely skip missing format_ids.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resolution": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resolution"
+        ]
+      }
+    },
+    {
+      "name": "get_media_description",
+      "description": "Get the title and description (summary) for a specific media item, only if it is currently available.\n\nArgs:\n    media_id (str): The unique identifier for the media item.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"title\": str,\n                    \"description\": str\n                }\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": str\n            }\n\nConstraints:\n    - Only media items with availability_status == \"available\" can have their description fetched.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_id"
+        ]
+      }
+    },
+    {
+      "name": "update_media_availability",
+      "description": "Change the availability_status of a media item.\n\nArgs:\n    media_id (str): The unique identifier of the media item.\n    new_status (str): Target status (\"available\", \"unavailable\", \"expired\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Availability status for media_id <media_id> updated to <new_status>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - media_id must exist.\n    - new_status must be 'available', 'unavailable', or 'expired'.\n    - current_offering in catalog_state must reflect the updated availability.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "add_format_to_media",
+      "description": "Associate a new format with a media item by adding format_id to its formats list.\n\nArgs:\n    media_id (str): The ID of the media item to update.\n    format_id (str): The ID of the format to associate with the media item.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Format <format_id> added to media item <media_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - media_id must exist in the catalog.\n    - format_id must exist in the formats catalog.\n    - The format_id must not already be present in the media item's formats list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string"
+          },
+          "format_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_id",
+          "format_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_format_from_media",
+      "description": "Remove an existing format from a media item's formats list.\n\nArgs:\n    media_id (str): ID of the target media item.\n    format_id (str): ID of the format to remove.\n\nReturns:\n    dict:\n        Success: { \"success\": True, \"message\": \"Format <format_id> removed from media item <media_id>.\" }\n        Failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - media_id must exist in the catalog.\n    - format_id must exist in the catalog.\n    - format_id must be associated with the specified media item.\n    - After removal, the media item must still have at least one format.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string"
+          },
+          "format_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_id",
+          "format_id"
+        ]
+      }
+    },
+    {
+      "name": "refresh_catalog_state",
+      "description": "Updates the catalog state's last_updated timestamp, total_items, and current_offering list to reflect the current state.\n\nProcess:\n  - last_updated: Updated to the current system ISO timestamp.\n  - total_items: Set to the total count of all media items.\n  - current_offering: List of all media_ids where:\n      - availability_status == \"available\"\n      - formats list is not empty\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Catalog state refreshed\"\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "add_new_media_item",
+      "description": "Add a new media item to the catalog with required metadata.\n\nArgs:\n    media_id (str): Unique identifier for the new media item.\n    title (str): Title of the media item.\n    type (str): Media type (e.g., 'movie', 'series', 'episode').\n    genres (List[str]): List of genre_ids; all must exist in the catalog.\n    formats (List[str]): List of format_ids; all must exist and list must be non-empty.\n    availability_status (str): Availability status (e.g., 'available', 'unavailable', 'expired').\n    release_date (str): Release date of the item.\n    description (str): Media description.\n\nReturns:\n    dict: \n        On success: {\"success\": True, \"message\": \"Media item <media_id> added to catalog.\"}\n        On failure: {\"success\": False, \"error\": \"<error reason>\"}\n\nConstraints:\n    - media_id must be unique in catalog.\n    - formats must exist and be non-empty (format_ids exist in catalog).\n    - genres must exist (genre_ids exist in catalog).\n    - Only accepts valid availability_status values.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "genres": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "formats": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "availability_status": {
+            "type": "string"
+          },
+          "release_date": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_id",
+          "title",
+          "type",
+          "genres",
+          "formats",
+          "availability_status",
+          "release_date",
+          "description"
+        ]
+      }
+    },
+    {
+      "name": "update_media_metadata",
+      "description": "Update the metadata of a media item (by media_id) in the catalog.\n\nArgs:\n    media_id (str): The ID of the media item to update.\n    title (str, optional): New title.\n    description (str, optional): New description.\n    genres (list[str], optional): New list of genre_ids.\n    mtype (str, optional): New type (movie, series, episode, etc.).\n    release_date (str, optional): New release date.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Media item metadata updated.\" }\n        On failure: { \"success\": False, \"error\": \"Reason for failure\" }\n\nConstraints:\n    - media_id must exist in the catalog.\n    - If genres is provided, all genre_ids must exist in self.genres.\n    - At least one field to update must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "genres": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "mtype": {
+            "type": "string"
+          },
+          "release_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_media_item",
+      "description": "Remove a media item with the given media_id from the catalog. Also updates\ncatalog state to ensure no references linger and total_items is correct.\n\nArgs:\n    media_id (str): The unique identifier of the media item to remove.\n\nReturns:\n    dict: \n      - On success:\n          {\n              \"success\": True,\n              \"message\": \"Media item <media_id> has been removed from the catalog.\"\n          }\n      - On error:\n          {\n              \"success\": False,\n              \"error\": \"Media item not found.\"\n          }\n\nConstraints:\n    - media_id must exist in self.media_items.\n    - Removes from catalog_state.current_offering if present.\n    - Updates catalog_state.total_items.\n    - Does not affect formats or genres themselves.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_id"
+        ]
+      }
+    },
+    {
+      "name": "add_new_format",
+      "description": "Add a new format to the formats registry for future media items.\n\nArgs:\n    format_id (str): Unique format identifier.\n    resolution (str): Resolution (e.g., SD, HD, 4K).\n    audio_languages (List[str]): Supported audio languages.\n    subtitle_languages (List[str]): Supported subtitle languages.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Format <format_id> added.\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - format_id must be unique.\n    - All fields are required and must be of correct type.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "format_id": {
+            "type": "string"
+          },
+          "resolution": {
+            "type": "string"
+          },
+          "audio_languages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "subtitle_languages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "format_id"
+        ]
+      }
+    },
+    {
+      "name": "update_format_info",
+      "description": "Change the details of an existing format (resolution, languages, etc.).\n\nArgs:\n    format_id (str): ID of the format to update.\n    resolution (str, optional): New resolution value (e.g., SD, HD, 4K).\n    audio_languages (List[str], optional): New list of audio languages.\n    subtitle_languages (List[str], optional): New list of subtitle languages.\n\nReturns:\n    dict: \n        { \"success\": True, \"message\": \"Format info updated.\" }\n        or\n        { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - format_id must exist in the system.\n    - Types for each field must match their specification.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "format_id": {
+            "type": "string"
+          },
+          "resolution": {
+            "type": "string"
+          },
+          "audio_languages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "subtitle_languages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "format_id",
+          "resolution",
+          "audio_languages",
+          "subtitle_languages"
+        ]
+      }
+    },
+    {
+      "name": "add_new_genre",
+      "description": "Add a new genre to the genres registry.\n\nArgs:\n    genre_id (str): Unique identifier for the genre.\n    name (str): Name of the genre.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Genre with id '<genre_id>' added.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure.\n    }\n\nConstraints:\n    - genre_id must not already exist.\n    - genre_id and name must be non-empty (after stripping whitespace).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "genre_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "genre_id"
+        ]
+      }
+    },
+    {
+      "name": "update_genre_info",
+      "description": "Change the details (currently only name) of an existing genre.\n\nArgs:\n    genre_id (str): The identifier for the genre to update.\n    name (str, optional): The updated name for the genre.\n\nReturns:\n    dict: \n        { \"success\": True, \"message\": \"Genre updated successfully.\" }\n        OR\n        { \"success\": False, \"error\": \"Genre not found.\" }\n        OR\n        { \"success\": False, \"error\": \"No update parameters provided.\" }\n\nConstraints:\n    - The genre_id must exist.\n    - If name is not provided, operation is a no-op/failure.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "genre_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "genre_id",
+          "name"
+        ]
+      }
+    }
+  ]
+}

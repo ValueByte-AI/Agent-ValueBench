@@ -1,0 +1,465 @@
+{
+  "env_name": "CloudAccountManagementSystem",
+  "description": "A Cloud Service Provider Account Management System organizes and tracks user accounts, the services provisioned under each account, and the catalog of marketplace products with their configurable attributes. It supports operations such as listing and managing existing services, browsing product offerings, and querying available configuration options for products. The environment is central to cloud platforms, enabling users and administrators to manage their cloud resources and marketplace interactions efficiently.",
+  "initial_parameter_schema": {
+    "accounts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "user_info": {},
+          "account_status": {
+            "type": "string"
+          },
+          "creation_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "user_info",
+          "account_status",
+          "creation_date"
+        ]
+      }
+    },
+    "services": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          },
+          "account_id": {
+            "type": "string"
+          },
+          "product_id": {
+            "type": "string"
+          },
+          "configuration_values": {
+            "type": "object"
+          },
+          "status": {
+            "type": "string"
+          },
+          "provision_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_id",
+          "account_id",
+          "product_id",
+          "configuration_values",
+          "status",
+          "provision_date"
+        ]
+      }
+    },
+    "products": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "name",
+          "description",
+          "category"
+        ]
+      }
+    },
+    "product_attributes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "product_id": {
+              "type": "string"
+            },
+            "attribute_name": {
+              "type": "string"
+            },
+            "options": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "product_id",
+            "attribute_name",
+            "options"
+          ]
+        }
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_account_by_id": [
+      "accounts"
+    ],
+    "list_all_accounts": [
+      "accounts"
+    ],
+    "get_account_status": [
+      "accounts"
+    ],
+    "list_services_by_account": [
+      "accounts",
+      "services"
+    ],
+    "get_service_by_id": [
+      "services"
+    ],
+    "list_all_services": [
+      "services"
+    ],
+    "list_products": [
+      "products"
+    ],
+    "get_product_by_id": [
+      "products"
+    ],
+    "list_product_attributes": [
+      "product_attributes",
+      "products"
+    ],
+    "list_all_product_attributes": [
+      "product_attributes",
+      "products"
+    ],
+    "validate_service_configuration": [
+      "product_attributes",
+      "products",
+      "services"
+    ],
+    "provision_service": [
+      "accounts",
+      "product_attributes",
+      "products",
+      "services"
+    ],
+    "update_service_configuration": [
+      "product_attributes",
+      "products",
+      "services"
+    ],
+    "terminate_service": [
+      "services"
+    ],
+    "change_account_status": [
+      "accounts"
+    ],
+    "add_product": [
+      "products"
+    ],
+    "update_product_attributes": [
+      "product_attributes",
+      "products"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_account_by_id",
+      "description": "Retrieve account information for the specified account ID.\n\nArgs:\n    account_id (str): The unique identifier of the account.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True,\n            \"data\": AccountInfo\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": \"Account not found\"\n        }\n\nConstraints:\n    - The account_id must exist in the current system.\n    - For accounts whose stored status ends with '_at_risk', the returned account_status is dynamically derived from whether any remediation-noted service under that account is still unresolved.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_accounts",
+      "description": "List details for all user accounts present in the system.\n\nArgs:\n    None\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[AccountInfo]   # List of all accounts, may be empty\n        }\n\nNotes:\n    - For accounts whose stored status ends with '_at_risk', each returned account_status is dynamically derived from whether any remediation-noted service under that account is still unresolved.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_account_status",
+      "description": "Query the current status (e.g., active, suspended) of a specific account.\n\nArgs:\n    account_id (str): The identifier of the account.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"data\": account_status (str)}\n        On failure (account not found):\n            {\"success\": False, \"error\": \"Account not found\"}\n\nNotes:\n    - For accounts whose stored status ends with '_at_risk', the returned status drops the '_at_risk' suffix once all remediation-noted services for that account are either remediated to the required configuration or terminated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      }
+    },
+    {
+      "name": "list_services_by_account",
+      "description": "List all service instances (ServiceInfo) provisioned under a given account.\n\nArgs:\n    account_id (str): The account ID whose services will be listed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ServiceInfo],  # all ServiceInfo with this account_id (may be empty if none)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g. \"Account not found\"\n    }\n\nConstraints:\n    - The account_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      }
+    },
+    {
+      "name": "get_service_by_id",
+      "description": "Retrieve detailed information for a specific service instance by its ID.\n\nArgs:\n    service_id (str): The unique identifier of the service instance.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ServiceInfo  # Dictionary of the service details\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description, e.g., \"Service not found\"\n    }\n\nConstraints:\n    - The service must exist in the system (lookup by service_id).\n    - No state modification occurs.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_services",
+      "description": "List all service instances provisioned across all accounts.\n\nReturns:\n    dict:\n        - success (bool): True if operation completes.\n        - data (List[ServiceInfo]): List of all services (may be empty if none exist).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_products",
+      "description": "Retrieve all product offerings in the cloud marketplace.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ProductInfo]  # May be empty if no products are available\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_product_by_id",
+      "description": "Retrieve detailed information about a specific product.\n\nArgs:\n    product_id (str): ID of the product to retrieve.\n\nReturns:\n    dict:\n        If found: { \"success\": True, \"data\": ProductInfo }\n        If not found: { \"success\": False, \"error\": \"Product not found\" }\n\nConstraints:\n    - Product must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "list_product_attributes",
+      "description": "For a given product ID, return its configurable attributes and available options.\n\nArgs:\n    product_id (str): ID of the product whose attributes are to be listed.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": List[ProductAttributeInfo]  # list of attribute dicts (possibly empty)\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": str  # e.g. \"Product does not exist\"\n            }\nConstraints:\n    - product_id must refer to a valid product; otherwise, fail.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_product_attributes",
+      "description": "List attributes and option sets for all products in the marketplace.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": Dict[str, List[ProductAttributeInfo]]\n            # Maps product_id to list of ProductAttributeInfo (may be empty if none)\n    }\n\nConstraints:\n    - No specific constraints; global query of product attributes.\n    - Products without attribute definitions should return an empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "validate_service_configuration",
+      "description": "Validate that a service's configuration values comply with the attribute options\ndefined for its associated product.\n\nArgs:\n    service_id (str): The ID of the service to validate.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"is_valid\": bool,\n            \"errors\": List[str]  # present only if invalid, details per attribute\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., Service or Product not found\n    }\n\nConstraints:\n    - Service must exist.\n    - Service must reference a valid product.\n    - Each attribute in configuration_values must be defined for the product and set to one of its allowed options.\n    - Unknown attributes or missing required attributes are considered invalid.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_id"
+        ]
+      }
+    },
+    {
+      "name": "provision_service",
+      "description": "Provision (create) a new service instance under the given account using the given product and configuration.\n\nArgs:\n    account_id (str): The ID of the account that owns the service.\n    product_id (str): The product ID to base the service on.\n    configuration_values (Dict[str, Any]): Mapping of attribute name -> chosen option.\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"message\": \"Service provisioned\",\n            \"service_id\": <service_id>,\n            \"service_info\": <ServiceInfo>\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": <reason>\n        }\nConstraints:\n    - Account must exist and be active.\n    - Product must exist.\n    - Configuration values must comply with the product's attribute options (both names and allowed option values).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "product_id": {
+            "type": "string"
+          },
+          "configuration_values": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "account_id",
+          "product_id",
+          "configuration_values"
+        ]
+      }
+    },
+    {
+      "name": "update_service_configuration",
+      "description": "Update the configuration values of an existing service.\nProvided values are merged into the existing configuration, and the merged configuration must comply with the allowed options specified by the product's attributes.\n\nArgs:\n    service_id (str): The service to update.\n    new_configuration_values (Dict[str, Any]): Mapping of attribute_name -> new value. Unspecified attributes are preserved from the current service configuration.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Service configuration updated.\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Service must exist.\n    - Provided configuration values must correspond to valid attribute names for the product.\n    - After merging with the existing configuration, all required attributes must be present.\n    - Values must be among allowed options for each attribute.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          },
+          "new_configuration_values": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "service_id",
+          "new_configuration_values"
+        ]
+      }
+    },
+    {
+      "name": "terminate_service",
+      "description": "Mark a service instance as terminated for a given service ID by updating its status.\n\nArgs:\n    service_id (str): The unique identifier of the service to terminate.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Service <service_id> has been terminated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - Service must exist in the system.\n    - If service is already terminated, operation fails gracefully.\n    - Service status is updated to \"terminated\" (soft delete for auditing/history).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_id"
+        ]
+      }
+    },
+    {
+      "name": "change_account_status",
+      "description": "Update the status of a user account (e.g., activate, suspend).\n\nArgs:\n    account_id (str): Unique identifier of the account whose status will be changed.\n    new_status (str): The new status to set for the account.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Account status updated to <new_status>.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"<reason>\"\n            }\n\nConstraints:\n    - The account_id must exist.\n    - No restrictions on valid status values in this environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "add_product",
+      "description": "Add a new product offering to the marketplace.\n\nArgs:\n    product_id (str): Unique identifier of the new product.\n    name (str): Name of the product.\n    description (str): Description of the product.\n    category (str): Category of the product.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Product <product_id> added to the marketplace.\"\n    }\n    or {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - product_id must be unique (not already in the marketplace).\n    - All fields must be non-empty strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "name",
+          "description",
+          "category"
+        ]
+      }
+    },
+    {
+      "name": "update_product_attributes",
+      "description": "Modify the configurable attributes or options for a given product.\n\nArgs:\n    product_id (str): The product ID to update attributes for.\n    attributes (list of dict or ProductAttributeInfo): Each dict must have:\n        - 'attribute_name' (str)\n        - 'options' (list of str)\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Product attributes updated for product <product_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Product must exist.\n    - Each attribute must be a dict with 'attribute_name' (str) and 'options' (list of str).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "attributes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "attribute_name": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "attribute_name",
+                "options"
+              ]
+            }
+          }
+        },
+        "required": [
+          "product_id",
+          "attributes"
+        ]
+      }
+    }
+  ]
+}

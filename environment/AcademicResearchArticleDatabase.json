@@ -1,0 +1,513 @@
+{
+  "env_name": "AcademicResearchArticleDatabase",
+  "description": "An academic research article database maintains structured and searchable records of published scientific articles, organizing data by title, abstract, author, keyword, and unique identifiers like DOIs. Users can perform keyword searches, browse topics, access article metadata, and query the database for statistical summaries and bibliographic details. The environment supports efficient literature discovery and retrieval, serving the needs of researchers, educators, and students across disciplines.",
+  "initial_parameter_schema": {
+    "articles": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "article_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "abstract": {
+            "type": "string"
+          },
+          "publication_date": {
+            "type": "string"
+          },
+          "journal": {
+            "type": "string"
+          },
+          "doi": {
+            "type": "string"
+          },
+          "keywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "author_id": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "article_id",
+          "title",
+          "abstract",
+          "publication_date",
+          "journal",
+          "doi",
+          "keywords",
+          "author_id"
+        ]
+      }
+    },
+    "authors": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "author_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "affiliation": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "author_id",
+          "name",
+          "affiliation"
+        ]
+      }
+    },
+    "keywords": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "keyword_id": {
+            "type": "string"
+          },
+          "keyword_tex": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "keyword_id",
+          "keyword_tex"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "search_articles_by_keyword": [
+      "articles",
+      "keywords"
+    ],
+    "get_article_by_doi": [
+      "articles"
+    ],
+    "get_article_by_id": [
+      "articles"
+    ],
+    "get_articles_by_author": [
+      "articles",
+      "authors"
+    ],
+    "search_articles_by_title": [
+      "articles"
+    ],
+    "list_keywords": [
+      "keywords"
+    ],
+    "get_keyword_by_text": [
+      "keywords"
+    ],
+    "get_article_count": [
+      "articles"
+    ],
+    "get_author_by_id": [
+      "authors"
+    ],
+    "get_authors_of_article": [
+      "articles",
+      "authors"
+    ],
+    "get_keywords_of_article": [
+      "articles",
+      "keywords"
+    ],
+    "add_article": [
+      "articles",
+      "authors",
+      "keywords"
+    ],
+    "update_article_metadata": [
+      "articles",
+      "authors",
+      "keywords"
+    ],
+    "delete_article": [
+      "articles"
+    ],
+    "add_author": [
+      "authors"
+    ],
+    "update_author": [
+      "authors"
+    ],
+    "add_keyword": [
+      "keywords"
+    ],
+    "update_keyword": [
+      "keywords"
+    ]
+  },
+  "tools": [
+    {
+      "name": "search_articles_by_keyword",
+      "description": "Retrieve a list of articles associated with a given keyword (by keyword text or keyword_id).\n\nArgs:\n    keyword (str): The keyword to search for (may be a keyword_id or the keyword text).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ArticleInfo]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The keyword must exist, either as a keyword_id or as keyword_tex (case-sensitive).\n    - If no articles are found, returns an empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "keyword": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "keyword"
+        ]
+      }
+    },
+    {
+      "name": "get_article_by_doi",
+      "description": "Retrieve the complete metadata for an article identified by its DOI.\n\nArgs:\n    doi (str): The Digital Object Identifier of the article.\n\nReturns:\n    dict: \n      - On success:\n          {\n              \"success\": True,\n              \"data\": ArticleInfo  # metadata for the article with the given DOI\n          }\n      - On failure:\n          {\n              \"success\": False,\n              \"error\": \"No article found for DOI <doi>\"\n          }\n\nConstraints:\n    - DOI must exist and map to an article in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "doi": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "doi"
+        ]
+      }
+    },
+    {
+      "name": "get_article_by_id",
+      "description": "Retrieve the complete metadata for an article given its article_id.\n\nArgs:\n    article_id (str): The unique identifier of the article.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ArticleInfo  # The metadata for the article\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g. \"Article not found\"\n    }\n\nConstraints:\n    - The article_id must exist in the articles database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "article_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "article_id"
+        ]
+      }
+    },
+    {
+      "name": "get_articles_by_author",
+      "description": "Retrieve all articles authored by a specific author, searched by author_id or by name.\nIf both author_id and name are provided, author_id takes precedence.\n\nArgs:\n    author_id (str, optional): The unique ID of the author.\n    name (str, optional): The (full) name of the author.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ArticleInfo],  # May be empty if author has no articles\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if author not found or invalid params\n    }\n\nConstraints:\n    - author_id, if provided, must exist in authors.\n    - If searching by name and multiple authors match, aggregates articles for all.\n    - At least one of author_id or name must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "author_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "anyOf": [
+          {
+            "required": [
+              "author_id"
+            ]
+          },
+          {
+            "required": [
+              "name"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "search_articles_by_title",
+      "description": "Retrieve a list of articles whose titles match or contain the specified string\n(case-insensitive substring search).\n\nArgs:\n    title_query (str): Title substring or full string to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ArticleInfo],  # May be empty if no matches.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # E.g., if query is empty\n    }\n\nConstraints:\n    - Search is case-insensitive.\n    - Title query must not be empty or all whitespace.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title_query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title_query"
+        ]
+      }
+    },
+    {
+      "name": "list_keywords",
+      "description": "Retrieve a list of all keywords and their associated ids.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[KeywordInfo]  # List of all keywords as dictionaries with keyword_id and keyword_tex.\n    }\n    If there are no keywords, returns an empty list in data.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_keyword_by_text",
+      "description": "Retrieve the keyword_id for a given keyword's text.\n\nArgs:\n    keyword_tex (str): The exact text value of the keyword.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": keyword_id (str)\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": \"Keyword not found\"\n        }\n\nConstraints:\n    - Exact (case-sensitive) match is required for keyword text.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "keyword_tex": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "keyword_tex"
+        ]
+      }
+    },
+    {
+      "name": "get_article_count",
+      "description": "Obtain the total number of articles in the database.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": int  # Total article count\n    }\n\nConstraints:\n    - The system must accurately maintain total article count for summary queries.\n\nNotes:\n    - Always succeeds. No input parameters required.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_author_by_id",
+      "description": "Retrieve the details (metadata) of an author given their author_id.\n\nArgs:\n    author_id (str): The unique identifier of the author.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": AuthorInfo  # Author info dictionary\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g. author not found\n    }\n\nConstraints:\n    - The author_id must exist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "author_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "author_id"
+        ]
+      }
+    },
+    {
+      "name": "get_authors_of_article",
+      "description": "List all authors (full details) for a specific article.\n\nArgs:\n    article_id (str): The unique ID of the article.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AuthorInfo],  # All matching authors (empty if no authors)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description (e.g., \"Article not found\")\n    }\n\nConstraints:\n    - Article must exist.\n    - Only returns author details for authors found in the authors table.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "article_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "article_id"
+        ]
+      }
+    },
+    {
+      "name": "get_keywords_of_article",
+      "description": "List all keyword details (KeywordInfo) associated with the specified article.\n\nArgs:\n    article_id (str): The unique identifier of the target article.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[KeywordInfo]  # List of keyword details (may be empty if none),\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g. article does not exist\n    }\n\nConstraints:\n    - Article with article_id must exist.\n    - Returns only keywords that actually exist in the keywords dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "article_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "article_id"
+        ]
+      }
+    },
+    {
+      "name": "add_article",
+      "description": "Add a new article record to the database. \n\nArgs:\n    article_id (str): Unique internal identifier for the article.\n    title (str): Title of the article.\n    abstract (str): Abstract/summary of the article.\n    publication_date (str): Publication date (format assumed valid).\n    journal (str): Journal or conference name.\n    doi (str): Digital Object Identifier (must be non-empty).\n    keywords (List[str]): List of keyword_id's.\n    author_id (List[str]): List of author_id's.\n\nReturns:\n    dict: Success with message, or failure with explanation.\n\nConstraints:\n    - DOI must be supplied and not empty/None.\n    - At least one valid author_id and one valid keyword must be provided.\n    - No duplicate allowed (title, doi, and authors combination must be unique).\n    - All supplied keywords and authors must already exist.\n    - article_id must be unique in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "article_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "abstract": {
+            "type": "string"
+          },
+          "publication_date": {
+            "type": "string"
+          },
+          "journal": {
+            "type": "string"
+          },
+          "doi": {
+            "type": "string"
+          },
+          "keywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "author_id": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "article_id"
+        ]
+      }
+    },
+    {
+      "name": "update_article_metadata",
+      "description": "Edit the metadata of an existing article.\n\nArgs:\n    article_id (str): The ID of the article to update (required).\n    title (str, optional): New title.\n    abstract (str, optional): New abstract.\n    publication_date (str, optional): New publication date.\n    journal (str, optional): New journal.\n    doi (str, optional): New DOI.\n    keywords (list of str, optional): New list of keyword_ids.\n    author_id (list of str, optional): New list of author_ids.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Article metadata updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Article must exist.\n    - If updating DOI, must be non-empty.\n    - If updating authors or keywords, all IDs must be valid.\n    - After update, (title, doi, author_id) combination must be unique among all articles.\n    - Article must have at least one author and one keyword after update.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "article_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "abstract": {
+            "type": "string"
+          },
+          "publication_date": {
+            "type": "string"
+          },
+          "journal": {
+            "type": "string"
+          },
+          "doi": {
+            "type": "string"
+          },
+          "keywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "author_id": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "article_id",
+          "title",
+          "abstract",
+          "publication_date",
+          "journal",
+          "doi",
+          "keywords",
+          "author_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_article",
+      "description": "Remove an article record from the database.\n\nArgs:\n    article_id (str): The unique ID of the article to be deleted.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Article deleted successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The article must exist (article_id must be in the articles dictionary).\n    - Only the article is removed; authors and keywords are not affected.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "article_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "article_id"
+        ]
+      }
+    },
+    {
+      "name": "add_author",
+      "description": "Adds a new author record to the database.\n\nArgs:\n    author_id (str): Unique identifier for the author.\n    name (str): Full name of the author.\n    affiliation (str): Institutional/organizational affiliation.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Author added successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - author_id must not already exist.\n    - All input fields must be non-empty strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "author_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "affiliation": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "author_id"
+        ]
+      }
+    },
+    {
+      "name": "update_author",
+      "description": "Edit an existing author's information (name and/or affiliation).\n\nArgs:\n    author_id (str): Unique identifier of the author to update.\n    name (str, optional): New name for the author.\n    affiliation (str, optional): New affiliation for the author.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Author information updated.\" }\n        - On failure: { \"success\": False, \"error\": \"Reason for failure.\" }\n\nConstraints:\n    - The author with author_id must exist in the database.\n    - At least one of 'name' or 'affiliation' should be supplied for update (if none, will no-op successfully).\n\nNote:\n    - Fields left as None will not be updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "author_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "affiliation": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "author_id",
+          "name",
+          "affiliation"
+        ]
+      }
+    },
+    {
+      "name": "add_keyword",
+      "description": "Insert a new keyword for indexing articles.\n\nArgs:\n    keyword_id (str): Unique identifier for the keyword.\n    keyword_tex (str): The textual representation of the keyword.\n\nReturns:\n    dict: \n        { \n            \"success\": True, \n            \"message\": \"Keyword added successfully\" \n        }\n    or\n        { \n            \"success\": False, \n            \"error\": \"reason for failure\" \n        }\n\nConstraints:\n    - keyword_id must be unique (not already present in self.keywords).\n    - keyword_tex should not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "keyword_id": {
+            "type": "string"
+          },
+          "keyword_tex": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "keyword_id",
+          "keyword_tex"
+        ]
+      }
+    },
+    {
+      "name": "update_keyword",
+      "description": "Edit an existing keyword's text.\n\nArgs:\n    keyword_id (str): The ID of the keyword to be updated.\n    new_keyword_tex (str): The new text value for the keyword.\n\nReturns:\n    dict:\n        On success: {\"success\": True, \"message\": \"Keyword text updated successfully.\"}\n        On failure: {\"success\": False, \"error\": \"Keyword not found.\"}\n\nConstraints:\n    - The keyword_id must exist in the database.\n    - No restriction on uniqueness or non-emptiness of new_keyword_tex.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "keyword_id": {
+            "type": "string"
+          },
+          "new_keyword_tex": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "keyword_id",
+          "new_keyword_tex"
+        ]
+      }
+    }
+  ]
+}

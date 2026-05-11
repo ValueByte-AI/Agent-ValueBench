@@ -1,0 +1,677 @@
+{
+  "env_name": "TwitchUserChannelManagementSystem",
+  "description": "A Twitch user/channel management system organizes the profiles of streamers and viewers, tracking real-time broadcast status and associated content such as live stream previews, past broadcasts, and channel metadata. It maintains constantly updated state information about each user's streaming activity and media assets. The system enables querying and notification of status or content changes, supporting both users and platform features.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "profile_metadata": {
+            "type": "object"
+          },
+          "account_type": {
+            "type": "string"
+          },
+          "channel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "profile_metadata",
+          "account_type",
+          "channel_id"
+        ]
+      }
+    },
+    "channels": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "channel_metadata": {
+            "type": "object"
+          },
+          "current_status": {
+            "type": "string"
+          },
+          "current_stream_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id",
+          "user_id",
+          "channel_metadata",
+          "current_status",
+          "current_stream_id"
+        ]
+      }
+    },
+    "streams": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "stream_id": {
+            "type": "string"
+          },
+          "channel_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "preview_image_url": {
+            "type": "string"
+          },
+          "stream_metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "stream_id",
+          "channel_id",
+          "start_time",
+          "end_time",
+          "status",
+          "preview_image_url",
+          "stream_metadata"
+        ]
+      }
+    },
+    "broadcasts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "broadcast_id": {
+            "type": "string"
+          },
+          "channel_id": {
+            "type": "string"
+          },
+          "stream_id": {
+            "type": "string"
+          },
+          "archive_url": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "broadcast_id",
+          "channel_id",
+          "stream_id",
+          "archive_url",
+          "created_at",
+          "metadata"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_username": [
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "list_users_by_account_type": [
+      "users"
+    ],
+    "get_channel_by_user_id": [
+      "channels"
+    ],
+    "get_channel_by_id": [
+      "channels"
+    ],
+    "get_channel_status": [
+      "channels"
+    ],
+    "get_current_stream_by_channel_id": [
+      "channels",
+      "streams"
+    ],
+    "get_most_recent_stream_by_channel_id": [
+      "channels",
+      "streams"
+    ],
+    "get_stream_by_id": [
+      "streams"
+    ],
+    "get_stream_preview_url": [
+      "streams"
+    ],
+    "get_latest_stream_preview_for_username": [
+      "channels",
+      "streams",
+      "users"
+    ],
+    "list_streams_by_channel_id": [
+      "channels",
+      "streams"
+    ],
+    "list_broadcasts_by_channel_id": [
+      "broadcasts",
+      "channels"
+    ],
+    "get_broadcast_by_id": [
+      "broadcasts"
+    ],
+    "get_broadcasts_for_stream_id": [
+      "broadcasts",
+      "streams"
+    ],
+    "get_channel_metadata": [
+      "channels"
+    ],
+    "get_user_profile_metadata": [
+      "users"
+    ],
+    "update_user_profile_metadata": [
+      "users"
+    ],
+    "update_channel_metadata": [
+      "channels"
+    ],
+    "start_stream": [
+      "channels",
+      "streams"
+    ],
+    "end_stream": [
+      "channels",
+      "streams"
+    ],
+    "update_stream_preview": [
+      "streams"
+    ],
+    "archive_stream_to_broadcast": [
+      "broadcasts",
+      "channels",
+      "streams"
+    ],
+    "delete_broadcast": [
+      "broadcasts"
+    ],
+    "transfer_channel_ownership": [
+      "channels",
+      "users"
+    ],
+    "add_new_user": [
+      "users"
+    ],
+    "delete_user": [
+      "broadcasts",
+      "channels",
+      "streams",
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_username",
+      "description": "Retrieve the user profile and core metadata using their username.\n\nArgs:\n    username (str): The Twitch user's username to look up.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo, # On success\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str, # e.g. \"User not found\"\n    }\n\nNotes:\n    - Username comparison is case-sensitive. If case-insensitive match is required, modify logic accordingly.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve the full user profile for the given unique user _id.\n\nArgs:\n    _id (str): Unique user identifier.\n\nReturns:\n    dict: \n        - If successful:\n            {\n              \"success\": True,\n              \"data\": UserInfo  # Complete profile info as dict\n            }\n        - If not found:\n            {\n              \"success\": False,\n              \"error\": \"User does not exist\"\n            }\nConstraints:\n    - The _id must exist in the users dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id"
+        ]
+      }
+    },
+    {
+      "name": "list_users_by_account_type",
+      "description": "List all users filtered by account type.\n\nArgs:\n    account_type (str): The type of account to filter by (\"streamer\" or \"viewer\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[UserInfo]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g. invalid account type\n    }\n\nConstraints:\n    - account_type must be \"streamer\" or \"viewer\".\n    - If no user of the type exists, return empty data list with success True.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_type"
+        ]
+      }
+    },
+    {
+      "name": "get_channel_by_user_id",
+      "description": "Look up a channel owned by the specified user_id.\n\nArgs:\n    user_id (str): The user_id of the channel owner.\n\nReturns:\n    dict:\n      - If found: {\"success\": True, \"data\": ChannelInfo}\n      - If not found: {\"success\": False, \"error\": \"No channel found for user_id\"}\n\nConstraints:\n    - Each channel is associated with exactly one user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_channel_by_id",
+      "description": "Retrieve the channel information by its unique channel_id.\n\nArgs:\n    channel_id (str): The unique identifier of the channel.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"data\": ChannelInfo }\n        - On failure: { \"success\": False, \"error\": \"Channel not found\" }\n\nConstraints:\n    - Only returns the channel info if it exists in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id"
+        ]
+      }
+    },
+    {
+      "name": "get_channel_status",
+      "description": "Query the current live/offline status of a channel.\n\nArgs:\n    channel_id (str): The unique identifier of the channel.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"channel_id\": str,\n                    \"current_status\": str  # \"live\" or \"offline\"\n                }\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str\n            }\n\nConstraints:\n    - channel_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id"
+        ]
+      }
+    },
+    {
+      "name": "get_current_stream_by_channel_id",
+      "description": "Fetch the currently live stream (if any) for a specified channel.\n\nArgs:\n    channel_id (str): The ID of the channel to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": StreamInfo or None  # StreamInfo if a live stream exists, otherwise None\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., channel does not exist\n    }\n\nConstraints:\n    - Each channel may have 0 or 1 live stream at a time.\n    - Only the stream with status \"live\" is considered.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id"
+        ]
+      }
+    },
+    {
+      "name": "get_most_recent_stream_by_channel_id",
+      "description": "Retrieve the most recently started stream (live or offline) for a given channel.\n\nArgs:\n    channel_id (str): The channel's unique identifier.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True,\n            \"data\": StreamInfo or None  # StreamInfo of the most recently started stream, or None if no streams for this channel\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": str  # Error message (e.g., invalid channel id)\n        }\n\nConstraints:\n    - Only considers streams with matching channel_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id"
+        ]
+      }
+    },
+    {
+      "name": "get_stream_by_id",
+      "description": "Retrieve stream details by stream_id.\n\nArgs:\n    stream_id (str): The unique identifier of the stream session.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": StreamInfo  # The stream's information, if found.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Stream not found\"\n    }\n\nConstraints:\n    - Only streams existing in the system can be accessed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stream_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "stream_id"
+        ]
+      }
+    },
+    {
+      "name": "get_stream_preview_url",
+      "description": "Retrieve the latest preview image URL for the given stream.\n\nArgs:\n    stream_id (str): The unique id of the stream.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": str  # preview_image_url for the stream\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Error reason, such as stream not found\n        }\nConstraints:\n    - Stream must exist in self.streams.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stream_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "stream_id"
+        ]
+      }
+    },
+    {
+      "name": "get_latest_stream_preview_for_username",
+      "description": "Fetch the most recent (live or latest archived) stream preview image URL \nfor the channel owned by the given username.\n\nArgs:\n    username (str): The Twitch username whose channel's latest preview is requested.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"preview_image_url\": str,\n            \"source\": \"live\" or \"archived\",\n            \"stream_id\": str\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Only return streams belonging to the user's channel.\n    - Prefer live preview; otherwise, return most recent archived/ended stream preview.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "list_streams_by_channel_id",
+      "description": "Return all stream sessions for a specified channel, ordered by start_time.\n\nArgs:\n    channel_id (str): The ID of the channel whose streams to list.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[StreamInfo],  # Stream infos in ascending order of start_time\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of why the request failed\n    }\n\nConstraints:\n    - The channel_id must exist in the system.\n    - Only streams belonging to the given channel are returned.\n    - The result is ordered chronologically by start_time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id"
+        ]
+      }
+    },
+    {
+      "name": "list_broadcasts_by_channel_id",
+      "description": "List all archived broadcasts for a specified channel.\n\nArgs:\n    channel_id (str): The unique identifier for the channel.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BroadcastInfo]  # List of broadcast info. Can be empty if no broadcasts.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # On error, e.g., if the channel does not exist.\n    }\n\nConstraints:\n    - The given channel_id must exist.\n    - Only broadcasts belonging to the channel are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id"
+        ]
+      }
+    },
+    {
+      "name": "get_broadcast_by_id",
+      "description": "Retrieve broadcast (archive) information for the specified broadcast_id.\n\nArgs:\n    broadcast_id (str): The unique identifier of the broadcast to look up.\n\nReturns:\n    dict:\n        - On success:\n          {\"success\": True, \"data\": BroadcastInfo}\n        - On failure (not found):\n          {\"success\": False, \"error\": \"Broadcast not found\"}\nConstraints:\n    - Only a broadcast with the given ID is returned, if it exists.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "broadcast_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "broadcast_id"
+        ]
+      }
+    },
+    {
+      "name": "get_broadcasts_for_stream_id",
+      "description": "List all broadcasts related to a specific stream.\n\nArgs:\n    stream_id (str): The unique ID of the stream to search broadcasts for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BroadcastInfo]  # List of broadcasts associated with the stream\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g. stream does not exist)\n    }\n\nConstraints:\n    - Only broadcasts whose stream_id matches the provided stream_id are returned.\n    - If the stream_id is invalid (does not exist), an error is returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stream_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "stream_id"
+        ]
+      }
+    },
+    {
+      "name": "get_channel_metadata",
+      "description": "Retrieve the metadata/settings for a specific channel given by its channel_id.\n\nArgs:\n    channel_id (str): The ID of the channel whose metadata/settings are to be retrieved.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": dict  # The channel_metadata dictionary (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason why metadata could not be retrieved (e.g. channel not found)\n    }\n\nConstraints:\n    - Channel must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_profile_metadata",
+      "description": "Return the detailed profile metadata for a user.\n\nArgs:\n    user_id (str): The unique ID of the user.\n\nReturns:\n    dict: \n        Success: { \"success\": True, \"data\": <profile_metadata dict> }\n        Failure: { \"success\": False, \"error\": \"User not found\" }\n\nConstraints:\n    - The user must exist in the system.\n    - Only the user's own profile_metadata is returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "update_user_profile_metadata",
+      "description": "Edit or modify a user's profile metadata.\n\nArgs:\n    user_id (str): The user ID of the user whose profile metadata should be updated.\n    new_profile_metadata (dict): The new profile metadata to assign (full replacement).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User profile metadata updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - User with user_id must exist.\n    - new_profile_metadata must be a dict.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "new_profile_metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "user_id",
+          "new_profile_metadata"
+        ]
+      }
+    },
+    {
+      "name": "update_channel_metadata",
+      "description": "Update the metadata/settings for a channel.\n\nArgs:\n    channel_id (str): The ID of the channel to update.\n    new_metadata (dict): The new metadata/settings for the channel.\n\nReturns:\n    dict:\n        - {\"success\": True, \"message\": \"Channel metadata updated.\"}\n        - {\"success\": False, \"error\": \"Channel not found\"}\n        - {\"success\": False, \"error\": \"Invalid metadata\"}\n\nConstraints:\n    - The specified channel must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          },
+          "new_metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "channel_id",
+          "new_metadata"
+        ]
+      }
+    },
+    {
+      "name": "start_stream",
+      "description": "Set a channel and a stream as live by creating a new stream session.\n\nArgs:\n    channel_id (str): The channel's unique identifier to start the stream on.\n    preview_image_url (Optional[str]): The URL of the stream's preview image (can default to a placeholder).\n    stream_metadata (Optional[dict]): Metadata for the new stream (may be empty).\n\nReturns:\n    dict:\n        - On success:\n            {\"success\": True, \"message\": \"Stream started on channel <channel_id> with stream_id <stream_id>\"}\n        - On failure:\n            {\"success\": False, \"error\": \"reason\"}\n\nConstraints:\n    - Channel must exist.\n    - Channel must NOT already have a live stream (enforced: only one live stream per channel).\n    - Stream info and channel state must be updated atomically.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          },
+          "preview_image_url": {
+            "type": "string"
+          },
+          "stream_metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "channel_id"
+        ]
+      }
+    },
+    {
+      "name": "end_stream",
+      "description": "Mark a currently live stream as ended for the given channel.\n\nArgs:\n    channel_id (str): The ID of the channel whose current live stream is to be ended.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Stream [stream_id] ended for channel [channel_id]\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - The channel must exist.\n    - The channel must currently be live (`current_status` == 'live') and have a valid `current_stream_id`.\n    - The stream must exist in the streams dictionary.\n    - Updates both stream and channel states atomically.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id"
+        ]
+      }
+    },
+    {
+      "name": "update_stream_preview",
+      "description": "Update the preview image URL for a live stream.\n\nArgs:\n    stream_id (str): The ID of the stream to update.\n    new_preview_image_url (str): The new URL of the preview image.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Preview image updated for stream <stream_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - Can only update the preview for a stream if its status is \"live\".\n    - The stream_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stream_id": {
+            "type": "string"
+          },
+          "new_preview_image_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "stream_id",
+          "new_preview_image_url"
+        ]
+      }
+    },
+    {
+      "name": "archive_stream_to_broadcast",
+      "description": "Convert a completed (ended) stream session into a saved broadcast archive.\n\nArgs:\n    stream_id (str): The identifier of the stream session to archive.\n\nReturns:\n    dict:\n        On success: {\n            \"success\": True,\n            \"message\": \"Stream archived as broadcast\",\n            \"broadcast_id\": str\n        }\n        On failure: {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - Only completed (not live, end_time set) streams may be archived.\n    - Only one broadcast is permitted per stream.\n    - The referenced stream and its channel must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stream_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "stream_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_broadcast",
+      "description": "Remove (or hide) an archived broadcast from a channel.\n\nArgs:\n    broadcast_id (str): The unique identifier of the broadcast to remove.\n\nReturns:\n    dict: \n        On success: {\n            \"success\": True, \n            \"message\": \"Broadcast <broadcast_id> deleted.\"\n        }\n        On failure: {\n            \"success\": False, \n            \"error\": \"Broadcast not found\"\n        }\n\nConstraints:\n    - The broadcast must exist in the system.\n    - No permission or ownership check is enforced.\n    - Channel storage accounting is recalculated after deletion.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "broadcast_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "broadcast_id"
+        ]
+      }
+    },
+    {
+      "name": "transfer_channel_ownership",
+      "description": "Change the user associated with a specific channel_id (admin function).\n\nArgs:\n    channel_id (str): The identifier of the channel.\n    new_user_id (str): The user ID of the new owner.\n\nReturns:\n    dict:\n        - On success: \n            {\"success\": True, \"message\": \"Channel ownership transferred: channel <channel_id> now belongs to user <new_user_id>.\"}\n        - On failure: \n            {\"success\": False, \"error\": \"<reason>\"}\nConstraints:\n    - Channel must exist.\n    - New user must exist.\n    - Each channel is associated with exactly one user.\n    - User may have more than one channel. User's channel_id attribute is optional and may be updated if relevant.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          },
+          "new_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id",
+          "new_user_id"
+        ]
+      }
+    },
+    {
+      "name": "add_new_user",
+      "description": "Register a new user on the platform.\n\nArgs:\n    _id (str): The unique user ID (must not already exist).\n    username (str): The display username (must not already exist).\n    profile_metadata (dict): User profile details.\n    account_type (str): One of \"streamer\" or \"viewer\".\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Success confirmation\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - _id and username must be unique among users.\n    - account_type must be \"streamer\" or \"viewer\".\n    - New user will not have an associated channel yet (channel_id is None).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "profile_metadata": {
+            "type": "object"
+          },
+          "account_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "profile_metadata",
+          "account_type"
+        ]
+      }
+    },
+    {
+      "name": "delete_user",
+      "description": "Remove a user and all associated data (channel, streams, broadcasts) from the system.\n\nArgs:\n    user_id (str): Unique identifier for the user to be deleted.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User and all associated data deleted successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., \"User not found.\"\n    }\n\nConstraints:\n    - If the user has a channel, all data (channel, streams, broadcasts) must also be deleted.\n    - If the user does not exist, operation fails cleanly.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    }
+  ]
+}

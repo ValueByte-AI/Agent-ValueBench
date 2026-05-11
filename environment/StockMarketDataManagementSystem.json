@@ -1,0 +1,443 @@
+{
+  "env_name": "StockMarketDataManagementSystem",
+  "description": "A stock market data management system collects, stores, and organizes real-time and historical pricing information for financial assets such as equities, indices, and derivatives. It enables users to query, visualize, and analyze price and volume trends for various tickers over specified time intervals. This environment is essential for financial analysis, trading strategies, and portfolio management in both institutional and retail contexts.",
+  "initial_parameter_schema": {
+    "assets": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "ticker_symbol": {
+            "type": "string"
+          },
+          "asset_type": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "exchange": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticker_symbol",
+          "asset_type",
+          "name",
+          "exchange"
+        ]
+      }
+    },
+    "price_records": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "ticker_symbol": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "number"
+            },
+            "open": {
+              "type": "number"
+            },
+            "high": {
+              "type": "number"
+            },
+            "low": {
+              "type": "number"
+            },
+            "close": {
+              "type": "number"
+            },
+            "volume": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "ticker_symbol",
+            "timestamp",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume"
+          ]
+        }
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_asset_info": [
+      "assets"
+    ],
+    "list_all_assets": [
+      "assets"
+    ],
+    "get_price_history": [
+      "assets",
+      "price_records"
+    ],
+    "get_available_time_range": [
+      "assets",
+      "price_records"
+    ],
+    "list_price_records_for_tickers": [
+      "assets",
+      "price_records"
+    ],
+    "get_latest_price": [
+      "assets",
+      "price_records"
+    ],
+    "get_aggregated_statistics": [
+      "assets",
+      "price_records"
+    ],
+    "validate_ticker_symbol": [
+      "assets"
+    ],
+    "get_asset_price_record_count": [
+      "assets",
+      "price_records"
+    ],
+    "add_asset": [
+      "assets"
+    ],
+    "update_asset_info": [
+      "assets"
+    ],
+    "add_price_record": [
+      "assets",
+      "price_records"
+    ],
+    "delete_asset": [
+      "assets",
+      "price_records"
+    ],
+    "delete_price_record": [
+      "assets",
+      "price_records"
+    ],
+    "correct_price_record": [
+      "assets",
+      "price_records"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_asset_info",
+      "description": "Fetch asset metadata (asset_type, name, exchange) for a given ticker_symbol.\n\nArgs:\n    ticker_symbol (str): The asset's unique ticker symbol.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": AssetInfo }\n        - On failure: { \"success\": False, \"error\": \"Asset not found\" }\n\nConstraints:\n    - The ticker_symbol must exist in the system's registry of assets.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticker_symbol": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticker_symbol"
+        ]
+      }
+    },
+    {
+      "name": "list_all_assets",
+      "description": "List all assets (tickers) being tracked in the system with their metadata.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[AssetInfo]  # List of all assets' info, possibly empty\n    }\nConstraints:\n    - None. This operation reads all asset entries currently tracked.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_price_history",
+      "description": "Retrieve historical price and volume records for the given ticker within a specified time interval.\n\nArgs:\n    ticker_symbol (str): The ticker symbol of the asset.\n    start_time (float): Start of the time interval (inclusive).\n    end_time (float): End of the time interval (inclusive).\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"data\": List[PriceRecordInfo]}\n        On failure:\n            {\"success\": False, \"error\": str}\n\nConstraints:\n  - Asset must exist.\n  - start_time must be less than or equal to end_time.\n  - Records must reference existing asset (enforced by lookup).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticker_symbol": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "ticker_symbol",
+          "start_time",
+          "end_time"
+        ]
+      }
+    },
+    {
+      "name": "get_available_time_range",
+      "description": "Obtain the available time span (earliest/latest timestamps) for a ticker’s data.\n\nArgs:\n    ticker_symbol (str): The ticker symbol of the asset to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"earliest\": float,\n            \"latest\": float\n        }\n    } if records exist,\n    {\n        \"success\": True,\n        \"data\": None\n    } if the ticker has no price records,\n    {\n        \"success\": False,\n        \"error\": str\n    } if the ticker symbol does not exist.\n\nConstraints:\n    - Ticker symbol must refer to an existing asset.\n    - Will return None for data if the asset has no price records.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticker_symbol": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticker_symbol"
+        ]
+      }
+    },
+    {
+      "name": "list_price_records_for_tickers",
+      "description": "Retrieve price records for a list of tickers over a specified [start_time, end_time] interval.\n\nArgs:\n    ticker_symbols (List[str]): List of ticker symbols for which to retrieve records.\n    start_time (float): Start (inclusive) of the time interval (unix timestamp).\n    end_time (float): End (inclusive) of the time interval (unix timestamp).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            <ticker>: List[PriceRecordInfo],  # filtered list for each ticker\n            ...\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description, e.g. tickers not found\n    }\n\nConstraints:\n    - All ticker_symbols must correspond to existing assets.\n    - Results for each ticker will be empty if no records are found in interval.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticker_symbols": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "start_time": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "ticker_symbols",
+          "start_time",
+          "end_time"
+        ]
+      }
+    },
+    {
+      "name": "get_latest_price",
+      "description": "Fetch the most recent price record for a specified ticker.\n\nArgs:\n    ticker_symbol (str): The symbol of the asset to fetch the latest price for.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": PriceRecordInfo  # The latest price record\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason for failure\n            }\n\nConstraints:\n    - Ticker symbol must exist in the assets dictionary.\n    - Must have at least one price record for the ticker.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticker_symbol": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticker_symbol"
+        ]
+      }
+    },
+    {
+      "name": "get_aggregated_statistics",
+      "description": "Compute aggregate statistics (average open, minimum low, maximum high,\naverage close, total volume, count) for a ticker over a specified time window.\n\nArgs:\n    ticker_symbol (str): Asset ticker symbol to query.\n    start_time (float): Start timestamp (inclusive).\n    end_time (float): End timestamp (inclusive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"average_open\": float,\n            \"min_low\": float,\n            \"max_high\": float,\n            \"average_close\": float,\n            \"total_volume\": float,\n            \"record_count\": int\n        }\n    }\n    OR\n    { \"success\": False, \"error\": str }\n\nNotes/Constraints:\n    - Returns empty aggregates (0/None) if no price records in window.\n    - start_time must be <= end_time.\n    - ticker_symbol must be valid.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticker_symbol": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "ticker_symbol",
+          "start_time",
+          "end_time"
+        ]
+      }
+    },
+    {
+      "name": "validate_ticker_symbol",
+      "description": "Check whether a ticker symbol exists as an Asset in the system.\n\nArgs:\n    ticker_symbol (str): The asset's ticker symbol to validate.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"exists\": bool  # True if the ticker exists in the assets, False otherwise\n    }\n\nConstraints:\n    - Accepts any string as ticker_symbol input.\n    - Returns exists: False for missing/empty ticker, but does not raise errors.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticker_symbol": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticker_symbol"
+        ]
+      }
+    },
+    {
+      "name": "get_asset_price_record_count",
+      "description": "Return the count of price records available for a given ticker symbol.\n\nArgs:\n    ticker_symbol (str): The ticker symbol for the asset to query.\n\nReturns:\n    dict:\n        success: True and data: int (count of price records) on success,\n                 e.g., { \"success\": True, \"data\": 15 }\n        success: False and error: str if ticker does not exist,\n                 e.g., { \"success\": False, \"error\": \"Ticker symbol does not exist\" }\n\nConstraints:\n    - The ticker_symbol must refer to an existing Asset.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticker_symbol": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticker_symbol"
+        ]
+      }
+    },
+    {
+      "name": "add_asset",
+      "description": "Add a new asset (by ticker_symbol) and its metadata to the market data system.\n\nArgs:\n    ticker_symbol (str): Unique ticker symbol for the asset.\n    asset_type (str): Type of the asset (e.g., equity, index, derivative).\n    name (str): Human-readable asset name.\n    exchange (str): Exchange where the asset is listed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Asset <ticker_symbol> added successfully.\"\n    } or {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - ticker_symbol must be unique in the system.\n    - All input fields must be non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticker_symbol": {
+            "type": "string"
+          },
+          "asset_type": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "exchange": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticker_symbol",
+          "asset_type",
+          "name",
+          "exchange"
+        ]
+      }
+    },
+    {
+      "name": "update_asset_info",
+      "description": "Modify metadata fields (name, exchange) for an existing asset.\n\nArgs:\n    ticker_symbol (str): The identifier of the asset to update. Must already exist.\n    name (str, optional): New name for asset. If not specified, name is unchanged.\n    exchange (str, optional): New exchange for asset. If not specified, exchange is unchanged.\n\nReturns:\n    dict: \n        Success: { \"success\": True, \"message\": \"Asset info updated for <ticker_symbol>\" }\n        Failure: { \"success\": False, \"error\": <error message> }\n\nConstraints:\n    - Asset must exist.\n    - Only 'name' and 'exchange' fields may be changed.\n    - 'ticker_symbol' and 'asset_type' are immutable.\n    - At least one field (name or exchange) must be provided to update.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticker_symbol": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "exchange": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticker_symbol"
+        ]
+      }
+    },
+    {
+      "name": "add_price_record",
+      "description": "Insert a new price/volume record for a given ticker at a specific timestamp.\n\nArgs:\n    ticker_symbol (str): The asset's ticker symbol.\n    timestamp (float): Unix timestamp for this record.\n    open (float): Opening price.\n    high (float): Highest price.\n    low (float): Lowest price.\n    close (float): Closing price.\n    volume (float): Volume traded.\n\nReturns:\n    dict: {\n        \"success\": bool,\n        \"message\": str  # on success,\n        \"error\": str    # on failure\n    }\n\nConstraints:\n    - Asset with ticker_symbol must exist.\n    - No duplicate or overlapping PriceRecord timestamps for this ticker_symbol allowed.\n    - Time series for ticker_symbol must remain strictly sequential (no duplicate timestamps).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticker_symbol": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "open": {
+            "type": "number"
+          },
+          "high": {
+            "type": "number"
+          },
+          "low": {
+            "type": "number"
+          },
+          "close": {
+            "type": "number"
+          },
+          "volume": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "ticker_symbol",
+          "timestamp",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume"
+        ]
+      }
+    },
+    {
+      "name": "delete_asset",
+      "description": "Remove an asset and all its associated price records.\n\nArgs:\n    ticker_symbol (str): The ticker symbol of the asset to be deleted.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Asset and associated price records deleted for <ticker_symbol>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - The ticker symbol must reference an existing asset.\n    - Removes both the asset and all its price records, if any.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticker_symbol": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticker_symbol"
+        ]
+      }
+    },
+    {
+      "name": "delete_price_record",
+      "description": "Remove a price record for a ticker at a specific timestamp.\n\nArgs:\n    ticker_symbol (str): The ticker symbol of the asset.\n    timestamp (float): The timestamp of the record to be removed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Price record for <ticker_symbol> at <timestamp> deleted\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - Ticker symbol must exist and have price records.\n    - Price record for the given timestamp must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticker_symbol": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "ticker_symbol",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "correct_price_record",
+      "description": "Update an existing price record’s fields for the given ticker and timestamp.\n\nArgs:\n    ticker_symbol (str): Ticker symbol of the asset.\n    timestamp (float): Unique timestamp of the price record.\n    open (float, optional): New open price.\n    high (float, optional): New high price.\n    low (float, optional): New low price.\n    close (float, optional): New close price.\n    volume (float, optional): New volume.\n\nReturns:\n    dict: Success or failure message.\n\nConstraints:\n    - Ticker_symbol must exist in the assets database.\n    - PriceRecord with exact ticker_symbol and timestamp must exist.\n    - All fields, if provided, must be non-negative numbers.\n    - Timestamps for a ticker remain in sequence after update (not affected unless timestamp changes, which is not the case here).\n    - At least one field to update must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticker_symbol": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "open": {
+            "type": "number"
+          },
+          "high": {
+            "type": "number"
+          },
+          "low": {
+            "type": "number"
+          },
+          "close": {
+            "type": "number"
+          },
+          "volume": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "ticker_symbol",
+          "timestamp"
+        ]
+      }
+    }
+  ]
+}

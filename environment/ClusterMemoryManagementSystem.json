@@ -1,0 +1,454 @@
+{
+  "env_name": "ClusterMemoryManagementSystem",
+  "description": "A cluster memory management system maintains configuration and resource states for individual compute nodes within a server cluster. It tracks memory allocations, node identities, roles, and supports operations for updating resources in response to usage and optimization needs. Typical actions include querying, assigning, and adjusting memory limits based on workload or administrative requirements, integrated in environments requiring efficient resource utilization.",
+  "initial_parameter_schema": {
+    "nodes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "node_id": {
+            "type": "string"
+          },
+          "node_name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "memory_allocated": {
+            "type": "number"
+          },
+          "memory_max": {
+            "type": "number"
+          },
+          "memory_min": {
+            "type": "number"
+          },
+          "sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_id",
+          "node_name",
+          "role",
+          "memory_allocated",
+          "memory_max",
+          "memory_min",
+          "sta"
+        ]
+      }
+    },
+    "clusters": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "cluster_id": {
+            "type": "string"
+          },
+          "cluster_name": {
+            "type": "string"
+          },
+          "node_list": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "policy": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cluster_id",
+          "cluster_name",
+          "node_list",
+          "policy"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_node_by_name": [
+      "nodes"
+    ],
+    "get_node_by_id": [
+      "nodes"
+    ],
+    "list_all_nodes": [
+      "nodes"
+    ],
+    "get_cluster_by_node": [
+      "clusters",
+      "nodes"
+    ],
+    "get_node_memory_limits": [
+      "nodes"
+    ],
+    "get_node_physical_capacity": [
+      "nodes"
+    ],
+    "get_cluster_policy": [
+      "clusters"
+    ],
+    "list_cluster_nodes": [
+      "clusters",
+      "nodes"
+    ],
+    "get_total_cluster_memory_allocated": [
+      "clusters",
+      "nodes"
+    ],
+    "check_node_name_uniqueness": [
+      "clusters",
+      "nodes"
+    ],
+    "update_node_memory_allocated": [
+      "clusters",
+      "nodes"
+    ],
+    "update_node_memory_limits": [
+      "nodes"
+    ],
+    "change_node_status": [
+      "nodes"
+    ],
+    "add_node_to_cluster": [
+      "clusters",
+      "nodes"
+    ],
+    "remove_node_from_cluster": [
+      "clusters",
+      "nodes"
+    ],
+    "update_cluster_policy": [
+      "clusters"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_node_by_name",
+      "description": "Retrieve a node's complete resource and identification info given its node_name.\n\nArgs:\n    node_name (str): The name of the node to search for.\n\nReturns:\n    dict: \n      { \"success\": True, \"data\": NodeInfo } if found,\n      { \"success\": False, \"error\": \"Node not found\" } otherwise.\n\nConstraints:\n    - Node names are unique within the cluster.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "node_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_name"
+        ]
+      }
+    },
+    {
+      "name": "get_node_by_id",
+      "description": "Retrieve a node's complete information by its node_id.\n\nArgs:\n    node_id (str): The identifier of the node.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": NodeInfo    # Complete information of the node.\n            }\n        On failure (node_id not found):\n            {\n                \"success\": False,\n                \"error\": \"Node with given node_id does not exist\"\n            }\n\nConstraints:\n    - node_id must exist in the nodes dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "node_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_nodes",
+      "description": "Retrieve a list of all nodes with their key information.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[NodeInfo]  # List of nodes' information (may be empty)\n    }\n\nNotes:\n    - No input parameters.\n    - Always succeeds, even if there are no nodes (returns an empty list).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_cluster_by_node",
+      "description": "Retrieve the cluster info for the cluster containing the specified node.\n\nArgs:\n    node_id (str): The unique identifier of the node.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ClusterInfo  # The info of the cluster this node belongs to\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason, e.g. node does not exist or not assigned to any cluster\n    }\n\nConstraints:\n    - The node must exist.\n    - The node must be assigned to some cluster.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "node_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_id"
+        ]
+      }
+    },
+    {
+      "name": "get_node_memory_limits",
+      "description": "Get memory_min, memory_max, and memory_allocated for a specified node.\n\nArgs:\n    node_id (str): The unique identifier for the target node.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"memory_min\": float,\n            \"memory_max\": float,\n            \"memory_allocated\": float\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - node_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "node_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_id"
+        ]
+      }
+    },
+    {
+      "name": "get_node_physical_capacity",
+      "description": "Query the physical memory capacity of the given node (its maximum possible memory).\n\nArgs:\n    node_id (str): Unique identifier for the node.\n\nReturns:\n    dict:\n        If successful:\n            {\n                'success': True,\n                'data': {\n                    'node_id': str,\n                    'physical_memory_capacity': float\n                }\n            }\n        If node not found:\n            {\n                'success': False,\n                'error': 'Node not found'\n            }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "node_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_id"
+        ]
+      }
+    },
+    {
+      "name": "get_cluster_policy",
+      "description": "Retrieve the memory management policy and settings for a specified cluster.\n\nArgs:\n    cluster_id (str): The ID of the cluster for which to retrieve the policy.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": <policy: str> }\n        - On failure: { \"success\": False, \"error\": \"Cluster does not exist\" }\n\nConstraints:\n    - The given cluster_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cluster_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cluster_id"
+        ]
+      }
+    },
+    {
+      "name": "list_cluster_nodes",
+      "description": "List all nodes (ids and names) that belong to the specified cluster.\n\nArgs:\n    cluster_id (str): Unique identifier of the cluster.\n\nReturns:\n    dict:\n        - success: True and data: list of { \"node_id\": ..., \"node_name\": ... } on success.\n        - success: False and error: \"Cluster does not exist\" if cluster_id is invalid.\n\nConstraints:\n    - Cluster must exist.\n    - Returned list may be empty if no nodes are in the cluster.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cluster_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cluster_id"
+        ]
+      }
+    },
+    {
+      "name": "get_total_cluster_memory_allocated",
+      "description": "Sum current memory_allocated of all nodes in a given cluster.\n\nArgs:\n    cluster_id (str): The unique identifier of the cluster.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": float  # The total allocated memory (sum over referenced nodes)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nNotes:\n    - If a cluster includes node IDs that are not present in self.nodes, these are ignored.\n    - If the cluster does not exist, returns an error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cluster_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cluster_id"
+        ]
+      }
+    },
+    {
+      "name": "check_node_name_uniqueness",
+      "description": "Verify whether a given node_name is unique within the specified cluster.\n\nArgs:\n    cluster_id (str): The ID of the cluster in which to check for uniqueness.\n    node_name  (str): The node name to check.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": bool  # True if unique, False if already present\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message (e.g., cluster does not exist)\n    }\n\nConstraints:\n    - The cluster must exist.\n    - Compares name only among nodes in the given cluster's node_list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cluster_id": {
+            "type": "string"
+          },
+          "node_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cluster_id",
+          "node_name"
+        ]
+      }
+    },
+    {
+      "name": "update_node_memory_allocated",
+      "description": "Set the memory_allocated value for a node after validating against node and cluster constraints.\n\nArgs:\n    node_id (str): The ID of the node to update.\n    new_memory_allocated (float): The new memory_allocated value to assign.\n\nReturns:\n    dict: \n        - On success:\n            {\n                \"success\": True,\n                \"message\": \"Node memory_allocated updated to ...\"\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": \"reason\"\n            }\n\nConstraints:\n    - node_id must exist in the system.\n    - new_memory_allocated must be numeric, >=0, >= memory_min and <= memory_max for the node.\n    - Must not exceed node's physical memory capacity (assumed capped by memory_max).\n    - May not violate cluster total memory allocation policies, if applicable.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "node_id": {
+            "type": "string"
+          },
+          "new_memory_allocated": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "node_id",
+          "new_memory_allocated"
+        ]
+      }
+    },
+    {
+      "name": "update_node_memory_limits",
+      "description": "Set or change the memory_min and/or memory_max of a node.\nApplies all constraint validations:\n    - Node must exist.\n    - memory_min and memory_max (if provided) must be non-negative.\n    - If both provided: memory_min <= memory_max.\n    - After update, memory_allocated must be in [memory_min, memory_max].\n    - No value may exceed node's physical capacity (if such capacity is modeled).\n\nArgs:\n    node_id (str): ID of the node to update.\n    memory_min (float, optional): New minimum allocation.\n    memory_max (float, optional): New maximum allocation.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Updated memory limits for node X: min=..., max=...\",\n    } or {\n        \"success\": False,\n        \"error\": error_message\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "node_id": {
+            "type": "string"
+          },
+          "memory_min": {
+            "type": "number"
+          },
+          "memory_max": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "node_id"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "memory_min"
+            ]
+          },
+          {
+            "required": [
+              "memory_max"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "change_node_status",
+      "description": "Update the status ('sta') of a node.\n\nArgs:\n    node_id (str): The identifier of the node to update.\n    new_status (str): The new status to assign (e.g., 'active', 'maintenance', 'offline').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Node <node_id> status updated to <new_status>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g., node not found)\n    }\n\nConstraints:\n    - The node_id must exist in the cluster.\n    - No restriction on acceptable status values unless specified elsewhere.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "node_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "add_node_to_cluster",
+      "description": "Add an existing or new node to a specified cluster.\n\nArgs:\n    cluster_id (str): The cluster to which to add the node.\n    node_id (Optional[str]): The ID of an existing node to add. Provide ONLY for existing nodes.\n    node_info (Optional[NodeInfo]): Info for a new node to create and add. Provide ONLY for new nodes.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Node <node_id> added to cluster <cluster_id>\" }\n        On error:   { \"success\": False, \"error\": \"error description\" }\n\nConstraints:\n    - Exactly one of node_id or node_info must be provided.\n    - Node IDs and names must be unique within the cluster.\n    - Node cannot already be in the cluster.\n    - If creating a new node, its ID and name must *not* exist cluster-wide.\n    - Cluster must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cluster_id": {
+            "type": "string"
+          },
+          "node_id": {
+            "type": "string"
+          },
+          "node_info": {
+            "type": "object",
+            "properties": {
+              "node_id": {
+                "type": "string"
+              },
+              "node_name": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string"
+              },
+              "memory_allocated": {
+                "type": "number"
+              },
+              "memory_max": {
+                "type": "number"
+              },
+              "memory_min": {
+                "type": "number"
+              },
+              "sta": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "node_id",
+              "node_name",
+              "role",
+              "memory_allocated",
+              "memory_max",
+              "memory_min",
+              "sta"
+            ]
+          }
+        },
+        "required": [
+          "cluster_id"
+        ],
+        "oneOf": [
+          {
+            "required": [
+              "node_id"
+            ]
+          },
+          {
+            "required": [
+              "node_info"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "remove_node_from_cluster",
+      "description": "Remove a node from the node list of a given cluster.\n\nArgs:\n    cluster_id (str): The ID of the cluster from which the node will be removed.\n    node_id (str): The ID of the node to remove.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Node <node_id> removed from cluster <cluster_id>.\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Cluster and node must exist.\n    - Node must be a member of the cluster's node_list.\n    - Other node properties or cluster policies are not modified by this operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cluster_id": {
+            "type": "string"
+          },
+          "node_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cluster_id",
+          "node_id"
+        ]
+      }
+    },
+    {
+      "name": "update_cluster_policy",
+      "description": "Change the resource/memory policy for the specified cluster.\n\nArgs:\n    cluster_id (str): The ID of the cluster to update.\n    policy (str): The new memory/resource allocation policy for the cluster.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Policy updated for cluster <cluster_id>\" }\n        On error:\n            { \"success\": False, \"error\": str }\nConstraints:\n    - The given cluster_id must exist.\n    - The new policy string must not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cluster_id": {
+            "type": "string"
+          },
+          "policy": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cluster_id",
+          "policy"
+        ]
+      }
+    }
+  ]
+}

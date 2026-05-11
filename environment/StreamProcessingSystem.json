@@ -1,0 +1,589 @@
+{
+  "env_name": "StreamProcessingSystem",
+  "description": "A stream processing system ingests and processes continuously generated data records in real time from multiple sources, each identified by unique stream IDs. It maintains state for recent windows of events, supports filtering and transformation of incoming data, and performs aggregations and pattern detection across configurable time intervals. This environment is widely used for applications requiring immediate insights from large volumes of data, such as monitoring, anomaly detection, and live analytics.",
+  "initial_parameter_schema": {
+    "streams": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "stream_id": {
+            "type": "string"
+          },
+          "source_info": {
+            "type": "string"
+          },
+          "configuration": {
+            "type": "object"
+          },
+          "active_state": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "stream_id",
+          "source_info",
+          "configuration",
+          "active_state"
+        ]
+      }
+    },
+    "events": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "stream_id": {
+            "type": "string"
+          },
+          "event_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "data_fields": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "stream_id",
+          "event_id",
+          "timestamp",
+          "data_fields"
+        ]
+      }
+    },
+    "windows": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "window_id": {
+            "type": "string"
+          },
+          "stream_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "number"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "window_id",
+          "stream_id",
+          "start_time",
+          "end_time",
+          "events"
+        ]
+      }
+    },
+    "aggregations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "window_id": {
+              "type": "string"
+            },
+            "metric_name": {
+              "type": "string"
+            },
+            "result_value": {
+              "type": "number"
+            },
+            "computed_at": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "window_id",
+            "metric_name",
+            "result_value",
+            "computed_at"
+          ]
+        }
+      }
+    },
+    "processing_rules": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "rule_id": {
+            "type": "string"
+          },
+          "stream_id": {
+            "type": "string"
+          },
+          "filter_criteria": {
+            "type": "object"
+          },
+          "aggregation_type": {
+            "type": "string"
+          },
+          "window_size": {
+            "type": "number"
+          },
+          "target_field": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_id",
+          "stream_id",
+          "filter_criteria",
+          "aggregation_type",
+          "window_size",
+          "target_field"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_stream_info": [
+      "streams"
+    ],
+    "list_streams": [
+      "streams"
+    ],
+    "get_processing_rule": [
+      "processing_rules"
+    ],
+    "list_processing_rules_for_stream": [
+      "processing_rules",
+      "streams"
+    ],
+    "get_events_in_window": [
+      "events",
+      "streams",
+      "windows"
+    ],
+    "get_events_by_filter": [
+      "events",
+      "streams"
+    ],
+    "get_current_windows_for_stream": [
+      "streams",
+      "windows"
+    ],
+    "get_window_info": [
+      "windows"
+    ],
+    "get_aggregation_results": [
+      "aggregations"
+    ],
+    "event_belongs_to_window": [
+      "events",
+      "windows"
+    ],
+    "insert_event": [
+      "events",
+      "streams"
+    ],
+    "create_processing_rule": [
+      "processing_rules",
+      "streams"
+    ],
+    "update_processing_rule": [
+      "processing_rules"
+    ],
+    "advance_window": [
+      "aggregations",
+      "events",
+      "processing_rules",
+      "windows"
+    ],
+    "compute_aggregation_for_window": [
+      "aggregations",
+      "events",
+      "processing_rules",
+      "windows"
+    ],
+    "add_window": [
+      "streams",
+      "windows"
+    ],
+    "expire_old_events": [
+      "events",
+      "windows"
+    ],
+    "delete_processing_rule": [
+      "processing_rules"
+    ],
+    "remove_window": [
+      "aggregations",
+      "windows"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_stream_info",
+      "description": "Retrieve metadata and configuration for a specific stream by stream_id.\n\nArgs:\n    stream_id (str): The unique identifier of the stream to query.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": StreamInfo,      # Full metadata/configuration of the stream\n      }\n      OR\n      {\n        \"success\": False,\n        \"error\": str             # Reason for failure, e.g. stream not found\n      }\n\nConstraints:\n    - stream_id must exist in the system for a successful result.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stream_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "stream_id"
+        ]
+      }
+    },
+    {
+      "name": "list_streams",
+      "description": "List all currently registered data streams.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[StreamInfo]\n            }\n        (The list may be empty if there are no streams.)",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_processing_rule",
+      "description": "Retrieve the active processing rule, identified by rule_id or stream_id.\n\nArgs:\n    rule_id (str, optional): Unique identifier of the processing rule.\n    stream_id (str, optional): Stream ID for which to retrieve the rule.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": ProcessingRuleInfo }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - At least one of rule_id or stream_id must be provided.\n    - If both are provided, rule_id takes precedence.\n    - If stream_id is used, returns the first matching rule for the stream.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "rule_id": {
+            "type": "string"
+          },
+          "stream_id": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "list_processing_rules_for_stream",
+      "description": "List all processing rules currently associated with a specific stream.\n\nArgs:\n    stream_id (str): The unique identifier of the stream.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ProcessingRuleInfo],  # List of processing rules for the stream, may be empty.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"Stream does not exist\"\n    }\n\nConstraints:\n    - The stream must exist in the stream processing system.\n    - Returns all (possibly zero) processing rules configured for the stream.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stream_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "stream_id"
+        ]
+      }
+    },
+    {
+      "name": "get_events_in_window",
+      "description": "Retrieve all events belonging to a specified stream within a window.\n\nYou may provide either:\n  - window_id (str): Identifier of the window. Retrieves events for that window's stream and current time bounds.\n  - OR stream_id (str), start_time (float), end_time (float): Explicit time interval for stream filtering.\n\nArgs:\n    window_id (str, optional): ID of the window to look up.\n    stream_id (str, optional): Stream ID to use when querying by interval.\n    start_time (float, optional): Inclusive window start timestamp.\n    end_time (float, optional): Inclusive window end timestamp.\n\nReturns:\n    dict:\n      success: True/False\n      data: List[EventInfo] (on success)\n      error: str (on failure)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "window_id": {
+            "type": "string"
+          },
+          "stream_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "number"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "get_events_by_filter",
+      "description": "Retrieve all events in the specified stream that meet filter criteria\nwithin the given time window.\n\nArgs:\n    stream_id (str): The stream identifier.\n    filter_criteria (dict): Filtering logic on data_fields, e.g. {\"temperature\": {\"gt\": 30}}.\n    start_time (float): Start of the time window (inclusive).\n    end_time (float): End of the time window (inclusive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[EventInfo],  # All matching event records\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message\n    }\n\nConstraints:\n    - Only events from the specified stream and within [start_time, end_time] are considered.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stream_id": {
+            "type": "string"
+          },
+          "filter_criteria": {
+            "type": "object"
+          },
+          "start_time": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "stream_id",
+          "filter_criteria",
+          "start_time",
+          "end_time"
+        ]
+      }
+    },
+    {
+      "name": "get_current_windows_for_stream",
+      "description": "List all active time windows (WindowInfo dicts) currently associated with the given stream ID.\n\nArgs:\n    stream_id (str): The ID of the stream.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[WindowInfo],  # All WindowInfo for this stream (can be empty if no windows)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message, e.g. stream does not exist.\n    }\n\nConstraints:\n    - The stream_id must exist in self.streams.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stream_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "stream_id"
+        ]
+      }
+    },
+    {
+      "name": "get_window_info",
+      "description": "Retrieve details of a specific window by its window_id.\n\nArgs:\n    window_id (str): The identifier of the window.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": WindowInfo  # Dictionary with window details\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Window not found\"\n            }\nConstraints:\n    - window_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "window_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "window_id"
+        ]
+      }
+    },
+    {
+      "name": "get_aggregation_results",
+      "description": "Retrieve the latest aggregation result for a given window and metric.\n\nArgs:\n    window_id (str): The ID of the window.\n    metric_name (str): The name of the metric to retrieve (e.g., 'average_humidity').\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": AggregationResultInfo  # The most recent result for the metric in this window\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Explanation (e.g., window or metric not found)\n            }\n\nConstraints:\n    - window_id must exist.\n    - metric_name must exist for the specified window_id.\n    - If multiple results for the same metric, return the latest one (by computed_at).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "window_id": {
+            "type": "string"
+          },
+          "metric_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "window_id",
+          "metric_name"
+        ]
+      }
+    },
+    {
+      "name": "event_belongs_to_window",
+      "description": "Confirm whether a specific event (by event_id) is part of a given window (by window_id).\n\nArgs:\n    event_id (str): The unique identifier for the event.\n    window_id (str): The unique identifier for the window.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": bool  # True if the event belongs to the window, False otherwise\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error\n    }\n\nConstraints:\n    - Both event_id and window_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "window_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "window_id"
+        ]
+      }
+    },
+    {
+      "name": "insert_event",
+      "description": "Add a new event to a stream.\n\nArgs:\n    event_id (str): Unique identifier for the event.\n    stream_id (str): Identifier of the stream to insert into (must exist).\n    timestamp (float): Event's timestamp.\n    data_fields (Dict[str, Any]): Key-value data associated with the event.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Event <event_id> inserted into stream <stream_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\",\n    }\n\nConstraints:\n    - event_id must be unique.\n    - stream_id must exist in self.streams.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "stream_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "data_fields": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "event_id",
+          "stream_id",
+          "timestamp",
+          "data_fields"
+        ]
+      }
+    },
+    {
+      "name": "create_processing_rule",
+      "description": "Define and register a new processing rule for a stream.\n\nArgs:\n    rule_id (str): Unique identifier for the processing rule.\n    stream_id (str): Stream to which this rule will be applied. Must exist.\n    filter_criteria (dict): Filtering key-value conditions.\n    aggregation_type (str): Aggregation type ('sum', 'avg', 'count', etc.).\n    window_size (float): Window size in seconds; must be > 0.\n    target_field (str): Name of the event data field for aggregation.\n\nReturns:\n    dict:\n        - {\"success\": True, \"message\": \"Processing rule <rule_id> created for stream <stream_id>.\"}\n        - {\"success\": False, \"error\": \"...\"} on error\n\nConstraints:\n    - rule_id must be unique.\n    - stream_id must refer to an existing stream.\n    - window_size > 0.\n    - aggregation_type and target_field should be non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "rule_id": {
+            "type": "string"
+          },
+          "stream_id": {
+            "type": "string"
+          },
+          "filter_criteria": {
+            "type": "object"
+          },
+          "aggregation_type": {
+            "type": "string"
+          },
+          "window_size": {
+            "type": "number"
+          },
+          "target_field": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_id",
+          "stream_id",
+          "filter_criteria",
+          "aggregation_type",
+          "window_size",
+          "target_field"
+        ]
+      }
+    },
+    {
+      "name": "update_processing_rule",
+      "description": "Modify an existing processing rule's attributes.\n\nArgs:\n    rule_id (str): The identifier of the processing rule to update.\n    filter_criteria (dict, optional): New filter criteria (replaces existing).\n    aggregation_type (str, optional): New aggregation type.\n    window_size (float, optional): New window size.\n    target_field (str, optional): New target field.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Processing rule <rule_id> updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": error message\n    }\nConstraints:\n    - The rule must exist.\n    - At least one update field must be provided.\n    - Only provided fields are changed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "rule_id": {
+            "type": "string"
+          },
+          "filter_criteria": {
+            "type": "object"
+          },
+          "aggregation_type": {
+            "type": "string"
+          },
+          "window_size": {
+            "type": "number"
+          },
+          "target_field": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_id"
+        ]
+      }
+    },
+    {
+      "name": "advance_window",
+      "description": "Advance or ingest a stream window and trigger recomputation of aggregations as per the stream's ProcessingRule.\n\nArgs:\n    window_id (str): The unique ID of the window to advance.\n\nReturns:\n    dict:\n    - On success: { \"success\": True, \"message\": \"Window advanced and computations updated.\" }\n    - On failure: { \"success\": False, \"error\": str }\n\nConstraints:\n    - window_id must refer to an existing window.\n    - ProcessingRule (if any) is used to determine window size and aggregation.\n    - If the window is newly created and has not yet ingested any matching events, the first advance ingests events for its current interval.\n    - Otherwise the time window slides forward by its configured size.\n    - Events are included if stream_id matches, and event.timestamp in [start_time, end_time).\n    - Aggregations are computed if ProcessingRule exists for this stream.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "window_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "window_id"
+        ]
+      }
+    },
+    {
+      "name": "compute_aggregation_for_window",
+      "description": "Perform or update an aggregation (e.g., avg, sum) over all eligible events in a window, \nbased on that stream's active processing rule.\n\nArgs:\n    window_id (str): The ID of the window to aggregate over.\n\nReturns:\n    dict: \n        - On Success: { \"success\": True, \"message\": f\"Aggregation '{agg_type}' computed for window {window_id}.\", \"data\": {\"window_id\": str, \"metric_name\": str, \"result_value\": number, \"computed_at\": number} }\n        - On Failure: { \"success\": False, \"error\": \"Reason\" }\nConstraints:\n    - Window must exist, and have associated stream_id.\n    - Stream must have an active processing rule.\n    - Events are resolved against the window's current stream/time bounds and then filtered by the rule.\n    - Target field must exist in at least one eligible event.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "window_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "window_id"
+        ]
+      }
+    },
+    {
+      "name": "add_window",
+      "description": "Create and initialize a new time-bounded window for a given stream.\n\nArgs:\n    window_id (str): Unique identifier for the new window.\n    stream_id (str): The ID of the stream to attach the window to.\n    start_time (float): Unix timestamp representing window start.\n    end_time (float): Unix timestamp representing window end.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Window <window_id> created for stream <stream_id> from <start_time> to <end_time>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g., non-unique window_id, stream does not exist, invalid interval)\n    }\n\nConstraints:\n    - `window_id` must be unique.\n    - `stream_id` must exist.\n    - `start_time` < `end_time`.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "window_id": {
+            "type": "string"
+          },
+          "stream_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "window_id",
+          "stream_id",
+          "start_time",
+          "end_time"
+        ]
+      }
+    },
+    {
+      "name": "expire_old_events",
+      "description": "Remove all events from memory/state that no longer fall within any active window for any stream.\n\n- An event is considered expired if it is not contained (by timestamp and by inclusion in the window's events list)\n  within the [start_time, end_time] of any active window.\n- Removes event IDs from windows' 'events' lists if the event no longer fits in their [start_time, end_time].\n- Fully removes events from self.events if they're not referenced from any active window.\n- Idempotent: does nothing if no events are expired.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Old events expired\"\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "delete_processing_rule",
+      "description": "Remove a processing rule from a stream.\n\nArgs:\n    rule_id (str): Identifier of the processing rule to delete.\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"message\": \"Processing rule <rule_id> successfully deleted.\"\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": \"Processing rule <rule_id> does not exist.\"\n        }\n\nConstraints:\n    - The rule_id must exist in self.processing_rules.\n    - Only removes rule from self.processing_rules; no further clean-up enforced here.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "rule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_window",
+      "description": "Delete an obsolete or completed window and any associated aggregations.\n\nArgs:\n    window_id (str): The ID of the window to remove.\n\nReturns:\n    dict:\n        - {\"success\": True, \"message\": \"Window and aggregations removed.\"}\n        - {\"success\": False, \"error\": \"Window does not exist.\"}\n\nConstraints:\n    - The window must exist to be removed.\n    - Removes both window info and any aggregations related to it.\n    - Does NOT delete the actual event objects.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "window_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "window_id"
+        ]
+      }
+    }
+  ]
+}

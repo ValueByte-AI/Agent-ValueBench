@@ -1,0 +1,645 @@
+{
+  "env_name": "DigitalBookshelfSystem",
+  "description": "A digital personal bookshelf system allows users to catalog, categorize, and manage their book collections, often using unique identifiers such as ISBNs to add or retrieve book metadata automatically. It maintains stateful records of each user's books, reading lists, and custom shelves or genres. Such systems support searching, organizing, and updating collections, enhancing the reading and library management experience.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "account_sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "email",
+          "account_sta"
+        ]
+      }
+    },
+    "books": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "isbn": {
+            "type": "string"
+          },
+          "publisher": {
+            "type": "string"
+          },
+          "publication_year": {
+            "type": "integer"
+          },
+          "cover_image_url": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id",
+          "title",
+          "author",
+          "isbn",
+          "publisher",
+          "publication_year",
+          "cover_image_url",
+          "description"
+        ]
+      }
+    },
+    "bookshelves": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "shelf_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "shelf_name": {
+            "type": "string"
+          },
+          "shelf_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "shelf_id",
+          "user_id",
+          "shelf_name",
+          "shelf_type"
+        ]
+      }
+    },
+    "userbooks": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "book_id": {
+            "type": "string"
+          },
+          "shelf_id": {
+            "type": "string"
+          },
+          "date_added": {
+            "type": "string"
+          },
+          "reading_status": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "book_id",
+          "shelf_id",
+          "date_added",
+          "reading_status",
+          "note"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_name": [
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "list_user_bookshelves": [
+      "bookshelves",
+      "users"
+    ],
+    "get_bookshelf_by_name": [
+      "bookshelves"
+    ],
+    "get_bookshelf_by_id": [
+      "bookshelves"
+    ],
+    "list_books_by_isbn": [
+      "books"
+    ],
+    "get_book_by_id": [
+      "books"
+    ],
+    "get_book_by_isbn": [
+      "books"
+    ],
+    "validate_isbn": [],
+    "get_userbook_entry": [
+      "books",
+      "bookshelves",
+      "userbooks",
+      "users"
+    ],
+    "list_userbook_entries_by_shelf": [
+      "bookshelves",
+      "userbooks"
+    ],
+    "list_userbook_entries_for_book": [
+      "books",
+      "bookshelves",
+      "userbooks",
+      "users"
+    ],
+    "add_book_by_isbn": [
+      "books"
+    ],
+    "add_new_book": [
+      "books"
+    ],
+    "create_bookshelf": [
+      "bookshelves",
+      "users"
+    ],
+    "add_book_to_shelf": [
+      "books",
+      "bookshelves",
+      "userbooks",
+      "users"
+    ],
+    "update_userbook_reading_status": [
+      "userbooks"
+    ],
+    "update_userbook_note": [
+      "userbooks"
+    ],
+    "move_book_between_shelves": [
+      "bookshelves",
+      "userbooks"
+    ],
+    "remove_book_from_shelf": [
+      "bookshelves",
+      "userbooks"
+    ],
+    "delete_bookshelf": [
+      "books",
+      "bookshelves",
+      "userbooks"
+    ],
+    "remove_book_completely_from_user": [
+      "books",
+      "bookshelves",
+      "userbooks",
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_name",
+      "description": "Retrieve all user infos whose name exactly matches the given name.\n\nArgs:\n    name (str): The name of the user to search for. (Exact/case-sensitive match)\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": List[UserInfo],  # List of matching user info dicts (may be empty if no match)\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # No user found with the given name\n        }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve a user's information by their unique user ID.\n\nArgs:\n    user_id (str): The unique user ID (_id) to query.\n\nReturns:\n    dict: \n      - On success: { \"success\": True, \"data\": UserInfo }\n      - On failure (user not found): { \"success\": False, \"error\": \"User not found\" }\n\nConstraints:\n    - No modification of state.\n    - No permission checks needed for this simple query.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_user_bookshelves",
+      "description": "List all bookshelves belonging to a specified user.\n\nArgs:\n    user_id (str): The ID of the user.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": List[BookshelfInfo]   # List of bookshelf info (can be empty if user has no shelves)\n            }\n        On error:\n            {\n                \"success\": False,\n                \"error\": str   # Reason, e.g. user does not exist\n            }\n\nConstraints:\n    - The specified user must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_bookshelf_by_name",
+      "description": "Retrieve a bookshelf belonging to a given user by its name.\n\nArgs:\n    user_id (str): The user ID (must match BookshelfInfo.user_id).\n    shelf_name (str): The target bookshelf's name.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": BookshelfInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Bookshelf not found for user\"\n    }\n\nConstraints:\n    - Users can only access (retrieve) bookshelves they own.\n    - Shelf names are only unique within a user's ownership scope.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "shelf_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "shelf_name"
+        ]
+      }
+    },
+    {
+      "name": "get_bookshelf_by_id",
+      "description": "Retrieve bookshelf information by shelf ID.\n\nArgs:\n    shelf_id (str): The unique identifier for the bookshelf.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": BookshelfInfo  # info for the matched bookshelf\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Bookshelf does not exist\"\n            }\nConstraints:\n    - No permissions or ownership checks for this query.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "shelf_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "shelf_id"
+        ]
+      }
+    },
+    {
+      "name": "list_books_by_isbn",
+      "description": "List all books in the system matching the provided ISBN.\n\nArgs:\n    isbn (str): The ISBN to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[BookInfo]  # All books that have this ISBN (may be empty, should usually be 0 or 1)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g. invalid input)\n    }\n\nConstraints:\n    - No enforcement of uniqueness; merely returns all matches.\n    - If ISBN is an empty string or None, returns error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "isbn": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "isbn"
+        ]
+      }
+    },
+    {
+      "name": "get_book_by_id",
+      "description": "Retrieve full metadata for a book specified by its book_id.\n\nArgs:\n    book_id (str): Unique identifier for the book in the system.\n\nReturns:\n    dict:\n        - If found: {\"success\": True, \"data\": BookInfo}\n        - If not found: {\"success\": False, \"error\": \"Book not found\"}\n\nConstraints:\n    - book_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id"
+        ]
+      }
+    },
+    {
+      "name": "get_book_by_isbn",
+      "description": "Retrieve book metadata by ISBN.\n\nArgs:\n    isbn (str): The ISBN code to search for.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"data\": BookInfo}\n        - If not found: {\"success\": False, \"error\": \"Book with the given ISBN not found\"}\n\nConstraints:\n    - Each book must have a unique ISBN (if available).\n    - ISBN must be matched exactly (case-sensitive).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "isbn": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "isbn"
+        ]
+      }
+    },
+    {
+      "name": "validate_isbn",
+      "description": "Check whether a given ISBN is valid (ISBN-10 or ISBN-13).\n\nArgs:\n    isbn (str): The ISBN string to check.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": { \"is_valid\": bool }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Valid ISBN-10: 10 characters, last can be X/x, uses ISBN-10 checksum.\n    - Valid ISBN-13: 13 digits, uses ISBN-13 checksum.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "isbn": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "isbn"
+        ]
+      }
+    },
+    {
+      "name": "get_userbook_entry",
+      "description": "Check if a UserBook record (book-to-shelf association) exists for the given user, book, and shelf.\n\nArgs:\n    user_id (str): The user who owns the shelf.\n    book_id (str): The book to check association for.\n    shelf_id (str): The shelf to check association for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserBookInfo  # Details if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - All IDs (user_id, book_id, shelf_id) must exist.\n    - The shelf must belong to the specified user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "book_id": {
+            "type": "string"
+          },
+          "shelf_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "book_id",
+          "shelf_id"
+        ]
+      }
+    },
+    {
+      "name": "list_userbook_entries_by_shelf",
+      "description": "List all UserBook entries assigned to the specified shelf.\n\nArgs:\n    shelf_id (str): The identifier for the bookshelf.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[UserBookInfo],  # List of UserBookInfo entries for the shelf (empty if none)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of why the operation failed\n    }\n\nConstraints:\n    - Fails if the specified shelf does not exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "shelf_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "shelf_id"
+        ]
+      }
+    },
+    {
+      "name": "list_userbook_entries_for_book",
+      "description": "List all shelf associations (UserBook entries) for a given user and book.\n\nArgs:\n    user_id (str): The user's ID.\n    book_id (str): The book's ID.\n\nReturns:\n    dict:\n        - success: True, data: List[UserBookInfo] (all matching entries placed by the user for this book)\n        - success: False, error: Info message (user or book does not exist)\n\nConstraints:\n    - user_id must exist in self.users\n    - book_id must exist in self.books\n    - Only associations involving shelves owned by the user and matching book_id are listed",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "book_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "book_id"
+        ]
+      }
+    },
+    {
+      "name": "add_book_by_isbn",
+      "description": "Create a new Book entry and populate its metadata via ISBN (if valid and unique).\n\nArgs:\n    isbn (str): ISBN of the new book.\n\nReturns:\n    dict: \n        { \"success\": True, \"message\": \"Book added successfully\", \"book\": BookInfo }\n        OR\n        { \"success\": False, \"error\": str }  # On invalid or duplicate ISBN, or metadata fetch error.\n\nConstraints:\n    - ISBN must be valid (syntactic validation).\n    - ISBN must be unique (not already in self.books).\n    - Metadata is filled from ISBN; if not retrievable, operation fails.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "isbn": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "isbn"
+        ]
+      }
+    },
+    {
+      "name": "add_new_book",
+      "description": "Add a new Book entry with given metadata if ISBN is unique (if provided) and book_id is unique.\n\nArgs:\n    book_id (str): Unique book identifier.\n    title (str): Book title.\n    author (str): Book author.\n    isbn (str): Book ISBN (may be empty, but if provided must be unique).\n    publisher (str): Book publisher.\n    publication_year (int): Year of publication.\n    cover_image_url (str): URL for book cover image.\n    description (str): Book description.\n\nReturns:\n    dict: Success or error dictionary:\n        - On success: { \"success\": True, \"message\": \"Book added successfully.\" }\n        - On error: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - ISBN must be unique if provided (not empty).\n    - book_id must be unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "isbn": {
+            "type": "string"
+          },
+          "publisher": {
+            "type": "string"
+          },
+          "publication_year": {
+            "type": "integer"
+          },
+          "cover_image_url": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book_id",
+          "title",
+          "author",
+          "isbn",
+          "publisher",
+          "publication_year",
+          "cover_image_url",
+          "description"
+        ]
+      }
+    },
+    {
+      "name": "create_bookshelf",
+      "description": "Create a new bookshelf for a user.\n\nArgs:\n    user_id (str): The ID of the user who will own the shelf.\n    shelf_name (str): The name of the shelf (must be unique for this user).\n    shelf_type (str): The type/category of the shelf.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Bookshelf created with id <shelf_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <description>\n    }\n\nConstraints:\n    - user_id must exist in the system.\n    - shelf_name must be unique for the user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "shelf_name": {
+            "type": "string"
+          },
+          "shelf_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "shelf_name",
+          "shelf_type"
+        ]
+      }
+    },
+    {
+      "name": "add_book_to_shelf",
+      "description": "Associates the specified book with the specified user shelf by creating a UserBook entry.\n\nArgs:\n    user_id (str): The user's ID.\n    book_id (str): The book's ID.\n    shelf_id (str): The bookshelf's ID, must belong to the user.\n    reading_status (str, optional): Reading status of the book (e.g., 'To Read', 'Reading', 'Finished').\n    note (str, optional): Any note the user wants to add for this book/shelf association.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Book added to shelf.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Users can only modify bookshelves they own.\n    - Each (user, book, shelf) association can exist only once.\n    - Book must exist; shelf must exist and belong to the user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "book_id": {
+            "type": "string"
+          },
+          "shelf_id": {
+            "type": "string"
+          },
+          "reading_status": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "book_id",
+          "shelf_id"
+        ]
+      }
+    },
+    {
+      "name": "update_userbook_reading_status",
+      "description": "Update the reading status of a UserBook association (e.g., “to-read”, “reading”, “completed”).\n\nArgs:\n    userbook_id (str): The ID of the UserBook association to update.\n    new_reading_status (str): The new reading status to set.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Reading status updated for UserBook <userbook_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - The UserBook entry must exist.\n    - Accepts any string as reading status (unless stricter validation is required).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "userbook_id": {
+            "type": "string"
+          },
+          "new_reading_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "userbook_id",
+          "new_reading_status"
+        ]
+      }
+    },
+    {
+      "name": "update_userbook_note",
+      "description": "Update or add a note to a UserBook association.\n\nArgs:\n    userbook_id (str): The unique identifier of the UserBook entry to update.\n    note (str): The content of the note to set for the UserBook association.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Note updated for UserBook <userbook_id>.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"UserBook entry not found.\"\n    }\n\nConstraints:\n    - The specified UserBook entry must exist in the system.\n    - No additional constraints on note content or length, unless enforced elsewhere.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "userbook_id": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "userbook_id",
+          "note"
+        ]
+      }
+    },
+    {
+      "name": "move_book_between_shelves",
+      "description": "Remove a UserBook association from one shelf and add it to another.\n\nArgs:\n    userbook_id (str): The ID of the UserBook association to move.\n    from_shelf_id (str): The shelf the book is currently on.\n    to_shelf_id (str): The shelf to move the association to.\n    user_id (str): The user performing the operation (must own both shelves).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Moved book association from shelf <from_shelf_id> to <to_shelf_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Only the shelf owner can move books between their shelves.\n    - Both shelf ids must belong to the same user.\n    - Cannot move to the same shelf.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "userbook_id": {
+            "type": "string"
+          },
+          "from_shelf_id": {
+            "type": "string"
+          },
+          "to_shelf_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "userbook_id",
+          "from_shelf_id",
+          "to_shelf_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_book_from_shelf",
+      "description": "Remove a UserBook association (removing a book from a shelf), only if the book \nwould still remain on at least one shelf for the same user.\n\nArgs:\n    userbook_id (str): The identifier of the UserBook association to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Book removed from shelf successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The entry must exist.\n    - After removal, the same (user, book) pair must still exist in at least one other shelf (for that user).\n    - Book must always be associated with at least one shelf for the user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "userbook_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "userbook_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_bookshelf",
+      "description": "Delete a user's bookshelf. This is only permitted if the requesting user owns the shelf.\nIf any book for the user would be left with no shelf assignment as a result, the operation fails.\n\nArgs:\n    shelf_id (str): The ID of the bookshelf to delete.\n    user_id (str): The ID of the user requesting the deletion.\n\nReturns:\n    dict: \n      - On success: { \"success\": True, \"message\": \"Bookshelf deleted.\" }\n      - On failure: { \"success\": False, \"error\": <reason> }\nConstraints:\n    - User can only delete their own bookshelves.\n    - No book for the user may be left with zero shelf assignments after deletion.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "shelf_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "shelf_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_book_completely_from_user",
+      "description": "Remove all UserBook associations for a book belonging to a user, completely removing the book from their collection.\n\nArgs:\n    user_id (str): The user's unique ID.\n    book_id (str): The book's unique ID.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Book removed completely from user collection.\" }\n        On error:\n            { \"success\": False, \"error\": \"Error message\" }\n\nConstraints:\n    - The operation is only legal if, after execution, the book is not on any shelf for this user (enforced by removing all userbook relations for user/book).\n    - The user and book must exist.\n    - Book must already be in at least one shelf for the user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "book_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "book_id"
+        ]
+      }
+    }
+  ]
+}

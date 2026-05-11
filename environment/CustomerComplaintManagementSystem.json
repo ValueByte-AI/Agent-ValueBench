@@ -1,0 +1,593 @@
+{
+  "env_name": "CustomerComplaintManagementSystem",
+  "description": "A customer complaint management system maintains records of complaint cases submitted by clients, along with associated customer interactions and resolution processes. The system tracks complaint IDs, employee assignments, actions performed (such as calls, emails, meetings, and refunds), and relevant timestamps. Its scope includes workflow management, status updates, and comprehensive histories for each case to ensure efficient and accountable resolution.",
+  "initial_parameter_schema": {
+    "complaint_cases": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "complaint_id": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "creation_timestamp": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "resolution_timestamp": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "assigned_employee_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "complaint_id",
+          "customer_id",
+          "status",
+          "creation_timestamp",
+          "resolution_timestamp",
+          "assigned_employee_id"
+        ]
+      }
+    },
+    "complaint_actions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "action_id": {
+            "type": "string"
+          },
+          "complaint_id": {
+            "type": "string"
+          },
+          "action_type": {
+            "type": "string"
+          },
+          "action_timestamp": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "employee_id": {
+            "type": "string"
+          },
+          "action_detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "action_id",
+          "complaint_id",
+          "action_type",
+          "action_timestamp",
+          "employee_id",
+          "action_detail"
+        ]
+      }
+    },
+    "employees": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "employee_id",
+          "name",
+          "role"
+        ]
+      }
+    },
+    "customers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_information": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "name",
+          "contact_information"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_complaint_case_by_id": [
+      "complaint_cases"
+    ],
+    "list_complaint_cases_by_customer": [
+      "complaint_cases",
+      "customers"
+    ],
+    "list_complaint_cases_by_status": [
+      "complaint_cases"
+    ],
+    "get_all_complaint_actions_for_case": [
+      "complaint_actions",
+      "complaint_cases"
+    ],
+    "get_complaint_action_by_id": [
+      "complaint_actions"
+    ],
+    "get_employee_by_id": [
+      "employees"
+    ],
+    "get_customer_by_id": [
+      "customers"
+    ],
+    "get_assigned_employee_for_case": [
+      "complaint_cases",
+      "employees"
+    ],
+    "get_complaint_case_status": [
+      "complaint_cases"
+    ],
+    "get_resolution_timeline_for_case": [
+      "complaint_actions",
+      "complaint_cases"
+    ],
+    "check_action_link_validity": [
+      "complaint_actions",
+      "complaint_cases",
+      "employees"
+    ],
+    "is_action_addable_to_case": [
+      "complaint_cases"
+    ],
+    "add_complaint_action": [
+      "complaint_actions",
+      "complaint_cases",
+      "employees"
+    ],
+    "update_complaint_case_status": [
+      "complaint_cases"
+    ],
+    "assign_employee_to_complaint_case": [
+      "complaint_cases",
+      "employees"
+    ],
+    "reopen_complaint_case": [
+      "complaint_cases"
+    ],
+    "modify_complaint_action_details": [
+      "complaint_actions",
+      "complaint_cases"
+    ],
+    "delete_complaint_action": [
+      "complaint_actions",
+      "complaint_cases"
+    ],
+    "add_new_complaint_case": [
+      "complaint_cases",
+      "customers",
+      "employees"
+    ],
+    "delete_complaint_case": [
+      "complaint_actions",
+      "complaint_cases"
+    ],
+    "update_complaint_case_assignment": [
+      "complaint_cases",
+      "employees"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_complaint_case_by_id",
+      "description": "Retrieve the ComplaintCase information using its unique complaint_id.\n\nArgs:\n    complaint_id (str): The unique ID of the complaint case to retrieve.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ComplaintCaseInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g., case not found\n    }\n\nConstraints:\n    - The complaint_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "complaint_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "complaint_id"
+        ]
+      }
+    },
+    {
+      "name": "list_complaint_cases_by_customer",
+      "description": "List all ComplaintCases associated with a given customer_id.\n\nArgs:\n    customer_id (str): The ID of the customer.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": List[ComplaintCaseInfo],  # List may be empty if no cases for customer\n            }\n        - On failure (invalid customer_id):\n            {\n                \"success\": False,\n                \"error\": str,  # e.g. \"Customer does not exist\"\n            }\n\nConstraints:\n    - customer_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "list_complaint_cases_by_status",
+      "description": "Retrieve all ComplaintCases filtered by their status.\n\nArgs:\n    status (str): The status to filter complaint cases by. Must be one of \"open\", \"in progress\", \"resolved\", or \"closed\".\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ComplaintCaseInfo],  # List of matching cases (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of error (e.g. invalid status)\n    }\n\nConstraints:\n    - Status must be a valid complaint status (\"open\", \"in progress\", \"resolved\", \"closed\").",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "get_all_complaint_actions_for_case",
+      "description": "Retrieve all ComplaintActions linked to a specific complaint_id, sorted chronologically.\n\nArgs:\n    complaint_id (str): The ID of the complaint case.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ComplaintActionInfo]  # sorted by action_timestamp ascending\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., \"Complaint case not found\"\n    }\n\nConstraints:\n    - The complaint_id must refer to an existing ComplaintCase.\n    - Actions are sorted in increasing chronological order (by action_timestamp).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "complaint_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "complaint_id"
+        ]
+      }
+    },
+    {
+      "name": "get_complaint_action_by_id",
+      "description": "Retrieve a specific ComplaintAction by its action_id.\n\nArgs:\n    action_id (str): The unique identifier for the complaint action.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ComplaintActionInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if action_id does not exist\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "action_id"
+        ]
+      }
+    },
+    {
+      "name": "get_employee_by_id",
+      "description": "Retrieve Employee information using employee_id.\n\nArgs:\n    employee_id (str): The unique identifier of the employee.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": EmployeeInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Employee not found\"\n    }\n\nConstraints:\n    - Employee must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "employee_id"
+        ]
+      }
+    },
+    {
+      "name": "get_customer_by_id",
+      "description": "Retrieve Customer information using the specified customer ID.\n\nArgs:\n    customer_id (str): Unique identifier for the customer.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": CustomerInfo  # The customer information\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message, e.g., \"Customer not found\"\n    }\n\nConstraints:\n    - The customer_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "get_assigned_employee_for_case",
+      "description": "Retrieves the Employee information assigned to the specified ComplaintCase.\n\nArgs:\n    complaint_id (str): Unique identifier for the complaint case.\n\nReturns:\n    dict:\n        - On success: {\n            \"success\": True,\n            \"data\": EmployeeInfo  # Information of the assigned employee\n          }\n        - On failure (case or employee missing): {\n            \"success\": False,\n            \"error\": str  # Reason for failure\n          }\n\nConstraints:\n    - complaint_id must exist in the system.\n    - The complaint case must have an assigned_employee_id that matches an employee in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "complaint_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "complaint_id"
+        ]
+      }
+    },
+    {
+      "name": "get_complaint_case_status",
+      "description": "Retrieve the current status (\"open\", \"in progress\", \"resolved\", \"closed\") of a ComplaintCase.\n\nArgs:\n    complaint_id (str): The unique identifier of the complaint case.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": <status: str>\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": \"Complaint case not found\"\n            }\n\nConstraints:\n    - complaint_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "complaint_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "complaint_id"
+        ]
+      }
+    },
+    {
+      "name": "get_resolution_timeline_for_case",
+      "description": "Produce a chronological (timestamped) list of all actions and status transitions for a ComplaintCase.\n\nArgs:\n    complaint_id (str): ID of the complaint case.\n\nReturns:\n    dict: \n    - On success:\n        {\n            \"success\": True,\n            \"data\": List[dict],   # Each dict: { \"timestamp\": ..., \"event_type\": ..., ... }\n        }\n    - On failure:\n        {\n            \"success\": False,\n            \"error\": str,\n        }\n\nConstraints:\n  - ComplaintCase must exist.\n  - All linked actions (by complaint_id) are included.\n  - Status transitions at case creation and resolution/closure are included.\n  - The case-creation event actor is derived from immutable creation metadata when available; otherwise it falls back to the earliest logged action rather than the current assigned employee.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "complaint_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "complaint_id"
+        ]
+      }
+    },
+    {
+      "name": "check_action_link_validity",
+      "description": "Verify if a ComplaintAction is linked to valid ComplaintCase and Employee references.\n\nArgs:\n    action_id (str): The ID of the ComplaintAction to validate.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"complaint_id_valid\": bool,\n                    \"employee_id_valid\": bool\n                }\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Description of why validation could not be performed\n            }\n\nConstraints:\n    - The ComplaintAction must exist.\n    - Validity checked as:\n        - complaint_id must exist in complaint_cases.\n        - employee_id must exist in employees.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "action_id"
+        ]
+      }
+    },
+    {
+      "name": "is_action_addable_to_case",
+      "description": "Check if a new ComplaintAction can be added to the ComplaintCase identified by complaint_id.\n\nArgs:\n    complaint_id (str): The ID of the complaint case.\n\nReturns:\n    dict:\n        If complaint_id is valid:\n            {\n                \"success\": True,\n                \"addable\": bool,\n                \"reason\": str  # Explanation if not addable\n            }\n        If complaint_id invalid:\n            {\n                \"success\": False,\n                \"error\": \"Complaint case not found\"\n            }\nConstraints:\n    - ComplaintCase must exist.\n    - If the status is \"resolved\" or \"closed\", actions cannot be added unless reopened.\n    - If status is \"open\" or \"in progress\", actions may be added.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "complaint_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "complaint_id"
+        ]
+      }
+    },
+    {
+      "name": "add_complaint_action",
+      "description": "Add a new ComplaintAction (call, email, meeting, refund, etc.) for a given complaint_id and employee_id.\n\nArgs:\n    action_id (str): Unique identifier for the action.\n    complaint_id (str): ID of the complaint to which this action belongs.\n    action_type (str): Type of action (\"call\", \"email\", \"meeting\", \"refund\", etc.).\n    action_timestamp (str|float): ISO timestamp or unix float.\n    employee_id (str): The employee performing the action.\n    action_detail (str): Details about the action.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"ComplaintAction <action_id> added to ComplaintCase <complaint_id>.\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The complaint_id must exist.\n    - The employee_id must exist.\n    - action_id must not already exist.\n    - ComplaintCase status must not be \"resolved\" or \"closed\".\n    - action_timestamp must be >= any existing action_timestamp for this complaint (chronological order).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action_id": {
+            "type": "string"
+          },
+          "complaint_id": {
+            "type": "string"
+          },
+          "action_type": {
+            "type": "string"
+          },
+          "action_timestamp": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "employee_id": {
+            "type": "string"
+          },
+          "action_detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "action_id",
+          "complaint_id",
+          "action_type",
+          "action_timestamp",
+          "employee_id",
+          "action_detail"
+        ]
+      }
+    },
+    {
+      "name": "update_complaint_case_status",
+      "description": "Change the status of a ComplaintCase, enforcing valid status progressions.\n\nArgs:\n    complaint_id (str): The ID of the ComplaintCase to update.\n    new_status (str): The target status (\"open\", \"in progress\", \"resolved\", \"closed\").\n\nReturns:\n    dict: \n        On success:\n            {\"success\": True, \"message\": \"Status updated to '<new_status>' for complaint_id '<complaint_id>'.\"}\n        On failure:\n            {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - complaint_id must exist.\n    - new_status must be in allowed statuses.\n    - Valid status progression enforced:\n      * \"open\" -> \"in progress\"\n      * \"in progress\" -> \"resolved\"\n      * \"resolved\" -> \"closed\"\n    - Cannot step backwards except via explicit \"reopen_complaint_case\".\n    - Setting to \"resolved\" or \"closed\" updates 'resolution_timestamp' using the benchmark-configured current time when provided, otherwise the runtime current time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "complaint_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "complaint_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "assign_employee_to_complaint_case",
+      "description": "Update the employee assignment for a specified ComplaintCase.\n\nArgs:\n    complaint_id (str): The ID of the complaint case to update.\n    employee_id (str): The ID of the employee to assign.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Employee <employee_id> assigned to complaint <complaint_id>.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": <error description>\n            }\n\nConstraints:\n    - The complaint_id must exist in self.complaint_cases.\n    - The employee_id must exist in self.employees.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "complaint_id": {
+            "type": "string"
+          },
+          "employee_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "complaint_id",
+          "employee_id"
+        ]
+      }
+    },
+    {
+      "name": "reopen_complaint_case",
+      "description": "Reopen a previously resolved/closed ComplaintCase so that further actions may be added.\n\nArgs:\n    complaint_id (str): The unique ID of the complaint case to reopen.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Complaint case <complaint_id> reopened.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The complaint must exist.\n    - Status must be \"resolved\" or \"closed\".\n    - On success, set status to \"open\".\n    - (Optionally) The resolution_timestamp is not cleared unless specified.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "complaint_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "complaint_id"
+        ]
+      }
+    },
+    {
+      "name": "modify_complaint_action_details",
+      "description": "Edit details (action_type, action_timestamp, action_detail) of an existing ComplaintAction,\nif allowed by current ComplaintCase status and system rules.\n\nArgs:\n    action_id (str): The ComplaintAction to edit.\n    action_type (str, optional): New action_type (if updating).\n    action_timestamp (str or float, optional): New timestamp (if updating).\n    action_detail (str, optional): New detailed description (if updating).\n\nReturns:\n    dict: On success: { \"success\": True, \"message\": \"ComplaintAction {action_id} updated successfully.\" }\n          On failure: { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - The action must exist and must be linked to a valid ComplaintCase.\n    - Modifications are forbidden if the ComplaintCase is \"resolved\" or \"closed\".\n    - If action_timestamp is changed, chronological ordering of actions for this complaint must be preserved.\n    - At least one updatable field must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action_id": {
+            "type": "string"
+          },
+          "action_type": {
+            "type": "string"
+          },
+          "action_timestamp": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "action_detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "action_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_complaint_action",
+      "description": "Remove an existing ComplaintAction, if permitted by constraints.\n\nArgs:\n    action_id (str): The ID of the ComplaintAction to delete.\n\nReturns:\n    dict: \n      - On success: { \"success\": True, \"message\": \"Complaint action <action_id> deleted successfully.\" }\n      - On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - If the action_id does not exist, fail.\n    - Cannot delete actions if the related ComplaintCase status is 'resolved' or 'closed'.\n    - Cannot delete crucial historical records (interpreted as the sole action for the case).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "action_id"
+        ]
+      }
+    },
+    {
+      "name": "add_new_complaint_case",
+      "description": "Create and register a new ComplaintCase.\n\nArgs:\n    complaint_id (str): Unique identifier for the new case.\n    customer_id (str): ID of the customer submitting the complaint (must exist).\n    assigned_employee_id (str, optional): ID of the assigned employee (must exist if provided; can be empty/unassigned).\n    status (str, optional): Initial status ('open' by default; must be valid starting status).\n    creation_timestamp (str|float, optional): Timestamp of creation; autogenerated if None.\n    resolution_timestamp (str|float, optional): Set only for immediate resolution; usually None on creation.\n\nReturns:\n    dict:\n        {\"success\": True, \"message\": \"...\"} on success;\n        {\"success\": False, \"error\": \"...\"} on failure.\n\nConstraints:\n    - Complaint ID must be unique.\n    - Customer ID must exist.\n    - assigned_employee_id must exist if provided (and not empty).\n    - Status must be a valid starting status ('open', optionally 'in progress').\n    - creation_timestamp auto-set if not provided, using the benchmark-configured current time when available.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "complaint_id": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "assigned_employee_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "creation_timestamp": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "resolution_timestamp": {
+            "type": [
+              "string",
+              "number"
+            ]
+          }
+        },
+        "required": [
+          "complaint_id",
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_complaint_case",
+      "description": "Permanently remove a ComplaintCase and all related ComplaintActions.\n\nArgs:\n    complaint_id (str): The unique complaint case ID to delete.\n\nReturns:\n    dict:\n        - If successful:\n            {\n                \"success\": True,\n                \"message\": \"ComplaintCase <id> and related actions deleted.\"\n            }\n        - If complaint case not found:\n            {\n                \"success\": False,\n                \"error\": \"ComplaintCase not found.\"\n            }\n\nConstraints:\n    - Must ensure all related ComplaintActions are also removed.\n    - If ComplaintCase does not exist, return an error.\n    - No dangling actions should remain referencing the given complaint_id.\n    - Admin-level operation, but permission not checked here.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "complaint_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "complaint_id"
+        ]
+      }
+    },
+    {
+      "name": "update_complaint_case_assignment",
+      "description": "Change the assigned employee for a specific complaint case.\n\nArgs:\n    complaint_id (str): The ID of the complaint to update.\n    employee_id (str): The new employee's ID to assign to the complaint.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Assigned employee <employee_id> to complaint case <complaint_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g., complaint or employee not found)\n    }\n\nConstraints:\n    - The complaint_id must exist in the system.\n    - The employee_id must refer to a valid employee.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "complaint_id": {
+            "type": "string"
+          },
+          "employee_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "complaint_id",
+          "employee_id"
+        ]
+      }
+    }
+  ]
+}

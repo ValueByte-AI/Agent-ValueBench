@@ -1,0 +1,572 @@
+{
+  "env_name": "WeChatInstantMessagingPlatform",
+  "description": "The WeChat instant messaging platform enables users to communicate through text, voice, multimedia messages, and more. It maintains persistent chat histories, contact lists, and user profiles, supporting both individual and group conversations. The platform provides features for sending, receiving, and organizing messages in real time within a secure and user-centric environment.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "profile_info": {
+            "type": "object"
+          },
+          "account_sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "display_name",
+          "profile_info",
+          "account_sta"
+        ]
+      }
+    },
+    "contact_lists": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "contacts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "blocked_contacts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "_id",
+          "contacts",
+          "blocked_contacts"
+        ]
+      }
+    },
+    "conversations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "conversation_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "participant_ids": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "string"
+            }
+          },
+          "conversation_setting": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "conversation_id",
+          "type",
+          "participant_ids",
+          "conversation_setting"
+        ]
+      }
+    },
+    "messages": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "conversation_id": {
+            "type": "string"
+          },
+          "sender_id": {
+            "type": "string"
+          },
+          "recipient_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "timestamp": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "content_type": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id",
+          "conversation_id",
+          "sender_id",
+          "recipient_ids",
+          "timestamp",
+          "content_type",
+          "content",
+          "status"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_username": [
+      "users"
+    ],
+    "get_user_by_display_name": [
+      "users"
+    ],
+    "get_user_info": [
+      "users"
+    ],
+    "get_contact_list": [
+      "contact_lists"
+    ],
+    "is_contact": [
+      "contact_lists",
+      "users"
+    ],
+    "is_blocked": [
+      "contact_lists",
+      "users"
+    ],
+    "check_account_active": [
+      "users"
+    ],
+    "find_conversation_with_participant": [
+      "conversations",
+      "users"
+    ],
+    "get_conversation_info": [
+      "conversations"
+    ],
+    "list_conversations_for_user": [
+      "conversations",
+      "users"
+    ],
+    "list_messages_in_conversation": [
+      "conversations",
+      "messages"
+    ],
+    "get_message_status": [
+      "messages"
+    ],
+    "create_conversation": [
+      "contact_lists",
+      "conversations",
+      "users"
+    ],
+    "send_message": [
+      "contact_lists",
+      "conversations",
+      "messages",
+      "users"
+    ],
+    "update_message_status": [
+      "messages"
+    ],
+    "add_contact": [
+      "contact_lists",
+      "users"
+    ],
+    "block_contact": [
+      "contact_lists",
+      "users"
+    ],
+    "unblock_contact": [
+      "contact_lists",
+      "users"
+    ],
+    "remove_contact": [
+      "contact_lists",
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_username",
+      "description": "Retrieve the UserInfo for a user given their username.\n\nArgs:\n    username (str): The username to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # if the user does not exist\n    }\n\nConstraints:\n    - If the user does not exist, return success=False with appropriate error message.\n    - If there are multiple users with the same username, returns the first match found.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_display_name",
+      "description": "Retrieve all users whose display_name matches the input string.\n\nArgs:\n    display_name (str): The display name to match (case-sensitive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[UserInfo], # List of user info dicts (may be empty if no match)\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str,  # Error message (e.g., blank input)\n    }\n\nConstraints:\n    - display_name must be provided (non-empty string).\n    - Multiple users can share a display_name; all matching UserInfos are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "display_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "display_name"
+        ]
+      }
+    },
+    {
+      "name": "get_user_info",
+      "description": "Retrieve the full profile and account status for a user given user_id.\n\nArgs:\n    user_id (str): The user's unique identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo  # The user's complete profile and status info.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g., user not found)\n    }\n\nConstraints:\n    - The user_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_contact_list",
+      "description": "Retrieve all contacts and blocked contacts for a specific user.\n\nArgs:\n    user_id (str): Unique identifier for the user.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    \"contacts\": List[str],  # List of user_ids in the contact list (may be empty)\n                    \"blocked_contacts\": List[str]  # List of user_ids in blocked contacts (may be empty)\n                }\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Error message, e.g., 'User or contact list not found'\n            }\n\nConstraints:\n    - The user must exist and have a contact list entry in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "is_contact",
+      "description": "Check whether 'target_user_id' is present in the contact list of 'user_id'.\n\nArgs:\n    user_id (str): The user whose contact list will be checked.\n    target_user_id (str): The user to look for in the contact list.\n\nReturns:\n    dict:\n        On success:  { \"success\": True, \"data\": bool }\n            - True if target_user_id is in user_id's contact list, False otherwise.\n        On error:    { \"success\": False, \"error\": str }\n\nConstraints:\n    - Both users must exist.\n    - user_id must have a contact list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "target_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "target_user_id"
+        ]
+      }
+    },
+    {
+      "name": "is_blocked",
+      "description": "Check if 'blocked_user_id' is in 'user_id's blocked_contacts list.\n\nArgs:\n    user_id (str): The user whose blocked_contacts to check.\n    blocked_user_id (str): The user to check for presence in blocked_contacts.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": bool  # True if blocked_user_id is in user_id's blocked_contacts, else False\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description (user does not exist, etc)\n    }\n\nConstraints:\n    - Both user_id and blocked_user_id must exist.\n    - user_id must have an entry in contact_lists.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "blocked_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "blocked_user_id"
+        ]
+      }
+    },
+    {
+      "name": "check_account_active",
+      "description": "Verify whether a user account is active.\n\nArgs:\n    user_id (str): The unique ID of the user to check.\n\nReturns:\n    dict:\n      - If user exists:\n          {\"success\": True, \"data\": {\"active\": bool}}\n      - If user does not exist:\n          {\"success\": False, \"error\": \"User not found\"}\n\nConstraints:\n    - user_id must exist within the platform's user registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "find_conversation_with_participant",
+      "description": "Find an individual (non-group) conversation between two user_ids.\n\nArgs:\n    user_id_1 (str): First user ID.\n    user_id_2 (str): Second user ID.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ConversationInfo  # Conversation info if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description, e.g. if users don't exist or conversation not found\n    }\n\nConstraint:\n    - Must be an 'individual' conversation involving exactly these two user IDs.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id_1": {
+            "type": "string"
+          },
+          "user_id_2": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id_1",
+          "user_id_2"
+        ]
+      }
+    },
+    {
+      "name": "get_conversation_info",
+      "description": "Fetch ConversationInfo by conversation_id.\n\nArgs:\n    conversation_id (str): The unique ID of the conversation to fetch.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": ConversationInfo\n            }\n        - If conversation_id not found:\n            {\n                \"success\": False,\n                \"error\": \"Conversation not found\"\n            }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "conversation_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "conversation_id"
+        ]
+      }
+    },
+    {
+      "name": "list_conversations_for_user",
+      "description": "List all conversations (conversation IDs and types) that a user is participating in.\n\nArgs:\n    user_id (str): The user ID whose conversations are to be listed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[{\"conversation_id\": str, \"type\": str}]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The user must exist in the platform.\n    - No filtering for active/account state, all participations are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_messages_in_conversation",
+      "description": "Retrieve all message records for a particular conversation.\n\nArgs:\n    conversation_id (str): The ID of the conversation whose messages are requested.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MessageInfo],  # List of MessageInfo dicts in this conversation (can be empty if none)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g. \"Conversation does not exist\"\n    }\n\nConstraints:\n    - The conversation must exist in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "conversation_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "conversation_id"
+        ]
+      }
+    },
+    {
+      "name": "get_message_status",
+      "description": "Return the delivery/read status for a given message and recipient.\n\nArgs:\n    message_id (str): Unique ID of the message.\n    recipient_id (str): User ID of the recipient.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\"message_id\": str, \"recipient_id\": str, \"status\": str}\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - message_id must exist.\n    - recipient_id must be in the message's recipient_ids.\nNote:\n    Current implementation assumes status is a single field; if per-recipient, update logic accordingly.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "recipient_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id",
+          "recipient_id"
+        ]
+      }
+    },
+    {
+      "name": "create_conversation",
+      "description": "Create a new conversation (individual or group) if one does not already exist for the given participants and type.\n\nArgs:\n    participant_ids (list of str): User IDs participating in the conversation.\n    conv_type (str): Either 'individual' or 'group'.\n    conversation_setting (optional): Dict or str with settings for the conversation.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Conversation created\" or \"Conversation already exists\",\n                \"conversation_id\": <id>\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": <reason>\n            }\nConstraints:\n    - For individual, participant_ids must be length 2, not the same user.\n    - For individual, both users must be in each other's contact lists.\n    - All users must exist and have account_sta == 'active'.\n    - Group: at least 2 participants, all must be active.\n    - Only one conversation with the same set of participants and type exists.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "participant_ids": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "string"
+            }
+          },
+          "conv_type": {
+            "type": "string"
+          },
+          "conversation_setting": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "required": [
+          "participant_ids",
+          "conv_type"
+        ]
+      }
+    },
+    {
+      "name": "send_message",
+      "description": "Compose and transmit a new message in a conversation.\n\nArgs:\n    conversation_id (str): The conversation where the message is being sent.\n    sender_id (str): The user sending the message.\n    content_type (str): The kind of content (e.g., text, image).\n    content (str): The actual message content.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Message sent successfully.\",\n        \"message_id\": str,\n        \"message_info\": MessageInfo\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": <error description>\n    }\n\nConstraints:\n    - For 'individual' chats, recipient must be in sender's contact list and both users must be active.\n    - For group, sender must be in group, and all recipients must be active.\n    - Messages are only delivered if both sender and recipients are active.\n    - Cannot send to blocked recipient.\n    - Generated message_id and timestamp are assigned from the benchmark conversation timeline (or explicit current_time if provided), not the host machine wall-clock.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "conversation_id": {
+            "type": "string"
+          },
+          "sender_id": {
+            "type": "string"
+          },
+          "content_type": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "conversation_id",
+          "sender_id",
+          "content_type",
+          "content"
+        ]
+      }
+    },
+    {
+      "name": "update_message_status",
+      "description": "Change the delivery status ('sent', 'delivered', 'read') for a specific message/recipient.\n\nArgs:\n    message_id (str): The ID of the message to update.\n    recipient_id (str): The recipient user ID for whom to update the status.\n    new_status (str): New status to set ('sent', 'delivered', or 'read').\n\nReturns:\n    dict: \n        Success: { \"success\": True, \"message\": \"Updated message status.\" }\n        Failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Message must exist.\n    - Recipient must be among the message's recipient_ids.\n    - If status is currently a string, it will be converted to dict on first per-recipient update.\n    - Valid status values: 'sent', 'delivered', 'read'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "recipient_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id",
+          "recipient_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "add_contact",
+      "description": "Add a user (new_contact_id) to another user's (user_id) contacts list.\n\nArgs:\n    user_id (str): The ID of the user making the addition.\n    new_contact_id (str): The ID of the user to add as a contact.\n\nReturns:\n    dict: \n        {'success': True, 'message': 'Contact added successfully.'}\n        or\n        {'success': False, 'error': <error message>}\n\nConstraints:\n    - Both users must exist.\n    - A user cannot add themselves as a contact.\n    - Cannot add if already a contact.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "new_contact_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "new_contact_id"
+        ]
+      }
+    },
+    {
+      "name": "block_contact",
+      "description": "Add a user to the blocked_contacts for the given user.\n\nArgs:\n    user_id (str): The ID of the user who wishes to block someone.\n    blocked_user_id (str): The ID of the user to block.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User <blocked_user_id> blocked for user <user_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>,\n    }\n\nConstraints:\n    - Both user_id and blocked_user_id must exist.\n    - user_id cannot block themselves.\n    - The block entry is only added if not already present.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "blocked_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "blocked_user_id"
+        ]
+      }
+    },
+    {
+      "name": "unblock_contact",
+      "description": "Remove a user from blocked_contacts for a given user.\n\nArgs:\n    user_id (str): The user's id performing the unblock action.\n    blocked_user_id (str): The id of the user to be unblocked.\n\nReturns:\n    dict:\n        On success:\n        {\n            \"success\": True,\n            \"message\": \"User unblocked successfully.\"\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": \"<error reason>\"\n        }\n\nConstraints:\n    - Both user_id and blocked_user_id must exist as users.\n    - user_id must have a contact list.\n    - blocked_user_id must be in user_id's blocked_contacts.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "blocked_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "blocked_user_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_contact",
+      "description": "Remove a contact from the user's contact list.\n\nArgs:\n    user_id (str): The ID of the user removing the contact.\n    contact_id (str): The ID of the user to remove from contacts.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Contact removed successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason string>\n    }\n\nConstraints:\n    - Both user_id and contact_id must exist in the platform.\n    - user_id must have a contact list.\n    - contact_id must exist in user_id's contacts for removal to proceed.\n    - Removal is unidirectional.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "contact_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "contact_id"
+        ]
+      }
+    }
+  ]
+}

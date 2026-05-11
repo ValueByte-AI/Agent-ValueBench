@@ -1,0 +1,566 @@
+{
+  "env_name": "LibraryCatalogManagementSystem",
+  "description": "A library catalog management system maintains structured records of all materials held by a library, including books, serials, and multimedia. It tracks metadata such as unique identifiers, titles, authors, collection assignments, and item status. The system supports typical library operations such as adding new materials, updating item information, searching by collection or title, and managing circulation.",
+  "initial_parameter_schema": {
+    "materials": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "material_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "authors": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1
+          },
+          "publication_year": {
+            "type": "integer"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "material_id",
+          "title",
+          "type",
+          "authors",
+          "publication_year",
+          "metadata"
+        ]
+      }
+    },
+    "copies": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "copy_id": {
+            "type": "string"
+          },
+          "material_id": {
+            "type": "string"
+          },
+          "collection_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "acquisition_date": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "copy_id",
+          "material_id",
+          "collection_id",
+          "status",
+          "acquisition_date",
+          "location"
+        ]
+      }
+    },
+    "collections": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "collection_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "collection_id",
+          "name",
+          "description"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_material_by_id": [
+      "materials"
+    ],
+    "get_material_by_title": [
+      "materials"
+    ],
+    "list_all_materials": [
+      "materials"
+    ],
+    "get_collection_by_name": [
+      "collections"
+    ],
+    "get_collection_by_id": [
+      "collections"
+    ],
+    "list_all_collections": [
+      "collections"
+    ],
+    "get_copy_by_id": [
+      "copies"
+    ],
+    "list_copies_by_material": [
+      "copies",
+      "materials"
+    ],
+    "list_copies_by_collection": [
+      "collections",
+      "copies"
+    ],
+    "check_material_id_unique": [
+      "materials"
+    ],
+    "check_copy_id_unique": [
+      "copies"
+    ],
+    "get_copies_by_status": [
+      "copies"
+    ],
+    "add_material": [
+      "materials"
+    ],
+    "add_copy": [
+      "collections",
+      "copies",
+      "materials"
+    ],
+    "add_collection": [
+      "collections"
+    ],
+    "update_copy_status": [
+      "copies"
+    ],
+    "update_copy_location": [
+      "copies"
+    ],
+    "update_material_metadata": [
+      "materials"
+    ],
+    "assign_copy_to_collection": [
+      "collections",
+      "copies"
+    ],
+    "delete_copy": [
+      "copies"
+    ],
+    "delete_material": [
+      "copies",
+      "materials"
+    ],
+    "delete_collection": [
+      "collections",
+      "copies"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_material_by_id",
+      "description": "Retrieve bibliographic information for a material using its unique material_id.\n\nArgs:\n    material_id (str): The unique identifier for the material.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": MaterialInfo  # All metadata about the material\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Material not found\"\n            }\n\nConstraints:\n    - material_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "material_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "material_id"
+        ]
+      }
+    },
+    {
+      "name": "get_material_by_title",
+      "description": "Search for material(s) by exact title and retrieve their details.\n\nArgs:\n    title (str): The title to search for materials.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MaterialInfo]  # List of matching material records (may be empty if no match)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for error (e.g., invalid input)\n    }\n\nConstraints:\n    - Title should be a non-empty string.\n    - Returns all materials whose title exactly matches the query.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      }
+    },
+    {
+      "name": "list_all_materials",
+      "description": "List all material records in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[MaterialInfo]  # List of all materials in the system (may be empty).\n    }\n\nConstraints:\n    None (simple retrieval/query; no modification).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_collection_by_name",
+      "description": "Retrieve collection information using the collection's name.\n\nArgs:\n    name (str): The name of the collection to look up.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"data\": CollectionInfo }\n        - On failure: { \"success\": False, \"error\": \"Collection not found\" }\nConstraints:\n    - No constraint enforces uniqueness on collection name, so returns the first found.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_collection_by_id",
+      "description": "Retrieve collection details using the collection_id.\n\nArgs:\n    collection_id (str): The unique identifier for the collection.\n\nReturns:\n    dict: \n        - On success:\n            { \"success\": True, \"data\": CollectionInfo }\n        - On failure:\n            { \"success\": False, \"error\": \"Collection not found\" }\n\nConstraints:\n    - The collection_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "collection_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "collection_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_collections",
+      "description": "List all defined collections in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CollectionInfo]  # List of all collections (possibly empty)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_copy_by_id",
+      "description": "Retrieve the metadata of a specific copy (item) by its copy_id.\n\nArgs:\n    copy_id (str): The unique identifier of the item/copy.\n\nReturns:\n    dict:\n      - On success: { \"success\": True, \"data\": CopyInfo }\n      - On failure: { \"success\": False, \"error\": \"Copy not found\" }\nConstraints:\n    - The copy_id must exist in the library's record of copies/items.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "copy_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "copy_id"
+        ]
+      }
+    },
+    {
+      "name": "list_copies_by_material",
+      "description": "List all copy records (items) associated with a given material_id.\n\nArgs:\n    material_id (str): Unique identifier of the material.\n\nReturns:\n    dict:\n      - success: True if operation succeeded; False if material_id does not exist.\n      - data: List of CopyInfo objects (may be empty if no copies exist).\n      - error: Optional error message if operation failed.\n\nConstraints:\n    - material_id must exist in the materials catalog.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "material_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "material_id"
+        ]
+      }
+    },
+    {
+      "name": "list_copies_by_collection",
+      "description": "List all copies/items assigned to a specified collection.\n\nArgs:\n    collection_id (str): The identifier of the collection.\n\nReturns:\n    dict: On success:\n        {\n            \"success\": True,\n            \"data\": List[CopyInfo]  # All item records in the collection (may be empty),\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": str  # Reason, e.g., collection does not exist.\n        }\n\nConstraints:\n    - The specified collection must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "collection_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "collection_id"
+        ]
+      }
+    },
+    {
+      "name": "check_material_id_unique",
+      "description": "Check whether a given material_id is unique in the system.\n\nArgs:\n    material_id (str): The material ID to check for uniqueness.\n\nReturns:\n    dict: {\n        'success': True,\n        'unique': bool  # True if not present in the catalog, False otherwise\n    }\n    Or, if input is invalid:\n    {\n        'success': False,\n        'error': str\n    }\n\nConstraints:\n    - material_id must be a non-empty string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "material_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "material_id"
+        ]
+      }
+    },
+    {
+      "name": "check_copy_id_unique",
+      "description": "Check whether the provided copy_id is unique in the system.\n\nArgs:\n    copy_id (str): The proposed identifier for a copy (item).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": bool   # True if unique (not found), False if already exists\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str   # If input is invalid (e.g., empty string)\n    }\n\nConstraints:\n    - copy_id should not be empty.\n    - Does not modify system state.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "copy_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "copy_id"
+        ]
+      }
+    },
+    {
+      "name": "get_copies_by_status",
+      "description": "List all copies filtered by the provided status.\n\nArgs:\n    status (str): The status to filter copies by. Must be one of:\n                  'available', 'checked out', 'reserved', 'missing'.\n\nReturns:\n    dict: \n        - On success: {\n            \"success\": True,\n            \"data\": List[CopyInfo]  # May be empty if no matching copies.\n          }\n        - On failure: {\n            \"success\": False,\n            \"error\": str  # Reason for failure, e.g. invalid status.\n          }\n\nConstraints:\n    - The status must be one of the allowed statuses.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "add_material",
+      "description": "Add a new material record to the library catalog.\n\nArgs:\n    material_id (str): Unique identifier for the material.\n    title (str): Material title.\n    type (str): Material type (e.g., 'Book', 'Serial', 'Media').\n    authors (List[str]): List of authors.\n    publication_year (int): Year of publication.\n    metadata (Dict[str, str]): Optional additional metadata (e.g., subject, publisher).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Material added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - material_id must be unique.\n    - All required fields must be non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "material_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "authors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "publication_year": {
+            "type": "integer"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "material_id",
+          "title",
+          "type",
+          "authors",
+          "publication_year",
+          "metadata"
+        ]
+      }
+    },
+    {
+      "name": "add_copy",
+      "description": "Add a new copy/item associated with an existing material and assign it to an existing collection.\n\nArgs:\n    copy_id (str): Unique identifier for this copy.\n    material_id (str): ID of an existing material to associate.\n    collection_id (str): ID of existing collection to assign this copy.\n    status (str): Initial status of the copy (e.g., 'available').\n    acquisition_date (str): Acquisition date string.\n    location (str): Location within library.\n\nReturns:\n    dict: Success or error information.\n        { \"success\": True, \"message\": \"Copy added successfully.\" }\n        or\n        { \"success\": False, \"error\": \"reason\" }\n\nConstraints:\n    - copy_id must be unique.\n    - material_id must exist in catalog.\n    - collection_id must exist in catalog.\n    - Item is assigned to exactly one collection.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "copy_id": {
+            "type": "string"
+          },
+          "material_id": {
+            "type": "string"
+          },
+          "collection_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "acquisition_date": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "copy_id",
+          "material_id",
+          "collection_id",
+          "status",
+          "acquisition_date",
+          "location"
+        ]
+      }
+    },
+    {
+      "name": "add_collection",
+      "description": "Create a new collection in the catalog.\n\nArgs:\n    collection_id (str): Unique identifier for the collection.\n    name (str): Name of the collection.\n    description (str): Description of the collection.\n\nReturns:\n    dict: {\n        'success': True,\n        'message': \"Collection added successfully\"\n    }\n    or\n    {\n        'success': False,\n        'error': <error details>\n    }\n\nConstraints:\n    - collection_id must be unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "collection_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "collection_id",
+          "name",
+          "description"
+        ]
+      }
+    },
+    {
+      "name": "update_copy_status",
+      "description": "Change the status of a copy/item in the library catalog.\n\nArgs:\n    copy_id (str): The identifier for the copy/item.\n    new_status (str): The desired status to assign.\n        Allowed values: 'available', 'checked out', 'reserved', 'missing'.\n\nReturns:\n    dict: \n        On success:\n            { \"success\": True, \"message\": \"Status of copy <copy_id> updated to <new_status>.\" }\n        On error:\n            { \"success\": False, \"error\": \"Reason for failure.\" }\n\nConstraints:\n    - copy_id must exist in the system.\n    - new_status must be a valid status value.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "copy_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "copy_id",
+          "new_status"
+        ]
+      }
+    },
+    {
+      "name": "update_copy_location",
+      "description": "Change the location metadata of a copy.\n\nArgs:\n    copy_id (str): The unique identifier of the copy/item to update.\n    new_location (str): The new location to assign to the copy.\n\nReturns:\n    dict:\n        - If successful: { \"success\": True, \"message\": \"Copy location updated.\" }\n        - If copy not found: { \"success\": False, \"error\": \"Copy not found.\" }\n\nConstraints:\n    - The specified copy_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "copy_id": {
+            "type": "string"
+          },
+          "new_location": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "copy_id",
+          "new_location"
+        ]
+      }
+    },
+    {
+      "name": "update_material_metadata",
+      "description": "Update metadata (such as subject, publisher, etc.) for an existing material.\n\nArgs:\n    material_id (str): The unique identifier of the material to update.\n    metadata_updates (Dict[str, str]): Key-value pairs to update/add in the material's metadata.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Metadata updated for material <material_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason for failure>\"\n    }\n\nConstraints:\n    - Material with given material_id must exist.\n    - Existing metadata keys may be overwritten; new keys are added.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "material_id": {
+            "type": "string"
+          },
+          "metadata_updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "material_id",
+          "metadata_updates"
+        ]
+      }
+    },
+    {
+      "name": "assign_copy_to_collection",
+      "description": "Reassign a copy/item (identified by copy_id) to a different collection (new_collection_id).\nEnforces that each copy belongs to exactly one (existing) collection.\n\nArgs:\n    copy_id (str): The unique identifier of the copy/item to reassign.\n    new_collection_id (str): The collection_id of the new collection.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Confirmation that the copy was reassigned\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of error\n    }\n\nConstraints:\n    - copy_id must exist in the catalog.\n    - new_collection_id must exist in the collections.\n    - Each copy belongs to exactly one collection.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "copy_id": {
+            "type": "string"
+          },
+          "new_collection_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "copy_id",
+          "new_collection_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_copy",
+      "description": "Remove a copy/item from the catalog.\n\nArgs:\n    copy_id (str): The identifier of the copy/item to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Copy <copy_id> deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The copy_id must exist in the catalog for deletion.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "copy_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "copy_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_material",
+      "description": "Remove a material record from the catalog, if it is not referenced by any existing copies.\n\nArgs:\n    material_id (str): The unique identifier of the material to be deleted.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Material <material_id> successfully deleted.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"Material not found.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"Material is still referenced by existing copies.\"\n    }\n\nConstraints:\n    - Cannot delete a material that is referenced by one or more copies.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "material_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "material_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_collection",
+      "description": "Remove a collection from the system.\n\nArgs:\n    collection_id (str): The unique identifier of the collection to remove.\n\nReturns:\n    dict: \n        - {\"success\": True, \"message\": \"Collection <collection_id> successfully deleted.\"}\n        - {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - The collection must exist.\n    - The collection must not have any member copies/items (enforced by checking for any copy with that collection_id).\n    - Member copies must be reassigned or removed before deleting the collection.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "collection_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "collection_id"
+        ]
+      }
+    }
+  ]
+}

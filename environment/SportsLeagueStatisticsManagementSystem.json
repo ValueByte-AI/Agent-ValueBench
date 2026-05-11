@@ -1,0 +1,633 @@
+{
+  "env_name": "SportsLeagueStatisticsManagementSystem",
+  "description": "A sports league statistics management system is designed to organize and maintain extensive records of players, teams, tournaments, and seasonal data. It tracks performance metrics, rankings, and statistical summaries, supporting operations such as retrieving top performers, updating results, and generating reports. Used by league administrators, fans, and analysts, this environment ensures accurate, stateful tracking of competitive outcomes across multiple competitions.",
+  "initial_parameter_schema": {
+    "leagues": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "league_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sport_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "league_id",
+          "name",
+          "sport_type"
+        ]
+      }
+    },
+    "seasons": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "season_id": {
+            "type": "string"
+          },
+          "league_id": {
+            "type": "string"
+          },
+          "year": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "season_id",
+          "league_id",
+          "year"
+        ]
+      }
+    },
+    "tournaments": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "tournament_id": {
+            "type": "string"
+          },
+          "league_id": {
+            "type": "string"
+          },
+          "season_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tournament_id",
+          "league_id",
+          "season_id",
+          "name",
+          "start_date",
+          "end_date"
+        ]
+      }
+    },
+    "teams": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "team_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "league_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "team_id",
+          "name",
+          "league_id"
+        ]
+      }
+    },
+    "players": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "team_id": {
+            "type": "string"
+          },
+          "active_status": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "player_id",
+          "name",
+          "team_id",
+          "active_status"
+        ]
+      }
+    },
+    "player_tournament_stats": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "tournament_id": {
+            "type": "string"
+          },
+          "season_id": {
+            "type": "string"
+          },
+          "team_id": {
+            "type": "string"
+          },
+          "metrics": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "player_id",
+          "tournament_id",
+          "season_id",
+          "team_id",
+          "metrics"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_league_by_name": [
+      "leagues"
+    ],
+    "get_league_by_id": [
+      "leagues"
+    ],
+    "get_season_by_league_and_year": [
+      "leagues",
+      "seasons"
+    ],
+    "list_tournaments_by_league_and_season": [
+      "leagues",
+      "seasons",
+      "tournaments"
+    ],
+    "get_tournament_by_id": [
+      "tournaments"
+    ],
+    "get_player_by_id": [
+      "players"
+    ],
+    "get_players_by_team": [
+      "players",
+      "teams"
+    ],
+    "get_team_by_id": [
+      "teams"
+    ],
+    "get_stats_for_tournament": [
+      "player_tournament_stats",
+      "players",
+      "tournaments"
+    ],
+    "get_stats_for_player_in_tournament": [
+      "player_tournament_stats"
+    ],
+    "get_top_players_for_tournament": [
+      "player_tournament_stats",
+      "players",
+      "tournaments"
+    ],
+    "get_top_players_for_tournaments": [
+      "player_tournament_stats",
+      "players",
+      "tournaments"
+    ],
+    "get_player_active_status": [
+      "players"
+    ],
+    "update_player_stats_for_tournament": [
+      "player_tournament_stats",
+      "players",
+      "tournaments"
+    ],
+    "set_player_active_status": [
+      "players"
+    ],
+    "assign_player_to_team": [
+      "player_tournament_stats",
+      "players",
+      "seasons",
+      "teams",
+      "tournaments"
+    ],
+    "add_new_tournament": [
+      "leagues",
+      "seasons",
+      "tournaments"
+    ],
+    "add_new_player": [
+      "players",
+      "teams"
+    ],
+    "add_new_team": [
+      "leagues",
+      "teams"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_league_by_name",
+      "description": "Retrieve league information by league name.\n\nArgs:\n    name (str): The name of the league to look up.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": LeagueInfo,  # League information if found\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # e.g. \"League not found\"\n    }\n\nConstraints:\n    - League name must exist in the environment.\n    - Returns the first match if multiple exist (assuming league names are unique).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_league_by_id",
+      "description": "Retrieve league details using the league_id.\n\nArgs:\n    league_id (str): Unique identifier for the league.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": LeagueInfo  # Dictionary of league information\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"League not found\"\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "league_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "league_id"
+        ]
+      }
+    },
+    {
+      "name": "get_season_by_league_and_year",
+      "description": "Retrieve season information for a given league and year.\n\nArgs:\n    league_id (str): The league identifier to search for.\n    year (int): The year of the season.\n\nReturns:\n    dict:\n        - success=True: {\"success\": True, \"data\": SeasonInfo}\n        - success=False: {\"success\": False, \"error\": str}\n\nConstraints:\n    - league_id must exist in the system.\n    - If no season exists for the given league and year, return an error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "league_id": {
+            "type": "string"
+          },
+          "year": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "league_id",
+          "year"
+        ]
+      }
+    },
+    {
+      "name": "list_tournaments_by_league_and_season",
+      "description": "List all tournaments that are associated with the specified league and season.\n\nArgs:\n    league_id (str): The ID of the league.\n    season_id (str): The ID of the season.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[TournamentInfo]  # All tournaments in given league and season (can be empty)\n        }\n    or\n        {\n            \"success\": False,\n            \"error\": str  # Reason why operation failed (e.g. invalid league_id/season_id)\n        }\n\nConstraints:\n    - league_id must refer to an existing league.\n    - season_id must refer to an existing season.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "league_id": {
+            "type": "string"
+          },
+          "season_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "league_id",
+          "season_id"
+        ]
+      }
+    },
+    {
+      "name": "get_tournament_by_id",
+      "description": "Retrieve details for a tournament using its tournament_id.\n\nArgs:\n    tournament_id (str): The unique identifier of the tournament.\n\nReturns:\n    dict: \n      - If tournament exists:\n            {\"success\": True, \"data\": TournamentInfo}\n      - If not found:\n            {\"success\": False, \"error\": \"Tournament not found\"}",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tournament_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tournament_id"
+        ]
+      }
+    },
+    {
+      "name": "get_player_by_id",
+      "description": "Retrieve player information using player_id.\n\nArgs:\n    player_id (str): The unique identifier for the player.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": PlayerInfo  # player's full information\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"Player not found\"\n    }\n\nConstraints:\n    - player_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id"
+        ]
+      }
+    },
+    {
+      "name": "get_players_by_team",
+      "description": "List all players belonging to a specific team.\n\nArgs:\n    team_id (str): The identifier of the team.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PlayerInfo]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The given team_id must exist in the system.\n    - Returns all players whose current team assignment matches the given team_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "team_id"
+        ]
+      }
+    },
+    {
+      "name": "get_team_by_id",
+      "description": "Retrieve team details using the provided team_id.\n\nArgs:\n    team_id (str): The unique identifier of the team.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": TeamInfo  # Team details if found\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # If team_id not found\n    }\n\nConstraints:\n    - team_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "team_id"
+        ]
+      }
+    },
+    {
+      "name": "get_stats_for_tournament",
+      "description": "Retrieve all PlayerTournamentStatsInfo for the given tournament_id.\nOptionally filter by team_id (only that team) and/or only include active players.\n\nArgs:\n    tournament_id (str): Tournament for which to retrieve stats.\n    team_id (Optional[str]): If set, only include stats where team_id matches.\n    only_active (Optional[bool]): If True (default), only include active players.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[PlayerTournamentStatsInfo]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Tournament must exist.\n    - Players must be active if only_active is True.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tournament_id": {
+            "type": "string"
+          },
+          "team_id": {
+            "type": "string"
+          },
+          "only_active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "tournament_id"
+        ]
+      }
+    },
+    {
+      "name": "get_stats_for_player_in_tournament",
+      "description": "Retrieve PlayerTournamentStats for a specific player in a specified tournament.\n\nArgs:\n    player_id (str): Unique identifier for the player.\n    tournament_id (str): Unique identifier for the tournament.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"data\": PlayerTournamentStatsInfo }\n        - On failure: { \"success\": False, \"error\": \"No stats found for player in tournament\" }\n\nConstraints:\n    - The stats entry must exist for the (player_id, tournament_id) pair.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "tournament_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id",
+          "tournament_id"
+        ]
+      }
+    },
+    {
+      "name": "get_top_players_for_tournament",
+      "description": "Compute and return the top N players for a tournament based on a given statistical metric.\n\nArgs:\n    tournament_id (str): The target tournament's ID.\n    metric (str): The statistical metric/key to rank by (e.g., 'points').\n    top_n (int): Number of top players to return (largest values first).\n    include_inactive (bool): If True, include inactive players; if False, only active players. Default: False.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": [\n            {\n                \"player_id\": str,\n                \"player_info\": PlayerInfo,\n                \"stats_info\": PlayerTournamentStatsInfo,\n                \"metric_value\": Any\n            },\n            ...\n        ]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Only stats for the given tournament_id are considered.\n    - Only active players (unless include_inactive is True).\n    - If top_n <= 0, data will be an empty list.\n    - Tournament must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tournament_id": {
+            "type": "string"
+          },
+          "metric": {
+            "type": "string"
+          },
+          "top_n": {
+            "type": "integer"
+          },
+          "include_inactive": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "tournament_id",
+          "metric",
+          "top_n"
+        ]
+      }
+    },
+    {
+      "name": "get_top_players_for_tournaments",
+      "description": "For a set of tournaments, return the top players per tournament based on the given statistical metric.\n\nArgs:\n    tournament_ids (List[str]): List of tournament IDs to consider.\n    metric (str): The metric to rank by (e.g., 'points', 'goals').\n    top_n (int, optional): Number of top players to return per tournament. Default is 3.\n    include_inactive (bool, optional): Whether to include inactive players. Default is False.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            tournament_id1: [PlayerTournamentStatsInfo, ...],  # Sorted by metric desc, up to top_n\n            tournament_id2: [...],\n            ...\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Each tournament must exist.\n    - Only active players are considered unless include_inactive is True.\n    - If metric is missing in metrics dict for a player, treat as zero.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tournament_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "metric": {
+            "type": "string"
+          },
+          "top_n": {
+            "type": "integer"
+          },
+          "include_inactive": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "tournament_ids",
+          "metric"
+        ]
+      }
+    },
+    {
+      "name": "get_player_active_status",
+      "description": "Retrieve the active/inactive status for a specific player.\n\nArgs:\n    player_id (str): Unique identifier of the player.\n\nReturns:\n    dict:\n        On success:\n        {\n            \"success\": True,\n            \"data\": {\n                \"player_id\": str,\n                \"active_status\": bool\n            }\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": \"Player does not exist\"\n        }\n\nConstraints:\n    - The player must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id"
+        ]
+      }
+    },
+    {
+      "name": "update_player_stats_for_tournament",
+      "description": "Update or add new statistics in PlayerTournamentStats for a specific player in a tournament.\n\nArgs:\n    player_id (str): ID of the player whose stats are to be updated.\n    tournament_id (str): ID of the tournament.\n    metrics_update (Dict[str, Any]): Dictionary of metrics to update/add (e.g., {\"points\": 10, \"assists\": 3})\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Player tournament statistics updated.\" }\n        - On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - player_id and tournament_id must exist in the system.\n    - PlayerTournamentStats is created if not existing, with appropriate season_id and team_id.\n    - Only one PlayerTournamentStats per (player_id, tournament_id).\n    - metrics_update must be a non-empty dict.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "tournament_id": {
+            "type": "string"
+          },
+          "metrics_update": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "player_id",
+          "tournament_id",
+          "metrics_update"
+        ]
+      }
+    },
+    {
+      "name": "set_player_active_status",
+      "description": "Activate or deactivate a player in the system.\n\nArgs:\n    player_id (str): The ID of the player whose status is to be changed.\n    active_status (bool): True to mark the player active, False to mark inactive.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Player {player_id} active_status updated to {active_status}\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Player not found\" or \"active_status must be a boolean\"\n    }\n\nConstraints:\n    - player_id must exist in the system.\n    - active_status must be a boolean value.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "active_status": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "player_id",
+          "active_status"
+        ]
+      }
+    },
+    {
+      "name": "assign_player_to_team",
+      "description": "Assign (or reassign) a player to a team for the specified tournament and season,\nensuring all structural and uniqueness constraints are enforced.\n\nArgs:\n    player_id (str): The unique ID of the player.\n    team_id (str): The unique ID of the team.\n    tournament_id (str): The unique ID of the tournament.\n    season_id (str): The unique ID of the season.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - All referenced entities must exist.\n    - Players may be assigned to only one team per tournament/season.\n    - The team must participate in the same league as the tournament/season.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "team_id": {
+            "type": "string"
+          },
+          "tournament_id": {
+            "type": "string"
+          },
+          "season_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id",
+          "team_id",
+          "tournament_id",
+          "season_id"
+        ]
+      }
+    },
+    {
+      "name": "add_new_tournament",
+      "description": "Add a new tournament to a league and season.\n\nArgs:\n    tournament_id (str): Unique identifier for the tournament.\n    league_id (str): League to which the tournament belongs (must exist).\n    season_id (str): Season associated with the tournament (must exist and belong to this league).\n    name (str): Tournament name.\n    start_date (str): Start date (ISO 8601, e.g., '2023-08-10').\n    end_date (str): End date (ISO 8601, e.g., '2023-08-20').\n\nReturns:\n    dict: { \"success\": True, \"message\": ... } on success,\n          { \"success\": False, \"error\": <reason> } on error.\n\nConstraints:\n    - tournament_id must be unique.\n    - league_id and season_id must exist.\n    - season_id must belong to league_id.\n    - start_date <= end_date in date ordering.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tournament_id": {
+            "type": "string"
+          },
+          "league_id": {
+            "type": "string"
+          },
+          "season_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tournament_id",
+          "league_id",
+          "season_id",
+          "name",
+          "start_date",
+          "end_date"
+        ]
+      }
+    },
+    {
+      "name": "add_new_player",
+      "description": "Add a new player to the system with initial team assignment.\n\nArgs:\n    player_id (str): Unique identifier for the new player.\n    name (str): Player's name.\n    team_id (str): Team ID to assign the player to initially.\n    active_status (bool, optional): Player's active status (default: True).\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Player <player_id> added to team <team_id>.\"\n            }\n        On error:\n            {\n                \"success\": False,\n                \"error\": \"<reason>\"\n            }\n\nConstraints:\n    - The player_id must be unique in the system.\n    - The team_id must correspond to an existing team.\n    - Player must have a name.\n    - Player can only be assigned to one team at the point of creation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "player_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "team_id": {
+            "type": "string"
+          },
+          "active_status": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "player_id",
+          "name",
+          "team_id"
+        ]
+      }
+    },
+    {
+      "name": "add_new_team",
+      "description": "Add a new team to a league.\n\nArgs:\n    team_id (str): Unique identifier for the new team.\n    name (str): Name of the new team.\n    league_id (str): Identifier of the league to which the team is to be added.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Team added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - league_id must reference an existing league.\n    - team_id must be unique among all teams.\n    - No other team in that league may have the same name.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "league_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "team_id",
+          "name",
+          "league_id"
+        ]
+      }
+    }
+  ]
+}

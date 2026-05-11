@@ -1,0 +1,761 @@
+{
+  "env_name": "TrainScheduleManagementSystem",
+  "description": "A Train Schedule Management System stores and manages information about trains, routes, stations, and service timetables. It enables querying of available travel options for given origin-destination pairs and dates, and maintains operational data such as schedules, train IDs, and route assignments. This environment is widely used in public and private railway networks for passenger information, trip planning, and operational coordination.",
+  "initial_parameter_schema": {
+    "trains": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string"
+          },
+          "train_type": {
+            "type": "string"
+          },
+          "capacity": {
+            "type": "integer"
+          },
+          "assigned_route_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "train_id",
+          "train_type",
+          "capacity",
+          "assigned_route_id"
+        ]
+      }
+    },
+    "routes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "route_id": {
+            "type": "string"
+          },
+          "origin_station_id": {
+            "type": "string"
+          },
+          "destination_station_id": {
+            "type": "string"
+          },
+          "station_sequence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "route_id",
+          "origin_station_id",
+          "destination_station_id",
+          "station_sequence"
+        ]
+      }
+    },
+    "stations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "station_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "station_id"
+        ]
+      }
+    },
+    "schedules": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          },
+          "train_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "departure_times": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "arrival_times": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "schedule_id",
+          "train_id",
+          "date",
+          "departure_times",
+          "arrival_times",
+          "active"
+        ]
+      }
+    },
+    "route_assignments": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string"
+          },
+          "route_id": {
+            "type": "string"
+          },
+          "schedule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "train_id",
+          "route_id",
+          "schedule_id"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_station_by_name": [
+      "stations"
+    ],
+    "get_route_by_origin_and_destination": [
+      "routes"
+    ],
+    "list_routes": [
+      "routes"
+    ],
+    "get_trains_assigned_to_route": [
+      "route_assignments",
+      "routes"
+    ],
+    "get_active_schedules_for_train_by_date": [
+      "schedules",
+      "trains"
+    ],
+    "get_schedule_by_id": [
+      "schedules"
+    ],
+    "get_route_assignment_by_schedule": [
+      "route_assignments"
+    ],
+    "get_train_info": [
+      "trains"
+    ],
+    "list_trains": [
+      "trains"
+    ],
+    "list_stations": [
+      "stations"
+    ],
+    "check_route_station_sequence_consistency": [
+      "route_assignments",
+      "routes",
+      "schedules"
+    ],
+    "get_schedules_by_route_and_date": [
+      "route_assignments",
+      "routes",
+      "schedules"
+    ],
+    "add_station": [
+      "stations"
+    ],
+    "update_station": [
+      "stations"
+    ],
+    "add_route": [
+      "routes",
+      "stations"
+    ],
+    "update_route": [
+      "routes",
+      "stations"
+    ],
+    "assign_train_to_route_and_schedule": [
+      "route_assignments",
+      "routes",
+      "schedules",
+      "trains"
+    ],
+    "unassign_train_from_route": [
+      "route_assignments"
+    ],
+    "add_train": [
+      "routes",
+      "trains"
+    ],
+    "update_train": [
+      "routes",
+      "trains"
+    ],
+    "add_schedule": [
+      "routes",
+      "schedules",
+      "trains"
+    ],
+    "update_schedule": [
+      "route_assignments",
+      "routes",
+      "schedules"
+    ],
+    "activate_schedule": [
+      "schedules"
+    ],
+    "deactivate_schedule": [
+      "schedules"
+    ],
+    "validate_route_and_schedule_assignment": [
+      "route_assignments",
+      "routes",
+      "schedules",
+      "stations",
+      "trains"
+    ],
+    "remove_schedule": [
+      "route_assignments",
+      "schedules"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_station_by_name",
+      "description": "Retrieve station_id and details given a station name.\n\nArgs:\n    station_name (str): The name of the station to look up (case-sensitive, exact match).\n\nReturns:\n    dict: On success,\n        {\n            \"success\": True,\n            \"data\": StationInfo,  # Full info of the first station matching the name\n        }\n        On failure,\n        {\n            \"success\": False,\n            \"error\": str,  # If not found, \"No station found with the given name\"\n        }\n\nNotes:\n    - If multiple stations share the same name, only the first match found is returned.\n    - Match is case-sensitive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "station_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "station_name"
+        ]
+      }
+    },
+    {
+      "name": "get_route_by_origin_and_destination",
+      "description": "Find all route_ids where the origin and destination station IDs match the inputs.\n\nArgs:\n    origin_station_id (str): The station_id representing the origin station.\n    destination_station_id (str): The station_id representing the destination station.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[str]  # list of route_ids where both origin and destination match\n        }\n\nNotes:\n    - If no route matches, returns an empty list in the \"data\" field.\n    - Does not check if station_id values are valid stations; only matches routes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "origin_station_id": {
+            "type": "string"
+          },
+          "destination_station_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "origin_station_id",
+          "destination_station_id"
+        ]
+      }
+    },
+    {
+      "name": "list_routes",
+      "description": "Retrieve the list of all defined routes in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RouteInfo]\n    }\n    If there are no routes, 'data' will be an empty list.\n\nConstraints:\n    - None (all routes are returned; their validity is not checked in this method).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_trains_assigned_to_route",
+      "description": "Get all train_ids that are assigned to a given route via route assignments.\n\nArgs:\n    route_id (str): The route ID for which to retrieve assigned trains.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str],  # List of train_ids assigned to the given route (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message, e.g. route does not exist\n    }\n\nConstraints:\n    - The given route_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "route_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "route_id"
+        ]
+      }
+    },
+    {
+      "name": "get_active_schedules_for_train_by_date",
+      "description": "List all active schedules (schedule_ids and full details) for the given train on the specified date.\n\nArgs:\n    train_id (str): The unique identifier of the train.\n    date (str): The date string for which to list schedules.\n\nReturns:\n    dict:\n        {\n          \"success\": True,\n          \"data\": List[ScheduleInfo],  # List of all matching active schedules (may be empty)\n        }\n    or\n        {\n          \"success\": False,\n          \"error\": str  # Reason train not found or other failure\n        }\n\nConstraints:\n    - Only schedules for this train, on this date, with 'active' == True are returned.\n    - If train_id does not exist, operation fails.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "train_id",
+          "date"
+        ]
+      }
+    },
+    {
+      "name": "get_schedule_by_id",
+      "description": "Return the schedule details for a given schedule_id.\n\nArgs:\n    schedule_id (str): The unique identifier for the desired schedule.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ScheduleInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nError cases:\n    - If the schedule_id does not exist, returns success: False with an error message.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schedule_id"
+        ]
+      }
+    },
+    {
+      "name": "get_route_assignment_by_schedule",
+      "description": "Retrieve the RouteAssignmentInfo for a given schedule_id.\n\nArgs:\n    schedule_id (str): The unique identifier for the schedule.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": RouteAssignmentInfo  # The train-route-schedule assignment\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Route assignment for the given schedule_id does not exist\"\n    }\n\nConstraints:\n    - The route assignment for the given schedule_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schedule_id"
+        ]
+      }
+    },
+    {
+      "name": "get_train_info",
+      "description": "Retrieve the operational details of a train by train_id.\n\nArgs:\n    train_id (str): Unique train identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": TrainInfo  # If train is found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If not found\n    }\n\nConstraints:\n    - train_id must exist in the system.\n    - No modification to system state.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "train_id"
+        ]
+      }
+    },
+    {
+      "name": "list_trains",
+      "description": "Get all trains registered in the system.\n\nArgs:\n    None.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TrainInfo],  # List of all trains (may be empty if none registered)\n    }\n\nConstraints:\n    - No constraints. This operation lists all existing trains.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_stations",
+      "description": "Retrieve the full list of all available stations.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[StationInfo]  # List may be empty if no stations exist\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "check_route_station_sequence_consistency",
+      "description": "Verify that the given route's station sequence matches the number of \ndeparture/arrival times in the specified schedule.\n\nArgs:\n    route_id (str): The route to check.\n    schedule_id (str): The schedule to check.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"consistent\": bool,\n            \"reason\": str\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error\n    }\n\nConstraints checked:\n- Route must exist.\n- Schedule must exist.\n- Schedule must be assigned to the given route.\n- The station_sequence length must match both departure_times and arrival_times length.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "route_id": {
+            "type": "string"
+          },
+          "schedule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "route_id",
+          "schedule_id"
+        ]
+      }
+    },
+    {
+      "name": "get_schedules_by_route_and_date",
+      "description": "Return all active schedules assigned to a specific route for a specific date.\n\nArgs:\n    route_id (str): ID of the route.\n    date (str): Date string to match schedules.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"data\": List[ScheduleInfo]}\n        - On error: {\"success\": False, \"error\": str}\n\nConstraints:\n    - Only schedules that are 'active' and assigned to route_id (via route_assignments)\n      are returned.\n    - The schedule date must match.\n    - The route must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "route_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "route_id",
+          "date"
+        ]
+      }
+    },
+    {
+      "name": "add_station",
+      "description": "Add a new station to the system.\n\nArgs:\n    station_id (str): Unique identifier for the station.\n    name (str): Name of the station.\n    location (str): Location description or code for the station.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Station <station_id> added.\" }\n        On failure: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - station_id must be unique (not already present in self.stations).\n    - station_id, name, and location should not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "station_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "station_id",
+          "name",
+          "location"
+        ]
+      }
+    },
+    {
+      "name": "update_station",
+      "description": "Modify the details (name/location) of an existing station.\n\nArgs:\n    station_id (str): The unique ID of the station to update.\n    name (str, optional): The new name for the station.\n    location (str, optional): The new location for the station.\n\nReturns:\n    dict: \n        { \"success\": True, \"message\": \"Station updated successfully.\" }\n        or\n        { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - The station must exist.\n    - At least one of (name, location) must be provided.\n    - Name/location, if provided, must be non-empty strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "station_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "station_id",
+          "name",
+          "location"
+        ]
+      }
+    },
+    {
+      "name": "add_route",
+      "description": "Add a new route with origin, destination, and station sequence.\n\nArgs:\n    route_id (str): Unique route identifier.\n    origin_station_id (str): Station ID of the origin station.\n    destination_station_id (str): Station ID of the destination station.\n    station_sequence (List[str]): Ordered list of station IDs from origin to destination.\n\nReturns:\n    dict: Success or failure with error description.\n    Success: { \"success\": True, \"message\": \"Route <route_id> added.\" }\n    Failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - route_id must be unique.\n    - origin_station_id and destination_station_id must exist.\n    - All items in station_sequence must be valid station IDs.\n    - station_sequence must start with origin_station_id and end with destination_station_id.\n    - Stations in station_sequence must not be repeated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "route_id": {
+            "type": "string"
+          },
+          "origin_station_id": {
+            "type": "string"
+          },
+          "destination_station_id": {
+            "type": "string"
+          },
+          "station_sequence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "route_id"
+        ]
+      }
+    },
+    {
+      "name": "update_route",
+      "description": "Edit an existing route's endpoints or station sequence.\n\nArgs:\n    route_id (str): The ID of the route to update.\n    origin_station_id (str, optional): New origin station ID.\n    destination_station_id (str, optional): New destination station ID.\n    station_sequence (List[str], optional): New ordered list of station IDs.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Route <route_id> updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - Route must exist.\n    - Any provided station IDs must exist.\n    - If station_sequence is provided, all IDs must be valid stations,\n      must start with origin_station_id (if provided, else current origin), \n      and end with destination_station_id (if provided, else current destination).\n    - At least one field must be provided to update.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "route_id": {
+            "type": "string"
+          },
+          "origin_station_id": {
+            "type": "string"
+          },
+          "destination_station_id": {
+            "type": "string"
+          },
+          "station_sequence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "route_id",
+          "origin_station_id",
+          "destination_station_id",
+          "station_sequence"
+        ]
+      }
+    },
+    {
+      "name": "assign_train_to_route_and_schedule",
+      "description": "Create a new RouteAssignment linking a train, route, and schedule.\n\nArgs:\n    train_id (str): The train to assign.\n    route_id (str): The route to assign to.\n    schedule_id (str): The schedule for the assignment.\n\nReturns:\n    dict: \n        Success: { \"success\": True, \"message\": \"Train successfully assigned to route and schedule.\" }\n        Failure: { \"success\": False, \"error\": <error message> }\n\nConstraints:\n    - All IDs must exist (train, route, schedule).\n    - The schedule must be 'active'.\n    - The schedule's train_id must match the provided train_id.\n    - The train must NOT already be assigned to another route on the SAME DATE.\n    - The schedule_id must not already have an assignment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string"
+          },
+          "route_id": {
+            "type": "string"
+          },
+          "schedule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "train_id",
+          "route_id",
+          "schedule_id"
+        ]
+      }
+    },
+    {
+      "name": "unassign_train_from_route",
+      "description": "Remove a route assignment for a train given the schedule_id.\n\nArgs:\n    schedule_id (str): The ID of the schedule (and thus the assignment) to remove.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Train unassigned from route for schedule <schedule_id>.\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"<reason>\"\n            }\n\nConstraints:\n    - schedule_id must exist in route_assignments.\n    - No operation if assignment does not exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schedule_id"
+        ]
+      }
+    },
+    {
+      "name": "add_train",
+      "description": "Register a new train with operational details.\n\nArgs:\n    train_id (str): Unique identifier for the train.\n    train_type (str): Type of the train (e.g., 'express', 'local').\n    capacity (int): Seating/passenger capacity. Must be positive integer.\n    assigned_route_id (str, optional): The route to assign this train to (may be empty or blank for unassigned).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Train registered successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - train_id must be unique.\n    - capacity must be positive.\n    - If assigned_route_id is provided (non-empty), it must exist in self.routes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string"
+          },
+          "train_type": {
+            "type": "string"
+          },
+          "capacity": {
+            "type": "integer"
+          },
+          "assigned_route_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "train_id",
+          "train_type",
+          "capacity"
+        ]
+      }
+    },
+    {
+      "name": "update_train",
+      "description": "Change properties of a train: train_type, capacity, assigned_route_id.\n\nArgs:\n    train_id (str): The ID of the train to update. Must exist.\n    train_type (str, optional): New train type.\n    capacity (int, optional): New capacity. Must be positive.\n    assigned_route_id (str, optional): New route to assign. Must exist as a route.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Train updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Train must exist.\n    - If assigned_route_id is provided, it must exist as a route.\n    - If capacity is provided, must be positive integer.\n    - At least one of the updatable fields must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string"
+          },
+          "train_type": {
+            "type": "string"
+          },
+          "capacity": {
+            "type": "integer"
+          },
+          "assigned_route_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "train_id"
+        ]
+      }
+    },
+    {
+      "name": "add_schedule",
+      "description": "Create a new schedule (timetable) entry for the given train.\n\nArgs:\n    schedule_id (str): Unique identifier for this schedule.\n    train_id (str): ID of the train to which this schedule applies.\n    date (str): Date for this schedule (format: e.g., 'YYYY-MM-DD').\n    departure_times (List[str]): List of departure times per station (order matches route station sequence).\n    arrival_times (List[str]): List of arrival times per station (order matches route station sequence).\n    active (bool): Whether this schedule is active.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Schedule added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason string>\n    }\n\nConstraints:\n    - schedule_id must be unique.\n    - train_id must exist.\n    - The lengths of departure_times and arrival_times should be equal.\n    - If the train has an assigned_route_id, the number of times should match the route station sequence length.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          },
+          "train_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "departure_times": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "arrival_times": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "schedule_id",
+          "train_id",
+          "date",
+          "departure_times",
+          "arrival_times",
+          "active"
+        ]
+      }
+    },
+    {
+      "name": "update_schedule",
+      "description": "Edit an existing schedule (timetable).\n\nArgs:\n    schedule_id (str): The identifier of the schedule to update.\n    departure_times (List[str], optional): Updated departure times per station (must match station sequence length).\n    arrival_times (List[str], optional): Updated arrival times per station (must match station sequence length).\n    active (bool, optional): Updated active status.\n    date (str, optional): Updated date for the schedule.\n    train_id (str, optional): Updated train assignment (should only be valid if train is eligible).\n\nReturns:\n    dict:\n        - success (bool): True if update was made, False otherwise.\n        - message (str): Success description, if success True.\n        - error (str): Error message, if success False.\n\nConstraints:\n    - Schedule with schedule_id must exist.\n    - If updating times, lengths must match station sequence for the associated route.\n    - If the schedule is temporarily unassigned from any route, only non-route-dependent fields (train_id, date, active) may be updated.\n    - Train cannot be assigned to multiple routes at the same time and date (on changes).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          },
+          "departure_times": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "arrival_times": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "date": {
+            "type": "string"
+          },
+          "train_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schedule_id"
+        ]
+      }
+    },
+    {
+      "name": "activate_schedule",
+      "description": "Set a schedule as active for operational use.\n\nArgs:\n    schedule_id (str): Identifier of the schedule to activate.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Schedule <schedule_id> activated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Schedule not found\"\n    }\n\nConstraints:\n    - The schedule must exist in the system.\n    - Operation is idempotent: activating an already-active schedule is considered successful.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schedule_id"
+        ]
+      }
+    },
+    {
+      "name": "deactivate_schedule",
+      "description": "Mark a schedule as inactive, so it will not be considered in active queries.\n\nArgs:\n    schedule_id (str): Unique identifier of the schedule to deactivate.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Confirmation message\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g. schedule does not exist)\n    }\n\nConstraints:\n    - The schedule must exist in the system.\n    - Operation is idempotent: already inactive schedules will result in success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schedule_id"
+        ]
+      }
+    },
+    {
+      "name": "validate_route_and_schedule_assignment",
+      "description": "Validates if assigning train `train_id` to route `route_id` with schedule `schedule_id`\nis conflict-free and adheres to all system constraints.\n\nArgs:\n    train_id (str): ID of the train to assign.\n    route_id (str): ID of the route to assign to.\n    schedule_id (str): ID of the schedule (timetable) for assignment.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Assignment is valid.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (constraint violation)\n    }\n\nConstraints:\n    - All IDs must exist.\n    - The schedule must be for the provided train and active.\n    - The route's origin and destination stations must exist.\n    - No other assignment exists for this train and date.\n    - Departure/arrival times in schedule must match the route's station_sequence.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string"
+          },
+          "route_id": {
+            "type": "string"
+          },
+          "schedule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "train_id",
+          "route_id",
+          "schedule_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_schedule",
+      "description": "Delete a schedule from the system, and remove any associated route assignment.\n\nArgs:\n    schedule_id (str): The unique ID of the schedule to remove.\n\nReturns:\n    dict: {\n        \"success\": True, \"message\": \"Schedule <schedule_id> deleted.\"\n    }\n    or\n    {\n        \"success\": False, \"error\": str\n    }\n\nConstraints:\n    - If the schedule does not exist, return failure.\n    - Any RouteAssignment with this schedule_id should also be removed.\n    - Do not raise exceptions; return structured result.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schedule_id"
+        ]
+      }
+    }
+  ]
+}

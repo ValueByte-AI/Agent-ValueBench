@@ -1,0 +1,774 @@
+{
+  "env_name": "SalesDataRelationalDatabase",
+  "description": "A relational database for sales data management organizes transactional records in structured tables with defined columns such as product details, timestamps, and quantities. The environment enables efficient querying, aggregation, and reporting of sales information, supporting data-driven business decisions. It maintains integrity, supports filtering by various attributes, and allows retrieval of specific columns for analysis or operational tasks.",
+  "initial_parameter_schema": {
+    "products": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "ProductID": {
+            "type": "string"
+          },
+          "ProductName": {
+            "type": "string"
+          },
+          "Category": {
+            "type": "string"
+          },
+          "Price": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "ProductID",
+          "ProductName",
+          "Category",
+          "Price"
+        ]
+      }
+    },
+    "customers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "CustomerID": {
+            "type": "string"
+          },
+          "CustomerName": {
+            "type": "string"
+          },
+          "ContactInfo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "CustomerID",
+          "CustomerName",
+          "ContactInfo"
+        ]
+      }
+    },
+    "salespersons": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "SalespersonID": {
+            "type": "string"
+          },
+          "Name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "SalespersonID",
+          "Name"
+        ]
+      }
+    },
+    "sales_records": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "SaleID": {
+            "type": "string"
+          },
+          "ProductID": {
+            "type": "string"
+          },
+          "ProductName": {
+            "type": "string"
+          },
+          "Timestamp": {
+            "type": "string"
+          },
+          "QuantitySold": {
+            "type": "integer"
+          },
+          "CustomerID": {
+            "type": "string"
+          },
+          "SaleAmount": {
+            "type": "number"
+          },
+          "SalespersonID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "SaleID",
+          "ProductID",
+          "ProductName",
+          "Timestamp",
+          "QuantitySold",
+          "CustomerID",
+          "SaleAmount",
+          "SalespersonID"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "query_sales_records": [
+      "sales_records"
+    ],
+    "get_sales_record_by_id": [
+      "sales_records"
+    ],
+    "list_all_products": [
+      "products"
+    ],
+    "get_product_by_id": [
+      "products"
+    ],
+    "list_all_customers": [
+      "customers"
+    ],
+    "get_customer_by_id": [
+      "customers"
+    ],
+    "list_all_salespersons": [
+      "salespersons"
+    ],
+    "get_salesperson_by_id": [
+      "salespersons"
+    ],
+    "aggregate_sales_data": [
+      "sales_records"
+    ],
+    "filter_products": [
+      "products"
+    ],
+    "get_product_sales_history": [
+      "products",
+      "sales_records"
+    ],
+    "get_customer_purchase_history": [
+      "customers",
+      "sales_records"
+    ],
+    "get_sales_by_salesperson": [
+      "sales_records",
+      "salespersons"
+    ],
+    "insert_sales_record": [
+      "customers",
+      "products",
+      "sales_records",
+      "salespersons"
+    ],
+    "update_sales_record": [
+      "customers",
+      "products",
+      "sales_records",
+      "salespersons"
+    ],
+    "delete_sales_record": [
+      "sales_records"
+    ],
+    "insert_product": [
+      "products"
+    ],
+    "update_product": [
+      "products"
+    ],
+    "delete_product": [
+      "products",
+      "sales_records"
+    ],
+    "insert_customer": [
+      "customers"
+    ],
+    "update_customer": [
+      "customers"
+    ],
+    "delete_customer": [
+      "customers",
+      "sales_records"
+    ],
+    "insert_salesperson": [
+      "salespersons"
+    ],
+    "update_salesperson": [
+      "salespersons"
+    ],
+    "delete_salesperson": [
+      "sales_records",
+      "salespersons"
+    ],
+    "bulk_delete_sales_records": [
+      "sales_records"
+    ],
+    "correct_sales_record_foreign_keys": [
+      "products",
+      "sales_records"
+    ],
+    "adjust_quantity_sold_in_record": [
+      "sales_records"
+    ],
+    "update_sale_amount": [
+      "sales_records"
+    ]
+  },
+  "tools": [
+    {
+      "name": "query_sales_records",
+      "description": "Retrieve sales records filtered by arbitrary criteria and optionally select a subset of columns.\n\nArgs:\n    filters (dict, optional): key-value pairs to filter by. \n        For 'Timestamp', you may supply a range as a tuple ('start', 'end').\n    columns (list of str, optional): If given, only the listed columns will be returned per sales record.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[dict],  # Each dict contains the desired columns for a matching sales record\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nEdge/error cases:\n    - Invalid filter fields or invalid column names will result in failure.\n    - Returns empty list if no records match.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filters": {
+            "type": "object"
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+        ]
+      }
+    },
+    {
+      "name": "get_sales_record_by_id",
+      "description": "Retrieve a specific sales record by its unique SaleID.\n\nArgs:\n    sale_id (str): The unique SaleID of the sales record to retrieve.\n\nReturns:\n    dict:\n        - If found: { \"success\": True, \"data\": SalesRecordInfo }\n        - If not found: { \"success\": False, \"error\": \"Sales record not found\" }\n\nConstraints:\n    - SaleID must exist in the sales_records table.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sale_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sale_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_products",
+      "description": "Retrieve the list of all products and their metadata.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ProductInfo]  # List of all products (may be empty if no products exist)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_product_by_id",
+      "description": "Retrieve product details by ProductID.\n\nArgs:\n    ProductID (str): The unique identifier of the product.\n\nReturns:\n    dict: \n    - On success: {\"success\": True, \"data\": ProductInfo}\n    - On failure: {\"success\": False, \"error\": \"Product not found\"}\n\nConstraints:\n    - ProductID must reference a valid Product entry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ProductID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ProductID"
+        ]
+      }
+    },
+    {
+      "name": "list_all_customers",
+      "description": "Retrieve all customers in the database.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CustomerInfo]  # All customer entries (may be empty if none exist)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_customer_by_id",
+      "description": "Retrieve customer information by CustomerID.\n\nArgs:\n    customer_id (str): The unique identifier of the customer.\n\nReturns:\n    dict:\n        - success: True and 'data' with CustomerInfo if found,\n        - success: False and 'error' if not found.\nConstraints:\n    - CustomerID must exist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_salespersons",
+      "description": "Retrieve all salespersons (employees) recorded in the system.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SalespersonInfo],  # list of salespersons (may be empty if none)\n    }\n\nConstraints:\n    - No constraints for this read operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_salesperson_by_id",
+      "description": "Retrieve info about a specific salesperson by their SalespersonID.\n\nArgs:\n    SalespersonID (str): The unique identifier of the salesperson to retrieve.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": SalespersonInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Salesperson not found\"\n    }\nConstraints:\n    - SalespersonID must exist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "SalespersonID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "SalespersonID"
+        ]
+      }
+    },
+    {
+      "name": "aggregate_sales_data",
+      "description": "Compute aggregates (e.g., total sales, quantities, revenue) over sales records,\noptionally grouped by fields (product, customer, date, etc.).\n\nArgs:\n    aggregations (Dict[str, str]): Dictionary mapping aggregation name to field.\n        Supported aggregations: \"sum\", \"count\", \"avg\", \"min\", \"max\".\n        E.g., { \"sum\": \"SaleAmount\", \"count\": \"SaleID\" }\n    group_by (list, optional): List of SalesRecordInfo field names by which to group results.\n        If None or empty, aggregates over all records.\n\nReturns:\n    dict: \n    {\n        \"success\": True,\n        \"data\": List[dict],  # Each dict has group_by fields and aggregate results\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error\n    }\n\nConstraints:\n    - All fields in aggregations and group_by must exist in SalesRecordInfo.\n    - Only numeric aggregations (sum/avg/min/max) supported on numeric fields.\n    - \"count\" is always supported; it counts the number of records per group.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "aggregations": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "group_by": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "aggregations"
+        ]
+      }
+    },
+    {
+      "name": "filter_products",
+      "description": "Retrieve products that match the specified filter criteria.\n\nArgs:\n    category (str, optional): Only include products in this category.\n    min_price (float, optional): Only include products with Price >= min_price.\n    max_price (float, optional): Only include products with Price <= max_price.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ProductInfo] # List of matching products\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str # Description of the error\n    }\n\nConstraints:\n    - If min_price and max_price are both provided, min_price must be <= max_price.\n    - All filter fields are optional; no filter means all products.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "min_price": {
+            "type": "number"
+          },
+          "max_price": {
+            "type": "number"
+          }
+        },
+        "required": [
+        ]
+      }
+    },
+    {
+      "name": "get_product_sales_history",
+      "description": "Retrieve the sales history for a specific product, with optional filters.\n\nArgs:\n    product_id (str): ProductID whose sales history will be retrieved.\n    start_date (str, optional): Filter for lower bound of Timestamp (inclusive), ISO 8601 format.\n    end_date (str, optional): Filter for upper bound of Timestamp (inclusive), ISO 8601 format.\n    customer_id (str, optional): Only retrieve sales for this customer.\n    salesperson_id (str, optional): Only retrieve sales by this salesperson.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SalesRecordInfo]  # All matching sale records\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<error message>\"\n    }\n\nConstraints:\n    - product_id must exist in products table.\n    - If no matching records, data is an empty list.\n    - start_date and end_date must be the same format as stored Timestamps (ISO 8601), if provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "salesperson_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "start_date",
+          "end_date",
+          "customer_id",
+          "salesperson_id"
+        ]
+      }
+    },
+    {
+      "name": "get_customer_purchase_history",
+      "description": "Retrieve all sales records made to a particular customer.\n\nArgs:\n    customer_id (str): The unique identifier of the customer.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SalesRecordInfo],  # All sales records for this customer (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"Customer not found\" if invalid ID\n    }\n\nConstraints:\n    - The customer_id must exist in the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "get_sales_by_salesperson",
+      "description": "Retrieve all sales records associated with the given SalespersonID.\n\nArgs:\n    SalespersonID (str): The unique identifier of the salesperson to filter sales records.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SalesRecordInfo]  # Sales records for this salesperson (empty if none found)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., \"Salesperson does not exist\"\n    }\n\nConstraints:\n    - SalespersonID must exist in self.salespersons.\n    - Only sales records directly matching this SalespersonID are included.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "SalespersonID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "SalespersonID"
+        ]
+      }
+    },
+    {
+      "name": "insert_sales_record",
+      "description": "Add a new sales record to the database, ensuring:\n  - SaleID is unique.\n  - ProductID, CustomerID, and SalespersonID reference valid existing entries.\n  - QuantitySold is a non-negative integer.\n\nArgs:\n    SaleID (str): Unique identifier for the sale.\n    ProductID (str): Foreign key referencing a Product.\n    ProductName (str): Name of the product sold.\n    Timestamp (str): Timestamp of sale (assumed properly formatted).\n    QuantitySold (int): Number of units sold (must be >= 0).\n    CustomerID (str): Foreign key referencing a Customer.\n    SaleAmount (float): Amount of the sale.\n    SalespersonID (str): Foreign key referencing a Salesperson.\n\nReturns:\n    dict:\n      { \"success\": True, \"message\": \"Sales record inserted successfully.\" }\n    or\n      { \"success\": False, \"error\": \"Error message describing why insert failed.\" }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "SaleID": {
+            "type": "string"
+          },
+          "ProductID": {
+            "type": "string"
+          },
+          "ProductName": {
+            "type": "string"
+          },
+          "Timestamp": {
+            "type": "string"
+          },
+          "QuantitySold": {
+            "type": "integer"
+          },
+          "CustomerID": {
+            "type": "string"
+          },
+          "SaleAmount": {
+            "type": "number"
+          },
+          "SalespersonID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "SaleID",
+          "ProductID",
+          "ProductName",
+          "Timestamp",
+          "QuantitySold",
+          "CustomerID",
+          "SaleAmount",
+          "SalespersonID"
+        ]
+      }
+    },
+    {
+      "name": "update_sales_record",
+      "description": "Modify fields of an existing sales record (SaleID).\n\nArgs:\n    SaleID (str): The SaleID of the record to update.\n    updates (dict): Dictionary of fields to update and their new values.\n                    Allowed fields: ProductID, ProductName, Timestamp, QuantitySold,\n                    CustomerID, SaleAmount, SalespersonID\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Sales record updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - SaleID must exist.\n    - Cannot update SaleID field itself.\n    - ProductID, CustomerID, SalespersonID must reference existing entities if updated.\n    - QuantitySold must be a non-negative integer if updated.\n    - All updates must respect data integrity and allowed fields.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "SaleID": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "SaleID",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "delete_sales_record",
+      "description": "Remove a sales record from the database by its unique SaleID.\n\nArgs:\n    sale_id (str): The SaleID of the record to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Sales record with SaleID <sale_id> deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Sales record with SaleID <sale_id> does not exist.\"\n    }\n\nConstraints:\n    - SaleID must exist in the database (primary key).\n    - Data integrity remains preserved after deletion.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sale_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sale_id"
+        ]
+      }
+    },
+    {
+      "name": "insert_product",
+      "description": "Add a new product to the products table.\n\nArgs:\n    ProductID (str): Unique identifier for the product.\n    ProductName (str): Name of the product.\n    Category (str): The product's category.\n    Price (float): Product price (should be non-negative).\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Product inserted successfully.\" }\n        On failure: { \"success\": False, \"error\": \"Reason for failure\" }\n\nConstraints:\n    - ProductID must be unique (not already present).\n    - All fields must be present and valid.\n    - Price must be non-negative.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ProductID": {
+            "type": "string"
+          },
+          "ProductName": {
+            "type": "string"
+          },
+          "Category": {
+            "type": "string"
+          },
+          "Price": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "ProductID"
+        ]
+      }
+    },
+    {
+      "name": "update_product",
+      "description": "Modify details of an existing product.\n\nArgs:\n    ProductID (str): ID of the product to update (must exist).\n    ProductName (str, optional): New product name.\n    Category (str, optional): New category.\n    Price (float, optional): New price (must be non-negative).\n\nReturns:\n    dict: \n        - { \"success\": True, \"message\": \"Product updated successfully.\" }\n        - { \"success\": False, \"error\": <error reason> }\n\nConstraints:\n    - ProductID must exist in products.\n    - Only ProductName, Category, and Price can be updated.\n    - Price (if provided) must be >= 0.\n    - At least one updatable field must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ProductID": {
+            "type": "string"
+          },
+          "ProductName": {
+            "type": "string"
+          },
+          "Category": {
+            "type": "string"
+          },
+          "Price": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "ProductID",
+          "ProductName",
+          "Category",
+          "Price"
+        ]
+      }
+    },
+    {
+      "name": "delete_product",
+      "description": "Remove a product by ProductID, with checks for references in sales records.\n\nArgs:\n    product_id (str): The ProductID of the product to remove.\n\nReturns:\n    dict:\n        On success:\n            {\"success\": True, \"message\": \"Product <ProductID> deleted.\"}\n        On failure:\n            {\"success\": False, \"error\": \"Product not found.\"}\n            {\"success\": False, \"error\": \"Product is referenced in sales records and cannot be deleted.\"}\n\nConstraints:\n    - ProductID must exist in the products table.\n    - Product must not be referenced in any sales record (foreign key constraint).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "insert_customer",
+      "description": "Add a new customer to the relational database.\n\nArgs:\n    CustomerID (str): Unique identifier for the customer.\n    CustomerName (str): Name of the customer.\n    ContactInfo (str): Contact information for the customer.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Customer inserted successfully\" }\n        - On failure (duplicate): { \"success\": False, \"error\": \"CustomerID already exists\" }\n        - On failure (invalid input): { \"success\": False, \"error\": \"Missing or invalid customer data\" }\n\nConstraints:\n    - CustomerID must be unique within the system.\n    - All attributes must be present and non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "CustomerID": {
+            "type": "string"
+          },
+          "CustomerName": {
+            "type": "string"
+          },
+          "ContactInfo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "CustomerID",
+          "CustomerName",
+          "ContactInfo"
+        ]
+      }
+    },
+    {
+      "name": "update_customer",
+      "description": "Update information for an existing customer.\n\nArgs:\n    CustomerID (str): The unique ID of the customer to update.\n    update_fields (dict): Dictionary with keys as updatable customer fields\n                          ('CustomerName', 'ContactInfo') and their new values.\n\nReturns:\n    dict: \n        If success: { \"success\": True, \"message\": \"Customer information updated.\" }\n        If failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - CustomerID must exist in the customers table.\n    - Only 'CustomerName' and 'ContactInfo' are allowed to be updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "CustomerID": {
+            "type": "string"
+          },
+          "update_fields": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "CustomerID",
+          "update_fields"
+        ]
+      }
+    },
+    {
+      "name": "delete_customer",
+      "description": "Remove a customer from the database.\n\nArgs:\n    customer_id (str): The ID of the customer to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Customer <customer_id> deleted\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (non-existence or foreign key constraint)\n    }\n\nConstraints:\n    - Cannot delete if the customer is referenced by any sales record (foreign key).\n    - Customer must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "insert_salesperson",
+      "description": "Add a new salesperson to the system.\n\nArgs:\n    SalespersonID (str): Unique identifier for the salesperson.\n    Name (str): Name of the salesperson.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"message\": \"Salesperson inserted successfully.\"}\n        - On failure: {\"success\": False, \"error\": \"<error description>\"}\n\nConstraints:\n    - SalespersonID must be unique (no duplicate IDs).\n    - SalespersonID and Name must be non-empty strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "SalespersonID": {
+            "type": "string"
+          },
+          "Name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "SalespersonID",
+          "Name"
+        ]
+      }
+    },
+    {
+      "name": "update_salesperson",
+      "description": "Update the information of an existing salesperson.\n\nArgs:\n    SalespersonID (str): Identifier of the salesperson to update.\n    updates (dict): Fields and new values to update. Allowed: 'Name'.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Salesperson <ID> updated successfully\" }\n        - On error: { \"success\": False, \"error\": str }\n\nConstraints:\n    - SalespersonID must exist.\n    - Only updatable fields are those in SalespersonInfo except 'SalespersonID' (in this schema, only 'Name').",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "SalespersonID": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "SalespersonID",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "delete_salesperson",
+      "description": "Remove a salesperson from the system.\n\nArgs:\n    SalespersonID (str): The unique identifier for the salesperson to be removed.\n\nReturns:\n    dict:\n        - On success:\n              { \"success\": True, \"message\": \"Salesperson <SalespersonID> removed.\" }\n        - On failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - SalespersonID must exist.\n    - Cannot delete if referenced in any SalesRecord (foreign key constraint).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "SalespersonID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "SalespersonID"
+        ]
+      }
+    },
+    {
+      "name": "bulk_delete_sales_records",
+      "description": "Delete multiple sales records matching given filter criteria.\n\nArgs:\n    before_date (str, optional): Delete sales records with Timestamp before this date (inclusive).\n    customer_id (str, optional): Delete sales records from this customer.\n    product_id (str, optional): Delete sales records for this product.\n    salesperson_id (str, optional): Delete sales records for this salesperson.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"<N> sales records deleted.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<description of reason>\"\n    }\n\nConstraints:\n    - All filters are optional; at least one meaningful filter must be provided to prevent accidental mass deletion.\n    - Empty-string filter values are treated the same as omitted filters.\n    - Timestamps are compared as strings (expecting ISO format).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "before_date": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "product_id": {
+            "type": "string"
+          },
+          "salesperson_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+        ]
+      }
+    },
+    {
+      "name": "correct_sales_record_foreign_keys",
+      "description": "Update the foreign key field in sales records that reference old_id\nto new_id. Ensures data integrity by requiring that new_id exists in\nthe corresponding referenced table.\n\nArgs:\n    foreign_key_field (str): The foreign key field to update (\"ProductID\", \"CustomerID\", or \"SalespersonID\")\n    old_id (str): The old ID value to replace.\n    new_id (str): The new ID value to set.\n    sale_ids (list of str, optional): If provided, limit the update to these specific SaleIDs.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"<n> sales records updated with new <field>.\" }\n        On error: { \"success\": False, \"error\": str }\n\nConstraints:\n    - Only \"ProductID\", \"CustomerID\", or \"SalespersonID\" fields may be updated.\n    - new_id must exist in the corresponding referenced table.\n    - If sale_ids is provided, every listed SaleID must exist.\n    - Updates all matching records when sale_ids is omitted; otherwise only matching listed SaleIDs are updated.\n    - If none exist, still a successful no-op.\n    - If foreign key is \"ProductID\" and ProductName denormalized, update ProductName to match.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "foreign_key_field": {
+            "type": "string"
+          },
+          "old_id": {
+            "type": "string"
+          },
+          "new_id": {
+            "type": "string"
+          },
+          "sale_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "foreign_key_field",
+          "old_id",
+          "new_id"
+        ]
+      }
+    },
+    {
+      "name": "adjust_quantity_sold_in_record",
+      "description": "Set or adjust the QuantitySold field of a sales record.\n\nArgs:\n    sale_id (str): The unique identifier for the sales record to update.\n    quantity_sold (int): The non-negative integer to set as QuantitySold.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Quantity sold updated for sale record <sale_id>\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - sale_id must match an existing record.\n    - quantity_sold must be a non-negative integer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sale_id": {
+            "type": "string"
+          },
+          "quantity_sold": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sale_id",
+          "quantity_sold"
+        ]
+      }
+    },
+    {
+      "name": "update_sale_amount",
+      "description": "Change the SaleAmount of a specific sales record.\n\nArgs:\n    sale_id (str): Unique identifier of the sales record to update.\n    new_sale_amount (float): The new sale amount to set. Must be non-negative.\n\nReturns:\n    dict: \n        - On success:\n            {\n                \"success\": True,\n                \"message\": \"SaleAmount for SaleID <sale_id> updated to <new_sale_amount>.\"\n            }\n        - On failure (record not found or invalid input):\n            {\n                \"success\": False,\n                \"error\": <reason>\n            }\n\nConstraints:\n    - SaleID must exist in the database.\n    - SaleAmount must be a non-negative float.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sale_id": {
+            "type": "string"
+          },
+          "new_sale_amount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "sale_id",
+          "new_sale_amount"
+        ]
+      }
+    }
+  ]
+}

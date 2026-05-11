@@ -1,0 +1,433 @@
+{
+  "env_name": "CourierPackageTrackingSystem",
+  "description": "A courier package tracking system maintains records of shipments, each identified by a unique tracking number. It stores information such as pickup, transit, and delivery events, updating package status as it moves through the logistics network. The system allows users to query the current location and status of a package, providing visibility and accountability for both senders and recipients.",
+  "initial_parameter_schema": {
+    "packages": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "tracking_number": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "sender_id": {
+            "type": "string"
+          },
+          "recipient_id": {
+            "type": "string"
+          },
+          "shipping_address": {
+            "type": "string"
+          },
+          "destination_address": {
+            "type": "string"
+          },
+          "current_location": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tracking_number",
+          "status",
+          "sender_id",
+          "recipient_id",
+          "shipping_address",
+          "destination_address",
+          "current_location"
+        ]
+      }
+    },
+    "tracking_events": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "event_id": {
+              "type": "string"
+            },
+            "tracking_number": {
+              "type": "string"
+            },
+            "event_type": {
+              "type": "string"
+            },
+            "event_time": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "event_id",
+            "tracking_number",
+            "event_type",
+            "event_time",
+            "location"
+          ]
+        }
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "contact_info",
+          "role"
+        ]
+      }
+    },
+    "verify_user_authorization": {
+      "type": "string"
+    }
+  },
+  "tool_state_dependencies": {
+    "get_package_by_tracking_number": [
+      "packages"
+    ],
+    "get_current_status": [
+      "packages",
+      "users"
+    ],
+    "get_current_location": [
+      "packages",
+      "verify_user_authorization"
+    ],
+    "get_tracking_history": [
+      "packages",
+      "tracking_events"
+    ],
+    "list_packages_by_user": [
+      "packages",
+      "users"
+    ],
+    "get_user_info_by_id": [
+      "users"
+    ],
+    "verify_user_authorization": [
+      "packages",
+      "users"
+    ],
+    "add_tracking_event": [
+      "packages",
+      "tracking_events",
+      "users"
+    ],
+    "update_package_status": [
+      "packages",
+      "users"
+    ],
+    "create_package_shipment": [
+      "packages",
+      "tracking_events",
+      "users"
+    ],
+    "delete_package": [
+      "packages",
+      "tracking_events",
+      "users"
+    ],
+    "update_user_info": [
+      "users"
+    ],
+    "remove_tracking_event": [
+      "packages",
+      "tracking_events"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_package_by_tracking_number",
+      "description": "Retrieve full package information (status, participants, locations) for a given tracking number.\n\nArgs:\n    tracking_number (str): Unique tracking number identifying the package.\n    requesting_user_id (str): The user requesting the information. Senders, recipients, and internal operational users may access the package details.\n\nReturns:\n    dict:\n        - On success:\n            {\"success\": True, \"data\": PackageInfo}\n        - On error (package not found):\n            {\"success\": False, \"error\": \"Tracking number not found\"}\n        - On error (not authorized):\n            {\"success\": False, \"error\": \"Not authorized to access this package\"}\n\nConstraints:\n    - The tracking number must exist.\n    - Sender, recipient, or internal operational users can access info for operational handling.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tracking_number": {
+            "type": "string"
+          },
+          "requesting_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tracking_number",
+          "requesting_user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_current_status",
+      "description": "Obtain the current status (e.g., \"In Transit,\" \"Delivered\") for a given package.\n\nArgs:\n    tracking_number (str): Unique identifier for the package.\n    user_id (str): User ID requesting the status (must be sender or recipient).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": str  # current status string,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # error description\n    }\n\nConstraints:\n- Only sender or recipient of the package may access status info (authorization).\n- Returns error if package or user does not exist, or access is not permitted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tracking_number": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tracking_number",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_current_location",
+      "description": "Obtain the current known location of a package by tracking number.\n\nArgs:\n    tracking_number (str): Unique ID for the shipment/package.\n    user_id (str): ID of the user requesting the information.\n\nReturns:\n    dict:\n        On success:\n        {\n            \"success\": True,\n            \"data\": str  # The current location\n        }\n        On failure:\n        {\n            \"success\": False,\n            \"error\": str  # Reason for failure\n        }\n\nConstraints:\n    - The package must exist.\n    - The user must be authorized to access this package's information\n      (e.g., sender, recipient, or verified authorized user).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tracking_number": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tracking_number",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_tracking_history",
+      "description": "Retrieve the complete chronological list of tracking events for a package.\n\nArgs:\n    tracking_number (str): The unique package tracking number.\n\nReturns:\n    dict:\n        success: True, and data: List[TrackingEventInfo] (may be empty if no events)\n        OR\n        success: False, and error: Reason string (e.g., package does not exist)\n\nConstraints:\n    - The tracking number must refer to an existing package.\n    - Tracking events are returned in chronological order.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tracking_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tracking_number"
+        ]
+      }
+    },
+    {
+      "name": "list_packages_by_user",
+      "description": "List all packages (shipments) where the user is either the sender or recipient.\n\nArgs:\n    user_id (str): The user's unique identifier.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"data\": List[PackageInfo]}\n          (list may be empty if user is not a sender or recipient on any package)\n        - On failure: {\"success\": False, \"error\": str}\n          (e.g., \"User does not exist\")\nConstraints:\n    - Only an existing user may use this operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_info_by_id",
+      "description": "Fetch full user profile/details by user ID.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo  # Full profile/details of the user\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"User ID not found\"\n    }\n\nConstraints:\n    - The user must exist in the system for the provided user_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "verify_user_authorization",
+      "description": "Check if the specified user is authorized to view or modify information about the specified package.\n\nArgs:\n    user_id (str): The user's unique identifier.\n    tracking_number (str): The package's tracking number.\n\nReturns:\n    dict:\n        If authorized:\n            {'success': True, 'authorized': True}\n        If not authorized:\n            {'success': True, 'authorized': False}\n        If error (user or package not found):\n            {'success': False, 'error': str}\n\nConstraints:\n    - Only sender or recipient of the package are authorized.\n    - User and package must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "tracking_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "tracking_number"
+        ]
+      }
+    },
+    {
+      "name": "add_tracking_event",
+      "description": "Add a new event to a package's tracking history and update the package's status/location when appropriate.\n\nArgs:\n    tracking_number (str): The unique tracking number of the package.\n    event_id (str): Unique identifier for the tracking event.\n    event_type (str): Type of the event (e.g., 'Picked Up', 'In Transit', 'Delivered').\n    event_time (str): Timestamp of the event. ISO strings and clock-style strings like '02:00 AM' are accepted.\n    location (str): Location where the event occurred.\n    user_id (str): ID of the user attempting to perform this operation.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Tracking event added and package updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The tracking_number must exist.\n    - Only authorized users (sender, recipient, or privileged) may add events.\n    - Historical correction events may be inserted and the event chain remains stored in chronological order.\n    - Package status/location are updated if the new event becomes the latest operational event.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tracking_number": {
+            "type": "string"
+          },
+          "event_id": {
+            "type": "string"
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "event_time": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tracking_number",
+          "event_id",
+          "event_type",
+          "event_time",
+          "location",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "update_package_status",
+      "description": "Manually update a package's status (for exception handling and only by authorized staff).\n\nArgs:\n    tracking_number (str): The package's unique tracking number.\n    new_status (str): The status to set for the package (e.g., \"Exception\", \"Delayed\").\n    requester_id (str): The user ID requesting the status update.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Package status updated to <new_status>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - Package with tracking_number must exist.\n    - requester_id must exist and must be an authorized staff user (role NOT 'sender' or 'recipient').",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tracking_number": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          },
+          "requester_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tracking_number",
+          "new_status",
+          "requester_id"
+        ]
+      }
+    },
+    {
+      "name": "create_package_shipment",
+      "description": "Register a new package with required shipment details and a unique tracking number.\n\nArgs:\n    tracking_number (str): Unique identifier for the shipment.\n    sender_id (str): User ID of the sender (must exist and have role 'sender').\n    recipient_id (str): User ID of the recipient (must exist and have role 'recipient').\n    shipping_address (str): Origin address.\n    destination_address (str): Delivery address.\n\nReturns:\n    dict:\n        { \"success\": True, \"message\": \"Package created with tracking number X.\" }\n        OR\n        { \"success\": False, \"error\": \"Reason\" }\n\nConstraints:\n    - tracking_number must be globally unique\n    - sender_id and recipient_id must reference existing users (with correct roles)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tracking_number": {
+            "type": "string"
+          },
+          "sender_id": {
+            "type": "string"
+          },
+          "recipient_id": {
+            "type": "string"
+          },
+          "shipping_address": {
+            "type": "string"
+          },
+          "destination_address": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tracking_number",
+          "sender_id",
+          "recipient_id",
+          "shipping_address",
+          "destination_address"
+        ]
+      }
+    },
+    {
+      "name": "delete_package",
+      "description": "Remove a package and all its related tracking events (admin only).\n\nArgs:\n    tracking_number (str): The unique tracking number of the package to remove.\n    user_id (str): The user ID performing the operation.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Package and all tracking events deleted\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - Only users with 'admin' role may perform this action.\n    - Both the package and all associated tracking events are deleted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tracking_number": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tracking_number",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "update_user_info",
+      "description": "Modify sender or recipient details, subject to privacy/security constraints.\n\nArgs:\n    user_id (str): The unique identifier of the user to update.\n    update_data (dict): Keys/values to update (only name, contact_info, or role allowed).\n    requester_id (str): The user id requesting the update (for authorization).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"User info updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The user themselves or an internal operational user may update user information.\n    - Only updatable fields are allowed (name, contact_info, role).\n    - Cannot update user _id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "update_data": {
+            "type": "object"
+          },
+          "requester_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "update_data",
+          "requester_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_tracking_event",
+      "description": "Remove a specific tracking event from a package's event chain. Recalculate package status and\ncurrent location as per the latest remaining event.\n\nArgs:\n    tracking_number (str): The tracking number of the package.\n    event_id (str): The unique ID of the tracking event to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str,  # Success description\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - Package must exist.\n    - Tracking event must exist for the package.\n    - After removal, package status and current_location must reflect the new latest event.\n    - Tracking events must remain in chronological order.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tracking_number": {
+            "type": "string"
+          },
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tracking_number",
+          "event_id"
+        ]
+      }
+    }
+  ]
+}

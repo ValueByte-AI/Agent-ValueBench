@@ -1,0 +1,435 @@
+{
+  "env_name": "HealthInsuranceMarketplaceSystem",
+  "description": "A Health Insurance Marketplace system is a platform designed to organize, store, and present health insurance plan offerings from multiple providers. It maintains structured plan records including details such as coverage, pricing, eligibility, and provider information. The system supports operations such as searching, comparing, filtering, and sorting plans to facilitate user decision-making.",
+  "initial_parameter_schema": {
+    "plans": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          },
+          "provider_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "coverage_details": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "eligibility_criteria": {
+            "type": "string"
+          },
+          "availability_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id",
+          "provider_id",
+          "name",
+          "description",
+          "coverage_details",
+          "price",
+          "eligibility_criteria",
+          "availability_status"
+        ]
+      }
+    },
+    "providers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "provider_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "accreditation_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_id",
+          "name",
+          "contact_info",
+          "accreditation_status"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "list_all_plans": [
+      "plans"
+    ],
+    "get_plan_by_id": [
+      "plans"
+    ],
+    "list_available_plans": [
+      "plans"
+    ],
+    "filter_plans_by_price_range": [
+      "plans"
+    ],
+    "sort_plans_by_price": [
+      "plans"
+    ],
+    "filter_plans_by_eligibility": [
+      "plans"
+    ],
+    "get_provider_by_id": [
+      "providers"
+    ],
+    "list_all_providers": [
+      "providers"
+    ],
+    "filter_plans_by_provider": [
+      "plans",
+      "providers"
+    ],
+    "validate_plan_provider_reference": [
+      "plans",
+      "providers"
+    ],
+    "add_plan": [
+      "plans",
+      "providers"
+    ],
+    "update_plan_details": [
+      "plans",
+      "providers"
+    ],
+    "remove_plan": [
+      "plans"
+    ],
+    "add_provider": [
+      "providers"
+    ],
+    "update_provider_details": [
+      "providers"
+    ],
+    "remove_provider": [
+      "plans",
+      "providers"
+    ],
+    "batch_update_availability_status": [
+      "plans"
+    ]
+  },
+  "tools": [
+    {
+      "name": "list_all_plans",
+      "description": "Retrieve the complete list of health insurance plans in the system,\nregardless of their availability status.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[HealthInsurancePlanInfo]  # May be empty if no plans are present\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_plan_by_id",
+      "description": "Retrieve full details for a specific health insurance plan by its plan_id.\n\nArgs:\n    plan_id (str): The unique identifier for the health insurance plan.\n\nReturns:\n    dict: \n      {\n        \"success\": True,\n        \"data\": HealthInsurancePlanInfo  # Dict of the plan details\n      }\n    or\n      {\n        \"success\": False,\n        \"error\": str  # \"Plan not found\"\n      }\n\nConstraints:\n    - The plan_id must exist in the marketplace system.\n    - No restriction on availability_status or eligibility for direct lookup.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id"
+        ]
+      }
+    },
+    {
+      "name": "list_available_plans",
+      "description": "List all health insurance plans where `availability_status` is \"available\".\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[HealthInsurancePlanInfo],  # List (possibly empty) of available plans\n    }\n\nConstraints:\n    - Only plans with availability_status == \"available\" are included.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "filter_plans_by_price_range",
+      "description": "Retrieve all available health insurance plans within the given price range [min_price, max_price], inclusive.\n\nArgs:\n    min_price (float): Minimum plan price (inclusive). Must be non-negative and <= max_price.\n    max_price (float): Maximum plan price (inclusive). Must be non-negative and >= min_price.\n\nReturns:\n    dict:\n        - success: True and data: List[HealthInsurancePlanInfo] (plans in price range, may be empty)\n        - success: False and error: str (if parameters invalid)\n\nConstraints:\n    - Only plans with availability_status = \"available\" are considered.\n    - Both min_price and max_price must be >= 0 and min_price <= max_price.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "min_price": {
+            "type": "number"
+          },
+          "max_price": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "min_price",
+          "max_price"
+        ]
+      }
+    },
+    {
+      "name": "sort_plans_by_price",
+      "description": "Sort a given list of health insurance plans by their price.\n\nArgs:\n    plan_ids (list of str): List of plan_id values to consider.\n    ascending (bool, optional): Sort order; True for ascending, False for descending. Default is True.\n\nReturns:\n    dict:\n      - On success:\n            {\n                \"success\": True,\n                \"data\": List[HealthInsurancePlanInfo]  # Sorted list of available HealthInsurancePlanInfo objects\n            }\n      - On failure:\n            { \"success\": False, \"error\": str }\n\nConstraints:\n  - Only plans with availability_status == \"available\" are included in the output.\n  - Only valid plan_ids (existing in self.plans) are processed.\n  - Prices are always non-negative.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "ascending": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "plan_ids"
+        ]
+      }
+    },
+    {
+      "name": "filter_plans_by_eligibility",
+      "description": "List all available health insurance plans that match the specified eligibility criteria.\n\nArgs:\n    eligibility_criteria (str): The eligibility criteria to match plans against.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[HealthInsurancePlanInfo]  # List of matching plan dicts (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g. invalid/no criteria given\n    }\n\nConstraints:\n    - Only plans with availability_status == \"available\" are included in the results.\n    - eligibility_criteria must match exactly (case-sensitive/string comparison).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "eligibility_criteria": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "eligibility_criteria"
+        ]
+      }
+    },
+    {
+      "name": "get_provider_by_id",
+      "description": "Retrieve details of a provider by their provider_id.\n\nArgs:\n    provider_id (str): Unique identifier for the provider.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": ProviderInfo  # Provider's metadata\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Provider not found\"\n            }\n\nConstraints:\n    - provider_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "provider_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_providers",
+      "description": "Retrieve the list of all providers in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ProviderInfo]  # May be empty if there are no providers\n    }\n\nConstraints:\n    - No special constraints. Simple comprehensive query of all provider records.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "filter_plans_by_provider",
+      "description": "Return all available health insurance plans offered by a specific provider.\n\nArgs:\n    provider_id (str): The provider's unique identifier.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"data\": List[HealthInsurancePlanInfo]  # List of plan details (may be empty)\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": \"Provider does not exist\"\n            }\n\nConstraints:\n    - Only plans with availability_status = \"available\" are included.\n    - The provider_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "provider_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_id"
+        ]
+      }
+    },
+    {
+      "name": "validate_plan_provider_reference",
+      "description": "Check whether every health insurance plan references a valid provider.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[dict],  # Each dict describes a plan with invalid provider_id:\n            # { \"plan_id\": str, \"provider_id\": str }\n            # List is empty if all plan provider references are valid.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Each plan's provider_id must exist in self.providers.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "add_plan",
+      "description": "Add a new health insurance plan to the system, enforcing the following constraints:\n  - plan_id must be unique.\n  - provider_id must exist in the system.\n  - price must be non-negative.\n\nArgs:\n    plan_id (str): Unique identifier for the plan.\n    provider_id (str): Provider's unique ID (must exist).\n    name (str): Plan name.\n    description (str): Description of the plan.\n    coverage_details (str): Coverage details.\n    price (float): Plan price (must be >= 0).\n    eligibility_criteria (str): Eligibility requirements.\n    availability_status (str): Plan availability status.\n\nReturns:\n    dict: { \"success\": True, \"message\": \"Plan <plan_id> added successfully.\" }\n          or\n          { \"success\": False, \"error\": \"<reason>\" }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          },
+          "provider_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "coverage_details": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "eligibility_criteria": {
+            "type": "string"
+          },
+          "availability_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id",
+          "provider_id",
+          "name",
+          "description",
+          "coverage_details",
+          "price",
+          "eligibility_criteria",
+          "availability_status"
+        ]
+      }
+    },
+    {
+      "name": "update_plan_details",
+      "description": "Modify an existing health insurance plan's details.\n\nArgs:\n    plan_id (str): The ID of the plan to update.\n    updates (dict): Dictionary of fields and new values.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Plan details updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message\n    }\n\nConstraints:\n    - Only allow modification of supported fields: name, description, coverage_details,\n      price, eligibility_criteria, availability_status, provider_id.\n    - If updating 'price', the value must be non-negative.\n    - If updating 'provider_id', it must reference an existing provider.\n    - Plan must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "plan_id",
+          "updates"
+        ]
+      }
+    },
+    {
+      "name": "remove_plan",
+      "description": "Delete a health insurance plan from the system by its plan_id.\n\nArgs:\n    plan_id (str): The unique identifier of the plan to remove.\n\nReturns:\n    dict:\n        - On success: {\n              \"success\": True,\n              \"message\": \"Plan <plan_id> removed from the system.\"\n          }\n        - On error (e.g., plan does not exist): {\n              \"success\": False,\n              \"error\": \"Plan does not exist.\"\n          }\n\nConstraints:\n    - Only existing plans can be removed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id"
+        ]
+      }
+    },
+    {
+      "name": "add_provider",
+      "description": "Add a new provider to the system.\n\nArgs:\n    provider_id (str): Unique identifier for the provider.\n    name (str): Name of the provider.\n    contact_info (str): Contact information for the provider.\n    accreditation_status (str): Accreditation status for the provider.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Provider added successfully.\" }\n        On error: { \"success\": False, \"error\": \"Provider ID already exists.\" }\n\nConstraints:\n    - provider_id must be unique in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "provider_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "accreditation_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_id"
+        ]
+      }
+    },
+    {
+      "name": "update_provider_details",
+      "description": "Update details of a provider in the marketplace.\n\nArgs:\n    provider_id (str): The unique identifier of the provider to update.\n    name (str, optional): New provider name.\n    contact_info (str, optional): New contact information.\n    accreditation_status (str, optional): New accreditation status.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Provider details updated.\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - The provider must exist.\n    - Only name, contact_info, and accreditation_status may be updated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "provider_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "accreditation_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_id",
+          "name",
+          "contact_info",
+          "accreditation_status"
+        ]
+      }
+    },
+    {
+      "name": "remove_provider",
+      "description": "Delete a provider from the system.\n\nArgs:\n    provider_id (str): The unique ID for the provider to remove.\n\nReturns:\n    dict: \n        - {\"success\": True, \"message\": \"Provider <provider_id> removed.\"}\n        - {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - If the provider is referenced by any existing HealthInsurancePlans,\n      the operation fails and reports the error.\n    - Otherwise, removes the provider from the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "provider_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_id"
+        ]
+      }
+    },
+    {
+      "name": "batch_update_availability_status",
+      "description": "Change the availability status of multiple plans at once.\n\nArgs:\n    plan_ids (list of str): List of plan IDs to update.\n    new_status (str): The new value for 'availability_status' (e.g., \"available\", \"unavailable\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Availability status updated for N plans: [...]\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"reason for failure\"\n    }\n\nConstraints:\n    - All plan IDs in `plan_ids` must exist.\n    - The operation is atomic: if any invalid plan_id, no changes are made.\n    - No restrictions are placed on allowed status values unless business rules enforce them.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "new_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_ids",
+          "new_status"
+        ]
+      }
+    }
+  ]
+}

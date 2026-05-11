@@ -1,0 +1,393 @@
+{
+  "env_name": "DigitalGameStorePlatform",
+  "description": "A digital game store platform is an online marketplace managing a catalog of video games, pricing information, discounts, purchase URLs, and unique identifiers for each game. It supports browsing and searching for games, applying promotional offers, and retrieving detailed metadata about individual titles. Users interact with the platform to discover games, track deals, and complete digital purchases.",
+  "initial_parameter_schema": {
+    "games": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "original_price": {
+            "type": "number"
+          },
+          "discounted_price": {
+            "type": "number"
+          },
+          "discount_percent": {
+            "type": "number"
+          },
+          "is_on_discount": {
+            "type": "boolean"
+          },
+          "purchase_url": {
+            "type": "string"
+          },
+          "genre": {
+            "type": "string"
+          },
+          "developer": {
+            "type": "string"
+          },
+          "publisher": {
+            "type": "string"
+          },
+          "release_date": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "tag": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_id",
+          "title",
+          "metadata",
+          "original_price",
+          "discounted_price",
+          "discount_percent",
+          "is_on_discount",
+          "purchase_url",
+          "genre",
+          "developer",
+          "publisher",
+          "release_date",
+          "description",
+          "tag"
+        ]
+      }
+    },
+    "discounts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "discount_id": {
+            "type": "string"
+          },
+          "app_id": {
+            "type": "string"
+          },
+          "discount_percent": {
+            "type": "number"
+          },
+          "discounted_price": {
+            "type": "number"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "discount_id",
+          "app_id",
+          "discount_percent",
+          "discounted_price",
+          "start_date",
+          "end_date",
+          "active"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "list_discounted_games": [
+      "discounts",
+      "games"
+    ],
+    "get_game_by_app_id": [
+      "games"
+    ],
+    "get_discount_by_app_id": [
+      "discounts"
+    ],
+    "get_game_purchase_url": [
+      "games"
+    ],
+    "list_games_by_genre": [
+      "games"
+    ],
+    "search_games_by_title": [
+      "games"
+    ],
+    "list_all_games": [
+      "games"
+    ],
+    "get_active_discounts": [
+      "discounts"
+    ],
+    "add_or_update_game": [
+      "games"
+    ],
+    "add_or_update_discount": [
+      "discounts",
+      "games"
+    ],
+    "remove_discount": [
+      "discounts",
+      "games"
+    ],
+    "update_purchase_url": [
+      "games"
+    ],
+    "update_game_price": [
+      "discounts",
+      "games"
+    ],
+    "change_discount_status": [
+      "discounts"
+    ]
+  },
+  "tools": [
+    {
+      "name": "list_discounted_games",
+      "description": "Retrieve all games currently on active discount on the platform.\n\nReturns:\n    dict:\n        success (bool): Operation status.\n        data (List[Dict]): List of games on discount, each including\n            title, original_price, discount_percent, discounted_price.\n\nConstraints:\n    - A game is on discount if:\n        * game['is_on_discount'] == True\n        OR\n        * there is a DiscountInfo with active == True, app_id matches,\n          and the discount has a valid date range with start_date <= end_date.\n    - Discounted price must be <= original price.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_game_by_app_id",
+      "description": "Retrieve detailed metadata and information for a specific game identified by its app_id.\n\nArgs:\n    app_id (str): Unique identifier of the game.\n\nReturns:\n    dict:\n        - If found:\n            {\"success\": True, \"data\": GameInfo}\n        - If not found:\n            {\"success\": False, \"error\": \"Game with specified app_id not found\"}\nConstraints:\n    - app_id must match a game present in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_id"
+        ]
+      }
+    },
+    {
+      "name": "get_discount_by_app_id",
+      "description": "Retrieve discount details, validity, and pricing for any discount associated with a specific game.\n\nArgs:\n    app_id (str): The app_id of the game.\n\nReturns:\n    dict: {\n      \"success\": True,\n      \"data\": DiscountInfo\n    }\n    or\n    {\n      \"success\": False,\n      \"error\": \"No discount found for this app_id\"\n    }\nConstraints:\n    - Returns the active discount if present, otherwise any discount for the app_id.\n    - If no discount exists at all for the app_id, returns error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_id"
+        ]
+      }
+    },
+    {
+      "name": "get_game_purchase_url",
+      "description": "Retrieve the purchase URL for a game by its unique app_id.\n\nArgs:\n    app_id (str): The unique identifier for the game.\n\nReturns:\n    dict:\n        - On success: {\n            \"success\": True,\n            \"data\": {\n                \"app_id\": str,\n                \"purchase_url\": str\n            }\n          }\n        - On failure: {\n            \"success\": False,\n            \"error\": str  # Reason for failure, e.g., game not found.\n          }\nConstraints:\n    - The app_id must exist in the platform's games.\n    - Purchase URL is assumed valid if present in the game info.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_id"
+        ]
+      }
+    },
+    {
+      "name": "list_games_by_genre",
+      "description": "List all games filtered by a specific genre.\n\nArgs:\n    genre (str): The genre to filter games by.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[GameInfo]  # List of games for the given genre (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If input is invalid\n    }\n\nConstraints:\n    - genre must be a non-empty string.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "genre": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "genre"
+        ]
+      }
+    },
+    {
+      "name": "search_games_by_title",
+      "description": "Return a list of games that match or partially match a given title string (case-insensitive substring match).\n\nArgs:\n    title_query (str): The string to search for within game titles.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[GameInfo],  # List of matching games (empty if none matched)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of error (e.g., invalid input type)\n    }\n\nConstraints:\n    - No extra domain constraints for this query.\n    - Matching is case-insensitive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title_query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title_query"
+        ]
+      }
+    },
+    {
+      "name": "list_all_games",
+      "description": "Retrieve metadata for all games in the digital game store catalog.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[GameInfo]  # List of all games' metadata (may be empty if no games)\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_active_discounts",
+      "description": "Retrieve all currently active discount offers with their details.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[DiscountInfo]  # List of active discount information dicts.\n    }\n\nConstraints:\n    - Only discounts with 'active' == True and a valid date range where start_date <= end_date are considered active.\n    - If no active discounts, data is an empty list.\n    - Discounts with invalid date ranges are ignored.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "add_or_update_game",
+      "description": "Add a new game or update an existing game's metadata and pricing.\nEnforces:\n    - Unique app_id for each game.\n    - Unique purchase_url for each game.\n    - discounted_price <= original_price\n\nArgs:\n    game_info (dict): Dictionary containing all GameInfo fields.\n\nReturns:\n    dict: On success:\n        { \"success\": True, \"message\": \"Game added\" } or\n        { \"success\": True, \"message\": \"Game updated\" }\n    On error:\n        { \"success\": False, \"error\": \"reason\" }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "game_info": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "game_info"
+        ]
+      }
+    },
+    {
+      "name": "add_or_update_discount",
+      "description": "Create or update a discount offer for a game, enforcing that:\n  - discounted_price ≤ original_price for the game\n  - app_id exists in games\n  - discount_percent is 0-100\n  - discount_id is unique (or will be updated)\n  - start_date <= end_date\nArgs:\n    discount_id (str): Unique identifier for the discount\n    app_id (str): Game to receive discount\n    discount_percent (float): Numeric percent off (0-100)\n    discounted_price (float): New price\n    start_date (str): Discount valid start date (YYYY-MM-DD)\n    end_date (str): Discount valid end date (YYYY-MM-DD)\n    active (bool): If the discount is currently active\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Discount created/updated for game <app_id>\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Error message\"\n    }\nConstraints:\n    - discounted_price must be less than or equal to original_price.\n    - app_id must exist.\n    - 0 ≤ discount_percent ≤ 100\n    - start_date must be less than or equal to end_date\n    - The associated game's discount fields are synchronized with the active discount state.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "discount_id": {
+            "type": "string"
+          },
+          "app_id": {
+            "type": "string"
+          },
+          "discount_percent": {
+            "type": "number"
+          },
+          "discounted_price": {
+            "type": "number"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "discount_id",
+          "app_id",
+          "discount_percent",
+          "discounted_price",
+          "start_date",
+          "end_date",
+          "active"
+        ]
+      }
+    },
+    {
+      "name": "remove_discount",
+      "description": "Remove a discount offer given by its discount_id, deactivating and disassociating it\nfrom its corresponding game. Updates the associated game's discount status and price.\n\nArgs:\n    discount_id (str): The unique ID of the discount to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Discount <discount_id> removed and associated game updated.\"\n    }\n    or {\n        \"success\": False,\n        \"error\": \"reason\"\n    }\n\nConstraints:\n    - If discount does not exist, operation fails.\n    - Associated game is updated: is_on_discount=False, discounted_price=original_price, discount_percent=0.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "discount_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "discount_id"
+        ]
+      }
+    },
+    {
+      "name": "update_purchase_url",
+      "description": "Change the purchase URL for a game, ensuring the URL is unique across all games\nand has a valid format.\n\nArgs:\n    app_id (str): The app_id of the game to update.\n    new_url (str): The new purchase URL.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Purchase URL for game <app_id> updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure.\"\n    }\n\nConstraints:\n    - The game with app_id must exist.\n    - The new purchase_url must not be already used by a different game.\n    - The purchase_url must be a valid URL (starts with \"http://\" or \"https://\").",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          },
+          "new_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_id",
+          "new_url"
+        ]
+      }
+    },
+    {
+      "name": "update_game_price",
+      "description": "Change the original price of a game identified by app_id, ensuring that\nthe discounted price does not exceed the new original price as per constraints.\n\nArgs:\n    app_id (str): The application's unique identifier.\n    new_price (float): The new original price to set. Must be > 0.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Game price updated.\" }\n        On failure:\n            { \"success\": False, \"error\": \"reason\" }\nConstraints:\n    - The game must exist.\n    - new_price > 0.\n    - After update, discounted_price ≤ original_price.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          },
+          "new_price": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "app_id",
+          "new_price"
+        ]
+      }
+    },
+    {
+      "name": "change_discount_status",
+      "description": "Activate or deactivate a discount, and/or update its validity period.\n\nArgs:\n    discount_id (str): The unique ID of the discount to modify.\n    active (bool, optional): Set to True to activate, False to deactivate; if None, not changed.\n    start_date (str, optional): New start date for validity period (ISO8601), or None for no change.\n    end_date (str, optional): New end date for validity period (ISO8601), or None for no change.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Description of the operations performed,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str     # Error message\n    }\n\nConstraints:\n    - discount_id must exist in self.discounts.\n    - If both start_date and end_date are provided, start_date must be <= end_date.\n    - At least one of active, start_date, or end_date must be provided.\n    - The associated game's discount fields are synchronized after the update.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "discount_id": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "discount_id"
+        ]
+      }
+    }
+  ]
+}

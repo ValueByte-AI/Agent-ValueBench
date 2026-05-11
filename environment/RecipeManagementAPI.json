@@ -1,0 +1,695 @@
+{
+  "env_name": "RecipeManagementAPI",
+  "description": "A recipe management and search API provides structured, programmatic access to a curated database of recipes, including attributes like ingredients, preparation instructions, cuisine types, and nutritional information. It maintains stateful collections of recipes and supports operations such as listing, filtering, searching, and retrieving detailed recipe information based on various criteria. This environment is commonly used by food delivery platforms, cooking websites, and culinary event organizers for presenting, cataloging, and discovering diverse recipes.",
+  "initial_parameter_schema": {
+    "recipes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "recipe_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "cuisine_type": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "preparation_instructions": {
+            "type": "string"
+          },
+          "ingredients": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "ingredient_id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "number"
+                },
+                "unit": {
+                  "type": "string"
+                },
+                "nutrition_facts": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "ingredient_id",
+                "name",
+                "quantity",
+                "unit",
+                "nutrition_facts"
+              ]
+            }
+          },
+          "nutritional_information": {
+            "type": "object"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "source": {
+            "type": "string"
+          },
+          "creation_date": {
+            "type": "string"
+          },
+          "update_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "recipe_id",
+          "name",
+          "cuisine_type",
+          "preparation_instructions",
+          "ingredients",
+          "nutritional_information",
+          "tags",
+          "source",
+          "creation_date",
+          "update_date"
+        ]
+      }
+    },
+    "ingredients": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "ingredient_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "nutrition_facts": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "ingredient_id",
+          "name",
+          "quantity",
+          "unit",
+          "nutrition_facts"
+        ]
+      }
+    },
+    "cuisines": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "cuisine_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cuisine_id",
+          "name",
+          "region"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "list_recipes": [
+      "recipes"
+    ],
+    "get_recipe_by_id": [
+      "recipes"
+    ],
+    "search_recipes_by_name": [
+      "recipes"
+    ],
+    "filter_recipes_by_ingredient": [
+      "recipes"
+    ],
+    "filter_recipes_by_cuisine": [
+      "cuisines",
+      "recipes"
+    ],
+    "get_ingredient_by_id": [
+      "ingredients"
+    ],
+    "list_cuisines": [
+      "cuisines"
+    ],
+    "get_cuisine_by_id": [
+      "cuisines"
+    ],
+    "get_recipe_ingredients": [
+      "recipes"
+    ],
+    "get_recipe_nutritional_information": [
+      "recipes"
+    ],
+    "add_recipe": [
+      "cuisines",
+      "recipes"
+    ],
+    "update_recipe": [
+      "recipes"
+    ],
+    "delete_recipe": [
+      "recipes"
+    ],
+    "add_ingredient_to_recipe": [
+      "ingredients",
+      "recipes"
+    ],
+    "update_ingredient_in_recipe": [
+      "recipes"
+    ],
+    "remove_ingredient_from_recipe": [
+      "recipes"
+    ],
+    "add_cuisine": [
+      "cuisines"
+    ],
+    "update_cuisine": [
+      "cuisines"
+    ],
+    "assign_cuisine_to_recipe": [
+      "cuisines",
+      "recipes"
+    ]
+  },
+  "tools": [
+    {
+      "name": "list_recipes",
+      "description": "Retrieve a paginated or limited list of recipes, optionally filtered by cuisine_type and tags.\n\nArgs:\n    cuisine_type (list, optional): List of cuisine IDs to filter by. Recipe must have at least one of these.\n    tags (list, optional): List of tags to filter by. Recipe must include all provided tags.\n    limit (int, optional): Max number of recipes to return (default: 20).\n    offset (int, optional): Starting index for result pagination (default: 0).\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"data\": [RecipeInfo, ...]}\n        - On error: {\"success\": False, \"error\": str}",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cuisine_type": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "get_recipe_by_id",
+      "description": "Retrieve the complete details of a recipe by its unique recipe_id.\n\nArgs:\n    recipe_id (str): The unique identifier of the recipe to retrieve.\n\nReturns:\n    dict:\n        - If found:\n            { \"success\": True, \"data\": RecipeInfo }\n        - If not found or invalid:\n            { \"success\": False, \"error\": \"Recipe not found\" }\n\nConstraints:\n    - recipe_id must exist in the system (self.recipes).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "recipe_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "recipe_id"
+        ]
+      }
+    },
+    {
+      "name": "search_recipes_by_name",
+      "description": "Retrieve recipes whose name matches or contains the specified keyword (case-insensitive).\n\nArgs:\n    keyword (str): The search keyword for recipe names. If empty, all recipes are returned.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[RecipeInfo],  # Recipes whose name contains the keyword (case-insensitive)\n        }\n    or\n        {\n            \"success\": False,\n            \"error\": str  # Explanation (should rarely occur)\n        }\n\nNotes:\n    - If keyword is an empty string, all recipes will be returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "keyword": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "keyword"
+        ]
+      }
+    },
+    {
+      "name": "filter_recipes_by_ingredient",
+      "description": "Find all recipes that include a specific ingredient by name (case-insensitive) or ingredient_id.\n\nArgs:\n    ingredient (str): The ingredient name (case-insensitive) or ingredient_id to search for.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[RecipeInfo],  # Recipes containing the specified ingredient\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - The search key can be ingredient_id or ingredient name (case-insensitive).\n    - If input is empty, the operation fails.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ingredient": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ingredient"
+        ]
+      }
+    },
+    {
+      "name": "filter_recipes_by_cuisine",
+      "description": "Retrieve recipes that belong to a specific cuisine type.\n\nArgs:\n    cuisine_id (str): The unique identifier for the cuisine to filter recipes by.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[RecipeInfo],  # List of matched recipes (may be empty if none)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If cuisine is not found\n    }\n\nConstraints:\n    - cuisine_id must exist in the system.\n    - Each recipe has at least one cuisine_type (enforced elsewhere).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cuisine_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cuisine_id"
+        ]
+      }
+    },
+    {
+      "name": "get_ingredient_by_id",
+      "description": "Retrieve ingredient details by its unique ingredient_id.\n\nArgs:\n    ingredient_id (str): The unique identifier of the ingredient.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": IngredientInfo  # Detailed information if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if not found\n    }\n\nConstraints:\n    - ingredient_id must exist in the environment for a successful result.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ingredient_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ingredient_id"
+        ]
+      }
+    },
+    {
+      "name": "list_cuisines",
+      "description": "Retrieve the list of all available cuisines.\n\nReturns:\n    dict:\n        - success (bool): True if operation succeeded.\n        - data (List[CuisineInfo]): A list (possibly empty) of all available cuisine information.\n    Example:\n        {\n            \"success\": True,\n            \"data\": [CuisineInfo, ...]\n        }\n\nConstraints:\n    - No input is required.\n    - Returns all cuisines present in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_cuisine_by_id",
+      "description": "Retrieve details for a cuisine by its cuisine_id.\n\nArgs:\n    cuisine_id (str): The unique ID of the cuisine.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": CuisineInfo  # Information about the cuisine\n            }\n        On failure (not found):\n            {\n                \"success\": False,\n                \"error\": \"Cuisine not found\"\n            }\n\nConstraints:\n    - The cuisine_id must exist in the current list of cuisines.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cuisine_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cuisine_id"
+        ]
+      }
+    },
+    {
+      "name": "get_recipe_ingredients",
+      "description": "List all ingredient details (with quantity, unit, etc.) for a specific recipe.\n\nArgs:\n    recipe_id (str): Unique identifier of the recipe.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[IngredientInfo],  # List of all ingredients (may be empty if data is inconsistent)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason why retrieval failed (e.g. recipe not found)\n    }\n\nConstraints:\n    - Recipe must exist (if not, return error)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "recipe_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "recipe_id"
+        ]
+      }
+    },
+    {
+      "name": "get_recipe_nutritional_information",
+      "description": "Retrieve the nutritional information for a given recipe, by recipe ID.\n\nArgs:\n    recipe_id (str): The unique ID of the recipe.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": dict  # nutritional_information of the recipe\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # e.g., \"Recipe not found\"\n    }\n\nConstraints:\n    - The recipe_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "recipe_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "recipe_id"
+        ]
+      }
+    },
+    {
+      "name": "add_recipe",
+      "description": "Create and add a new recipe with all required fields to the API.\n\nArgs:\n    recipe_id (str): Globally unique identifier for the recipe.\n    name (str): The name of the recipe.\n    cuisine_type (List[str]): List of cuisine IDs this recipe belongs to. Must not be empty and must reference valid cuisines.\n    preparation_instructions (str): Preparation instructions.\n    ingredients (List[IngredientInfo]): List of ingredient info. Must not be empty, names must be unique within this list.\n    nutritional_information (dict): Nutrition details of the recipe.\n    tags (List[str]): List of tags or keywords.\n    source (str): Provenance or source string.\n    creation_date (str): Recipe creation date string.\n    update_date (str): Latest update date string.\n\nReturns:\n    dict: Success or error dict.\n        - On success: {'success': True, 'message': \"...\"}\n        - On failure: {'success': False, 'error': \"...\"}\n\nConstraints:\n    - Recipe ID must be unique.\n    - At least one ingredient, and names within must be unique.\n    - At least one existing cuisine_type.\n    - Each ingredient entry must have name, quantity (float), unit (str), and nutrition_facts (dict).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "recipe_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "cuisine_type": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "preparation_instructions": {
+            "type": "string"
+          },
+          "ingredients": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "ingredient_id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "number"
+                },
+                "unit": {
+                  "type": "string"
+                },
+                "nutrition_facts": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "ingredient_id",
+                "name",
+                "quantity",
+                "unit",
+                "nutrition_facts"
+              ]
+            }
+          },
+          "nutritional_information": {
+            "type": "object"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "source": {
+            "type": "string"
+          },
+          "creation_date": {
+            "type": "string"
+          },
+          "update_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "recipe_id",
+          "name",
+          "cuisine_type",
+          "preparation_instructions",
+          "ingredients",
+          "nutritional_information",
+          "tags",
+          "source",
+          "creation_date",
+          "update_date"
+        ]
+      }
+    },
+    {
+      "name": "update_recipe",
+      "description": "Modify an existing recipe, enforcing constraints:\n- Recipe must exist.\n- Recipe must have at least one ingredient.\n- Ingredient names must be unique within the recipe.\n- Ingredient quantity and unit must be specified per ingredient.\n- Recipe must belong to at least one cuisine type.\n- If a cuisine catalog is loaded, each cuisine_type entry must reference an existing cuisine.\n\nArgs:\n    recipe_id (str): ID of the recipe to update.\n    name (str, optional): New recipe name.\n    cuisine_type (list, optional): List of cuisine IDs.\n    preparation_instructions (str, optional): Updated instructions.\n    ingredients (list of IngredientInfo, optional): New list of ingredients.\n    nutritional_information (dict, optional): Nutrition facts.\n    tags (list, optional): Tags for the recipe.\n    source (str, optional): Recipe source.\n\nReturns:\n    dict: Success or error description.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "recipe_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "cuisine_type": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "preparation_instructions": {
+            "type": "string"
+          },
+          "ingredients": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "ingredient_id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "number"
+                },
+                "unit": {
+                  "type": "string"
+                },
+                "nutrition_facts": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "ingredient_id",
+                "name",
+                "quantity",
+                "unit",
+                "nutrition_facts"
+              ]
+            }
+          },
+          "nutritional_information": {
+            "type": "object"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "recipe_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_recipe",
+      "description": "Remove a recipe from the collection by its unique recipe_id.\n\nArgs:\n    recipe_id (str): The unique identifier of the recipe to delete.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"message\": \"Recipe deleted successfully\"}\n        - On failure: {\"success\": False, \"error\": \"Recipe not found\"}\n\nConstraints:\n    - The recipe must exist in the collection.\n    - Only the recipe itself is removed; referenced ingredients and cuisine types remain.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "recipe_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "recipe_id"
+        ]
+      }
+    },
+    {
+      "name": "add_ingredient_to_recipe",
+      "description": "Add a new ingredient with specified quantity and unit to an existing recipe.\n\nArgs:\n    recipe_id (str): The ID of the recipe to modify.\n    ingredient_id (str): The ingredient ID for the recipe entry. It may reference an existing global ingredient catalog item, or it may be a brand-new global ID.\n    name (str): The name of the ingredient (must be unique in the target recipe).\n    quantity (float): The amount of the ingredient.\n    unit (str): The unit of measurement for the quantity.\n    nutrition_facts (dict): Nutrition facts for this ingredient.\n\nReturns:\n    dict:\n        - On success:\n            { \"success\": True, \"message\": \"Ingredient added to recipe <recipe_id>\" }\n        - On failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Recipe must exist.\n    - Ingredient names must be unique in the recipe.\n    - Ingredient ID must not already appear in the target recipe.\n    - If ingredient_id already exists in the global ingredient catalog, it may be reused as a recipe reference; otherwise it must be globally unique.\n    - Both quantity and unit must be provided (and quantity should be positive).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "recipe_id": {
+            "type": "string"
+          },
+          "ingredient_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "nutrition_facts": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "recipe_id",
+          "ingredient_id",
+          "name",
+          "quantity",
+          "unit",
+          "nutrition_facts"
+        ]
+      }
+    },
+    {
+      "name": "update_ingredient_in_recipe",
+      "description": "Modify the quantity, unit, or nutrition facts of an ingredient in a recipe.\n\nArgs:\n    recipe_id (str): The ID of the recipe to update.\n    ingredient_id (str): The ID of the ingredient to modify within the recipe.\n    quantity (float, optional): The new quantity for the ingredient.\n    unit (str, optional): The new unit for the ingredient.\n    nutrition_facts (dict, optional): The new nutrition facts for the ingredient.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Ingredient updated in recipe.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure.\"\n    }\n\nConstraints:\n    - Both 'recipe_id' and 'ingredient_id' must exist.\n    - The ingredient must be part of the specified recipe.\n    - After update, 'quantity' (float) and 'unit' (str, not empty) must be present for the ingredient.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "recipe_id": {
+            "type": "string"
+          },
+          "ingredient_id": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "nutrition_facts": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "recipe_id",
+          "ingredient_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_ingredient_from_recipe",
+      "description": "Remove an ingredient from a specified recipe, ensuring the recipe retains at least one ingredient.\n\nArgs:\n    recipe_id (str): ID of the recipe from which to remove the ingredient.\n    ingredient_id (str): ID of the ingredient to remove.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Ingredient <ingredient_id> removed from recipe <recipe_id>\"\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason for failure\n            }\n\nConstraints:\n    - The recipe must exist.\n    - The ingredient must be present in the specified recipe.\n    - A recipe must always have at least one ingredient.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "recipe_id": {
+            "type": "string"
+          },
+          "ingredient_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "recipe_id",
+          "ingredient_id"
+        ]
+      }
+    },
+    {
+      "name": "add_cuisine",
+      "description": "Add a new cuisine type to the database.\n\nArgs:\n    cuisine_id (str): Unique identifier for the cuisine.\n    name (str): The name of the cuisine.\n    region (str): The geographical region of the cuisine.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Cuisine added successfully\"\n    } on success,\n    {\n        \"success\": False,\n        \"error\": <error_reason>\n    } on failure.\n\nConstraints:\n    - Cuisine IDs must be unique.\n    - All fields are required (must not be empty).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cuisine_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cuisine_id",
+          "name",
+          "region"
+        ]
+      }
+    },
+    {
+      "name": "update_cuisine",
+      "description": "Modify an existing cuisine’s name or region.\n\nArgs:\n    cuisine_id (str): The ID of the cuisine to update.\n    name (str, optional): The new name for the cuisine. If not provided, name will not be changed.\n    region (str, optional): The new region for the cuisine. If not provided, region will not be changed.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Cuisine updated successfully.\" }\n        On failure: { \"success\": False, \"error\": \"Cuisine not found\" | \"No update parameters specified\" }\n\nConstraints:\n    - cuisine_id must exist in self.cuisines.\n    - At least one of name or region must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cuisine_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cuisine_id"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "name"
+            ]
+          },
+          {
+            "required": [
+              "region"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "assign_cuisine_to_recipe",
+      "description": "Assign an additional cuisine type (by cuisine_id) to a recipe.\n\nArgs:\n    recipe_id (str): Unique identifier of the recipe.\n    cuisine_id (str): Unique identifier of the cuisine to assign.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"message\": \"Cuisine <cuisine_id> assigned to recipe <recipe_id>.\"\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": \"Error description\"\n            }\n\nConstraints:\n    - Both the recipe and cuisine must exist.\n    - Each recipe must always have at least one cuisine (constraint maintained by only ever adding).\n    - If the cuisine is already assigned, operation is idempotent: report success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "recipe_id": {
+            "type": "string"
+          },
+          "cuisine_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "recipe_id",
+          "cuisine_id"
+        ]
+      }
+    }
+  ]
+}

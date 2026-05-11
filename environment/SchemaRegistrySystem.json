@@ -1,0 +1,497 @@
+{
+  "env_name": "SchemaRegistrySystem",
+  "description": "A schema registry system manages the lifecycle of data schemas, storing their definitions, versions, and metadata in a structured, queryable manner. It tracks which users have created which schemas, maintains unique identifiers for each schema, and organizes the fields and attributes belonging to each schema. Such systems are commonly used in organizations to enforce data contracts across databases, data lakes, and event streaming platforms.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "created_a": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "email",
+          "created_a"
+        ]
+      }
+    },
+    "schemas": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "schema_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "creator_user_id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "created_a": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_id",
+          "name",
+          "creator_user_id",
+          "version",
+          "metadata",
+          "created_a"
+        ]
+      }
+    },
+    "fields": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "field_id": {
+            "type": "string"
+          },
+          "schema_id": {
+            "type": "string"
+          },
+          "field_name": {
+            "type": "string"
+          },
+          "field_type": {
+            "type": "string"
+          },
+          "a": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "field_id",
+          "schema_id",
+          "field_name",
+          "field_type",
+          "a"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_username": [
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "list_schemas_by_creator": [
+      "schemas",
+      "users"
+    ],
+    "get_schema_by_id": [
+      "schemas"
+    ],
+    "list_fields_by_schema_id": [
+      "fields",
+      "schemas"
+    ],
+    "get_field_by_id": [
+      "fields"
+    ],
+    "list_schema_versions_by_name": [
+      "schemas"
+    ],
+    "list_all_users": [
+      "users"
+    ],
+    "create_schema": [
+      "fields",
+      "schemas",
+      "users"
+    ],
+    "update_schema_metadata": [
+      "schemas"
+    ],
+    "delete_schema": [
+      "fields",
+      "schemas"
+    ],
+    "add_field_to_schema": [
+      "fields",
+      "schemas"
+    ],
+    "update_field": [
+      "fields"
+    ],
+    "delete_field": [
+      "fields"
+    ],
+    "create_user": [
+      "users"
+    ],
+    "delete_user": [
+      "users"
+    ],
+    "increment_schema_version": [
+      "schemas"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_username",
+      "description": "Retrieve UserInfo (including _id) for the user with the specified username.\n\nArgs:\n    username (str): The username to look up.\n\nReturns:\n    dict:\n        - If user is found:\n            {\"success\": True, \"data\": UserInfo}\n        - If not found:\n            {\"success\": False, \"error\": \"User not found\"}\nConstraints:\n    - Usernames are assumed to be unique in the registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user information (UserInfo) by user _id.\n\nArgs:\n    _id (str): The unique user identifier.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"data\": UserInfo }\n        - On failure: { \"success\": False, \"error\": \"User not found\" }\n\nConstraints:\n    - The user _id must exist in the registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id"
+        ]
+      }
+    },
+    {
+      "name": "list_schemas_by_creator",
+      "description": "List all schemas created by a specific user id.\n\nArgs:\n    user_id (str): The _id field of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": [\n            {\n                \"schema_id\": str,\n                \"name\": str,\n                \"version\": int,\n                \"metadata\": dict\n            },\n            ...\n        ]\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - User must exist in the registry.\n    - Returns all schemas whose creator_user_id matches the input user_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_schema_by_id",
+      "description": "Retrieve the SchemaInfo for a given schema_id.\n\nArgs:\n    schema_id (str): Unique identifier of the schema to retrieve.\n\nReturns:\n    dict:\n        - If found: {\"success\": True, \"data\": SchemaInfo}\n        - If not found: {\"success\": False, \"error\": \"Schema ID not found\"}\n\nConstraints:\n    - schema_id must exist in self.schemas.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schema_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_id"
+        ]
+      }
+    },
+    {
+      "name": "list_fields_by_schema_id",
+      "description": "List all fields (FieldInfo) for a given schema_id.\n\nArgs:\n    schema_id (str): The schema's unique identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[FieldInfo],  # List of fields belonging to the schema (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Schema not found\"\n    }\n\nConstraints:\n    - The schema_id must exist in the registry. If not, error.\n    - Field names are unique within a schema (not directly relevant for listing).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schema_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_id"
+        ]
+      }
+    },
+    {
+      "name": "get_field_by_id",
+      "description": "Retrieve the FieldInfo for the specified field_id.\n\nArgs:\n    field_id (str): The unique identifier of the field.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": FieldInfo  # The field's information\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If not found, an error description\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "field_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "field_id"
+        ]
+      }
+    },
+    {
+      "name": "list_schema_versions_by_name",
+      "description": "Retrieve all SchemaInfo records with the same schema name, corresponding to all versions of the specified schema.\n\nArgs:\n    schema_name (str): The name of the schema to search for.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SchemaInfo]  # All schemas with this name (may be empty if none found)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description, e.g. invalid schema name\n    }\n\nConstraints:\n    - schema_name must not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schema_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_name"
+        ]
+      }
+    },
+    {
+      "name": "list_all_users",
+      "description": "Retrieve all registered users.\n\nArgs:\n    None\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[UserInfo]  # List of all users, possibly empty\n        }\n\nConstraints:\n    - No input parameters required.\n    - Returns all users present in the system.\n    - If no users exist, returns an empty list.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "create_schema",
+      "description": "Registers a new schema for a user, with its fields.\n\nArgs:\n    schema_id (str): Unique schema identifier.\n    name (str): Schema name.\n    creator_user_id (str): User ID of the creator (must exist).\n    version (int): Initial version.\n    metadata (dict): Additional metadata.\n    created_a (str): Timestamp of creation.\n    fields (list of dict): Each dict should include at least 'field_name', 'field_type', 'a'.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"...\",\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"...\",\n    }\n\nConstraints:\n    - schema_id must be unique.\n    - creator_user_id must exist.\n    - Field names must be unique within this schema.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schema_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "creator_user_id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "created_a": {
+            "type": "string"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "required": [
+          "schema_id",
+          "name",
+          "creator_user_id",
+          "version",
+          "metadata",
+          "created_a",
+          "fields"
+        ]
+      }
+    },
+    {
+      "name": "update_schema_metadata",
+      "description": "Modify the metadata and/or version of an existing schema.\n\nArgs:\n    schema_id (str): The schema's unique identifier.\n    metadata (dict, optional): New metadata to set for the schema (replaces the old).\n    version (int, optional): New version number for the schema.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Schema metadata (and/or version) updated.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - The schema with the given schema_id must exist.\n    - If updating version: for this schema's name, there must be no other schema\n      with the same name and the proposed new version.\n    - Version must be a positive integer, if supplied.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schema_id": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_id"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "metadata"
+            ]
+          },
+          {
+            "required": [
+              "version"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "delete_schema",
+      "description": "Delete a schema identified by schema_id and also remove all fields belonging to it.\n\nArgs:\n    schema_id (str): Unique identifier of the schema to be deleted.\n\nReturns:\n    dict:\n        - success (bool): Operation result.\n        - message (str): Success description if successful.\n        - error (str): Reason if failed.\n\nConstraints:\n    - The schema must exist.\n    - All fields with schema_id == <schema_id> are removed from the registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schema_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_id"
+        ]
+      }
+    },
+    {
+      "name": "add_field_to_schema",
+      "description": "Add a new field to a given schema. Enforces that the field_name is unique within the schema,\nthe schema exists, and the field_id is globally unique.\n\nArgs:\n    field_id (str): Unique identifier for the new field.\n    schema_id (str): Existing schema's ID to which the field will be added.\n    field_name (str): Name of the new field (must be unique within the schema).\n    field_type (str): Type of the field.\n    a (str): Extra attribute for the field.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Field added to schema.\" }\n        - On error: { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - Field names must be unique within a schema.\n    - field_id must be globally unique.\n    - schema_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "field_id": {
+            "type": "string"
+          },
+          "schema_id": {
+            "type": "string"
+          },
+          "field_name": {
+            "type": "string"
+          },
+          "field_type": {
+            "type": "string"
+          },
+          "a": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "field_id",
+          "schema_id",
+          "field_name",
+          "field_type",
+          "a"
+        ]
+      }
+    },
+    {
+      "name": "update_field",
+      "description": "Modify field attributes (e.g., name, type, metadata) for a given field_id,\nenforcing per-schema field name uniqueness.\n\nArgs:\n    field_id (str): The unique identifier of the field to update.\n    field_name (str, optional): New name for the field (must be unique in its schema).\n    field_type (str, optional): New type for the field.\n    a (str, optional): New metadata or auxiliary value for the field.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Field <field_id> updated.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - If field_name is updated, it must be unique for the schema.\n    - field_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "field_id": {
+            "type": "string"
+          },
+          "field_name": {
+            "type": "string"
+          },
+          "field_type": {
+            "type": "string"
+          },
+          "a": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "field_id"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "field_name"
+            ]
+          },
+          {
+            "required": [
+              "field_type"
+            ]
+          },
+          {
+            "required": [
+              "a"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "delete_field",
+      "description": "Remove (delete) the field with the specified field_id from the registry.\n\nArgs:\n    field_id (str): The unique identifier for the field to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Field deleted successfully.\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"Field not found.\"\n    }\n\nConstraints:\n    - field_id must exist in the field registry (self.fields).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "field_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "field_id"
+        ]
+      }
+    },
+    {
+      "name": "create_user",
+      "description": "Register a new user in the registry.\n\nArgs:\n    username (str): Desired username for the user. Must be unique.\n    email (str): User's contact email. Should be unique.\n\nReturns:\n    dict: \n        - On success: \n          {\"success\": True, \"message\": \"User created successfully\", \"user_id\": <user_id>}\n        - On failure: \n          {\"success\": False, \"error\": <reason>}\nConstraints:\n    - Username must be unique across users.\n    - Email must be unique across users.\n    - _id is generated as a new unique identifier.\n    - created_a captured as timestamp at user creation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "email"
+        ]
+      }
+    },
+    {
+      "name": "delete_user",
+      "description": "Remove a user from the registry system by user_id.\n\nArgs:\n    user_id (str): Unique identifier of the user to delete.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str   # Confirmation message of deletion,\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str     # Reason for failure, e.g. user does not exist\n    }\n\nConstraints:\n    - If the user does not exist, fail gracefully.\n    - Deletion does not cascade to schemas or fields; those objects remain,\n      but their creator_user_id will now point to a non-existent user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "increment_schema_version",
+      "description": "Create a new version of an existing schema, ensuring (name, version) uniqueness.\n\nArgs:\n    schema_id (str): The ID of the schema whose version is to be incremented.\n\nReturns:\n    dict: \n      - On success:\n          {\n            \"success\": True,\n            \"message\": \"New schema version created.\",\n            \"data\": SchemaInfo  # Newly created schema info\n          }\n      - On error:\n          {\n            \"success\": False,\n            \"error\": str  # Reason, e.g. schema not found or version conflict\n          }\n\nConstraints:\n    - Schema with the provided schema_id must exist.\n    - Resulting (name, version) combination cannot already exist.\n    - New schema_id must be unique.\n    - Metadata is copied from the original schema.\n    - Existing fields are cloned into the new schema version with fresh field IDs tied to the new schema.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "schema_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_id"
+        ]
+      }
+    }
+  ]
+}

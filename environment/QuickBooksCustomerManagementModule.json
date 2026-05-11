@@ -1,0 +1,525 @@
+{
+  "env_name": "QuickBooksCustomerManagementModule",
+  "description": "The QuickBooks Customer Management Module is an integral part of accounting software that maintains detailed records of customers, including their contact information, transaction history, and communication logs. It supports common operations such as adding new customers, updating details, retrieving filtered customer lists, and integrating with other modules for invoicing and reporting. This environment provides business users with a centralized system for tracking client interactions and managing customer-related financial activity.",
+  "initial_parameter_schema": {
+    "customers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_information": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          },
+          "date_added": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "name",
+          "contact_information",
+          "address",
+          "email",
+          "phone",
+          "account_status",
+          "date_added"
+        ]
+      }
+    },
+    "transactions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "transaction_type": {
+            "type": "string"
+          },
+          "reference_document": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "customer_id",
+          "date",
+          "amount",
+          "transaction_type",
+          "reference_document"
+        ]
+      }
+    },
+    "communication_logs": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "log_id": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "communication_type": {
+            "type": "string"
+          },
+          "details": {
+            "type": "string"
+          },
+          "agent_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "log_id",
+          "customer_id",
+          "date",
+          "communication_type",
+          "details",
+          "agent_id"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_all_customers": [
+      "customers"
+    ],
+    "get_customer_by_id": [
+      "customers"
+    ],
+    "search_customers_by_name": [
+      "customers"
+    ],
+    "get_customer_contact_info": [
+      "customers"
+    ],
+    "export_customer_list": [
+      "customers"
+    ],
+    "get_customer_transactions": [
+      "customers",
+      "transactions"
+    ],
+    "get_customer_communication_logs": [
+      "communication_logs",
+      "customers"
+    ],
+    "check_customer_exists": [
+      "customers"
+    ],
+    "check_access_permission": [
+      "customers"
+    ],
+    "add_new_customer": [
+      "customers"
+    ],
+    "update_customer_details": [
+      "customers"
+    ],
+    "delete_customer": [
+      "communication_logs",
+      "customers",
+      "transactions"
+    ],
+    "merge_customers": [
+      "communication_logs",
+      "customers",
+      "transactions"
+    ],
+    "update_customer_contact_info": [
+      "customers"
+    ],
+    "add_transaction_for_customer": [
+      "customers",
+      "transactions"
+    ],
+    "add_communication_log_for_customer": [
+      "communication_logs",
+      "customers"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_all_customers",
+      "description": "Retrieve a list of all customers with their relevant information.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[CustomerInfo]  # List of all customer records (empty list if none)\n    }\nConstraints:\n    - Returns all customers currently in the system.\n    - No input and no explicit permission checks are implemented here.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_customer_by_id",
+      "description": "Retrieve detailed information for a specific customer by their unique customer_id.\n\nArgs:\n    customer_id (str): The unique identifier of the customer.\n\nReturns:\n    dict: \n        Success: { \"success\": True, \"data\": CustomerInfo }\n        Failure: { \"success\": False, \"error\": \"Customer not found\" }\n\nConstraints:\n    - customer_id must exist in the self.customers dictionary.\n    - Each customer_id is unique.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "search_customers_by_name",
+      "description": "Search for customers by a partial or full match of their name (case-insensitive).\n\nArgs:\n    query (str): Partial or full customer name to search for.\n\nReturns:\n    dict: \n        { \"success\": True, \"data\": List[CustomerInfo] }\n        or\n        { \"success\": False, \"error\": str }\n\nConstraints:\n    - Query string must not be empty or whitespace.\n    - Returns all customers with a case-insensitive substring match in their name.\n    - Does not apply any permission or privacy filtering.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "get_customer_contact_info",
+      "description": "Retrieve the contact information (email, phone, address) for a specified customer.\n\nArgs:\n    customer_id (str): The unique identifier for the customer.\n\nReturns:\n    dict: On success,\n        {\n            \"success\": True,\n            \"data\": {\n                \"email\": str,\n                \"phone\": str,\n                \"address\": str\n            }\n        }\n        On failure (customer does not exist),\n        {\n            \"success\": False,\n            \"error\": \"Customer does not exist\"\n        }\n\nConstraints:\n    - customer_id must exist in the system.\n    - No permission checking performed in this operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "export_customer_list",
+      "description": "Export the list of customers in the specified format.\n\nArgs:\n    format (str): Desired export format. Supported: 'csv', 'excel'.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": <exported_customer_list>  # CSV string, or list-of-dicts for 'excel'\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error (e.g., unsupported format)\n    }\n\nConstraints:\n    - All customer records must be exported.\n    - Format must be supported ('csv', 'excel').",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "format"
+        ]
+      }
+    },
+    {
+      "name": "get_customer_transactions",
+      "description": "Retrieve the transaction history for a specific customer.\n\nArgs:\n    customer_id (str): The unique customer ID whose transactions are needed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TransactionInfo],  # May be an empty list if no transactions\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g., customer does not exist)\n    }\n\nConstraints:\n    - The customer_id must exist.\n    - Returns all transactions associated with the specified customer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "get_customer_communication_logs",
+      "description": "Retrieve all communication logs associated with a customer.\n\nArgs:\n    customer_id (str): The ID of the customer to fetch communication logs for.\n\nReturns:\n    dict: \n        - {\"success\": True, \"data\": List[CommunicationLogInfo]}: list may be empty\n        - {\"success\": False, \"error\": str}: with error reason if customer does not exist\n\nConstraints:\n    - Customer must exist (customer_id must be present in self.customers).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "check_customer_exists",
+      "description": "Checks whether a customer exists, identified by customer_id or by combination of provided details.\n\nArgs:\n    customer_id (str, optional): Unique identifier for customer.\n    name (str, optional): Customer name.\n    email (str, optional): Customer email.\n    phone (str, optional): Customer phone number.\n\nReturns:\n    dict: \n        - If a matching customer is found:\n            { \"success\": True, \"exists\": True, \"customer_id\": <matched_customer_id> }\n        - If not found:\n            { \"success\": True, \"exists\": False }\n        - On input error:\n            { \"success\": False, \"error\": <error_message> }\n\nConstraints:\n    - At least one parameter must be provided (customer_id or any identifying detail).\n    - If several details are given, all must match one customer (AND match).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "check_access_permission",
+      "description": "Verify if the specified user/session has permission to access/export the specified customer data.\n\nArgs:\n    user_id (str): Identifier for the user/session requesting access.\n    customer_ids (list of str): List of customer_ids the user wishes to access.\n\nReturns:\n    dict:\n        On success:\n            {\n                \"success\": True,\n                \"data\": {\n                    customer_id: True/False,  # For each requested customer_id\n                    ...\n                }\n            }\n        On error:\n            {\n                \"success\": False,\n                \"error\": \"Error message\"\n            }\n\nConstraints:\n    - If user_id is \"admin\", grant access to all customers.\n    - If user_id is \"suspended\", deny access to all customers.\n    - For other user_ids, grant access if customer exists.\n    - If customer does not exist, return False for that customer.\n    - user_id must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "customer_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "user_id",
+          "customer_ids"
+        ]
+      }
+    },
+    {
+      "name": "add_new_customer",
+      "description": "Create a new customer record with unique customer_id and validated contact info.\n\nArgs:\n    customer_id (str): Unique identifier for the customer.\n    name (str): Customer name.\n    contact_information (str): Additional contact info.\n    address (str): Customer address.\n    email (str): Email address (should contain '@').\n    phone (str): Phone number.\n    account_status (str): e.g., 'active', 'inactive', etc.\n    date_added (str): The date the customer is added (ISO format recommended).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\nConstraints:\n    - customer_id must be unique.\n    - contact info (email, phone) must be valid and nonempty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_information": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          },
+          "date_added": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "name",
+          "contact_information",
+          "address",
+          "email",
+          "phone",
+          "account_status",
+          "date_added"
+        ]
+      }
+    },
+    {
+      "name": "update_customer_details",
+      "description": "Update an existing customer's metadata. Fields that are not provided will remain unchanged.\n\nArgs:\n    customer_id (str): The unique ID of the customer to update.\n    name (str, optional): New name for the customer.\n    contact_information (str, optional): New contact info.\n    address (str, optional): New address.\n    email (str, optional): New email (must contain '@').\n    phone (str, optional): New phone (must be non-empty and digits).\n    account_status (str, optional): New status.\n\nReturns:\n    dict:\n        On success:\n            { \"success\": True, \"message\": \"Customer details updated.\" }\n        On failure:\n            { \"success\": False, \"error\": \"<reason>\" }\n\nConstraints:\n    - The customer must exist.\n    - Updated contact info (email, phone) must be valid if provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contact_information": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_customer",
+      "description": "Remove a customer from the system and handle all associated transactions and communication logs.\nAssociated transactions and logs are deleted along with the customer.\n\nArgs:\n    customer_id (str): The ID of the customer to delete.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"message\": \"Customer <customer_id> deleted and associated data handled.\"}\n        - On failure: {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - Customer must exist.\n    - All related transactions and communication logs are to be deleted as well.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "merge_customers",
+      "description": "Merge duplicate customer records into a single customer, consolidating their transactions\nand communication logs. All associated transactions and logs are moved to the primary.\n\nArgs:\n    primary_customer_id (str): The customer_id to retain as the merged record.\n    duplicate_customer_ids (list of str): A list of customer IDs to merge into the primary (these records will be deleted).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Merged X customer(s) into primary customer_id.\"\n    } or {\n        \"success\": False,\n        \"error\": \"Reason for failure\"\n    }\n\nConstraints:\n    - All customer IDs must exist.\n    - The primary_customer_id must not be in duplicate_customer_ids.\n    - All transactions and communication logs of duplicates must have their customer_id reassigned to the primary.\n    - Duplicates must be removed from customer records.\n    - If any of the duplicate_customer_ids do not exist, return an error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "primary_customer_id": {
+            "type": "string"
+          },
+          "duplicate_customer_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "primary_customer_id",
+          "duplicate_customer_ids"
+        ]
+      }
+    },
+    {
+      "name": "update_customer_contact_info",
+      "description": "Update only the contact fields (contact_information, address, email, phone)\nof the specified customer. Validates the new values where possible.\n\nArgs:\n    customer_id (str): The unique identifier of the customer to update.\n    contact_information (str, optional): New contact information.\n    address (str, optional): New address.\n    email (str, optional): New email address (must be valid format).\n    phone (str, optional): New phone number.\n\nReturns:\n    dict: \n        { \"success\": True, \"message\": \"Customer contact information updated.\" }\n        or\n        { \"success\": False, \"error\": \"<error_reason>\" }\n\nConstraints:\n    - Customer must exist.\n    - Email, if provided, must be syntactically valid.\n    - At least one contact field must be provided.\n    - Fields not provided are unchanged.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          },
+          "contact_information": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "name": "add_transaction_for_customer",
+      "description": "Add a new transaction linked to a specific customer.\n\nArgs:\n    transaction_id (str): Unique identifier for the transaction.\n    customer_id (str): ID of the customer to link the transaction to.\n    date (str): Date of the transaction (format: string).\n    amount (float): Amount of the transaction.\n    transaction_type (str): Transaction type/category.\n    reference_document (str): Reference document ID or path.\n\nReturns:\n    dict:\n        - {\"success\": True, \"message\": \"Transaction <transaction_id> added for customer <customer_id>.\"}\n        - {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - The customer_id must exist in the system.\n    - Each transaction_id must be unique (not already used).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "transaction_type": {
+            "type": "string"
+          },
+          "reference_document": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "customer_id",
+          "date",
+          "amount",
+          "transaction_type",
+          "reference_document"
+        ]
+      }
+    },
+    {
+      "name": "add_communication_log_for_customer",
+      "description": "Record a new communication interaction (log) for a specified customer.\n\nArgs:\n    customer_id (str): ID of the customer to log communication for.\n    date (str): Date/time of the communication (format as used in environment).\n    communication_type (str): Type of communication (e.g., phone, email, meeting).\n    details (str): Details/content of the communication.\n    agent_id (str): Identifier of the agent who communicated.\n\nReturns:\n    dict: \n      On success: {\n        \"success\": True, \n        \"message\": \"Communication log added for customer <customer_id>\"\n      }\n      On error: {\n        \"success\": False,\n        \"error\": <error string>\n      }\n\nConstraints:\n    - The customer_id must refer to an existing customer.\n    - Each communication log must have a unique log_id.\n    - All fields are required and should be non-empty strings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "communication_type": {
+            "type": "string"
+          },
+          "details": {
+            "type": "string"
+          },
+          "agent_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "date",
+          "communication_type",
+          "details",
+          "agent_id"
+        ]
+      }
+    }
+  ]
+}

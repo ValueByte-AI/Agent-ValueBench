@@ -1,0 +1,496 @@
+{
+  "env_name": "ScientificDataRepositorySystem",
+  "description": "A scientific data repository system manages, organizes, and provides access to research datasets, typically grouped by projects or studies. It maintains metadata about datasets, user permissions, and project affiliations, supporting operations such as uploading, retrieving, and cataloging files. Its structure enables research teams to collaboratively store, share, and access diverse data types relevant to their scientific investigations.",
+  "initial_parameter_schema": {
+    "projects": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string"
+          },
+          "project_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "created_date": {
+            "type": "string"
+          },
+          "owner_user_id": {
+            "type": "string"
+          },
+          "member_user_id": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "project_id",
+          "project_name",
+          "description",
+          "created_date",
+          "owner_user_id",
+          "member_user_id"
+        ]
+      }
+    },
+    "datasets": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "dataset_id": {
+            "type": "string"
+          },
+          "dataset_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "file_format": {
+            "type": "string"
+          },
+          "upload_date": {
+            "type": "string"
+          },
+          "uploader_user_id": {
+            "type": "string"
+          },
+          "associated_project_id": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "file_location": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "dataset_id",
+          "dataset_name",
+          "description",
+          "file_format",
+          "upload_date",
+          "uploader_user_id",
+          "associated_project_id",
+          "metadata",
+          "file_location"
+        ]
+      }
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "account_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "email",
+          "role",
+          "account_status"
+        ]
+      }
+    },
+    "permissions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "access_level": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "project_id",
+          "access_level"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_project_by_name": [
+      "projects"
+    ],
+    "get_project_by_id": [
+      "projects"
+    ],
+    "list_project_datasets": [
+      "datasets",
+      "projects"
+    ],
+    "get_dataset_by_name_and_project": [
+      "datasets",
+      "projects"
+    ],
+    "list_supported_file_formats": [],
+    "get_user_by_id": [
+      "users"
+    ],
+    "get_user_permissions_for_project": [
+      "permissions",
+      "projects",
+      "users"
+    ],
+    "get_dataset_by_id": [
+      "datasets"
+    ],
+    "list_project_members": [
+      "projects",
+      "users"
+    ],
+    "upload_dataset_to_project": [
+      "datasets",
+      "permissions",
+      "projects",
+      "users"
+    ],
+    "associate_dataset_with_additional_project": [
+      "datasets",
+      "projects"
+    ],
+    "update_dataset_metadata": [
+      "datasets"
+    ],
+    "add_user_permission_to_project": [
+      "permissions",
+      "projects",
+      "users"
+    ],
+    "remove_dataset_from_project": [
+      "datasets",
+      "projects"
+    ],
+    "remove_dataset": [
+      "datasets",
+      "permissions",
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_project_by_name",
+      "description": "Retrieve information for a project using its name.\n\nArgs:\n    project_name (str): The name of the project to retrieve.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ProjectInfo  # if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # if no such project\n    }\n\nConstraints:\n    - Project name must match exactly.\n    - If multiple projects have the same name, returns the first found.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_name"
+        ]
+      }
+    },
+    {
+      "name": "get_project_by_id",
+      "description": "Retrieve project information by project_id.\n\nArgs:\n    project_id (str): The unique identifier of the project.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ProjectInfo  # Project's information\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"Project not found\" if not in self.projects\n    }\n\nConstraints:\n    - The given project_id must exist in the repository.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id"
+        ]
+      }
+    },
+    {
+      "name": "list_project_datasets",
+      "description": "List all datasets associated with a given project.\n\nArgs:\n    project_id (str): The unique ID of the project to list datasets for.\n\nReturns:\n    dict: \n        - On success: {\n              \"success\": True,\n              \"data\": List[DatasetInfo]\n          }\n        - If project does not exist: {\n              \"success\": False,\n              \"error\": \"Project not found\"\n          }\n\nConstraints:\n    - The project with given ID must exist in the repository.\n    - Only lists datasets where the project_id is present in their associated_project_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id"
+        ]
+      }
+    },
+    {
+      "name": "get_dataset_by_name_and_project",
+      "description": "Retrieve a dataset by its name within a specific project, for conflict detection.\n\nArgs:\n    dataset_name (str): The name of the dataset (case-sensitive).\n    project_id (str): The project in which to search for the dataset.\n\nReturns:\n    dict:\n        - If found: {\"success\": True, \"data\": DatasetInfo}\n        - If not found: {\"success\": True, \"data\": None}\n        - If error: {\"success\": False, \"error\": \"reason\"}\n\nConstraints:\n    - project_id must exist.\n    - Only checks for dataset_name within the project's datasets.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "dataset_name": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "dataset_name",
+          "project_id"
+        ]
+      }
+    },
+    {
+      "name": "list_supported_file_formats",
+      "description": "Return the list of permissible file formats for dataset uploads.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[str]  # List of supported file format strings\n    }\n\nNo input parameters.\nThis is a static/system-level info query operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve detailed information about a specific user.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo,  # All attributes of the user\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # 'User not found' if user_id does not exist\n    }\n\nConstraints:\n    - The user with the given user_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_permissions_for_project",
+      "description": "Retrieve a user's permission level for a specific project.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n    project_id (str): The unique identifier of the project.\n\nReturns:\n    dict:\n        success (bool): True if the query was performed successfully, otherwise False.\n        data (List[PermissionInfo]): List of permissions for this user and project\n            (may be empty if none found), if success is True.\n        error (str): If success is False, description of the error.\n\nConstraints:\n    - Both user and project must exist in the system.\n    - Extract all PermissionInfo where project_id and _id (user_id) both match.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "project_id"
+        ]
+      }
+    },
+    {
+      "name": "get_dataset_by_id",
+      "description": "Retrieve all metadata and info for a dataset by its unique ID.\n\nArgs:\n    dataset_id (str): The unique identifier for the dataset.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": DatasetInfo  # All metadata for the dataset\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"Dataset not found\" if the ID is missing\n    }\n\nConstraints:\n    - The dataset_id must be present in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "dataset_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "dataset_id"
+        ]
+      }
+    },
+    {
+      "name": "list_project_members",
+      "description": "List all user IDs or user profiles who are members of a specific project.\n\nArgs:\n    project_id (str): The identifier of the project.\n    return_profiles (bool): If True, return full user profiles; otherwise just user IDs.\n\nReturns:\n    dict: \n        On success:\n        {\n            \"success\": True,\n            \"data\": List[str or UserInfo],  # List of user IDs or UserInfo dicts\n        }\n        On error:\n        {\n            \"success\": False,\n            \"error\": str  # Explanation of the failure.\n        }\n\nConstraints:\n    - The project ID must exist.\n    - If a member user ID doesn't exist in self.users, that entry is skipped.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string"
+          },
+          "return_profiles": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "project_id"
+        ]
+      }
+    },
+    {
+      "name": "upload_dataset_to_project",
+      "description": "Create and upload a new dataset, associating it with one or more projects, storing file metadata and location.\nConstraints:\n  - Uploader must exist and have 'write' or 'admin' permission on all specified projects.\n  - Each project must exist.\n  - Dataset name must be unique within each associated project.\n  - File format must be from supported list.\n  - Must associate with at least one project.\n  - Uploaded file metadata and location recorded.\n\nArgs:\n    uploader_user_id (str): User uploading the dataset (must exist and have permission)\n    dataset_name (str): Unique within each associated project.\n    description (str): Dataset description.\n    file_format (str): File format (must be supported).\n    project_ids (list of str): One or more IDs of the projects for association.\n    file_location (str): Location of the uploaded file.\n    metadata (dict): Misc metadata fields.\n    upload_date (str): Upload date string.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "uploader_user_id": {
+            "type": "string"
+          },
+          "dataset_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "file_format": {
+            "type": "string"
+          },
+          "project_ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "file_location": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "upload_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "uploader_user_id",
+          "dataset_name",
+          "description",
+          "file_format",
+          "project_ids",
+          "file_location",
+          "metadata",
+          "upload_date"
+        ]
+      }
+    },
+    {
+      "name": "associate_dataset_with_additional_project",
+      "description": "Adds an existing dataset to additional project(s) by updating its associated_project_id list.\n\nArgs:\n    dataset_id (str): The dataset to update.\n    additional_project_ids (list of str): List of project IDs to associate with the dataset.\n\nReturns:\n    dict: Either {\n        \"success\": True,\n        \"message\": \"Dataset associated with specified projects.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <error description>\n    }\n\nConstraints:\n    - The dataset must exist.\n    - Additional projects must exist.\n    - Projects are only added if not already present in the dataset's associated_project_id attribute.\n    - No duplicate project IDs.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "dataset_id": {
+            "type": "string"
+          },
+          "additional_project_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "dataset_id",
+          "additional_project_ids"
+        ]
+      }
+    },
+    {
+      "name": "update_dataset_metadata",
+      "description": "Change the description and/or metadata dictionary of a dataset.\n\nArgs:\n    dataset_id (str): Identifier of the dataset to update.\n    description (str, optional): New description text. If None, leaves unchanged.\n    metadata (dict, optional): New metadata dict to merge into the current one. Keys will overwrite any existing keys.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Dataset metadata updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": reason for failure\n    }\n\nConstraints:\n    - Dataset must exist.\n    - At least one of description or metadata must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "dataset_id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "dataset_id"
+        ]
+      }
+    },
+    {
+      "name": "add_user_permission_to_project",
+      "description": "Grant a user a specific permission ('read', 'write', 'admin') for a project.\n\nArgs:\n    user_id (str): ID of the user to grant permission to.\n    project_id (str): Project in which the permission is to be granted.\n    access_level (str): The level of access to grant (supported: 'read', 'write', 'admin').\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str\n    }\n    On failure:\n    dict: {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - user_id must exist.\n    - project_id must exist.\n    - access_level must be one of ('read', 'write', 'admin').\n    - Do not add duplicate permissions for the same user-project pair.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "access_level": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "project_id",
+          "access_level"
+        ]
+      }
+    },
+    {
+      "name": "remove_dataset_from_project",
+      "description": "Disassociate a dataset from a project. Cannot result in the dataset having zero project associations.\n\nArgs:\n    dataset_id (str): The ID of the dataset to modify.\n    project_id (str): The ID of the project to remove association.\n\nReturns:\n    dict: \n        {\"success\": True, \"message\": \"Dataset disassociated from project.\"}\n        or\n        {\"success\": False, \"error\": \"<reason>\"}\n\nConstraints:\n    - The dataset must continue to be associated with at least one project after removal.\n    - Both dataset and project must exist.\n    - The dataset must currently be associated with the project.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "dataset_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "dataset_id",
+          "project_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_dataset",
+      "description": "Delete a dataset from the repository if the requesting user is the uploader with suitable permission, \nor has admin rights (admin role or project admin), as required.\n\nArgs:\n    dataset_id (str): The ID of the dataset to remove.\n    request_user_id (str): The ID of the user making the deletion request.\n\nReturns:\n    dict: \n        {\"success\": True, \"message\": \"...\"} on successful removal\n        {\"success\": False, \"error\": \"...\"} on failure (not found or permissions issue)\n\nConstraints:\n    - Dataset must exist.\n    - User must exist.\n    - User must be uploader with sufficient access OR\n      have \"admin\" role OR\n      have \"admin\" permission for at least one associated project.\n    - Dataset is deleted from the repository.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "dataset_id": {
+            "type": "string"
+          },
+          "request_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "dataset_id",
+          "request_user_id"
+        ]
+      }
+    }
+  ]
+}

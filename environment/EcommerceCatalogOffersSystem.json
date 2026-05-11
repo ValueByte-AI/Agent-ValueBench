@@ -1,0 +1,492 @@
+{
+  "env_name": "EcommerceCatalogOffersSystem",
+  "description": "An e-commerce product catalog and offers management system maintains structured information about products, including their unique identifiers, descriptions, categories, and associated offers. Offers may contain data such as seller, price, availability, and applicable discounts. The system supports browsing, searching, and managing both products and their available offers, providing core functionality for retail and online marketplace operations.",
+  "initial_parameter_schema": {
+    "products": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "name",
+          "description",
+          "category"
+        ]
+      }
+    },
+    "offers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "offer_id": {
+            "type": "string"
+          },
+          "product_id": {
+            "type": "string"
+          },
+          "seller_id": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "availability": {
+            "type": "boolean"
+          },
+          "discount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "offer_id",
+          "product_id",
+          "seller_id",
+          "price",
+          "availability",
+          "discount"
+        ]
+      }
+    },
+    "sellers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "seller_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "seller_id",
+          "name",
+          "rating"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_product_by_id": [
+      "products"
+    ],
+    "search_products_by_name": [
+      "products"
+    ],
+    "list_offers_for_product": [
+      "offers",
+      "products"
+    ],
+    "list_available_offers_for_product": [
+      "offers",
+      "products"
+    ],
+    "get_offer_by_id": [
+      "offers"
+    ],
+    "get_seller_by_id": [
+      "sellers"
+    ],
+    "list_sellers": [
+      "sellers"
+    ],
+    "list_products_by_category": [
+      "products"
+    ],
+    "get_discount_for_offer": [
+      "offers"
+    ],
+    "add_product": [
+      "products"
+    ],
+    "remove_product": [
+      "offers",
+      "products"
+    ],
+    "add_offer": [
+      "offers",
+      "products",
+      "sellers"
+    ],
+    "update_offer_availability": [
+      "offers"
+    ],
+    "update_offer_price": [
+      "offers"
+    ],
+    "update_offer_discount": [
+      "offers"
+    ],
+    "remove_offer": [
+      "offers"
+    ],
+    "add_seller": [
+      "sellers"
+    ],
+    "update_seller_rating": [
+      "sellers"
+    ],
+    "remove_seller": [
+      "offers",
+      "sellers"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_product_by_id",
+      "description": "Retrieve product details by product_id.\n\nArgs:\n    product_id (str): The unique identifier for the product.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": ProductInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - product_id must exist in the catalog.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "search_products_by_name",
+      "description": "Search for products using their name (supports partial, case-insensitive matches).\n\nArgs:\n    query (str): Substring to search for in product names. If empty, returns all products.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ProductInfo],  # List of products with names matching the query (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Explanation of the error\n    }\n\nConstraints:\n    - The query must be a string (may be empty).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "list_offers_for_product",
+      "description": "Retrieve all offers associated with the given product ID.\n\nArgs:\n    product_id (str): The unique identifier for the product.\n\nReturns:\n    dict\n        - If product exists, returns:\n            {\n                \"success\": True,\n                \"data\": [OfferInfo, ...]  # List of all associated offers (may be empty)\n            }\n        - If product does not exist:\n            {\n                \"success\": False,\n                \"error\": \"Product not found\"\n            }\nConstraints:\n    - The product_id must exist in the system.\n    - Returned offers are only those whose product_id matches the query argument.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "list_available_offers_for_product",
+      "description": "Retrieve all currently available (active) offers for a given product ID.\n\nArgs:\n    product_id (str): The unique identifier for the product.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[OfferInfo],  # List of available (active) OfferInfo for the product (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g., 'Product does not exist'\n    }\n\nConstraints:\n    - The product_id must correspond to an existing product in the catalog.\n    - Only offers with availability == True are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "get_offer_by_id",
+      "description": "Retrieve the full details for a specific offer by its unique offer_id.\n\nArgs:\n    offer_id (str): Unique identifier of the offer.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": OfferInfo  # Offer details\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # \"Offer not found\"\n    }\n\nConstraints:\n    - The offer must exist (offer_id must be in self.offers).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "offer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "offer_id"
+        ]
+      }
+    },
+    {
+      "name": "get_seller_by_id",
+      "description": "Retrieve details for a seller, including seller_id, name, and rating, using the seller_id.\n\nArgs:\n    seller_id (str): The unique identifier of the seller.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": SellerInfo  # The seller info if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error description if the seller is not found\n    }\n\nConstraints:\n    - The seller_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "seller_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "seller_id"
+        ]
+      }
+    },
+    {
+      "name": "list_sellers",
+      "description": "List all sellers in the system.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[SellerInfo],  # List of all seller infos (possibly empty list)\n    }\nNo input parameters.\nThere are no constraints for this read operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "list_products_by_category",
+      "description": "List all products under a given category.\n\nArgs:\n    category (str): The category name to filter products by. Case-sensitive.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ProductInfo]  # Empty list if no products found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Only if input is missing\n    }\nConstraints:\n    - Category match is exact and case-sensitive.\n    - If category is empty or None, returns products with empty category field.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category"
+        ]
+      }
+    },
+    {
+      "name": "get_discount_for_offer",
+      "description": "Retrieve the discount percentage for a given offer by offer_id, if available.\n\nArgs:\n    offer_id (str): The unique identifier of the offer.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": discount (float|None)  # Discount percentage 0–100, or None if not set\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Error message if offer_id is invalid/not found\n    }\n\nConstraints:\n    - Offer with the given offer_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "offer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "offer_id"
+        ]
+      }
+    },
+    {
+      "name": "add_product",
+      "description": "Adds a new product to the product catalog.\n\nArgs:\n    product_id (str): Unique identifier for the product.\n    name (str): The name of the product.\n    description (str): Description of the product.\n    category (str): Product category.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Product added successfully\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Product IDs must be unique system-wide.\n    - All fields are required and must be non-empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "name",
+          "description",
+          "category"
+        ]
+      }
+    },
+    {
+      "name": "remove_product",
+      "description": "Remove a product from the catalog.\nCannot remove if any offers are associated with the product.\n\nArgs:\n    product_id (str): The ID of the product to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str, # success message on successful removal\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str # reason for failure\n    }\n\nConstraints:\n    - Product must exist in catalog.\n    - Cannot remove if any offer points to the product.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "name": "add_offer",
+      "description": "Create a new offer for a product and seller.\n\nArgs:\n    offer_id (str): Unique ID for the offer (must not already exist).\n    product_id (str): Must refer to an existing product.\n    seller_id (str): Must refer to an existing seller.\n    price (float): Offer price.\n    availability (bool): Whether the offer is currently active.\n    discount (Optional[float]): Optional discount percentage (0-100).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Offer added successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - offer_id must be unique among offers.\n    - product_id must exist in products.\n    - seller_id must exist in sellers.\n    - If discount is not None, must be between 0 and 100 (inclusive).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "offer_id": {
+            "type": "string"
+          },
+          "product_id": {
+            "type": "string"
+          },
+          "seller_id": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "availability": {
+            "type": "boolean"
+          },
+          "discount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "offer_id",
+          "product_id",
+          "seller_id",
+          "price",
+          "availability"
+        ]
+      }
+    },
+    {
+      "name": "update_offer_availability",
+      "description": "Change the 'availability' status of an offer by its offer_id.\n\nArgs:\n    offer_id (str): Unique identifier of the offer to update.\n    availability (bool): New availability status (True = active, False = inactive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Offer availability updated successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The offer_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "offer_id": {
+            "type": "string"
+          },
+          "availability": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "offer_id",
+          "availability"
+        ]
+      }
+    },
+    {
+      "name": "update_offer_price",
+      "description": "Update the price for a specific offer.\n\nArgs:\n    offer_id (str): The unique ID of the offer to update.\n    new_price (float): The new price to set for this offer.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Offer price updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>,\n    }\n\nConstraints:\n    - Offer must exist.\n    - New price must be non-negative.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "offer_id": {
+            "type": "string"
+          },
+          "new_price": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "offer_id",
+          "new_price"
+        ]
+      }
+    },
+    {
+      "name": "update_offer_discount",
+      "description": "Change the discount of an offer, enforcing it remains between 0 and 100 (inclusive).\n\nArgs:\n    offer_id (str): The unique identifier of the offer to update.\n    discount (float or None): The new discount percentage (0–100), or None to clear discount.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Discount updated for offer <offer_id>\"\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": \"<error reason>\"\n    }\n\nConstraints:\n    - offer_id must exist in offers.\n    - discount must be None or a float between 0 and 100 (inclusive).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "offer_id": {
+            "type": "string"
+          },
+          "discount": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "offer_id",
+          "discount"
+        ]
+      }
+    },
+    {
+      "name": "remove_offer",
+      "description": "Remove an offer from the system.\n\nArgs:\n    offer_id (str): The unique identifier of the offer to remove.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Offer <offer_id> removed.\" }\n        - On failure: { \"success\": False, \"error\": \"Offer does not exist.\" }\n\nConstraints:\n    - The offer_id must exist in the system.\n    - This does not affect associated products or sellers.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "offer_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "offer_id"
+        ]
+      }
+    },
+    {
+      "name": "add_seller",
+      "description": "Register a new seller with a unique seller_id.\n\nArgs:\n    seller_id (str): Unique identifier for the seller. Must not already exist.\n    name (str): Seller display name. Must not be empty.\n    rating (float): Seller's rating (typically 0–5). Must be in this range.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Seller added successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure.\"\n    }\n\nConstraints:\n    - seller_id must be unique system-wide.\n    - name must not be empty.\n    - rating must be between 0 and 5, inclusive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "seller_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "seller_id",
+          "name",
+          "rating"
+        ]
+      }
+    },
+    {
+      "name": "update_seller_rating",
+      "description": "Change the rating of a seller.\n\nArgs:\n    seller_id (str): The unique identifier of the seller.\n    rating (float): The new rating to set for the seller.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Seller rating updated\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure\"\n    }\n\nConstraints:\n    - seller_id must exist in the system.\n    - rating must be a real (float) number. Negative ratings are not accepted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "seller_id": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "seller_id",
+          "rating"
+        ]
+      }
+    },
+    {
+      "name": "remove_seller",
+      "description": "Remove a seller from the system. All offers belonging to the seller will also be removed.\n\nArgs:\n    seller_id (str): The unique ID of the seller to remove.\n\nReturns:\n    dict:\n        - On success: {\n            \"success\": True,\n            \"message\": \"Seller removed (X offers also removed).\"\n          }\n        - On failure: {\n            \"success\": False,\n            \"error\": \"Seller does not exist.\"\n          }\n\nConstraints:\n    - The seller must exist.\n    - All offers with seller_id == <seller_id> will be deleted to maintain referential integrity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "seller_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "seller_id"
+        ]
+      }
+    }
+  ]
+}

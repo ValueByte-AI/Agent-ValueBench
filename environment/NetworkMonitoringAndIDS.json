@@ -1,0 +1,669 @@
+{
+  "env_name": "NetworkMonitoringAndIDS",
+  "description": "A network monitoring and intrusion detection system tracks and analyzes traffic within an organization's network. It maintains state regarding network segments, observed activity, configured security policies, and alert rules, providing real-time oversight and incident response automation. These systems allow IT administrators to define custom alerts based on traffic thresholds, source and destination IPs, and time-based criteria, ensuring proactive detection of unusual or malicious behavior.",
+  "initial_parameter_schema": {
+    "network_segments": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "network_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "network_id",
+          "name",
+          "description"
+        ]
+      }
+    },
+    "observed_traffic": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "network_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "src_ip": {
+              "type": "string"
+            },
+            "dest_ip": {
+              "type": "string"
+            },
+            "bytes_transferred": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "network_id",
+            "timestamp",
+            "src_ip",
+            "dest_ip",
+            "bytes_transferred"
+          ]
+        }
+      }
+    },
+    "alert_rules": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "rule_id": {
+            "type": "string"
+          },
+          "network_id": {
+            "type": "string"
+          },
+          "traffic_threshold": {
+            "type": "integer"
+          },
+          "ip_list": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "time_window_start": {
+            "type": "string"
+          },
+          "time_window_end": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_id",
+          "network_id",
+          "traffic_threshold",
+          "ip_list",
+          "time_window_start",
+          "time_window_end",
+          "status"
+        ]
+      }
+    },
+    "security_policies": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "policy_id": {
+            "type": "string"
+          },
+          "network_id": {
+            "type": "string"
+          },
+          "policy_type": {
+            "type": "string"
+          },
+          "parameters": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "policy_id",
+          "network_id",
+          "policy_type",
+          "parameters",
+          "enabled"
+        ]
+      }
+    },
+    "alert_instances": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "alert_instance_id": {
+            "type": "string"
+          },
+          "rule_id": {
+            "type": "string"
+          },
+          "timestamp_triggered": {
+            "type": "string"
+          },
+          "observed_ip": {
+            "type": "string"
+          },
+          "observed_volume": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "alert_instance_id",
+          "rule_id",
+          "timestamp_triggered",
+          "observed_ip",
+          "observed_volume",
+          "status"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_network_segment": [
+      "network_segments"
+    ],
+    "list_network_segments": [
+      "network_segments"
+    ],
+    "get_alert_rule": [
+      "alert_rules"
+    ],
+    "list_alert_rules_for_network": [
+      "alert_rules",
+      "network_segments"
+    ],
+    "check_alert_rule_time_conflict": [
+      "alert_rules",
+      "network_segments"
+    ],
+    "get_observed_traffic": [
+      "network_segments",
+      "observed_traffic"
+    ],
+    "list_security_policies_for_network": [
+      "network_segments",
+      "security_policies"
+    ],
+    "get_security_policy": [
+      "security_policies"
+    ],
+    "get_alert_instance": [
+      "alert_instances"
+    ],
+    "list_alert_instances_for_network": [
+      "alert_instances",
+      "alert_rules",
+      "network_segments"
+    ],
+    "create_alert_rule": [
+      "alert_rules",
+      "network_segments"
+    ],
+    "update_alert_rule": [
+      "alert_rules",
+      "network_segments"
+    ],
+    "delete_alert_rule": [
+      "alert_rules"
+    ],
+    "enable_alert_rule": [
+      "alert_rules",
+      "network_segments"
+    ],
+    "disable_alert_rule": [
+      "alert_rules"
+    ],
+    "create_security_policy": [
+      "network_segments",
+      "security_policies"
+    ],
+    "update_security_policy": [
+      "security_policies"
+    ],
+    "delete_security_policy": [
+      "security_policies"
+    ],
+    "add_network_segment": [
+      "network_segments"
+    ],
+    "edit_network_segment": [
+      "network_segments"
+    ],
+    "remove_network_segment": [
+      "alert_instances",
+      "alert_rules",
+      "network_segments",
+      "observed_traffic",
+      "security_policies"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_network_segment",
+      "description": "Retrieve details (metadata) of a network segment by network_id.\n\nArgs:\n    network_id (str): The unique network identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": NetworkSegmentInfo\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If no such network segment exists\n    }\n\nConstraints:\n    - The network_id must reference an existing network segment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "network_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "network_id"
+        ]
+      }
+    },
+    {
+      "name": "list_network_segments",
+      "description": "List all available network segments being monitored.\n\nArgs:\n    None\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[NetworkSegmentInfo]\n    }\n    - On success, returns the list of all NetworkSegmentInfo objects. If no segments, the list is empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_alert_rule",
+      "description": "Retrieve the details of an alert rule given its unique rule_id.\n\nArgs:\n    rule_id (str): The unique identifier for the alert rule.\n\nReturns:\n    dict:\n        - success: True, data: AlertRuleInfo (if found)\n        - success: False, error: \"Alert rule not found\" (if rule_id does not exist)\n\nConstraints:\n    - rule_id must exist in the alert_rules dictionary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "rule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_id"
+        ]
+      }
+    },
+    {
+      "name": "list_alert_rules_for_network",
+      "description": "List all alert rules configured for the given network segment.\n\nArgs:\n    network_id (str): The ID of the network segment.\n\nReturns:\n    dict:\n        {\n            \"success\": True,\n            \"data\": List[AlertRuleInfo],  # a list of the alert rules (empty if none)\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": str  # descriptive error message\n        }\n\nConstraints:\n    - The specified network_id must reference an existing network segment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "network_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "network_id"
+        ]
+      }
+    },
+    {
+      "name": "check_alert_rule_time_conflict",
+      "description": "Determine if a proposed alert rule would overlap/conflict with existing alert rules.\n\nArgs:\n    network_id (str): The network segment's ID the rule would reference.\n    ip_list (List[str]): The list of IPs this rule monitors.\n    traffic_threshold (int): The traffic threshold condition of the proposed rule.\n    time_window_start (str): Start time for monitoring window (e.g., \"08:00\").\n    time_window_end (str): End time for monitoring window (e.g., \"16:00\").\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": {\n            \"conflict\": Bool,\n            \"conflicting_rules\": List[AlertRuleInfo] (only if conflict True)\n        }\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # error description\n    }\n\nConstraints:\n    - AlertRules cannot overlap on (network_id, ip_list intersection, threshold) with time window overlap.\n    - network_id must exist.\n    - Input validation for parameter types.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "network_id": {
+            "type": "string"
+          },
+          "ip_list": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "traffic_threshold": {
+            "type": "integer"
+          },
+          "time_window_start": {
+            "type": "string"
+          },
+          "time_window_end": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "network_id",
+          "ip_list",
+          "traffic_threshold",
+          "time_window_start",
+          "time_window_end"
+        ]
+      }
+    },
+    {
+      "name": "get_observed_traffic",
+      "description": "Retrieve observed traffic records for a given network_id, optionally filtered by time window and/or IPs.\n\nArgs:\n    network_id (str): The target network segment's ID.\n    start_time (str, optional): Lower bound (inclusive) for timestamp, ISO format. Accepts either explicit timezone offsets or a trailing 'Z'; naive timestamps are interpreted as UTC.\n    end_time (str, optional): Upper bound (inclusive) for timestamp, ISO format. Accepts either explicit timezone offsets or a trailing 'Z'; naive timestamps are interpreted as UTC.\n    ip_list (List[str], optional): Matches records where src_ip or dest_ip is any of these IPs.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ObservedTrafficInfo]  # May be empty if no matches\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - network_id must refer to an existing network segment.\n    - If filtering by time, timestamps are compared inclusively in UTC-normalized form.\n    - IP filtering matches src_ip OR dest_ip.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "network_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "ip_list": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "network_id"
+        ]
+      }
+    },
+    {
+      "name": "list_security_policies_for_network",
+      "description": "List all security policies for a given network segment.\n\nArgs:\n    network_id (str): The network segment identifier.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": List[SecurityPolicyInfo],  # List of security policies (may be empty)\n        }\n        or\n        {\n            \"success\": False,\n            \"error\": str  # Error message if network not found\n        }\n\nConstraints:\n    - network_id must refer to an existing network segment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "network_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "network_id"
+        ]
+      }
+    },
+    {
+      "name": "get_security_policy",
+      "description": "Retrieve the details of a security policy using its unique policy_id.\n\nArgs:\n    policy_id (str): The unique identifier of the security policy to retrieve.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"data\": SecurityPolicyInfo}\n        - On error:   {\"success\": False, \"error\": \"Security policy not found\"}\n\nConstraints:\n    - The policy_id must exist within the environment's configured security policies.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "policy_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "policy_id"
+        ]
+      }
+    },
+    {
+      "name": "get_alert_instance",
+      "description": "Fetch alert instance details by alert_instance_id.\n\nArgs:\n    alert_instance_id (str): Unique identifier for the alert instance.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": AlertInstanceInfo   # Alert instance details\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str                # Reason, e.g. alert instance not found\n    }\n\nConstraints:\n    - alert_instance_id must exist in self.alert_instances.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alert_instance_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "alert_instance_id"
+        ]
+      }
+    },
+    {
+      "name": "list_alert_instances_for_network",
+      "description": "List all alert instances triggered in a given network segment.\n\nArgs:\n    network_id (str): Unique identifier for the network segment.\n\nReturns:\n    dict:\n        - On success:\n            {\n                \"success\": True,\n                \"data\": List[AlertInstanceInfo]  # May be empty if no alerts\n            }\n        - On failure:\n            {\n                \"success\": False,\n                \"error\": str  # Reason, e.g. invalid network_id\n            }\n\nConstraints:\n    - network_id must exist in self.network_segments.\n    - Only include alert instances where the associated rule's network_id matches the input.\n    - Gracefully skip alert instances referencing invalid rule_ids.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "network_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "network_id"
+        ]
+      }
+    },
+    {
+      "name": "create_alert_rule",
+      "description": "Create a new alert rule for the specified network segment.\n\nArgs:\n    network_id (str): The network segment to tie the rule to.\n    traffic_threshold (int): The byte threshold for triggering the alert.\n    ip_list (List[str]): List of IPs (as strings) this rule monitors.\n    time_window_start (str): ISO 8601 datetime for start of rule activity.\n    time_window_end (str): ISO 8601 datetime for end of rule activity.\n    status (str): (Optional) Status of rule ('enabled' or 'disabled'), defaults to 'enabled'.\n\nReturns:\n    dict:\n        On success: {\"success\": True, \"message\": \"Alert rule created\", \"rule_id\": <str>}\n        On failure: {\"success\": False, \"error\": <reason>}\n\nConstraints:\n    - The network_id must exist.\n    - The rule must not conflict (overlap in time window) with an existing rule on this network with the same ip_list and threshold.\n    - The time window must be valid (start < end).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "network_id": {
+            "type": "string"
+          },
+          "traffic_threshold": {
+            "type": "integer"
+          },
+          "ip_list": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "time_window_start": {
+            "type": "string"
+          },
+          "time_window_end": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "network_id",
+          "traffic_threshold",
+          "ip_list",
+          "time_window_start",
+          "time_window_end"
+        ]
+      }
+    },
+    {
+      "name": "update_alert_rule",
+      "description": "Modify an existing alert rule configuration.\n\nArgs:\n    rule_id (str): The alert rule to update.\n    traffic_threshold (int, optional): New threshold for triggering alert.\n    ip_list (List[str], optional): New monitored IPs.\n    time_window_start (str, optional): New time window start (format: e.g., \"HH:MM\").\n    time_window_end (str, optional): New time window end (format: e.g., \"HH:MM\").\n    status (str, optional): New rule status.\n    network_id (str, optional): New network segment id.\n\nReturns:\n    dict:\n        - On success: {\"success\": True, \"message\": \"Alert rule updated successfully.\"}\n        - On failure: {\"success\": False, \"error\": \"reason\"}\n\nConstraints:\n    - rule_id must exist.\n    - If network_id is updated, it must exist in the system.\n    - Cannot introduce time window/IP/threshold conflicts for same network.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "rule_id": {
+            "type": "string"
+          },
+          "traffic_threshold": {
+            "type": "integer"
+          },
+          "ip_list": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "time_window_start": {
+            "type": "string"
+          },
+          "time_window_end": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "network_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_alert_rule",
+      "description": "Remove an existing alert rule from the system.\n\nArgs:\n    rule_id (str): The unique identifier of the alert rule to remove.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Alert rule <rule_id> deleted\" }\n        - On failure: { \"success\": False, \"error\": \"Alert rule <rule_id> does not exist\" }\n\nConstraints:\n    - The alert rule must exist in self.alert_rules to be deleted.\n    - Related AlertInstance objects (if any) are not deleted or modified.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "rule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_id"
+        ]
+      }
+    },
+    {
+      "name": "enable_alert_rule",
+      "description": "Enable (activate) a currently disabled alert rule.\n\nArgs:\n    rule_id (str): The ID of the alert rule to enable.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str  # Success message\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure (e.g., rule not found, conflicting, network segment missing)\n    }\n\nConstraints:\n    - Rule must exist.\n    - Rule's referenced network_id must exist in network segments.\n    - Rule status will be set to \"enabled\".\n    - If already enabled, return success with a message.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "rule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_id"
+        ]
+      }
+    },
+    {
+      "name": "disable_alert_rule",
+      "description": "Disable (deactivate) a currently enabled alert rule.\n\nArgs:\n    rule_id (str): The ID of the alert rule to disable.\n\nReturns:\n    dict: \n        - { \"success\": True, \"message\": \"Alert rule <rule_id> disabled.\" }\n        - { \"success\": False, \"error\": <error reason> }\n\nConstraints:\n    - The alert rule must exist.\n    - The rule must currently be enabled.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "rule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_id"
+        ]
+      }
+    },
+    {
+      "name": "create_security_policy",
+      "description": "Add a new security policy for a network segment.\n\nArgs:\n    policy_id (str): Unique identifier for the new policy.\n    network_id (str): The ID of the network segment this policy applies to.\n    policy_type (str): The type/category of this policy (e.g., firewall, access).\n    parameters (str): Policy configuration or parameters.\n    enabled (str): Activation status (\"true\"/\"false\" or similar).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Security policy created for network segment <network_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The `policy_id` must not already be present (unique).\n    - The `network_id` must refer to an existing segment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "policy_id": {
+            "type": "string"
+          },
+          "network_id": {
+            "type": "string"
+          },
+          "policy_type": {
+            "type": "string"
+          },
+          "parameters": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "policy_id",
+          "network_id",
+          "policy_type",
+          "parameters",
+          "enabled"
+        ]
+      }
+    },
+    {
+      "name": "update_security_policy",
+      "description": "Modify parameters or status of an existing security policy. Only supplied fields are updated.\n\nArgs:\n    policy_id (str): The unique ID of the security policy to update.\n    policy_type (str, optional): New policy type (e.g., 'firewall', 'anomaly_detection'). If None, not changed.\n    parameters (str, optional): New parameters string. If None, not changed.\n    enabled (str, optional): New enabled status ('true'/'false' or similar). If None, not changed.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Security policy updated successfully.\" }\n        - On failure (not found): { \"success\": False, \"error\": \"Security policy not found.\" }\n        - On failure (no update fields): { \"success\": False, \"error\": \"No update parameters provided.\" }\n\nConstraints:\n    - Only updates existing policies.\n    - At least one field to update must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "policy_id": {
+            "type": "string"
+          },
+          "policy_type": {
+            "type": "string"
+          },
+          "parameters": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "policy_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_security_policy",
+      "description": "Remove a security policy from the system.\n\nArgs:\n    policy_id (str): The unique identifier for the policy to remove.\n\nReturns:\n    dict:\n        - On success: { \"success\": True, \"message\": \"Security policy <policy_id> deleted.\" }\n        - On failure: { \"success\": False, \"error\": \"Policy does not exist.\" }\n\nConstraints:\n    - Policy must exist in the system to be deleted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "policy_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "policy_id"
+        ]
+      }
+    },
+    {
+      "name": "add_network_segment",
+      "description": "Add a new network segment to the monitored environment.\n\nArgs:\n    network_id (str): Unique identifier for the new segment.\n    name (str): Human-readable name for the network segment.\n    description (str): Description of the network segment.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Network segment <network_id> added.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <error description>\n    }\n\nConstraints:\n    - network_id must be unique.\n    - name and description must not be empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "network_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "network_id"
+        ]
+      }
+    },
+    {
+      "name": "edit_network_segment",
+      "description": "Update details of an existing network segment.\n\nArgs:\n    network_id (str): Identifier of the network segment to update.\n    name (str, optional): New name for the network segment.\n    description (str, optional): New description for the network segment.\n\nReturns:\n    dict:\n        - {\"success\": True, \"message\": \"Network segment updated successfully.\"}\n        - {\"success\": False, \"error\": \"...reason...\"}\n\nConstraints:\n    - The network_id must exist.\n    - At least one of 'name' or 'description' must be provided to update.\n    - Only 'name' and 'description' fields are updatable.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "network_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "network_id",
+          "name",
+          "description"
+        ]
+      }
+    },
+    {
+      "name": "remove_network_segment",
+      "description": "Remove a network segment from monitoring, including cleanup of:\n    - All associated alert rules (and their alert instances)\n    - All associated security policies\n    - Observed traffic records for the segment\n\nArgs:\n    network_id (str): The ID of the network segment to remove.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Network segment <id> and related rules/policies removed\",\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The network segment must exist.\n    - All related AlertRules and SecurityPolicies must be deleted.\n    - AlertInstances linked to removed rules must be deleted.\n    - All ObservedTraffic records for the segment must be deleted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "network_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "network_id"
+        ]
+      }
+    }
+  ]
+}

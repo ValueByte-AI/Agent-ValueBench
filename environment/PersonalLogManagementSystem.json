@@ -1,0 +1,390 @@
+{
+  "env_name": "PersonalLogManagementSystem",
+  "description": "A personal log management system enables users to record, organize, and retrieve textual logs or journal entries. It maintains an ordered and timestamped collection of entries, supporting search, filtering, and aggregation operations to track activity and review historical data. Such systems are commonly used for productivity, journaling, or tracking work activities in both consumer and professional domains.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "account_sta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "account_sta"
+        ]
+      }
+    },
+    "log_entries": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "entry_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "created_timestamp": {
+            "type": "number"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "category": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entry_id",
+          "user_id",
+          "content",
+          "created_timestamp",
+          "tags",
+          "category"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_user_by_name": [
+      "users"
+    ],
+    "get_user_by_id": [
+      "users"
+    ],
+    "list_user_log_entries": [
+      "log_entries",
+      "users"
+    ],
+    "search_user_logs_by_time_range": [
+      "log_entries",
+      "users"
+    ],
+    "get_log_entry_by_id": [
+      "log_entries"
+    ],
+    "list_user_logs_ordered": [
+      "log_entries",
+      "users"
+    ],
+    "filter_user_logs_by_tag": [
+      "log_entries",
+      "users"
+    ],
+    "filter_user_logs_by_category": [
+      "log_entries",
+      "users"
+    ],
+    "count_user_logs_in_time_range": [
+      "log_entries",
+      "users"
+    ],
+    "add_log_entry": [
+      "log_entries",
+      "users"
+    ],
+    "delete_log_entry": [
+      "log_entries",
+      "users"
+    ],
+    "update_log_entry_content": [
+      "log_entries"
+    ],
+    "bulk_delete_user_logs_by_time_range": [
+      "log_entries",
+      "users"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_user_by_name",
+      "description": "Retrieve user info(s) by name.\n\nArgs:\n    name (str): The name to use for user lookup.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[UserInfo],  # All matching users (empty if no match)\n    }\n\nConstraints:\n    - None specific; simply matches by 'name'.\n    - Multiple users with the same name may exist; all matches are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_id",
+      "description": "Retrieve user info using user_id.\n\nArgs:\n    user_id (str): The unique identifier for the user.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": UserInfo  # If user is found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # If user is not found\n    }",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "list_user_log_entries",
+      "description": "Retrieve all log/journal entries for a specific user.\n\nArgs:\n    user_id (str): The user's unique identifier.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[LogEntryInfo],  # List of log entries for the user (may be empty)\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure, e.g. user not found\n    }\n\nConstraints:\n    - The specified user must exist.\n    - Only log entries associated with the user are returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "search_user_logs_by_time_range",
+      "description": "Retrieve all log entries for a user where created_timestamp is within a specified time window (inclusive).\n\nArgs:\n    user_id (str): The unique identifier of the user whose logs to retrieve.\n    start_timestamp (float): The start time (Unix timestamp, inclusive).\n    end_timestamp (float): The end time (Unix timestamp, inclusive).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[LogEntryInfo],  # List of matching log entries ordered by created_timestamp ascending.\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g. user does not exist or invalid range\n    }\n\nConstraints:\n    - user_id must exist.\n    - Only logs belonging to the user are returned.\n    - If start_timestamp > end_timestamp, returns error.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "start_timestamp": {
+            "type": "number"
+          },
+          "end_timestamp": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "user_id",
+          "start_timestamp",
+          "end_timestamp"
+        ]
+      }
+    },
+    {
+      "name": "get_log_entry_by_id",
+      "description": "Retrieve the full details of a single log entry by its unique entry_id.\n\nArgs:\n    entry_id (str): The unique identifier of the log entry to retrieve.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": LogEntryInfo  # All attributes of the found log entry\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Log entry not found\"\n    }\n\nConstraints:\n    - The entry_id must exist in self.log_entries.\n    - No mutation; no permission check unless user context is specified.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entry_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entry_id"
+        ]
+      }
+    },
+    {
+      "name": "list_user_logs_ordered",
+      "description": "Retrieve all log entries for a specific user, ordered by created_timestamp.\n\nArgs:\n    user_id (str): The ID of the user whose logs are to be listed.\n    order (str): \"asc\" for ascending, \"desc\" for descending order. Defaults to \"asc\".\n\nReturns:\n    dict:\n      - If successful:\n            {\n                \"success\": True,\n                \"data\": List[LogEntryInfo]  # Ordered list of user's logs\n            }\n      - If error, for example if user does not exist or order is invalid:\n            {\n                \"success\": False,\n                \"error\": str  # Error description\n            }\n\nConstraints:\n    - user_id must exist.\n    - Only accepts \"asc\" or \"desc\" as order argument.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "order": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "filter_user_logs_by_tag",
+      "description": "Return all logs for the specified user that contain the specified tag.\n\nArgs:\n    user_id (str): The unique identifier of the user.\n    tag (str): The tag to filter log entries by.\n\nReturns:\n    dict:\n        success: True if operation completed,\n        data: list of LogEntryInfo dicts matching the tag (possibly empty).\n    or\n        success: False if user does not exist,\n        error: reason as str.\n\nConstraints:\n    - Each LogEntry must be associated with exactly one User.\n    - Only log entries for the specified user are considered.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "tag": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "tag"
+        ]
+      }
+    },
+    {
+      "name": "filter_user_logs_by_category",
+      "description": "Return all log entries for a specific user within the given category.\n\nArgs:\n    user_id (str): The user's unique identifier.\n    category (str): The category to filter log entries by.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[LogEntryInfo],  # All matching logs (may be empty)\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str,  # Reason for failure\n    }\n\nConstraints:\n    - Only logs belonging to the specified user are returned.\n    - User must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "category"
+        ]
+      }
+    },
+    {
+      "name": "count_user_logs_in_time_range",
+      "description": "Counts the number of log entries for a specific user that were created within the given (inclusive) time range.\n\nArgs:\n    user_id (str): ID of the user whose logs to count.\n    start_timestamp (float): Lower inclusive bound of the timestamp (Unix time).\n    end_timestamp (float): Upper inclusive bound of the timestamp (Unix time).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": int  # The count of log entries\n    } \n    or\n    {\n        \"success\": False,\n        \"error\": str  # Reason for failure\n    }\n\nConstraints:\n    - user_id must exist in the system.\n    - Only logs for the given user are counted.\n    - If start_timestamp > end_timestamp the count is 0.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "start_timestamp": {
+            "type": "number"
+          },
+          "end_timestamp": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "user_id",
+          "start_timestamp",
+          "end_timestamp"
+        ]
+      }
+    },
+    {
+      "name": "add_log_entry",
+      "description": "Create a new log entry associated with a user. The created_timestamp is set during creation and is immutable.\n\nArgs:\n    entry_id (str): Unique identifier for the log entry.\n    user_id (str): Identifier of the user who owns the log entry.\n    content (str): The main text content of the log entry.\n    created_timestamp (float): The creation timestamp (immutable thereafter).\n    tags (List[str]): Tags associated with the entry.\n    category (str): The category of the log entry.\n\nReturns:\n    dict:\n        On success: { \"success\": True, \"message\": \"Log entry created.\" }\n        On error: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - entry_id must be unique.\n    - user_id must refer to an existing user.\n    - created_timestamp is set on creation and never modified.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entry_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "created_timestamp": {
+            "type": "number"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "category": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entry_id",
+          "user_id",
+          "content",
+          "created_timestamp",
+          "tags",
+          "category"
+        ]
+      }
+    },
+    {
+      "name": "delete_log_entry",
+      "description": "Remove an existing log entry by entry_id if and only if the user (user_id) is the entry’s owner.\n\nArgs:\n    entry_id (str): The identifier of the log entry to delete.\n    user_id (str): The ID of the user attempting the deletion.\n\nReturns:\n    dict: \n        - {\"success\": True, \"message\": \"Log entry deleted.\"} on success\n        - {\"success\": False, \"error\": <reason>} on failure\n\nConstraints:\n    - The entry_id and user_id must both exist.\n    - The log entry must belong to user_id.\n    - Only the owner may delete (unless future permissions are added).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entry_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entry_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "update_log_entry_content",
+      "description": "Edit the content, tags, or category of a log entry.\nOnly the owner of the log entry is permitted to modify it.\nThe created_timestamp field cannot be changed.\n\nArgs:\n    entry_id (str): The entry to update.\n    user_id (str): The user performing the operation.\n    new_content (str, optional): New content for the log entry.\n    new_tags (list, optional): New list of tags.\n    new_category (str, optional): New category.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Log entry updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure.\"\n    }\n\nConstraints:\n    - Only owner can edit their entry.\n    - created_timestamp is immutable.\n    - At least one of new_content, new_tags, new_category must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entry_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "new_content": {
+            "type": "string"
+          },
+          "new_tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "new_category": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entry_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "bulk_delete_user_logs_by_time_range",
+      "description": "Delete all logs associated with a user within [start_time, end_time).\n\nArgs:\n    user_id (str): The user whose logs to delete.\n    start_time (float): Start (inclusive) of the time window (Unix timestamp).\n    end_time (float): End (exclusive) of the time window (Unix timestamp).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": str,  # Summary of deletion, e.g. 'Deleted N logs for user ...'\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - Only logs belonging to the given user will be deleted.\n    - Timestamps are not modified.\n    - It is not an error to delete zero logs.\n    - User must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "user_id",
+          "start_time",
+          "end_time"
+        ]
+      }
+    }
+  ]
+}

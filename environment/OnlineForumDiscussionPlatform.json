@@ -1,0 +1,584 @@
+{
+  "env_name": "OnlineForumDiscussionPlatform",
+  "description": "An online forum discussion platform organizes user-generated posts into topic-based threads, each with attributes like content, user ratings, timestamps, and tags. It allows users to create, search, rate, and sort discussions, supporting structured interaction and community-driven ranking of topics. The platform’s persistent state includes users, threads, ratings, and topic categorizations, making it ideal for supporting ongoing, topic-focused dialogue.",
+  "initial_parameter_schema": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "join_date": {
+            "type": "string"
+          },
+          "reputation": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "_id",
+          "username",
+          "join_date",
+          "reputation"
+        ]
+      }
+    },
+    "threads": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "thread_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rating_score": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "thread_id",
+          "title",
+          "content",
+          "user_id",
+          "timestamp",
+          "tags",
+          "rating_score"
+        ]
+      }
+    },
+    "tags": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "tag_id": {
+            "type": "string"
+          },
+          "tag_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tag_id",
+          "tag_name"
+        ]
+      }
+    },
+    "ratings": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "rating_id": {
+            "type": "string"
+          },
+          "thread_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "value": {
+            "type": "integer"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "rating_id",
+          "thread_id",
+          "user_id",
+          "value",
+          "timestamp"
+        ]
+      }
+    }
+  },
+  "tool_state_dependencies": {
+    "get_tag_by_name": [
+      "tags"
+    ],
+    "list_threads_by_tag": [
+      "tags",
+      "threads"
+    ],
+    "get_thread_by_id": [
+      "threads"
+    ],
+    "get_thread_rating_score": [
+      "threads"
+    ],
+    "list_top_rated_threads_by_tag": [
+      "tags",
+      "threads"
+    ],
+    "get_user_by_username": [
+      "users"
+    ],
+    "get_ratings_for_thread": [
+      "ratings",
+      "threads"
+    ],
+    "get_tags_for_thread": [
+      "tags",
+      "threads"
+    ],
+    "has_user_rated_thread": [
+      "ratings",
+      "threads",
+      "users"
+    ],
+    "list_all_tags": [
+      "tags"
+    ],
+    "add_thread": [
+      "tags",
+      "threads",
+      "users"
+    ],
+    "edit_thread": [
+      "tags",
+      "threads",
+      "users"
+    ],
+    "delete_thread": [
+      "ratings",
+      "threads"
+    ],
+    "add_rating": [
+      "ratings",
+      "threads",
+      "users"
+    ],
+    "edit_rating": [
+      "ratings",
+      "threads",
+      "users"
+    ],
+    "remove_rating": [
+      "ratings",
+      "threads",
+      "users"
+    ],
+    "add_tag": [
+      "tags"
+    ],
+    "edit_tag": [
+      "tags"
+    ],
+    "assign_tag_to_thread": [
+      "tags",
+      "threads"
+    ],
+    "remove_tag_from_thread": [
+      "tags",
+      "threads"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_tag_by_name",
+      "description": "Retrieve tag information by tag name.\n\nArgs:\n    tag_name (str): The name of the tag to look up.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": TagInfo  # Tag information if found\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error, e.g. not found\n    }\n\nConstraints:\n    - Tag names are expected to be unique. Only exact match is returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tag_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tag_name"
+        ]
+      }
+    },
+    {
+      "name": "list_threads_by_tag",
+      "description": "List all threads that are associated with a given tag_id.\n\nArgs:\n    tag_id (str): The tag's unique identifier.\n\nReturns:\n    dict: \n        {\n            \"success\": True, \n            \"data\": List[ThreadInfo]  # All threads with this tag (can be empty)\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": str\n        }\n\nConstraints:\n    - tag_id must exist in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tag_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tag_id"
+        ]
+      }
+    },
+    {
+      "name": "get_thread_by_id",
+      "description": "Retrieve all details (ThreadInfo) for a thread given its thread_id.\n\nArgs:\n    thread_id (str): The unique identifier for the thread.\n\nReturns:\n    dict:\n        - success: True and data (ThreadInfo) if found.\n        - success: False and error message if thread_id does not exist.\n\nConstraints:\n    - The thread_id must exist in the forum.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "thread_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "thread_id"
+        ]
+      }
+    },
+    {
+      "name": "get_thread_rating_score",
+      "description": "Retrieve the current aggregated rating score for a given thread.\n\nArgs:\n    thread_id (str): The identifier of the thread.\n\nReturns:\n    dict:\n        - If successful:\n            {\"success\": True, \"data\": int or float}  # Current aggregated rating score\n        - If thread not found:\n            {\"success\": False, \"error\": \"Thread not found\"}\n\nConstraints:\n    - The thread must exist in the platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "thread_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "thread_id"
+        ]
+      }
+    },
+    {
+      "name": "list_top_rated_threads_by_tag",
+      "description": "List threads that have the specified tag, sorted by their rating_score (descending).\nOptionally, limit the number of returned results.\n\nArgs:\n    tag_id (str): The id of the tag to filter threads by.\n    limit (int, optional): Maximum number of results to return (must be positive if given).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[ThreadInfo]  # Sorted list (may be empty)\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - tag_id must exist in the tag database.\n    - limit must be positive integer if provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tag_id": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "tag_id"
+        ]
+      }
+    },
+    {
+      "name": "get_user_by_username",
+      "description": "Retrieve a user's full profile information given their username.\n\nArgs:\n    username (str): The username to search for.\n\nReturns:\n    dict: \n        {\n            \"success\": True,\n            \"data\": UserInfo  # The user's profile\n        }\n        OR\n        {\n            \"success\": False,\n            \"error\": str  # Reason (e.g., \"User not found\")\n        }\nConstraints:\n    - Usernames are case-sensitive and assumed unique. If multiple users have the same username, the first match is returned.\n    - No permissions required for this read operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      }
+    },
+    {
+      "name": "get_ratings_for_thread",
+      "description": "List all individual ratings (votes) received by a specific thread.\n\nArgs:\n    thread_id (str): The unique identifier of the thread.\n\nReturns:\n    dict:\n        On success: {\n            \"success\": True,\n            \"data\": List[RatingInfo]   # List of ratings for this thread (could be empty)\n        }\n        If thread does not exist: {\n            \"success\": False,\n            \"error\": \"Thread does not exist\"\n        }\nConstraints:\n    - The thread must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "thread_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "thread_id"
+        ]
+      }
+    },
+    {
+      "name": "get_tags_for_thread",
+      "description": "Given a thread_id, list all tags (TagInfo) associated with the thread.\n\nArgs:\n    thread_id (str): The unique identifier of the thread.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TagInfo]  # If thread exists, all tag info for its tags (possibly empty if tags missing by data corruption)\n    }\n    OR\n    {\n        \"success\": False,\n        \"error\": str\n    }\n\nConstraints:\n    - The thread must exist.\n    - Handles missing tags gracefully (skipped in data).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "thread_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "thread_id"
+        ]
+      }
+    },
+    {
+      "name": "has_user_rated_thread",
+      "description": "Check if a given user has already rated a specified thread.\n\nArgs:\n    user_id (str): The unique ID of the user to check.\n    thread_id (str): The unique ID of the thread to check.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": bool  # True if the user has rated the thread, False otherwise\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": str  # Description of the error; e.g., user or thread not found\n    }\n\nConstraints:\n    - user_id must exist.\n    - thread_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "thread_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "thread_id"
+        ]
+      }
+    },
+    {
+      "name": "list_all_tags",
+      "description": "List all available or pre-defined tags in the forum.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"data\": List[TagInfo],  # List of all tags (possibly empty if none exist)\n    }\n\nConstraints:\n    - None specific; shows all tags in the platform state.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "add_thread",
+      "description": "Create a new thread with at least one associated tag.\n\nArgs:\n    title (str): Title of the thread.\n    content (str): Content/body of the thread.\n    user_id (str): The ID of the user creating this thread.\n    tag_ids (List[str]): List of tag IDs to associate with this thread (must be non-empty, all tags must exist).\n    timestamp (str): Thread creation timestamp.\n\nReturns:\n    dict: \n        On success:\n            {\n                \"success\": True,\n                \"message\": \"Thread created\",\n                \"thread_id\": <new_thread_id>\n            }\n        On failure:\n            {\n                \"success\": False,\n                \"error\": <reason>\n            }\n\nConstraints:\n    - Each thread must have at least one existing tag.\n    - Tags must be pre-defined (already exist in self.tags).\n    - user_id must exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "tag_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "content",
+          "user_id",
+          "tag_ids",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "edit_thread",
+      "description": "Edit (update) the content, title, and/or tags of a thread.\nOnly the original author (creator) of the thread can perform this operation.\n\nArgs:\n    thread_id (str): ID of thread to edit.\n    user_id (str): User performing the edit; must match thread creator.\n    title (Optional[str]): New title (if provided).\n    content (Optional[str]): New content (if provided).\n    tags (Optional[List[str]]): New list of tag_ids (if provided).\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Thread updated successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Only the thread creator can edit.\n    - After edit, thread must have at least one associated tag.\n    - All provided tags must exist.\n    - At least one field (title, content, tags) must be provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "thread_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "thread_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "delete_thread",
+      "description": "Delete a thread identified by thread_id. Only the thread's author (request_user_id) may perform deletion.\nAll associated ratings with this thread are also removed.\n\nArgs:\n    thread_id (str): The ID of the thread to delete.\n    request_user_id (str): The user ID of the user attempting the deletion.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Thread deleted successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <description>\n    }\n\nConstraints:\n    - Thread must exist.\n    - Only the author can delete their thread.\n    - All ratings for the thread are removed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "thread_id": {
+            "type": "string"
+          },
+          "request_user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "thread_id",
+          "request_user_id"
+        ]
+      }
+    },
+    {
+      "name": "add_rating",
+      "description": "Add a user's rating for a thread, enforcing only one rating per user per thread.\n\nArgs:\n    user_id (str): The user's identifier.\n    thread_id (str): The thread to be rated.\n    value (int): The rating value (e.g., upvote, downvote, score).\n    timestamp (str): The ISO timestamp for when the rating is cast.\n\nReturns:\n    dict: \n        On success: { \"success\": True, \"message\": \"Rating added successfully.\" }\n        On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - User and thread must exist.\n    - User can rate a given thread only once.\n    - After addition, the thread's rating_score is recalculated by combining (sum) all ratings for this thread.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "thread_id": {
+            "type": "string"
+          },
+          "value": {
+            "type": "integer"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "thread_id",
+          "value",
+          "timestamp"
+        ]
+      }
+    },
+    {
+      "name": "edit_rating",
+      "description": "Edit/change a user’s previous rating on a thread.\n\nArgs:\n    user_id (str): The user ID of the rater.\n    thread_id (str): The thread being rated.\n    new_value (int): The new value for the rating.\n    new_timestamp (str): Timestamp of the modification.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Rating updated successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - User must have already rated the thread.\n    - Updates the thread's aggregated rating_score after modification.\n    - Only the user who authored the rating can edit it (implied).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "thread_id": {
+            "type": "string"
+          },
+          "new_value": {
+            "type": "integer"
+          },
+          "new_timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "thread_id",
+          "new_value",
+          "new_timestamp"
+        ]
+      }
+    },
+    {
+      "name": "remove_rating",
+      "description": "Remove a user's rating from a thread.\n\nArgs:\n    user_id (str): ID of the user removing their rating.\n    thread_id (str): ID of the thread for which the rating is removed.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Rating removed successfully.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - User must have previously rated the thread.\n    - Thread must exist.\n    - Aggregated rating_score of the thread is updated after removal.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "thread_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "thread_id"
+        ]
+      }
+    },
+    {
+      "name": "add_tag",
+      "description": "Create a new tag for discussion topics, if permitted by platform policy.\nEnsures tag_name is unique (case-insensitive).\n\nArgs:\n    tag_name (str): The proposed name for the tag.\n\nReturns:\n    dict: \n        - On success: { \"success\": True, \"message\": \"Tag created with id <tag_id>\" }\n        - On failure: { \"success\": False, \"error\": <reason> }\n\nConstraints:\n    - Tag name must be unique (case-insensitive) among all tags.\n    - Tag name must not be empty or whitespace-only.\n    - If platform policy forbids tag creation, operation fails.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tag_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tag_name"
+        ]
+      }
+    },
+    {
+      "name": "edit_tag",
+      "description": "Edit the name of an existing tag if permitted.\n\nArgs:\n    tag_id (str): The identifier of the tag to edit.\n    new_tag_name (str): The new name for the tag.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Tag updated successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"Reason for failure\"\n    }\n\nConstraints:\n    - tag_id must correspond to an existing tag.\n    - new_tag_name must be non-empty and not already in use by another tag.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tag_id": {
+            "type": "string"
+          },
+          "new_tag_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tag_id",
+          "new_tag_name"
+        ]
+      }
+    },
+    {
+      "name": "assign_tag_to_thread",
+      "description": "Assign an existing tag to a thread.\n\nArgs:\n    thread_id (str): The ID of the thread.\n    tag_id (str): The ID of the tag to assign.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Tag assigned to thread successfully\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": <reason>\n    }\n\nConstraints:\n    - Thread must exist.\n    - Tag must exist.\n    - Tag must not already be assigned to the thread.\n    - Each thread must have at least one tag at all times (invariant maintained).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "thread_id": {
+            "type": "string"
+          },
+          "tag_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "thread_id",
+          "tag_id"
+        ]
+      }
+    },
+    {
+      "name": "remove_tag_from_thread",
+      "description": "Remove a tag from a thread, ensuring the thread retains at least one tag.\n\nArgs:\n    thread_id (str): The ID of the thread to modify.\n    tag_id (str): The ID of the tag to remove from the thread.\n\nReturns:\n    dict: {\n        \"success\": True,\n        \"message\": \"Tag <tag_id> removed from thread <thread_id>.\"\n    }\n    or\n    {\n        \"success\": False,\n        \"error\": \"<reason>\"\n    }\n\nConstraints:\n    - The thread must exist.\n    - The tag must exist.\n    - The tag must currently be assigned to the thread.\n    - After removal, the thread must have at least one tag assigned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "thread_id": {
+            "type": "string"
+          },
+          "tag_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "thread_id",
+          "tag_id"
+        ]
+      }
+    }
+  ]
+}
