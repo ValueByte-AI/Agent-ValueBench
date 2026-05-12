@@ -1,5 +1,17 @@
 # Agent-ValueBench 🧭
 
+<div align="center">
+  <img src="assets/agent-valuebench-wordmark.svg" alt="Agent-ValueBench logo" width="260">
+  <br>
+  <a href="https://arxiv.org/abs/2605.10365"><img src="https://img.shields.io/badge/Paper-arXiv-b31b1b?logo=arxiv&logoColor=white" alt="Paper"></a>
+  &nbsp;
+  <a href="https://huggingface.co/datasets/Value4AI/Agent-ValueBench"><img src="https://img.shields.io/badge/Dataset-Hugging%20Face-blue?logo=huggingface" alt="Hugging Face Dataset"></a>
+  &nbsp;
+  <a href="https://valuebyte-ai.github.io/Agent-ValueBench.github.io/"><img src="https://img.shields.io/badge/Website-Agent--ValueBench-2ea44f?logo=googlechrome&logoColor=white" alt="Website"></a>
+</div>
+
+<br>
+
 📄 This is the official repository for our paper *Agent-ValueBench: A Comprehensive Benchmark for Evaluating Agent Values*, containing our complete dataset and codebase.
 
 **Agent-ValueBench** is the first comprehensive benchmark for evaluating agent values in tool-using language model agents. It spans 28 value systems, 332 system-scoped value dimensions, 394 executable sandbox environments, and 4,335 value-conflict tasks. Each benchmark case defines a value-conflict task, a sandbox environment, the available tools, and rubric items used to evaluate whether an agent's trajectory supports either side of the value conflict.
