@@ -510,3 +510,21 @@ Do not commit real API keys. Keep credentials in local files such as `configs/ap
 - [`LLMChoice/README.md`](LLMChoice/README.md): forced-choice LLM experiment
 - [`HarnessEval/README.md`](HarnessEval/README.md): alternative harness runs
 - [`ValueEval/README.md`](ValueEval/README.md): judging and aggregation
+
+---
+
+## 📝 Citation
+
+If Agent-ValueBench is useful for your research, please consider citing our paper. We sincerely appreciate your support.
+
+```bibtex
+@misc{dong2026agentvaluebenchcomprehensivebenchmarkevaluating,
+      title={Agent-ValueBench: A Comprehensive Benchmark for Evaluating Agent Values}, 
+      author={Haonan Dong and Qiguan Feng and Kehan Jiang and Haoran Ye and Xin Zhang and Guojie Song},
+      year={2026},
+      eprint={2605.10365},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2605.10365}, 
+}
+```
