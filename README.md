@@ -5,6 +5,8 @@
   <br>
   <a href="https://arxiv.org/abs/2605.10365"><img src="https://img.shields.io/badge/Paper-arXiv-b31b1b?logo=arxiv&logoColor=white" alt="Paper"></a>
   &nbsp;
+  <a href="https://huggingface.co/papers/2605.10365"><img src="https://img.shields.io/badge/Daily%20Paper-Hugging%20Face-f59e0b?logo=huggingface" alt="Hugging Face Daily Paper"></a>
+  &nbsp;
   <a href="https://huggingface.co/datasets/Value4AI/Agent-ValueBench"><img src="https://img.shields.io/badge/Dataset-Hugging%20Face-blue?logo=huggingface" alt="Hugging Face Dataset"></a>
   &nbsp;
   <a href="https://valuebyte-ai.github.io/Agent-ValueBench.github.io/"><img src="https://img.shields.io/badge/Website-Agent--ValueBench-2ea44f?logo=googlechrome&logoColor=white" alt="Website"></a>
